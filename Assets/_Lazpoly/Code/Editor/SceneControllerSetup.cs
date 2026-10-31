@@ -31,7 +31,7 @@ namespace Lazpoly.Editor
             string path = $"{SceneFolder}/{sceneName}.unity";
             Scene scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
 
-            if (Object.FindFirstObjectByType<T>() != null) return;
+            if (Object.FindAnyObjectByType<T>() != null) return;
 
             var root = new GameObject(objectName);
             root.AddComponent<T>();

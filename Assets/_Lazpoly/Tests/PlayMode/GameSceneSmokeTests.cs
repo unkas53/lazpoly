@@ -39,7 +39,7 @@ namespace Lazpoly.PlayTests
             yield return null;
             yield return null;
 
-            Assert.IsNotNull(Object.FindFirstObjectByType<MainMenuController>());
+            Assert.IsNotNull(Object.FindAnyObjectByType<MainMenuController>());
         }
 
         [UnityTest]
@@ -50,7 +50,7 @@ namespace Lazpoly.PlayTests
             yield return null;
             yield return null;
 
-            var controller = Object.FindFirstObjectByType<GameSceneController>();
+            var controller = Object.FindAnyObjectByType<GameSceneController>();
             Assert.IsNotNull(controller, "Game scene has no GameSceneController.");
             Assert.AreEqual(4, controller.Session.State.Players.Count);
 
