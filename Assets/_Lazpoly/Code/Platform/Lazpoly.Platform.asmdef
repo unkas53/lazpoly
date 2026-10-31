@@ -3,6 +3,9 @@
     "rootNamespace": "Lazpoly.Platform",
     "references": [
         "Lazpoly.Infra",
+        "Lazpoly.Core",
+        "Lazpoly.Net",
+        "Lazpoly.App",
         "com.rlabrecque.steamworks.net"
     ],
     "includePlatforms": [

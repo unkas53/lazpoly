@@ -3,6 +3,8 @@
     "rootNamespace": "Lazpoly.Boot",
     "references": [
         "Lazpoly.Infra",
+        "Lazpoly.Net",
+        "Lazpoly.App",
         "Lazpoly.Platform"
     ],
     "includePlatforms": [

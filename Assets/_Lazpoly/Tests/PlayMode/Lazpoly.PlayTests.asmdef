@@ -6,6 +6,7 @@
         "UnityEditor.TestRunner",
         "Lazpoly.Presentation",
         "Lazpoly.App",
+        "Lazpoly.Net",
         "Lazpoly.Core"
     ],
     "includePlatforms": [],

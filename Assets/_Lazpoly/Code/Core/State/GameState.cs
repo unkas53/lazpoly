@@ -74,6 +74,67 @@ namespace Lazpoly.Core.State
             };
         }
 
+        internal static GameState FromSnapshot(GameStateSnapshot snapshot)
+        {
+            if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
+            if (snapshot.Players == null || snapshot.Players.Count < RulesConfig.AbsoluteMinPlayers ||
+                snapshot.Players.Count > RulesConfig.AbsoluteMaxPlayers)
+            {
+                throw new ArgumentException("Snapshot has an invalid player list.", nameof(snapshot));
+            }
+
+            if (snapshot.Owners == null || snapshot.Owners.Length < 2)
+            {
+                throw new ArgumentException("Snapshot has no board.", nameof(snapshot));
+            }
+
+            if (snapshot.CurrentPlayerIndex < 0 || snapshot.CurrentPlayerIndex >= snapshot.Players.Count)
+            {
+                throw new ArgumentException("Snapshot current player is out of range.", nameof(snapshot));
+            }
+
+            var ids = new HashSet<int>();
+            var players = new List<PlayerState>(snapshot.Players.Count);
+            foreach (GameStateSnapshot.PlayerEntry entry in snapshot.Players)
+            {
+                if (entry == null || !ids.Add(entry.Id)) throw new ArgumentException("Snapshot has duplicate or empty players.", nameof(snapshot));
+                if (entry.Position < 0 || entry.Position >= snapshot.Owners.Length)
+                {
+                    throw new ArgumentException($"Player {entry.Id} stands outside the board.", nameof(snapshot));
+                }
+
+                players.Add(new PlayerState(entry.Id, entry.Name ?? string.Empty, entry.Money)
+                {
+                    Position = entry.Position,
+                    IsBankrupt = entry.IsBankrupt,
+                });
+            }
+
+            var state = new GameState(players, snapshot.Owners.Length)
+            {
+                Phase = snapshot.Phase,
+                CurrentPlayerIndex = snapshot.CurrentPlayerIndex,
+                TurnNumber = snapshot.TurnNumber,
+                LastDie1 = snapshot.LastDie1,
+                LastDie2 = snapshot.LastDie2,
+                ConsecutiveDoubles = snapshot.ConsecutiveDoubles,
+                WinnerId = snapshot.WinnerId,
+            };
+
+            for (int i = 0; i < snapshot.Owners.Length; i++)
+            {
+                int owner = snapshot.Owners[i];
+                if (owner != NoOwner && !ids.Contains(owner))
+                {
+                    throw new ArgumentException($"Square {i} is owned by unknown player {owner}.", nameof(snapshot));
+                }
+
+                state.SetOwner(i, owner);
+            }
+
+            return state;
+        }
+
         public int GetOwner(int squareIndex) => _owners[squareIndex];
 
         internal void SetOwner(int squareIndex, int ownerId) => _owners[squareIndex] = ownerId;

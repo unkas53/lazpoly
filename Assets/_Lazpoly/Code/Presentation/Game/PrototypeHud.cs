@@ -1,8 +1,8 @@
+using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.State;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Lazpoly.Presentation.Game
 {
@@ -28,9 +28,22 @@ namespace Lazpoly.Presentation.Game
             GameState state = _controller.Session.State;
 
             GUILayout.BeginArea(new Rect(12, 12, 300, Screen.height - 24), GUI.skin.box);
-            DrawPlayers(state);
-            GUILayout.Space(8);
-            DrawActions(state);
+            if (_controller.EndReason.HasValue)
+            {
+                DrawEnded(_controller.EndReason.Value);
+            }
+            else if (state == null)
+            {
+                GUILayout.Label("Ev sahibine bağlanılıyor...", _title);
+                if (GUILayout.Button("Vazgeç", GUILayout.Height(32))) _controller.LeaveToMainMenu();
+            }
+            else
+            {
+                DrawPlayers(state);
+                GUILayout.Space(8);
+                DrawActions(state);
+            }
+
             GUILayout.EndArea();
 
             GUILayout.BeginArea(new Rect(Screen.width - 352, 12, 340, 260), GUI.skin.box);
@@ -49,7 +62,8 @@ namespace Lazpoly.Presentation.Game
                 GUI.color = player.IsBankrupt ? Color.gray : _controller.ColorOf(player.Id);
                 string marker = current ? "▶ " : "   ";
                 string status = player.IsBankrupt ? "iflas" : player.Money.ToString();
-                GUILayout.Label($"{marker}{player.Name}: {status}");
+                string connection = _controller.IsConnected(player.Id) ? "" : " (bağlantı yok)";
+                GUILayout.Label($"{marker}{player.Name}: {status}{connection}");
                 GUI.color = previous;
             }
 
@@ -64,7 +78,7 @@ namespace Lazpoly.Presentation.Game
             if (state.Phase == GamePhase.GameOver)
             {
                 GUILayout.Label($"Kazanan: {state.FindPlayer(state.WinnerId)?.Name}", _title);
-                if (GUILayout.Button("Ana Menü", GUILayout.Height(36))) SceneManager.LoadScene("MainMenu");
+                if (GUILayout.Button("Ana Menü", GUILayout.Height(36))) _controller.LeaveToMainMenu();
                 return;
             }
 
@@ -76,6 +90,13 @@ namespace Lazpoly.Presentation.Game
 
             PlayerState player = state.CurrentPlayer;
             GUILayout.Label($"{player.Name} oynuyor", _title);
+
+            if (!_controller.Session.CanControl(player.Id))
+            {
+                GUILayout.Label("Sıra onda, hamlesi bekleniyor.");
+                DrawLeaveButton();
+                return;
+            }
 
             switch (state.Phase)
             {
@@ -98,6 +119,20 @@ namespace Lazpoly.Presentation.Game
             }
 
             if (_controller.LastRejection != null) GUILayout.Label(_controller.LastRejection);
+            DrawLeaveButton();
+        }
+
+        private void DrawEnded(SessionEndReason reason)
+        {
+            GUILayout.Label("Oyun durdu", _title);
+            GUILayout.Label(GameSceneController.EndReasonText(reason));
+            if (GUILayout.Button("Ana Menü", GUILayout.Height(36))) _controller.LeaveToMainMenu();
+        }
+
+        private void DrawLeaveButton()
+        {
+            GUILayout.Space(16);
+            if (GUILayout.Button("Oyundan Çık", GUILayout.Height(28))) _controller.LeaveToMainMenu();
         }
     }
 }

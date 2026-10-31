@@ -34,24 +34,28 @@ namespace Lazpoly.App.Tests
             var published = new List<IReadOnlyList<GameEvent>>();
             session.EventsPublished += events => published.Add(events);
 
-            CommandResult result = session.Submit(new RollDiceCommand(1));
+            var rejections = new List<RejectionReason>();
+            session.CommandRejected += rejections.Add;
 
-            Assert.IsTrue(result.IsAccepted);
+            session.Submit(new RollDiceCommand(1));
+
+            Assert.IsEmpty(rejections);
             Assert.AreEqual(1, published.Count);
-            Assert.AreSame(result.Events, published[0]);
             Assert.IsInstanceOf<DiceRolledEvent>(published[0][0]);
         }
 
         [Test]
-        public void RejectedCommandPublishesNothing()
+        public void RejectedCommandPublishesNothingAndReportsWhy()
         {
             LocalGameSession session = NewSession();
             int publishCount = 0;
             session.EventsPublished += _ => publishCount++;
+            var rejections = new List<RejectionReason>();
+            session.CommandRejected += rejections.Add;
 
-            CommandResult result = session.Submit(new RollDiceCommand(2));
+            session.Submit(new RollDiceCommand(2));
 
-            Assert.AreEqual(RejectionReason.NotYourTurn, result.Reason);
+            CollectionAssert.AreEqual(new[] { RejectionReason.NotYourTurn }, rejections);
             Assert.AreEqual(0, publishCount);
         }
 
@@ -63,6 +67,17 @@ namespace Lazpoly.App.Tests
 
             Assert.AreEqual(4, session.Board.Count);
             Assert.AreNotEqual(0, session.State.LastDie1);
+        }
+
+        [Test]
+        public void EveryoneAtTheTableCanBeControlledLocally()
+        {
+            LocalGameSession session = NewSession();
+
+            Assert.IsTrue(session.IsReady);
+            Assert.IsTrue(session.CanControl(1));
+            Assert.IsTrue(session.CanControl(2));
+            Assert.IsFalse(session.CanControl(3));
         }
     }
 }

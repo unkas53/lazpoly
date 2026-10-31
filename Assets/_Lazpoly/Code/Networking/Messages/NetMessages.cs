@@ -1,0 +1,89 @@
+using System.Collections.Generic;
+using Lazpoly.Core.Commands;
+using Lazpoly.Core.Engine;
+using Lazpoly.Core.Events;
+using Lazpoly.Core.State;
+
+namespace Lazpoly.Net.Messages
+{
+    public enum MessageType : byte
+    {
+        Hello = 1,
+        GameStart = 2,
+        Refused = 3,
+        Command = 4,
+        Events = 5,
+        Rejected = 6,
+        SnapshotRequest = 7,
+    }
+
+    public abstract class NetMessage
+    {
+        public abstract MessageType Type { get; }
+    }
+
+    /// <summary>Client → host: "I am here, send me the game." Sent on joining and on rejoining.</summary>
+    public sealed class HelloMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.Hello;
+        public int ProtocolVersion;
+        public ulong BoardChecksum;
+    }
+
+    /// <summary>Host → client: everything needed to show the game from now on.</summary>
+    public sealed class GameStartMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.GameStart;
+        public int ProtocolVersion;
+        public ulong BoardChecksum;
+        public int YourPlayerId;
+
+        /// <summary>Sequence number of the last event already contained in <see cref="Snapshot"/>.</summary>
+        public int Sequence;
+
+        public GameStateSnapshot Snapshot;
+    }
+
+    public enum RefusalReason : byte
+    {
+        NotInThisGame = 1,
+        VersionMismatch = 2,
+        BoardMismatch = 3,
+    }
+
+    /// <summary>Host → client: the client cannot take part.</summary>
+    public sealed class RefusedMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.Refused;
+        public RefusalReason Reason;
+    }
+
+    /// <summary>Client → host: a request to act. The host decides.</summary>
+    public sealed class CommandMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.Command;
+        public GameCommand Command;
+    }
+
+    /// <summary>Host → all clients: the events of one accepted command, numbered, with the resulting state hash.</summary>
+    public sealed class EventsMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.Events;
+        public int Sequence;
+        public List<GameEvent> Events = new List<GameEvent>();
+        public ulong StateHash;
+    }
+
+    /// <summary>Host → one client: its command was refused.</summary>
+    public sealed class RejectedMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.Rejected;
+        public RejectionReason Reason;
+    }
+
+    /// <summary>Client → host: "my copy is out of step, send me the full state."</summary>
+    public sealed class SnapshotRequestMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.SnapshotRequest;
+    }
+}

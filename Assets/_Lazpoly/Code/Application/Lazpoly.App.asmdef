@@ -2,7 +2,8 @@
     "name": "Lazpoly.App",
     "rootNamespace": "Lazpoly.App",
     "references": [
-        "Lazpoly.Core"
+        "Lazpoly.Core",
+        "Lazpoly.Net"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

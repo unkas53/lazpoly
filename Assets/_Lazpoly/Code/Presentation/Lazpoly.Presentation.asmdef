@@ -3,6 +3,7 @@
     "rootNamespace": "Lazpoly.Presentation",
     "references": [
         "Lazpoly.Core",
+        "Lazpoly.Net",
         "Lazpoly.App",
         "Lazpoly.Infra"
     ],

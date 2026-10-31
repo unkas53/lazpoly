@@ -15,10 +15,14 @@ namespace Lazpoly.Presentation.Data
             Board = board;
             Rules = rules;
             _groupColors = groupColors;
+            Checksum = BoardChecksum.Compute(board, rules);
         }
 
         public BoardDefinition Board { get; }
         public RulesConfig Rules { get; }
+
+        /// <summary>Digest of board and rules; online players must agree on it.</summary>
+        public ulong Checksum { get; }
 
         public Color GroupColor(int groupId) =>
             _groupColors.TryGetValue(groupId, out Color color) ? color : new Color(0.85f, 0.85f, 0.85f);

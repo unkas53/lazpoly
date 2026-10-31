@@ -1,22 +1,42 @@
 using System.Collections.Generic;
+using Lazpoly.App.Lobby;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
+using Lazpoly.Infra;
+using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Setup;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Lazpoly.Presentation.Menu
 {
-    /// <summary>Phase 2 prototype main menu (IMGUI): choose 2-8 local players and start.</summary>
+    /// <summary>Prototype main menu (IMGUI): a local game for 2-8 players on this machine, or an online room.</summary>
     public sealed class MainMenuController : MonoBehaviour
     {
         private readonly List<string> _names = new List<string>();
         private int _playerCount = 2;
         private GUIStyle _title;
+        private LobbyPanel _lobbyPanel;
 
         private void Awake()
         {
             for (int i = 0; i < RulesConfig.AbsoluteMaxPlayers; i++) _names.Add($"Oyuncu {i + 1}");
+
+            ILobbyService lobby = null;
+            ITransport transport = null;
+            GameServices.Registry?.TryGet(out lobby);
+            GameServices.Registry?.TryGet(out transport);
+            _lobbyPanel = new LobbyPanel(lobby, transport, () => SceneManager.LoadScene("Game"));
+        }
+
+        private void OnDestroy()
+        {
+            _lobbyPanel?.Dispose();
+        }
+
+        private void Update()
+        {
+            _lobbyPanel.Update();
         }
 
         private void OnGUI()
@@ -42,9 +62,9 @@ namespace Lazpoly.Presentation.Menu
             GUILayout.Space(12);
             if (GUILayout.Button("Oyunu Başlat", GUILayout.Height(40))) StartLocalGame();
 
-            GUI.enabled = false;
-            GUILayout.Button("Çevrim İçi (yakında)", GUILayout.Height(32));
-            GUI.enabled = true;
+            GUILayout.Space(16);
+            _lobbyPanel.Draw();
+            GUILayout.Space(16);
 
             if (GUILayout.Button("Çıkış", GUILayout.Height(32))) Application.Quit();
             GUILayout.EndArea();
