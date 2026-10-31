@@ -92,6 +92,7 @@ namespace Lazpoly.App.Tests
                 new LookoutChangedEvent(2, true),
                 new DiceOptionsEvent(1, 1, 2, 3, 4),
                 new DebtIncurredEvent(1, GameState.PotId, 40, MoneyReason.Card),
+                new PlayerTimedOutEvent(2, true),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -130,6 +131,12 @@ namespace Lazpoly.App.Tests
             Assert.AreEqual(MoveKind.Back, ((PlayerMovedEvent)decoded.Events[0]).Kind);
             var options = (DiceOptionsEvent)decoded.Events[1];
             Assert.AreEqual(new[] { 6, 5, 4, 3 }, new[] { options.FirstDie1, options.FirstDie2, options.SecondDie1, options.SecondDie2 });
+
+            var timedOut = new EventsMessage();
+            timedOut.Events.Add(new PlayerTimedOutEvent(3, true));
+            var notice = (PlayerTimedOutEvent)((EventsMessage)MessageCodec.Decode(MessageCodec.Encode(timedOut))).Events[0];
+            Assert.AreEqual(3, notice.PlayerId);
+            Assert.IsTrue(notice.StandInTookOver);
 
             var choose = (CommandMessage)MessageCodec.Decode(MessageCodec.Encode(new CommandMessage { Command = new ChooseDiceCommand(3, 1) }));
             Assert.AreEqual(1, ((ChooseDiceCommand)choose.Command).Option);

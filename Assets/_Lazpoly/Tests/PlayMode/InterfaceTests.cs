@@ -80,7 +80,8 @@ namespace Lazpoly.PlayTests
 
             // Roll, decline every purchase, pass in every auction and end the turn: all through buttons.
             int soundsBefore = AudioPlayer.PlayedCount;
-            string[] order = { "Zar At", "Alma, açık artırmaya çıkar", "Pas", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
+            // Rides are declined; of the two lookout rolls the first is taken (its button starts with a die).
+            string[] order = { "Zar At", "Alma, açık artırmaya çıkar", "Pas", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
             float started = Time.realtimeSinceStartup;
             while (controller.Session.State.TurnNumber < 6 && controller.Session.State.Phase != GamePhase.GameOver)
             {

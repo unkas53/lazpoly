@@ -221,6 +221,26 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   alınan karenin çerçevesi kabarır; iflas eden piyon devrilip tahtaya gömülür; kazanınca tahtaya konfeti yağar;
   pencereler yumuşakça açılır. Parçacık sistemi kullanılmadı, her şey kodla yapılmış basit parçalar.
 
+## Faz 7c: oyun tasarımı
+
+- **Özel kareler:** Çay Molası (vergiler ve kart cezaları kumbarada birikir, gelen hepsini alır), Sokak Haberi
+  (24 kartlık deste `board.json` içinde), Otogar (bilet parasıyla istenen kareye gidilir, başlangıç bonusu yok),
+  Seyir Terası (sonraki sırada iki atış, oyuncu birini seçer).
+- **Masa kuralları:** ana menüdeki "Masa Kuralları" penceresinden başlangıç parası, açık artırma açık/kapalı ve
+  tur sınırı (kısa oyun: sınır dolunca en değerli oyuncu kazanır). Çevrim içi odada ev sahibinin seçimi geçerli,
+  kayıtlı oyun kendi kurallarıyla sürer. Protokol sürümü 3, kayıt biçimi 2.
+- **İpuçları ve Nasıl Oynanır:** ilk oyunda durum ortaya çıktıkça tek seferlik ipuçları (alttaki kutu, "İpuçlarını
+  Kapat" ile kapanır). "Nasıl Oynanır" sayfası menüde ve oyun içinde, sayıları tahtadan ve masa kurallarından alır.
+- **Denge:** `Lazpoly/Balance Report` menüsü (ya da
+  `-executeMethod Lazpoly.Editor.BalanceReportMenu.Run -balanceGames 1000 -balancePlayers 2,4,6`) yalnızca bilgisayar
+  oyunculu oyunlar oynatıp `Reports/Balance` altına rapor yazar: oyun süresi, sıra ve zorluk başına kazanma, renk
+  grubu başına kira geliri, karelere gelinme. Fiyat/kiralar bu raporlarla ayarlandı; Zor yapay zekâ artık ev için
+  tek mülklerini ipotek eder ve gerçekten en güçlüsü. Kimsenin satmadığı masada teklifler turlar geçtikçe büyür,
+  böylece oyun sonsuza dek sürmez.
+- **Çevrim içi süre:** sıra için 90, açık artırma ve takas cevabı için 30 saniye. Süre dolunca host en temkinli
+  hamleyi yapar (zar atar, almaz, pas geçer, reddeder, otogarda kalır); üst üste iki kez dolarsa ya da borç varsa
+  bilgisayar o koltukta oynar, oyuncu tek bir hamle yapınca kontrol ona döner. Ekranın üstünde kalan süre görünür.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

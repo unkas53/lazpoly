@@ -183,6 +183,23 @@ namespace Lazpoly.Core.Events
         public int CardIndex { get; }
     }
 
+    /// <summary>
+    /// An online player let their time run out. The host moved for them (the events that follow),
+    /// or, when <see cref="StandInTookOver"/>, handed their seat to the computer until they act again.
+    /// Announces only; it changes no state.
+    /// </summary>
+    public sealed class PlayerTimedOutEvent : GameEvent
+    {
+        public PlayerTimedOutEvent(int playerId, bool standInTookOver)
+        {
+            PlayerId = playerId;
+            StandInTookOver = standInTookOver;
+        }
+
+        public int PlayerId { get; }
+        public bool StandInTookOver { get; }
+    }
+
     /// <summary>A player gained (or used up) the choice of two rolls next time.</summary>
     public sealed class LookoutChangedEvent : GameEvent
     {

@@ -63,6 +63,7 @@ namespace Lazpoly.Presentation.Game
         private GameObject _tipPanel;
         private Tip? _tip;
         private UiView _howToWindow;
+        private Text _timer;
         private GameObject _howToLayer;
 
         private const int NoSquare = -1;
@@ -152,6 +153,16 @@ namespace Lazpoly.Presentation.Game
 
             BuildCardPopup();
             BuildTipPanel();
+
+            RectTransform timer = UiRoot.Rect(_canvas.transform, "Move Timer", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(-180f, -52f), new Vector2(180f, -12f));
+            _timer = new UiBuilder(timer).Label("", UiTextStyle.Body, UiTheme.Muted, TextAnchor.MiddleCenter);
+            var timerRect = (RectTransform)_timer.transform;
+            timerRect.anchorMin = Vector2.zero;
+            timerRect.anchorMax = Vector2.one;
+            timerRect.offsetMin = Vector2.zero;
+            timerRect.offsetMax = Vector2.zero;
+            _timer.raycastTarget = false;
 
             _tradeWindow = new UiView(UiRoot.Modal(_canvas.transform, "Trade", 760f, out _tradeLayer), RenderTrade);
             _settingsWindow = new UiView(UiRoot.Modal(_canvas.transform, "Settings", 520f, out _settingsLayer),
@@ -247,6 +258,32 @@ namespace Lazpoly.Presentation.Game
 
         private const int NoPlayer = -1;
 
+        /// <summary>Online, while the game waits on the person here: how long until the host moves for them.</summary>
+        private void UpdateTimer(GameState state)
+        {
+            bool show = _controller.IsOnline && state != null && state.Phase != GamePhase.GameOver && !_controller.IsBusy &&
+                        !_controller.EndReason.HasValue && WaitsOnSomeoneHere(state);
+            if (!show)
+            {
+                _timer.text = "";
+                return;
+            }
+
+            int left = Mathf.Max(0, Mathf.CeilToInt(_controller.SecondsLeft));
+            _timer.text = $"Hamle süresi: {left} sn";
+            _timer.color = left <= 10 ? UiTheme.Warning : UiTheme.Muted;
+        }
+
+        private bool WaitsOnSomeoneHere(GameState state)
+        {
+            foreach (int id in AiTurnOrder.PlayersToAct(state))
+            {
+                if (_controller.Session.CanControl(id) && !_controller.Session.IsAiPlaying(id)) return true;
+            }
+
+            return false;
+        }
+
         /// <summary>The person the game waits on at this machine, else the first person seated here.</summary>
         private int TipPlayer(GameState state)
         {
@@ -300,6 +337,7 @@ namespace Lazpoly.Presentation.Game
             UpdateBanner(state);
             UpdateCardPopup();
             UpdateTip(state);
+            UpdateTimer(state);
 
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);

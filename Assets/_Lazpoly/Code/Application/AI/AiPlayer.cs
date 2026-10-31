@@ -168,17 +168,32 @@ namespace Lazpoly.App.AI
             return good ? accept : (GameCommand)reject;
         }
 
-        /// <summary>Spends spare money between rolls: buys back mortgages, then builds evenly.</summary>
+        /// <summary>
+        /// Spends spare money between rolls: buys back mortgages, then builds evenly. A player that
+        /// <see cref="AiProfile.MortgagesToBuild"/> builds first and mortgages lone properties to pay for houses.
+        /// </summary>
         private GameCommand Manage(View view)
         {
             int spare = view.Me.Money - view.Reserve * Profile.BuildReserveMultiplier;
+            if (Profile.MortgagesToBuild) return Build(view, spare) ?? MortgageForHouse(view, spare) ?? Redeem(view);
+            return Redeem(view) ?? Build(view, spare);
+        }
 
+        private GameCommand Redeem(View view)
+        {
+            // While a house is waiting for money, buying back a mortgage would only undo the mortgage that pays for it.
+            if (Profile.MortgagesToBuild && WantedHouseCost(view) > 0) return null;
             foreach (int square in view.OwnSquaresByValue())
             {
                 var redeem = new RedeemCommand(PlayerId, square);
                 if (view.Legal(redeem) && view.Me.Money - view.Rules.RedeemCost(view.Board[square].MortgageValue) >= view.Reserve * 2) return redeem;
             }
 
+            return null;
+        }
+
+        private GameCommand Build(View view, int spare)
+        {
             foreach (int square in view.OwnSquaresByValue())
             {
                 var build = new BuildCommand(PlayerId, square);
@@ -187,6 +202,43 @@ namespace Lazpoly.App.AI
 
             return null;
         }
+
+        /// <summary>The cost of the next house the rules allow but the spare money does not cover, or 0.</summary>
+        private int WantedHouseCost(View view)
+        {
+            foreach (int square in view.OwnSquaresByValue())
+            {
+                RejectionReason reason = GameRules.Validate(view.Board, view.Rules, view.State, new BuildCommand(PlayerId, square));
+                if (reason == RejectionReason.None || reason == RejectionReason.InsufficientFunds) return view.Board[square].BuildingCost;
+            }
+
+            return 0;
+        }
+
+        /// <summary>Mortgages the cheapest property outside any complete group when that pays for the next house.</summary>
+        private GameCommand MortgageForHouse(View view, int spare)
+        {
+            int cost = WantedHouseCost(view);
+            if (cost == 0) return null;
+
+            IReadOnlyList<int> squares = view.OwnSquaresByValue();
+            for (int i = squares.Count - 1; i >= 0; i--)
+            {
+                int square = squares[i];
+                SquareDefinition definition = view.Board[square];
+                if (definition.Type != SquareType.Property || GameRules.OwnsWholeGroup(view.Board, view.State, PlayerId, definition.GroupId)) continue;
+                var mortgage = new MortgageCommand(PlayerId, square);
+                if (spare + definition.MortgageValue >= cost && view.Legal(mortgage)) return mortgage;
+            }
+
+            return null;
+        }
+
+        /// <summary>Rounds after which offers grow each round, so a table where nobody sells never plays on forever.</summary>
+        public const int StalemateRound = 12;
+        public const int StalemateBonusPercent = 15;
+
+        private int TradeOfferPercent(int round) => Profile.TradeOfferPercent + StalemateBonusPercent * Math.Max(0, round - StalemateRound);
 
         /// <summary>Offers money for the one property that would complete a group, at most once per turn.</summary>
         private GameCommand ProposeTrade(View view)
@@ -200,7 +252,7 @@ namespace Lazpoly.App.AI
                 if (definition.Type != SquareType.Property || owner == GameState.NoOwner || owner == PlayerId) continue;
                 if (!view.CompletesGroup(square, PlayerId)) continue;
 
-                int money = Math.Min(definition.Price * Profile.TradeOfferPercent / 100, view.Me.Money - view.Reserve);
+                int money = Math.Min(definition.Price * TradeOfferPercent(view.State.Round) / 100, view.Me.Money - view.Reserve);
                 if (money < definition.Price) continue;
 
                 var offer = new TradeOffer(PlayerId, owner, money, 0, Array.Empty<int>(), new[] { square });

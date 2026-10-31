@@ -67,6 +67,18 @@ namespace Lazpoly.Presentation.Game
         private GameHud _hud;
 
         public IGameSession Session => _session;
+
+        public bool IsOnline => _isOnline;
+
+        /// <summary>
+        /// Seconds an online player has left before the host moves for them, counted from the last
+        /// moves this machine saw (the host keeps the real clock). Infinite in a local game.
+        /// </summary>
+        public float SecondsLeft => _isOnline && _session?.State != null
+            ? (float)TurnClock.LimitFor(_session.State.Phase) - (Time.unscaledTime - _lastProgressTime)
+            : float.PositiveInfinity;
+
+        private float _lastProgressTime;
         public IReadOnlyList<string> Log => _log;
 
         /// <summary>The colour of each <see cref="Log"/> line, same order.</summary>
@@ -326,6 +338,7 @@ namespace Lazpoly.Presentation.Game
 
         private void OnEventsPublished(IReadOnlyList<GameEvent> events)
         {
+            _lastProgressTime = Time.unscaledTime;
             Revision++;
             SaveLocalGame();
             UnlockAchievements(events);
@@ -387,6 +400,7 @@ namespace Lazpoly.Presentation.Game
 
         private void OnStateReset()
         {
+            _lastProgressTime = Time.unscaledTime;
             if (_board == null)
             {
                 BuildViews();

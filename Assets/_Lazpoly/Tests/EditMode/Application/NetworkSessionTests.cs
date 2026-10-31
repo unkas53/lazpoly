@@ -54,6 +54,116 @@ namespace Lazpoly.App.Tests
             }
         }
 
+        /// <summary>Lets the host act until <paramref name="playerId"/> must roll.</summary>
+        private static void PlayUntilTurnOf(NetTable table, int playerId)
+        {
+            for (int i = 0; i < 200 && !(table.HostState.CurrentPlayer.Id == playerId && table.HostState.Phase == GamePhase.WaitingForRoll); i++)
+            {
+                Assert.IsTrue(table.Step(), "The game ended before the player's turn.");
+            }
+
+            Assert.AreEqual(playerId, table.HostState.CurrentPlayer.Id);
+        }
+
+        [Test]
+        public void AnIdlePlayerGetsACautiousMoveThenTheComputerTakesTheirSeat()
+        {
+            NetTable table = NetTable.Create(2);
+            table.StartAll();
+            PlayUntilTurnOf(table, 2);
+            var notices = new List<PlayerTimedOutEvent>();
+            int rolls = 0;
+            table.Clients[2].EventsPublished += events =>
+            {
+                foreach (GameEvent gameEvent in events)
+                {
+                    if (gameEvent is PlayerTimedOutEvent notice) notices.Add(notice);
+                    if (gameEvent is DiceRolledEvent) rolls++;
+                }
+            };
+
+            table.Now += TurnClock.TurnSeconds - 1;
+            table.Pump();
+            Assert.AreEqual(0, rolls, "The host moved before the time was up.");
+
+            table.Now += 2;
+            table.Pump();
+            Assert.AreEqual(1, notices.Count);
+            Assert.IsFalse(notices[0].StandInTookOver);
+            Assert.AreEqual(1, rolls, "The host should have rolled for the idle player.");
+            Assert.IsFalse(table.Host.IsAiPlaying(2));
+            Assert.AreEqual(table.HostState.ComputeHash(), table.Clients[2].State.ComputeHash());
+
+            table.Now += TurnClock.TurnSeconds + 1;
+            table.Pump();
+            Assert.AreEqual(2, notices.Count);
+            Assert.IsTrue(notices[1].StandInTookOver);
+            Assert.IsTrue(table.Host.IsAiPlaying(2));
+            Assert.IsTrue(table.Host.IsIdle(2));
+
+            // The stand-in moves when the game asks the computer; one move of their own gives the seat back.
+            GameCommand own = table.NextCommand();
+            Assert.AreEqual(2, own.PlayerId);
+            table.Clients[2].Submit(own);
+            table.Pump();
+            Assert.IsFalse(table.Host.IsAiPlaying(2));
+            Assert.IsFalse(table.Host.IsIdle(2));
+        }
+
+        [Test]
+        public void MovingInTimeForgivesAnEarlierTimeout()
+        {
+            NetTable table = NetTable.Create(2);
+            table.StartAll();
+            PlayUntilTurnOf(table, 2);
+
+            table.Now += TurnClock.TurnSeconds + 1;
+            table.Pump();
+            table.Clients[2].Submit(table.NextCommand());
+            table.Pump();
+
+            table.Now += TurnClock.TurnSeconds + 1;
+            table.Pump();
+            if (table.HostState.Phase == GamePhase.GameOver) return;
+            Assert.IsFalse(table.Host.IsAiPlaying(table.HostState.CurrentPlayer.Id), "A single timeout after a move of one's own should not hand the seat over.");
+        }
+
+        [Test]
+        public void AnswersGetLessTimeThanTurns()
+        {
+            Assert.AreEqual(TurnClock.ResponseSeconds, TurnClock.LimitFor(GamePhase.AuctionInProgress));
+            Assert.AreEqual(TurnClock.ResponseSeconds, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse));
+            Assert.AreEqual(TurnClock.TurnSeconds, TurnClock.LimitFor(GamePhase.AwaitingBuyDecision));
+            Assert.Less(TurnClock.ResponseSeconds, TurnClock.TurnSeconds);
+
+            double now = 0;
+            var clock = new TurnClock(() => now);
+            now = 29;
+            Assert.IsFalse(clock.HasExpired(GamePhase.AuctionInProgress));
+            now = 31;
+            Assert.IsTrue(clock.HasExpired(GamePhase.AuctionInProgress));
+            Assert.IsFalse(clock.HasExpired(GamePhase.TurnEnd));
+            clock.Restart();
+            Assert.AreEqual(TurnClock.TurnSeconds, clock.Remaining(GamePhase.TurnEnd), 1e-9);
+        }
+
+        [Test]
+        public void TheCautiousMoveCommitsToNothing()
+        {
+            Assert.IsInstanceOf<DeclinePurchaseCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingBuyDecision), 1));
+            Assert.IsInstanceOf<PassBidCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AuctionInProgress), 1));
+            Assert.IsInstanceOf<RejectTradeCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTradeResponse), 1));
+            Assert.IsInstanceOf<DeclineTravelCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTravelDecision), 1));
+            Assert.IsNull(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingDebtPayment), 1), "A debt needs the computer to decide what to sell.");
+        }
+
+        private static GameState StateIn(GamePhase phase)
+        {
+            GameState state = GameState.CreateInitial(NetTestData.Board(), NetTestData.Rules(), new[] { new PlayerSeat(1, "A"), new PlayerSeat(2, "B") });
+            GameStateReducer.Apply(state, new PhaseChangedEvent(phase));
+            return state;
+        }
+
         [Test]
         public void ClientsPlayWithTheHostsTableRules()
         {

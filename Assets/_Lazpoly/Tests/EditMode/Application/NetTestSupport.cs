@@ -36,7 +36,8 @@ namespace Lazpoly.App.Tests
             // The host plays with the table's rules; clients only know the board data and learn the table from the host.
             Engine = new GameEngine(Board, Rules.WithTable(table ?? TableRules.Default), seats, new Pcg32Random(seed));
             HostTransport = Network.CreateTransport(HostPeer);
-            Host = new HostSession(Engine, HostTransport, 1, remote, Checksum);
+            Clock = new TurnClock(() => Now);
+            Host = new HostSession(Engine, HostTransport, 1, remote, Checksum, clock: Clock);
 
             for (int player = 2; player <= players; player++)
             {
@@ -49,6 +50,11 @@ namespace Lazpoly.App.Tests
         }
 
         public LoopbackNetwork Network { get; } = new LoopbackNetwork();
+
+        /// <summary>The host's clock, in seconds; tests move it forward by hand.</summary>
+        public double Now { get; set; }
+
+        public TurnClock Clock { get; }
         public BoardDefinition Board { get; }
         public RulesConfig Rules { get; }
         public ulong Checksum { get; }

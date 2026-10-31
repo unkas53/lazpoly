@@ -32,7 +32,7 @@ namespace Lazpoly.App.Tests
             SquareDefinition.Property("Solo", 150, 15, 0),
         });
 
-        // Starting money 1000: reserves are Easy 30, Normal 80, Hard 100.
+        // Starting money 1000: reserves are Easy 30, Normal 80, Hard 80.
         private static readonly RulesConfig Rules = new RulesConfig(1000, 0, 6, 3, 2, 10, 50);
 
         /// <summary>Always draws the highest value, so the AI never makes its deliberate mistakes.</summary>
@@ -205,11 +205,43 @@ namespace Lazpoly.App.Tests
             var propose = Decide(ai, state) as ProposeTradeCommand;
             Assert.IsNotNull(propose);
             Assert.AreEqual(Other, propose.Offer.ToPlayerId);
-            Assert.AreEqual(250, propose.Offer.GiveMoney, "Hard offers two and a half times the price.");
+            Assert.AreEqual(150, propose.Offer.GiveMoney, "Hard offers one and a half times the price.");
             CollectionAssert.AreEqual(new[] { A2 }, propose.Offer.TakeSquares);
 
             Assert.IsInstanceOf<RollDiceCommand>(Decide(ai, state), "One offer per turn.");
             Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Easy), "Easy never offers trades.");
+        }
+
+        [Test]
+        public void OffersGrowWhenNobodySellsForLong()
+        {
+            GameState state = NewState();
+            Own(state, A1, Me);
+            Own(state, A2, Other);
+            for (int i = 0; i < 14; i++) Apply(state, new TurnStartedEvent(Me));
+            Assert.AreEqual(15, state.Round);
+
+            var propose = Decide(state, Me, AiDifficulty.Hard) as ProposeTradeCommand;
+            Assert.IsNotNull(propose);
+            Assert.AreEqual(100 * (150 + AiPlayer.StalemateBonusPercent * 3) / 100, propose.Offer.GiveMoney);
+        }
+
+        [Test]
+        public void HardMortgagesALonePropertyToPayForAHouse()
+        {
+            GameState state = NewState();
+            Own(state, A1, Me);
+            Own(state, A2, Me);
+            Own(state, Solo, Me);
+            SetMoney(state, Me, 100);
+
+            Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Normal), "Normal waits until it can pay from its spare money.");
+            var mortgage = Decide(state, Me, AiDifficulty.Hard) as MortgageCommand;
+            Assert.IsNotNull(mortgage, "Hard should raise the money for a house.");
+            Assert.AreEqual(Solo, mortgage.SquareIndex);
+
+            Apply(state, new MortgageChangedEvent(Solo, true), new MoneyChangedEvent(Me, Board[Solo].MortgageValue, MoneyReason.Mortgage));
+            Assert.IsInstanceOf<BuildCommand>(Decide(state, Me, AiDifficulty.Hard), "The mortgage pays for a house, it is not bought back at once.");
         }
 
         [Test]
@@ -219,8 +251,8 @@ namespace Lazpoly.App.Tests
             Assert.IsInstanceOf<RejectTradeCommand>(Answer(AiDifficulty.Normal, money: 100), "Normal wants a margin.");
 
             // Hard also charges for handing over the piece that completes the buyer's group.
-            Assert.IsInstanceOf<AcceptTradeCommand>(Answer(AiDifficulty.Hard, money: 250));
-            Assert.IsInstanceOf<RejectTradeCommand>(Answer(AiDifficulty.Hard, money: 240));
+            Assert.IsInstanceOf<AcceptTradeCommand>(Answer(AiDifficulty.Hard, money: 230));
+            Assert.IsInstanceOf<RejectTradeCommand>(Answer(AiDifficulty.Hard, money: 220));
         }
 
         private static GameCommand Answer(AiDifficulty difficulty, int money)

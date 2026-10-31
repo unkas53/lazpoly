@@ -55,6 +55,10 @@ namespace Lazpoly.Core.State
                     RequirePlayer(state, e.PlayerId);
                     break;
 
+                case PlayerTimedOutEvent e:
+                    RequirePlayer(state, e.PlayerId);
+                    break;
+
                 case PlayerMovedEvent e:
                     RequirePlayer(state, e.PlayerId).Position = e.ToSquare;
                     break;

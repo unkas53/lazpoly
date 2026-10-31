@@ -81,6 +81,10 @@ namespace Lazpoly.Presentation.Texts
                     return $"{NameOf(state, e.PlayerId)} iki kez attı: {e.FirstDie1} + {e.FirstDie2} ya da {e.SecondDie1} + {e.SecondDie2}";
                 case PotChangedEvent _:
                     return null;
+                case PlayerTimedOutEvent e:
+                    return e.StandInTookOver
+                        ? $"{NameOf(state, e.PlayerId)} yanıt vermiyor: bilgisayar onun yerine oynuyor, bir hamle yapınca kontrol ona döner"
+                        : $"{NameOf(state, e.PlayerId)} için süre doldu, en temkinli hamle yapıldı";
                 default:
                     return null;
             }

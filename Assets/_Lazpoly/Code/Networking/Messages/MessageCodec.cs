@@ -31,7 +31,7 @@ namespace Lazpoly.Net.Messages
             OwnerChanged = 5, Bankrupted = 6, PhaseChanged = 7, GameEnded = 8,
             BuildingLevel = 9, Mortgage = 10, AuctionStarted = 11, BidPlaced = 12, BidPassed = 13, AuctionEnded = 14,
             TradeProposed = 15, TradeResolved = 16, DebtIncurred = 17, DebtCleared = 18,
-            PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22,
+            PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22, TimedOut = 23,
         }
 
         public static byte[] Encode(NetMessage message)
@@ -302,6 +302,9 @@ namespace Lazpoly.Net.Messages
                     w.WriteByte((byte)EventTag.DiceOptions); w.WriteInt(e.PlayerId);
                     w.WriteInt(e.FirstDie1); w.WriteInt(e.FirstDie2); w.WriteInt(e.SecondDie1); w.WriteInt(e.SecondDie2);
                     break;
+                case PlayerTimedOutEvent e:
+                    w.WriteByte((byte)EventTag.TimedOut); w.WriteInt(e.PlayerId); w.WriteBool(e.StandInTookOver);
+                    break;
                 default:
                     throw new ArgumentException($"Cannot encode event {gameEvent?.GetType().Name}.");
             }
@@ -334,6 +337,7 @@ namespace Lazpoly.Net.Messages
                 case EventTag.CardDrawn: return new CardDrawnEvent(r.ReadInt(), r.ReadInt());
                 case EventTag.Lookout: return new LookoutChangedEvent(r.ReadInt(), r.ReadBool());
                 case EventTag.DiceOptions: return new DiceOptionsEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt());
+                case EventTag.TimedOut: return new PlayerTimedOutEvent(r.ReadInt(), r.ReadBool());
                 default: throw new FormatException($"Unknown event tag {(byte)tag}.");
             }
         }
