@@ -21,7 +21,7 @@ namespace Lazpoly.Presentation.Menu
         private static readonly string[] LanguageNames = { "Otomatik", "Türkçe", "English" };
 
         /// <summary>The groups scroll inside the window, so the window fits a small screen.</summary>
-        private const float BodyHeight = 420f;
+        private const float BodyHeight = 400f;
 
         private readonly SettingsService _settings;
         private readonly ErrorLogService _errorLog;
@@ -48,6 +48,8 @@ namespace Lazpoly.Presentation.Menu
             else
             {
                 GameSettings current = _settings.Current;
+                // Language sits above the scrolling groups, so someone who cannot read the rest finds it first.
+                RenderLanguage(ui, current);
                 UiBuilder body = ui.Scroll(BodyHeight);
                 RenderSound(body, current);
                 RenderPicture(body, current);
@@ -57,6 +59,18 @@ namespace Lazpoly.Presentation.Menu
 
             ui.Space(8f);
             ui.Button(L("Kapat"), close, style: UiButtonStyle.Primary);
+        }
+
+        private void RenderLanguage(UiBuilder ui, GameSettings current)
+        {
+            UiBuilder row = ui.Row();
+            UiBuilder.Fix(row.Label(L("Dil") + " / Language"), width: 150f);
+            for (int i = 0; i < LanguageNames.Length; i++)
+            {
+                var language = (Language)i;
+                row.Button(L(LanguageNames[i]), () => Change(_settings.Current.WithLanguage(language)),
+                    style: current.Language == language ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
         }
 
         private void RenderSound(UiBuilder ui, GameSettings current)
@@ -105,14 +119,6 @@ namespace Lazpoly.Presentation.Menu
         private void RenderGame(UiBuilder ui, GameSettings current)
         {
             ui.Label(L("Oyun"), UiTextStyle.Small, UiTheme.Muted);
-            ui.Label(L("Dil"));
-            UiBuilder languages = ui.Row();
-            for (int i = 0; i < LanguageNames.Length; i++)
-            {
-                var language = (Language)i;
-                languages.Button(L(LanguageNames[i]), () => Change(_settings.Current.WithLanguage(language)),
-                    style: current.Language == language ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
-            }
 
             ui.Toggle(L("Hızlı animasyonlar"), current.FastAnimations, on => Change(_settings.Current.WithFastAnimations(on)));
             ui.Label(L("Bilgisayar hamle hızı"));
