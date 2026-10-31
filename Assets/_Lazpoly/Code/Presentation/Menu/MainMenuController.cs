@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Lazpoly.App.AI;
 using Lazpoly.App.Lobby;
+using Lazpoly.App.Presence;
 using Lazpoly.App.Save;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
@@ -28,6 +29,9 @@ namespace Lazpoly.Presentation.Menu
         private GUIStyle _title;
         private LobbyPanel _lobbyPanel;
         private SavedGame _savedGame;
+        private SettingsPanel _settings;
+        private ILobbyService _lobby;
+        private IPresenceService _presence;
 
         private void Awake()
         {
@@ -39,11 +43,12 @@ namespace Lazpoly.Presentation.Menu
 
             FindSavedGame();
 
-            ILobbyService lobby = null;
             ITransport transport = null;
-            GameServices.Registry?.TryGet(out lobby);
+            GameServices.Registry?.TryGet(out _lobby);
             GameServices.Registry?.TryGet(out transport);
-            _lobbyPanel = new LobbyPanel(lobby, transport, () => SceneManager.LoadScene("Game"));
+            GameServices.Registry?.TryGet(out _presence);
+            _lobbyPanel = new LobbyPanel(_lobby, transport, () => SceneManager.LoadScene("Game"));
+            _settings = new SettingsPanel();
         }
 
         private void OnDestroy()
@@ -54,6 +59,9 @@ namespace Lazpoly.Presentation.Menu
         private void Update()
         {
             _lobbyPanel.Update();
+            if (_presence == null) return;
+            bool inRoom = _lobby != null && _lobby.Status == LobbyStatus.InLobby;
+            _presence.Show(inRoom ? PresenceText.InRoom(_lobby.Members.Count, RulesConfig.AbsoluteMaxPlayers) : PresenceText.MainMenu());
         }
 
         private void OnGUI()
@@ -93,6 +101,9 @@ namespace Lazpoly.Presentation.Menu
             _lobbyPanel.Draw();
             GUILayout.Space(16);
 
+            if (GUILayout.Button(_settings.IsOpen ? "Ayarları Kapat" : "Ayarlar", GUILayout.Height(32))) _settings.IsOpen = !_settings.IsOpen;
+            _settings.Draw();
+            GUILayout.Space(8);
             if (GUILayout.Button("Çıkış", GUILayout.Height(32))) Application.Quit();
             GUILayout.EndArea();
         }

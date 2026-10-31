@@ -126,6 +126,33 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   bağlanmayan çevrim içi oyuncunun yerine bilgisayar geçmez (yalnızca bağlanıp kopanların yerine geçer).
   Zorluk değerleri taslaktır.
 
+## Faz 6a: ayarlar, Steam durumu ve başarımlar
+
+- **Ayarlar:** Ana menüde ve oyunda "Ayarlar": ses, tam ekran, dikey eşitleme, hızlı animasyonlar ve
+  bilgisayar hamle hızı. Her değişiklik hemen uygulanır ve kaydedilir (`SettingsService`, Windows'ta
+  PlayerPrefs). Ses ayarı hazır; oyunda henüz ses yok.
+- **Steam durumu (Rich Presence):** Arkadaşların "Ana menüde", "Oda kuruyor (2/8)", "Bilgisayarlara karşı,
+  12. tur, 4 oyuncu" gibi bir satır görür (Steam'de "Oyun bilgisi"). Arkadaş listesinin kendisinde
+  görünen yerelleştirilmiş satır için gerçek App ID'de Steamworks sitesine bir Rich Presence dosyası
+  yüklemek gerekir.
+- **Başarımlar:** `AchievementTracker` oyun olaylarından başarımları çıkarır; yalnızca bu bilgisayardaki
+  insan oyuncular kazanır (bilgisayarın ve diğer makinelerin hamleleri sayılmaz). `SteamAchievementService`
+  Steam'e yazar. App ID 480'de bu başarımlar tanımlı olmadığından Steam kabul etmez (oyun bir uyarı yazar,
+  oyun içi olay kaydında yine görünür). Gerçek App ID alınınca Steamworks sitesinde aşağıdaki API adlarıyla
+  başarımlar oluşturulmalı:
+
+  | API adı | Başlık | Açıklama |
+  | --- | --- | --- |
+  | `LAZ_FIRST_WIN` | İlk Zafer | Bir oyunu kazan. |
+  | `LAZ_ONLINE_WIN` | Masanın Hâkimi | Çevrim içi bir oyunu kazan. |
+  | `LAZ_BEAT_COMPUTERS` | Makineye Karşı | Bilgisayar oyuncularının da olduğu bir oyunu kazan. |
+  | `LAZ_FULL_GROUP` | Tam Takım | Bir renk grubunun bütün mülklerine sahip ol. |
+  | `LAZ_FIRST_HOTEL` | Otelci | İlk otelini kur. |
+  | `LAZ_AUCTION_WIN` | Son Teklif | Bir açık artırmayı kazan. |
+  | `LAZ_TRADE_DONE` | Pazarlıkçı | Bir takası tamamla. |
+  | `LAZ_BANKRUPT_RIVAL` | Alacaklı | Bir rakibi sana olan borcu yüzünden iflas ettir. |
+  | `LAZ_TYCOON` | Kodaman | Aynı anda 5000 paraya sahip ol. |
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

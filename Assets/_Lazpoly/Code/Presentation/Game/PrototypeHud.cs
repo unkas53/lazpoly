@@ -2,6 +2,7 @@ using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.State;
+using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Texts;
 using UnityEngine;
 
@@ -19,6 +20,7 @@ namespace Lazpoly.Presentation.Game
         private GameSceneController _controller;
         private PropertyPanel _properties;
         private TradePanel _trade;
+        private SettingsPanel _settings;
         private GUIStyle _title;
         private Vector2 _leftScroll;
 
@@ -27,6 +29,7 @@ namespace Lazpoly.Presentation.Game
             _controller = controller;
             _properties = new PropertyPanel(controller);
             _trade = new TradePanel(controller);
+            _settings = new SettingsPanel();
         }
 
         private void OnGUI()
@@ -191,6 +194,8 @@ namespace Lazpoly.Presentation.Game
         private void DrawLeaveButton()
         {
             GUILayout.Space(16);
+            if (GUILayout.Button(_settings.IsOpen ? "Ayarları Kapat" : "Ayarlar", GUILayout.Height(28))) _settings.IsOpen = !_settings.IsOpen;
+            _settings.Draw();
             if (GUILayout.Button("Oyundan Çık", GUILayout.Height(28))) _controller.LeaveToMainMenu();
         }
     }

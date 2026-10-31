@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Lazpoly.App.Achievements;
 using Lazpoly.App.Lobby;
+using Lazpoly.App.Presence;
 using Lazpoly.App.Save;
 using Lazpoly.App.Session;
 using Lazpoly.Core.Commands;
@@ -10,6 +12,7 @@ using Lazpoly.Core.Events;
 using Lazpoly.Core.Random;
 using Lazpoly.Core.State;
 using Lazpoly.Infra;
+using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Pawns;
 using Lazpoly.Presentation.Setup;
@@ -29,9 +32,6 @@ namespace Lazpoly.Presentation.Game
     {
         private const int MaxLogLines = 10;
 
-        /// <summary>Pause before each computer move, so people can follow what it does.</summary>
-        private const float AiMoveDelaySeconds = 0.6f;
-
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
@@ -42,6 +42,10 @@ namespace Lazpoly.Presentation.Game
         private HostSession _host;
         private LocalGame _localGame;
         private float _nextAiMoveTime;
+        private SettingsService _settings;
+        private IAchievementService _achievements;
+        private IPresenceService _presence;
+        private AchievementTracker _tracker;
         private BoardView _board;
         private Coroutine _playback;
         private bool _playing;
@@ -57,6 +61,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>True while events are still being animated; the HUD waits before offering actions.</summary>
         public bool IsBusy => _playing || _pendingEvents.Count > 0;
 
+        private GameSettings Settings => _settings?.Current ?? GameSettings.Default;
+
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
 
         /// <summary>Whether a player's machine is reachable. Always true except for dropped players seen by the host.</summary>
@@ -65,7 +71,13 @@ namespace Lazpoly.Presentation.Game
         private void Start()
         {
             _data = BoardDataLoader.LoadFromResources();
+            GameServices.Registry?.TryGet(out _settings);
+            GameServices.Registry?.TryGet(out _achievements);
+            GameServices.Registry?.TryGet(out _presence);
+            if (_settings != null) _settings.Changed += OnSettingsChanged;
+
             _session = CreateSession(OnlineGameSetup.Take());
+            _tracker = new AchievementTracker(_data.Board, _session.CanControl, _session.IsAiPlaying, _isOnline);
 
             _session.EventsPublished += OnEventsPublished;
             _session.CommandRejected += OnCommandRejected;
@@ -90,11 +102,12 @@ namespace Lazpoly.Presentation.Game
             _session.Tick();
 
             if (_board == null || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
-            if (_session.StepAi()) _nextAiMoveTime = Time.time + AiMoveDelaySeconds;
+            if (_session.StepAi()) _nextAiMoveTime = Time.time + Settings.AiMoveDelaySeconds;
         }
 
         private void OnDestroy()
         {
+            if (_settings != null) _settings.Changed -= OnSettingsChanged;
             if (_session == null) return;
             _session.EventsPublished -= OnEventsPublished;
             _session.CommandRejected -= OnCommandRejected;
@@ -201,11 +214,14 @@ namespace Lazpoly.Presentation.Game
                 PlayerState player = state.Players[i];
                 Color color = PlayerPalette.ForSeat(i);
                 _playerColors[player.Id] = color;
-                _pawns[player.Id] = PawnView.Create(transform, _board, i, state.Players.Count, color);
+                PawnView pawn = PawnView.Create(transform, _board, i, state.Players.Count, color);
+                pawn.Speed = Settings.AnimationSpeed;
+                _pawns[player.Id] = pawn;
             }
 
             SyncViewsToState();
             AddLog($"Sıra: {state.CurrentPlayer.Name}");
+            ShowPresence();
         }
 
         /// <summary>Puts every pawn and owner marker where the state says, without animation.</summary>
@@ -231,9 +247,53 @@ namespace Lazpoly.Presentation.Game
         private void OnEventsPublished(IReadOnlyList<GameEvent> events)
         {
             SaveLocalGame();
+            UnlockAchievements(events);
+            ShowPresence();
             if (_board == null) return;
             foreach (GameEvent gameEvent in events) _pendingEvents.Enqueue(gameEvent);
             if (!_playing) _playback = StartCoroutine(PlayEvents());
+        }
+
+        private void UnlockAchievements(IReadOnlyList<GameEvent> events)
+        {
+            if (_achievements == null || _session.State == null) return;
+            foreach (string id in _tracker.Observe(events, _session.State))
+            {
+                _achievements.Unlock(id);
+                AddLog($"Başarım: {TitleOf(id)}");
+            }
+        }
+
+        private static string TitleOf(string achievementId)
+        {
+            foreach (AchievementDefinition definition in AchievementCatalog.All)
+            {
+                if (definition.Id == achievementId) return definition.Title;
+            }
+
+            return achievementId;
+        }
+
+        /// <summary>Tells friends what this player is doing; the service ignores a line it already shows.</summary>
+        private void ShowPresence()
+        {
+            GameState state = _session?.State;
+            if (_presence == null || state == null) return;
+
+            if (state.Phase == GamePhase.GameOver)
+            {
+                _presence.Show(PresenceText.GameOver(_session.CanControl(state.WinnerId)));
+                return;
+            }
+
+            bool againstComputers = false;
+            foreach (PlayerState player in state.Players) againstComputers |= _session.IsAiPlaying(player.Id);
+            _presence.Show(PresenceText.InGame(_isOnline, againstComputers, state.TurnNumber, state.ActivePlayerCount()));
+        }
+
+        private void OnSettingsChanged(GameSettings settings)
+        {
+            foreach (PawnView pawn in _pawns.Values) pawn.Speed = settings.AnimationSpeed;
         }
 
         private void OnCommandRejected(RejectionReason reason)

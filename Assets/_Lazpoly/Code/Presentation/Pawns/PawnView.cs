@@ -14,6 +14,9 @@ namespace Lazpoly.Presentation.Pawns
         private Vector3 _offset;
         private int _square;
 
+        /// <summary>Animation speed multiplier from the settings (1 = normal).</summary>
+        public float Speed { get; set; } = 1f;
+
         public static PawnView Create(Transform parent, BoardView board, int seatIndex, int seatCount, Color color)
         {
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -45,7 +48,7 @@ namespace Lazpoly.Presentation.Pawns
                 int next = (_square + 1) % count;
                 Vector3 from = transform.position;
                 Vector3 to = Target(next);
-                for (float t = 0f; t < 1f; t += Time.deltaTime / StepSeconds)
+                for (float t = 0f; t < 1f; t += Time.deltaTime * Mathf.Max(Speed, 0.1f) / StepSeconds)
                 {
                     Vector3 position = Vector3.Lerp(from, to, t);
                     position.y += Mathf.Sin(t * Mathf.PI) * HopHeight;

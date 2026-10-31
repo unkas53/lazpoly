@@ -1,5 +1,8 @@
+using Lazpoly.App.Achievements;
 using Lazpoly.App.Lobby;
+using Lazpoly.App.Presence;
 using Lazpoly.Infra;
+using Lazpoly.Infra.Settings;
 using Lazpoly.Net.Transport;
 using Lazpoly.Platform.Steam;
 using UnityEngine;
@@ -15,6 +18,7 @@ namespace Lazpoly.Boot
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Start()
         {
+            var settings = new SettingsService(new PlayerPrefsStorage());
             var steam = new SteamService();
             var lobby = new SteamLobbyService(steam);
             var transport = new SteamTransport(steam, lobby.IsMember);
@@ -22,9 +26,12 @@ namespace Lazpoly.Boot
 
             // Registration order is initialization order: Steam must be up before lobby and transport.
             var registry = new ServiceRegistry();
+            registry.Register(settings);
             registry.Register(steam);
             registry.Register<ILobbyService>(lobby);
             registry.Register<ITransport>(transport);
+            registry.Register<IAchievementService>(new SteamAchievementService(steam));
+            registry.Register<IPresenceService>(new SteamPresenceService(steam));
 
             GameServices.SetRegistry(registry);
 
