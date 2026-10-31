@@ -46,15 +46,18 @@ namespace Lazpoly.PlayTests
             yield return null;
             yield return null;
 
+            // The first screen only asks how to play.
+            AssertMouseReaches("Tek Oyunculu");
+            Assert.IsTrue(Press(null, "Tek Oyunculu"), "No single player button.");
+            yield return null;
+            yield return null;
+
             // A mouse click needs the button to live from press to release: the menu must not rebuild while idle.
             Button idleStart = Find(null, "Oyunu Başlat");
             for (int frame = 0; frame < 5; frame++) yield return null;
             Assert.IsTrue(idleStart != null && idleStart.gameObject.activeInHierarchy, "The menu rebuilt itself while nothing changed.");
 
             AssertMouseReaches("Oyunu Başlat");
-            AssertMouseReaches("Tek Oyunculu: sen + 3 bilgisayar");
-            Assert.IsTrue(Press(null, "Tek Oyunculu: sen + 3 bilgisayar"), "No single player button.");
-            yield return null;
             Assert.IsTrue(Press(null, "Oyunu Başlat"), "No start button.");
             yield return null;
             yield return null;
@@ -81,7 +84,7 @@ namespace Lazpoly.PlayTests
             // Roll, decline every purchase, pass in every auction and end the turn: all through buttons.
             int soundsBefore = AudioPlayer.PlayedCount;
             // Rides are declined; of the two lookout rolls the first is taken (its button starts with a die).
-            string[] order = { "Zar At", "Alma, açık artırmaya çıkar", "Pas", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
+            string[] order = { "Zar At", "Alma", "Pas", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
             float started = Time.realtimeSinceStartup;
             while (controller.Session.State.TurnNumber < 6 && controller.Session.State.Phase != GamePhase.GameOver)
             {

@@ -20,11 +20,15 @@ using UnityEngine.UI;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// Main menu: a local game for 2-8 seats on this machine, each played by a person or the
-    /// computer, a saved local game to continue, or an online room.
+    /// Main menu. The first screen asks only how to play (alone against the computer, together on this
+    /// machine, or online) and offers the saved game; the chosen mode then gets its own setup screen.
     /// </summary>
     public sealed class MainMenuController : MonoBehaviour
     {
+        private enum Mode { Home, Single, Local, Online }
+
+        private static readonly string[] DifficultyNames = { "Kolay", "Orta", "Zor" };
+
         /// <summary>What sits in a local seat: a person (0) or the computer at a difficulty.</summary>
         private static readonly string[] SeatKinds = { "İnsan", "AI: Kolay", "AI: Orta", "AI: Zor" };
 
@@ -32,8 +36,10 @@ namespace Lazpoly.Presentation.Menu
         private readonly List<int> _seatKinds = new List<int>();
         private int _playerCount = 2;
         private UiView _titleView;
-        private UiView _localView;
-        private UiView _onlineView;
+        private UiView _mainView;
+        private Mode _mode = Mode.Home;
+        private int _opponents = 3;
+        private AiDifficulty _difficulty = AiDifficulty.Normal;
         private UiView _footerView;
         private UiView _settingsView;
         private GameObject _settingsLayer;
@@ -78,6 +84,8 @@ namespace Lazpoly.Presentation.Menu
         private void Update()
         {
             _lobbyPanel.Update();
+            // Joining a room from a Steam invite lands on the online screen, whatever was showing.
+            if (_lobby != null && _lobby.Status != LobbyStatus.Idle) _mode = Mode.Online;
             if (_presence == null) return;
             bool inRoom = _lobby != null && _lobby.Status == LobbyStatus.InLobby;
             _presence.Show(inRoom ? PresenceText.InRoom(_lobby.Members.Count, RulesConfig.AbsoluteMaxPlayers) : PresenceText.MainMenu());
@@ -92,13 +100,9 @@ namespace Lazpoly.Presentation.Menu
             _titleView = new UiView(new UiBuilder(title), RenderTitle);
             UiBuilder.AddColumnLayout(title.gameObject, 0, 4f);
 
-            RectTransform local = UiRoot.Rect(canvas.transform, "Local Game", new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(-600f, 120f), new Vector2(-12f, -170f));
-            UiRoot.Background(local, UiTheme.Panel);
-            _localView = new UiView(UiRoot.ScrollPanel(local, 24), RenderLocalGame);
-
-            RectTransform online = UiRoot.Rect(canvas.transform, "Online Game", new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(12f, 120f), new Vector2(600f, -170f));
-            UiRoot.Background(online, UiTheme.Panel);
-            _onlineView = new UiView(UiRoot.ScrollPanel(online, 24), _lobbyPanel.Render);
+            RectTransform main = UiRoot.Rect(canvas.transform, "Main Panel", new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(-420f, 120f), new Vector2(420f, -170f));
+            UiRoot.Background(main, UiTheme.Panel);
+            _mainView = new UiView(UiRoot.ScrollPanel(main, 28), RenderMain);
 
             RectTransform footer = UiRoot.Rect(canvas.transform, "Footer", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-600f, 40f), new Vector2(600f, 96f));
             _footerView = new UiView(new UiBuilder(footer), RenderFooter);
@@ -120,10 +124,10 @@ namespace Lazpoly.Presentation.Menu
 
         private void LateUpdate()
         {
-            if (_localView == null) return;
+            if (_mainView == null) return;
             _titleView.Refresh(_savedGame != null ? 1 : 0);
-            _localView.Refresh(HashCode.Combine(_playerCount, TableKey()));
-            _onlineView.Refresh(_lobbyPanel.ViewKey);
+            int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty);
+            _mainView.Refresh(HashCode.Combine(_mode, modeKey, TableKey()));
             _footerView.Refresh(0);
             if (_settingsLayer.activeSelf) _settingsView.Refresh(0);
             if (_tableLayer.activeSelf) _tableView.Refresh(TableKey());
@@ -136,17 +140,90 @@ namespace Lazpoly.Presentation.Menu
             ui.Label("Arkadaşlarınla ya da bilgisayara karşı mülk topla, kirayı topla, son kalan sen ol.", UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
         }
 
-        private void RenderLocalGame(UiBuilder ui)
+        private void RenderMain(UiBuilder ui)
+        {
+            switch (_mode)
+            {
+                case Mode.Home: RenderHome(ui); break;
+                case Mode.Single: RenderSingle(ui); break;
+                case Mode.Local: RenderLocalGame(ui); break;
+                case Mode.Online: RenderOnline(ui); break;
+            }
+        }
+
+        private void RenderHome(UiBuilder ui)
         {
             if (_savedGame != null)
             {
-                ui.Button("Kayıtlı Oyuna Devam Et", ResumeSavedGame, style: UiButtonStyle.Primary, height: 52f);
-                ui.Space(8f);
+                ui.Button("Kayıtlı Oyuna Devam Et", ResumeSavedGame, style: UiButtonStyle.Primary, height: 60f);
+                ui.Space(10f);
             }
 
-            ui.Label("Yerel oyun (aynı bilgisayar)", UiTextStyle.Heading);
-            ui.Button("Tek Oyunculu: sen + 3 bilgisayar", UseSinglePlayerPreset);
+            ui.Label("Nasıl oynamak istersin?", UiTextStyle.Heading);
+            ModeCard(ui, "Tek Oyunculu", "Sen ve bilgisayar rakipler. Rakip sayısını ve zorluğu seçersin.", Mode.Single);
+            ModeCard(ui, "Aynı Bilgisayarda", "2-8 kişi aynı ekranda sırayla oynar; istenen koltuğa bilgisayar da oturabilir.", Mode.Local);
+            ModeCard(ui, "Çevrim İçi (Steam)", "Oda kur, arkadaşlarını davet et ya da açık bir odaya katıl.", Mode.Online);
+        }
 
+        private void ModeCard(UiBuilder ui, string title, string description, Mode mode)
+        {
+            UiBuilder card = ui.Card(padding: 14);
+            card.Button(title, () => _mode = mode, style: UiButtonStyle.Primary, height: 56f);
+            card.Label(description, UiTextStyle.Small);
+        }
+
+        private void BackButton(UiBuilder ui, string title)
+        {
+            UiBuilder row = ui.Row(12f, expand: false);
+            UiBuilder.Fix(row.Button("< Geri", () => _mode = Mode.Home, height: UiTheme.SmallButtonHeight), width: 110f);
+            UiBuilder.Fix(row.Label(title, UiTextStyle.Heading), -1f).flexibleWidth = 1f;
+            ui.Space(4f);
+        }
+
+        private void RenderTableLine(UiBuilder ui)
+        {
+            UiBuilder row = ui.Row(12f, expand: false);
+            UiBuilder.Fix(row.Label($"Masa: {TableSetup.Summary(TableSetup.Chosen, _boardMoney)}", UiTextStyle.Small, UiTheme.Muted), -1f).flexibleWidth = 1f;
+            UiBuilder.Fix(row.Button("Değiştir", OpenTableRules, height: UiTheme.SmallButtonHeight), width: 120f);
+        }
+
+        private void RenderSingle(UiBuilder ui)
+        {
+            BackButton(ui, "Tek Oyunculu");
+            UiBuilder name = ui.Row();
+            UiBuilder.Fix(name.Label("Adın"), width: 150f);
+            name.Input(_names[0], text => _names[0] = text, 24);
+
+            UiBuilder count = ui.Row();
+            UiBuilder.Fix(count.Label("Rakip sayısı"), width: 150f);
+            count.Label(_opponents.ToString(), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
+            UiBuilder.Fix(count.Button("-", () => _opponents--, _opponents > 1), width: 52f);
+            UiBuilder.Fix(count.Button("+", () => _opponents++, _opponents < RulesConfig.AbsoluteMaxPlayers - 1), width: 52f);
+
+            UiBuilder level = ui.Row();
+            UiBuilder.Fix(level.Label("Zorluk"), width: 150f);
+            for (int i = 0; i < DifficultyNames.Length; i++)
+            {
+                var difficulty = (AiDifficulty)(i + 1);
+                level.Button(DifficultyNames[i], () => _difficulty = difficulty,
+                    style: _difficulty == difficulty ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Space(6f);
+            RenderTableLine(ui);
+            ui.Button("Oyunu Başlat", StartSingleGame, style: UiButtonStyle.Primary, height: 56f);
+        }
+
+        private void RenderOnline(UiBuilder ui)
+        {
+            // Leaving the screen while in a room would hide the room, so going back is offered only outside one.
+            if (_lobby == null || _lobby.Status == LobbyStatus.Idle) BackButton(ui, "");
+            _lobbyPanel.Render(ui);
+        }
+
+        private void RenderLocalGame(UiBuilder ui)
+        {
+            BackButton(ui, "Aynı Bilgisayarda");
             UiBuilder count = ui.Row();
             count.Label($"Oyuncu sayısı: {_playerCount}");
             UiBuilder.Fix(count.Button("-", () => _playerCount--, _playerCount > RulesConfig.AbsoluteMinPlayers), width: 52f);
@@ -162,9 +239,10 @@ namespace Lazpoly.Presentation.Menu
                     style: _seatKinds[seat] == 0 ? UiButtonStyle.Secondary : UiButtonStyle.Selected, height: UiTheme.FieldHeight), width: 130f);
             }
 
-            ui.Space(8f);
-            ui.Label($"Masa: {TableSetup.Summary(TableSetup.Chosen, _boardMoney)}", UiTextStyle.Small, UiTheme.Muted);
-            ui.Button("Oyunu Başlat", StartLocalGame, style: UiButtonStyle.Primary, height: 52f);
+            ui.Label("Koltuktaki düğmeye basarak insan ya da bilgisayar (Kolay, Orta, Zor) seçersin.", UiTextStyle.Small, UiTheme.Muted);
+            ui.Space(6f);
+            RenderTableLine(ui);
+            ui.Button("Oyunu Başlat", StartLocalGame, style: UiButtonStyle.Primary, height: 56f);
         }
 
         private static int TableKey()
@@ -212,13 +290,15 @@ namespace Lazpoly.Presentation.Menu
                 _howToLayer.SetActive(true);
                 _howToView.Invalidate();
             });
-            ui.Button("Masa Kuralları", () =>
-            {
-                _tableLayer.SetActive(true);
-                _tableView.Invalidate();
-            });
+            ui.Button("Masa Kuralları", OpenTableRules);
             ui.Button("Ayarlar", OpenSettings);
             ui.Button("Çıkış", Application.Quit, style: UiButtonStyle.Danger);
+        }
+
+        private void OpenTableRules()
+        {
+            _tableLayer.SetActive(true);
+            _tableView.Invalidate();
         }
 
         private void OpenSettings()
@@ -244,16 +324,19 @@ namespace Lazpoly.Presentation.Menu
             SceneManager.LoadScene("Game");
         }
 
-        private void UseSinglePlayerPreset()
+        private void StartSingleGame()
         {
-            _playerCount = 4;
-            _seatKinds[0] = 0;
-            if (_names[0].StartsWith("Bilgisayar")) _names[0] = "Oyuncu 1";
-            for (int i = 1; i < _playerCount; i++)
+            var seats = new PlayerSeat[_opponents + 1];
+            var ai = new Dictionary<int, AiDifficulty>();
+            seats[0] = new PlayerSeat(1, string.IsNullOrWhiteSpace(_names[0]) ? "Oyuncu 1" : _names[0].Trim());
+            for (int i = 1; i <= _opponents; i++)
             {
-                _seatKinds[i] = (int)AiDifficulty.Normal;
-                _names[i] = $"Bilgisayar {i}";
+                seats[i] = new PlayerSeat(i + 1, $"Bilgisayar {i}");
+                ai.Add(i + 1, _difficulty);
             }
+
+            LocalGameSetup.SetSeats(seats, ai);
+            SceneManager.LoadScene("Game");
         }
 
         /// <summary>Offers the save only if it was made with the board data this build ships.</summary>

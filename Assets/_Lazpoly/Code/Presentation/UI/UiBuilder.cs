@@ -81,6 +81,8 @@ namespace Lazpoly.Presentation.UI
         {
             GameObject element = NewChild($"Toggle {label}");
             Fix(element, height: 32f);
+            // A see-through backdrop so a click on the label counts too, not only on the small box.
+            UiRoot.Background((RectTransform)element.transform, Color.clear, rounded: false);
             var row = element.AddComponent<HorizontalLayoutGroup>();
             row.spacing = 10f;
             row.childAlignment = TextAnchor.MiddleLeft;

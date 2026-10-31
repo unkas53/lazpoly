@@ -496,18 +496,36 @@ namespace Lazpoly.Presentation.Game
                 return;
             }
 
-            RenderPlayers(ui, state);
-            ui.Space(4f);
+            // What to do now comes first, so the main button never scrolls away; who is playing comes last.
+            RenderHeader(ui, state);
             RenderActions(ui, state);
+            RenderOwnProperties(ui, state);
+            ui.Space(6f);
+            ui.Label("Oyuncular", UiTextStyle.Small, UiTheme.Muted);
+            RenderPlayers(ui, state);
+        }
+
+        private void RenderHeader(UiBuilder ui, GameState state)
+        {
+            UiBuilder header = ui.Row();
+            int limit = _controller.Session.Rules.RoundLimit;
+            header.Label(limit > 0 ? $"Tur {state.Round} / {limit}" : $"Tur {state.Round}", UiTextStyle.Small, UiTheme.Muted);
+            if (state.LastDie1 != 0) header.Label($"Son zar: {state.LastDie1} + {state.LastDie2}", UiTextStyle.Small, UiTheme.Accent, TextAnchor.MiddleRight);
+        }
+
+        /// <summary>The property list of the person on turn here, with its build, sell and mortgage buttons.</summary>
+        private void RenderOwnProperties(UiBuilder ui, GameState state)
+        {
+            if (state.Phase == GamePhase.GameOver || _controller.IsBusy) return;
+            PlayerState player = state.CurrentPlayer;
+            if (!_controller.Session.CanControl(player.Id) || state.Phase == GamePhase.AuctionInProgress || state.Phase == GamePhase.AwaitingTradeResponse) return;
+            ui.Space(6f);
+            PropertyPanel.Render(ui, _controller, state, player.Id);
         }
 
         private void RenderPlayers(UiBuilder ui, GameState state)
         {
             _moneyLabels.Clear();
-            UiBuilder header = ui.Row();
-            int limit = _controller.Session.Rules.RoundLimit;
-            header.Label(limit > 0 ? $"Tur {state.Round} / {limit}" : $"Tur {state.Round}", UiTextStyle.Heading);
-            if (state.LastDie1 != 0) header.Label($"Zar: {state.LastDie1} + {state.LastDie2}", color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
 
             foreach (PlayerState player in state.Players)
             {
@@ -587,7 +605,9 @@ namespace Lazpoly.Presentation.Game
         private void RenderTurnActions(UiBuilder ui, GameState state)
         {
             PlayerState player = state.CurrentPlayer;
-            ui.Label($"{player.Name} oynuyor", UiTextStyle.Heading);
+            UiBuilder turn = ui.Row(10f, expand: false);
+            turn.Swatch(_controller.ColorOf(player.Id), 20f);
+            UiBuilder.Fix(turn.Label(_controller.Session.CanControl(player.Id) ? $"Sıra sende, {player.Name}" : $"{player.Name} oynuyor", UiTextStyle.Heading), -1f).flexibleWidth = 1f;
 
             if (!_controller.Session.CanControl(player.Id))
             {
@@ -626,9 +646,6 @@ namespace Lazpoly.Presentation.Game
             {
                 ui.Button("Takas Teklif Et", () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
             }
-
-            ui.Space(8f);
-            PropertyPanel.Render(ui, _controller, state, player.Id);
         }
 
         private void RenderBuyDecision(UiBuilder ui, PlayerState player)
@@ -644,7 +661,8 @@ namespace Lazpoly.Presentation.Game
             var buy = new BuyPropertyCommand(player.Id);
             ui.Button($"Satın Al ({square.Price})", () => _controller.Submit(buy), _controller.IsAllowed(buy), UiButtonStyle.Primary, 52f);
             if (player.Money < square.Price) ui.Label("Paran yetmiyor: ipotek ya da bina satışıyla para bulabilirsin.", UiTextStyle.Small, UiTheme.Warning);
-            ui.Button("Alma, açık artırmaya çıkar", () => _controller.Submit(new DeclinePurchaseCommand(player.Id)));
+            ui.Button(_controller.Session.Rules.AuctionsEnabled ? "Alma, açık artırmaya çıkar" : "Alma",
+                () => _controller.Submit(new DeclinePurchaseCommand(player.Id)));
         }
 
         /// <summary>A ride from the travel square: the player picks the destination by clicking a square on the board.</summary>

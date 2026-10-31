@@ -126,11 +126,11 @@ namespace Lazpoly.Presentation.Audio
         {
             switch (cue)
             {
-                case SoundCue.PawnStep: return 0.45f;
-                case SoundCue.UiClick: return 0.5f;
-                case SoundCue.UiOpen: return 0.55f;
-                case SoundCue.Bid: return 0.7f;
-                default: return 0.85f;
+                case SoundCue.PawnStep: return 0.4f;
+                case SoundCue.UiClick: return 0.4f;
+                case SoundCue.UiOpen: return 0.4f;
+                case SoundCue.Bid: return 0.6f;
+                default: return 0.75f;
             }
         }
     }

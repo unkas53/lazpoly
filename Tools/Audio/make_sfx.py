@@ -67,61 +67,83 @@ def tone(freq, length_s, decay, partials=((1, 1.0),), attack=0.003, glide=0.0):
     return sig * env(length_s, attack, decay)
 
 
-BELL = ((1, 1.0), (2.76, 0.45), (5.40, 0.25), (8.93, 0.12))
-COIN = ((1, 1.0), (2.32, 0.6), (4.25, 0.35), (6.8, 0.2))
+# Warm, wooden timbres: marimba-like partials (strong fundamental, a soft fourth harmonic) instead of
+# metallic bell or coin overtones, so nothing rings sharply in the ear.
+MARIMBA = ((1, 1.0), (3.9, 0.12), (9.2, 0.03))
+SOFT = ((1, 1.0), (2, 0.18), (3, 0.05))
 
 
-def wood_tok(freq=520):
-    body = tone(freq, 0.12, 0.025, ((1, 1.0), (2.1, 0.35)), glide=0.4)
-    click = band_noise(0.12, 1500, 5000) * env(0.12, 0.0005, 0.006) * 0.6
-    return body + click
+def wood_tok(freq=320, decay=0.03):
+    body = tone(freq, 0.16, decay, ((1, 1.0), (2.0, 0.22)), attack=0.004, glide=0.25)
+    knock = band_noise(0.16, 200, 1600) * env(0.16, 0.002, 0.01) * 0.35
+    return body + knock
 
 
-def clack():
-    sig = band_noise(0.06, 1800, 7000) * env(0.06, 0.0003, 0.008)
-    sig += tone(rng.uniform(2300, 3200), 0.06, 0.012) * 0.5
+def felt_clack():
+    """A die landing on a felt-covered board: a dull knock, no click."""
+    sig = band_noise(0.08, 200, 1200) * env(0.08, 0.002, 0.012)
+    sig += tone(rng.uniform(520, 760), 0.08, 0.018, SOFT, attack=0.002) * 0.45
     return sig
 
 
-def coin(freq, decay=0.25):
-    return tone(freq, decay * 4, decay, COIN, attack=0.001)
+def mallet(freq, decay=0.22, attack=0.006):
+    return tone(freq, decay * 4, decay, MARIMBA, attack=attack)
 
 
-def thud(freq=90, decay=0.12):
-    body = tone(freq, decay * 4, decay, ((1, 1.0), (1.5, 0.3)), glide=1.2)
-    return body + band_noise(decay * 4, 60, 900) * env(decay * 4, 0.001, decay * 0.4) * 0.5
+def thud(freq=80, decay=0.12):
+    body = tone(freq, decay * 4, decay, ((1, 1.0), (1.5, 0.25)), attack=0.004, glide=0.8)
+    return body + band_noise(decay * 4, 50, 500) * env(decay * 4, 0.002, decay * 0.4) * 0.4
 
 
-def chord(freqs, start_step, length_s, decay, partials=BELL):
-    return [(i * start_step, tone(f, length_s, decay, partials) * 0.6) for i, f in enumerate(freqs)]
+def chord(freqs, start_step, length_s, decay, partials=MARIMBA):
+    return [(i * start_step, tone(f, length_s, decay, partials, attack=0.008) * 0.6) for i, f in enumerate(freqs)]
+
+
+def room(signal, amount=0.14, length_s=0.35):
+    """A small, soft room: the sound gets a body instead of stopping dead."""
+    n = int(RATE * length_s)
+    impulse = one_pole(one_pole(rng.standard_normal(n), 1800), 1800) * np.exp(-np.arange(n) / (RATE * 0.09))
+    impulse /= np.sqrt(np.sum(impulse ** 2)) or 1.0
+    size = len(signal) + n
+    wet = np.fft.irfft(np.fft.rfft(signal, size) * np.fft.rfft(impulse, size), size)[: size]
+    out = np.zeros(size)
+    out[: len(signal)] += signal
+    return out + wet * amount
 
 
 def recipes():
-    yield "dice_shake", place(0.45, *[(s, clack() * rng.uniform(0.25, 0.5)) for s in np.sort(rng.uniform(0, 0.38, 14))])
-    land = [(0.0, clack()), (0.09, clack() * 0.8), (0.16, clack() * 0.6), (0.26, clack() * 0.45),
-            (0.33, clack() * 0.3), (0.42, clack() * 0.2), (0.47, clack() * 0.12)]
+    yield "dice_shake", place(0.45, *[(s, felt_clack() * rng.uniform(0.3, 0.55)) for s in np.sort(rng.uniform(0, 0.38, 12))])
+    land = [(0.0, felt_clack()), (0.09, felt_clack() * 0.75), (0.17, felt_clack() * 0.5), (0.27, felt_clack() * 0.32),
+            (0.35, felt_clack() * 0.2), (0.43, felt_clack() * 0.12)]
     yield "dice_land", place(0.7, *land)
-    yield "pawn_step", wood_tok()
-    yield "buy", place(0.9, (0.0, coin(1318)), (0.07, coin(1760)), (0.12, band_noise(0.25, 3000, 9000) * env(0.25, 0.001, 0.05) * 0.25))
-    yield "money_in", place(0.8, (0.0, coin(1568, 0.18) * 0.7), (0.06, coin(2093, 0.2) * 0.6), (0.12, coin(2637, 0.22) * 0.5))
-    yield "money_out", place(0.7, (0.0, coin(1046, 0.16) * 0.8), (0.08, coin(784, 0.18) * 0.7))
-    yield "build", place(0.7, (0.0, mix(thud(140, 0.05), wood_tok(700) * 0.6)), (0.18, mix(thud(120, 0.06), wood_tok(640) * 0.7)))
-    yield "sell", place(0.5, (0.0, wood_tok(420) * 0.8), (0.1, coin(988, 0.12) * 0.5))
-    yield "mortgage", place(0.6, (0.0, wood_tok(360)), (0.12, tone(330, 0.4, 0.12, BELL) * 0.4))
-    yield "bid", wood_tok(900) * 0.6
-    yield "gavel", place(1.0, (0.0, mix(thud(110, 0.08), wood_tok(480))), (0.0, tone(587, 0.9, 0.25, BELL) * 0.25))
-    yield "ui_click", wood_tok(1200) * 0.35
-    yield "ui_open", band_noise(0.22, 400, 3000) * np.hanning(int(RATE * 0.22)) * 0.25
-    yield "your_turn", place(0.9, *chord([784, 1175], 0.12, 0.7, 0.25))
-    yield "achievement", place(1.3, *chord([523, 659, 784, 1046], 0.09, 1.0, 0.35))
-    yield "win", place(2.0, *chord([523, 659, 784, 1046, 1318], 0.12, 1.4, 0.45))
-    yield "bankrupt", place(1.6, *chord([392, 330, 262, 196], 0.18, 1.0, 0.3, ((1, 1.0), (2, 0.3), (3, 0.15))))
-    yield "trade", place(0.8, (0.0, coin(1318, 0.15) * 0.6), (0.1, wood_tok(800) * 0.5), (0.18, coin(1760, 0.18) * 0.6))
+    yield "pawn_step", wood_tok(260, 0.025)
+    yield "buy", place(0.9, (0.0, mallet(523)), (0.08, mallet(784, 0.26)))
+    yield "money_in", place(0.8, (0.0, mallet(587, 0.16) * 0.8), (0.07, mallet(740, 0.18) * 0.7), (0.14, mallet(880, 0.22) * 0.6))
+    yield "money_out", place(0.7, (0.0, mallet(494, 0.16) * 0.8), (0.09, mallet(370, 0.2) * 0.7))
+    yield "build", place(0.7, (0.0, mix(thud(110, 0.06), wood_tok(380) * 0.6)), (0.18, mix(thud(95, 0.07), wood_tok(340) * 0.7)))
+    yield "sell", place(0.5, (0.0, wood_tok(300) * 0.8), (0.1, mallet(440, 0.12) * 0.5))
+    yield "mortgage", place(0.7, (0.0, wood_tok(240)), (0.12, mallet(294, 0.18) * 0.5))
+    yield "bid", wood_tok(440) * 0.6
+    yield "gavel", place(1.0, (0.0, mix(thud(90, 0.09), wood_tok(300))), (0.02, mallet(392, 0.25) * 0.3))
+    yield "ui_click", wood_tok(420, 0.018) * 0.5
+    yield "ui_open", band_noise(0.2, 120, 900) * np.hanning(int(RATE * 0.2)) * 0.3
+    yield "your_turn", place(0.9, *chord([392, 587], 0.12, 0.7, 0.25))
+    yield "achievement", place(1.3, *chord([392, 494, 587, 784], 0.09, 1.0, 0.32))
+    yield "win", place(2.0, *chord([392, 494, 587, 784, 988], 0.12, 1.4, 0.42))
+    yield "bankrupt", place(1.6, *chord([294, 247, 196, 147], 0.18, 1.0, 0.3, SOFT))
+    yield "trade", place(0.8, (0.0, mallet(523, 0.15) * 0.6), (0.1, wood_tok(360) * 0.5), (0.18, mallet(659, 0.18) * 0.6))
+
+
+# Small, frequent sounds sit well under the big moments already in the files, not only in the game's mix.
+QUIET = {"pawn_step": 0.35, "ui_click": 0.3, "ui_open": 0.3, "bid": 0.45, "dice_shake": 0.5, "dice_land": 0.55}
+PEAK = 0.7
 
 
 def write(name, signal):
+    # Everything passes a gentle low-pass and a small room, so no sound has a sharp, thin top.
+    signal = room(one_pole(one_pole(signal, 4000), 4000))
     peak = np.max(np.abs(signal)) or 1.0
-    data = (signal / peak * 0.85 * 32767).astype("<i2")
+    data = (signal / peak * QUIET.get(name, PEAK) * 32767).astype("<i2")
     fade = min(len(data), int(RATE * 0.01))
     data[-fade:] = (data[-fade:] * np.linspace(1, 0, fade)).astype("<i2")
     with wave.open(os.path.join(OUT, name + ".wav"), "wb") as out:

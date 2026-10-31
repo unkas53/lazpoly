@@ -60,33 +60,46 @@ namespace Lazpoly.Presentation.Game
         public void RenderEditor(UiBuilder ui, GameState state)
         {
             if (!KeepOpen(state)) return;
+            PlayerState me = state.FindPlayer(_fromId);
+            PlayerState partner = state.FindPlayer(_toId);
 
             ui.Label("Takas teklifi", UiTextStyle.Heading);
-            UiBuilder partner = ui.Row();
-            partner.Label($"Kime: {state.FindPlayer(_toId).Name}");
-            UiBuilder.Fix(partner.Button("Değiştir", () =>
+            ui.Label("Önce kiminle takas edeceğini seç, sonra iki taraftan mülklere tıklayıp para yaz.", UiTextStyle.Small, UiTheme.Muted);
+
+            UiBuilder partners = ui.Row();
+            foreach (PlayerState player in state.Players)
             {
-                _toId = NextPartner(state, _toId);
-                _take.Clear();
-            }, height: UiTheme.SmallButtonHeight), width: 130f);
+                if (player.Id == _fromId || player.IsBankrupt) continue;
+                int id = player.Id;
+                partners.Button(player.Name, () =>
+                {
+                    if (_toId == id) return;
+                    _toId = id;
+                    _take.Clear();
+                    _takeMoney = "0";
+                }, style: id == _toId ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
 
             UiBuilder columns = ui.Row(16f);
             UiBuilder give = columns.Card();
-            give.Label("Verdiklerin", UiTextStyle.Small);
-            RenderSquareToggles(give, state, _fromId, _give);
+            give.Label($"Sen verirsin (paran {me.Money})", UiTextStyle.Body, UiTheme.Accent);
+            RenderSquareChoices(give, state, _fromId, _give);
             RenderMoneyField(give, _giveMoney, text => _giveMoney = text);
 
             UiBuilder take = columns.Card();
-            take.Label("İstediklerin", UiTextStyle.Small);
-            RenderSquareToggles(take, state, _toId, _take);
+            take.Label($"{partner.Name} verir (parası {partner.Money})", UiTextStyle.Body, UiTheme.Accent);
+            RenderSquareChoices(take, state, _toId, _take);
             RenderMoneyField(take, _takeMoney, text => _takeMoney = text);
 
-            ui.Space(4f);
+            TradeOffer offer = BuildOffer();
+            ui.Label($"Özet: {Describe(offer.GiveSquares, offer.GiveMoney)} veriyorsun, karşılığında {Describe(offer.TakeSquares, offer.TakeMoney)} alıyorsun.", UiTextStyle.Small);
+
             UiBuilder buttons = ui.Row();
-            buttons.Button("Kapat", Close);
+            buttons.Button("Vazgeç", Close);
             buttons.Button("Teklifi Gönder", () =>
             {
-                var command = new ProposeTradeCommand(BuildOffer());
+                TradeOffer current = BuildOffer();
+                var command = new ProposeTradeCommand(current);
                 if (_controller.IsAllowed(command))
                 {
                     _controller.Submit(command);
@@ -94,11 +107,20 @@ namespace Lazpoly.Presentation.Game
                 }
                 else
                 {
-                    _problem = "Bu teklif kurallara uymuyor: para ya da seçilen mülkleri kontrol et.";
+                    _problem = Problem(state, current);
                 }
             }, style: UiButtonStyle.Primary);
             if (_problem != null) ui.Label(_problem, UiTextStyle.Small, UiTheme.Warning);
             _problem = null;
+        }
+
+        /// <summary>Why an offer cannot be sent, in words the player can act on.</summary>
+        private static string Problem(GameState state, TradeOffer offer)
+        {
+            if (offer.IsEmpty) return "Teklif boş: en az bir mülk seç ya da para yaz.";
+            if (offer.GiveMoney > state.FindPlayer(offer.FromPlayerId).Money) return "Verdiğin para, paranı aşıyor.";
+            if (offer.TakeMoney > state.FindPlayer(offer.ToPlayerId).Money) return "İstediğin para, karşı tarafın parasını aşıyor.";
+            return "Bu teklif şu an gönderilemez.";
         }
 
         /// <summary>The answer buttons, for whoever the pending offer is for (or its sender, to withdraw it).</summary>
@@ -127,25 +149,32 @@ namespace Lazpoly.Presentation.Game
             return true;
         }
 
-        private void RenderSquareToggles(UiBuilder ui, GameState state, int ownerId, HashSet<int> selected)
+        /// <summary>Every tradable square of one side as a button that is lit while it is part of the offer.</summary>
+        private void RenderSquareChoices(UiBuilder ui, GameState state, int ownerId, HashSet<int> selected)
         {
             BoardDefinition board = _controller.Session.Board;
             UiBuilder list = ui.Scroll(260f);
             bool any = false;
             for (int square = 0; square < board.Count; square++)
             {
-                if (state.GetOwner(square) != ownerId || GameRules.GroupHasBuildings(board, state, square)) continue;
+                if (state.GetOwner(square) != ownerId || board[square].Type != SquareType.Property) continue;
                 any = true;
                 int index = square;
-                string label = state.IsMortgaged(square) ? $"{board[square].Name} (ipotekli)" : board[square].Name;
-                list.Toggle(label, selected.Contains(square), on =>
+                bool chosen = selected.Contains(square);
+                bool locked = GameRules.GroupHasBuildings(board, state, square);
+                string label = board[square].Name + (state.IsMortgaged(square) ? " (ipotekli)" : "") + (locked ? " (binalı)" : "");
+
+                UiBuilder row = list.Row(8f, expand: false);
+                row.Swatch(_controller.GroupColorOf(square), 16f);
+                Button button = row.Button((chosen ? "• " : "") + label, () =>
                 {
-                    if (on) selected.Add(index);
-                    else selected.Remove(index);
-                });
+                    if (!selected.Remove(index)) selected.Add(index);
+                }, !locked, chosen ? UiButtonStyle.Selected : UiButtonStyle.Secondary, UiTheme.SmallButtonHeight);
+                UiBuilder.Fix(button, height: UiTheme.SmallButtonHeight).flexibleWidth = 1f;
             }
 
-            if (!any) list.Label("Takas edilebilir mülk yok.", UiTextStyle.Small);
+            if (!any) list.Label("Mülk yok.", UiTextStyle.Small);
+            else list.Label("Binalı renkler önce bina satılınca takas edilir.", UiTextStyle.Small, UiTheme.Muted);
         }
 
         private static void RenderMoneyField(UiBuilder ui, string value, System.Action<string> changed)
