@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using Lazpoly.App.Save;
 using Lazpoly.Core.State;
@@ -6,6 +7,7 @@ using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Setup;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -43,6 +45,13 @@ namespace Lazpoly.PlayTests
             yield return null;
             yield return null;
 
+            // A mouse click needs the button to live from press to release: the menu must not rebuild while idle.
+            Button idleStart = Find(null, "Oyunu Başlat");
+            for (int frame = 0; frame < 5; frame++) yield return null;
+            Assert.IsTrue(idleStart != null && idleStart.gameObject.activeInHierarchy, "The menu rebuilt itself while nothing changed.");
+
+            AssertMouseReaches("Oyunu Başlat");
+            AssertMouseReaches("Tek Oyunculu: sen + 3 bilgisayar");
             Assert.IsTrue(Press(null, "Tek Oyunculu: sen + 3 bilgisayar"), "No single player button.");
             yield return null;
             Assert.IsTrue(Press(null, "Oyunu Başlat"), "No start button.");
@@ -88,19 +97,56 @@ namespace Lazpoly.PlayTests
             Assert.That(controller.Session.State.TurnNumber, Is.GreaterThanOrEqualTo(6));
         }
 
-        /// <summary>Clicks the first interactable button whose label starts with this text (under <paramref name="root"/>, or anywhere).</summary>
+        /// <summary>
+        /// A real mouse click goes to whatever the event system hits first at the pointer, so nothing
+        /// (an invisible panel, a closed window) may lie on top of the button.
+        /// </summary>
+        private static void AssertMouseReaches(string label)
+        {
+            Button button = Find(null, label);
+            Assert.IsNotNull(button, $"No '{label}' button.");
+            Vector3[] corners = new Vector3[4];
+            ((RectTransform)button.transform).GetWorldCorners(corners);
+            Vector2 center = (corners[0] + corners[2]) / 2f;
+
+            var pointer = new PointerEventData(EventSystem.current) { position = center };
+            var hits = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointer, hits);
+            Assert.Greater(hits.Count, 0, $"Nothing under the '{label}' button.");
+            GameObject top = hits[0].gameObject;
+            Assert.IsTrue(top == button.gameObject || top.transform.IsChildOf(button.transform),
+                $"'{top.name}' lies on top of the '{label}' button.");
+            Assert.AreEqual(button.gameObject, ExecuteEvents.GetEventHandler<IPointerClickHandler>(top));
+        }
+
         private static bool Press(Transform root, string label)
         {
-            Button[] buttons = root != null ? root.GetComponentsInChildren<Button>() : Object.FindObjectsByType<Button>(FindObjectsSortMode.None);
+            Button button = Find(root, label);
+            if (button == null) return false;
+            button.onClick.Invoke();
+            return true;
+        }
+
+        /// <summary>The first interactable button whose label starts with this text (under <paramref name="root"/>, or in the scene).</summary>
+        private static Button Find(Transform root, string label)
+        {
+            var buttons = new List<Button>();
+            if (root != null) buttons.AddRange(root.GetComponentsInChildren<Button>());
+            else
+            {
+                foreach (GameObject sceneRoot in SceneManager.GetActiveScene().GetRootGameObjects())
+                {
+                    buttons.AddRange(sceneRoot.GetComponentsInChildren<Button>());
+                }
+            }
+
             foreach (Button button in buttons)
             {
                 Text text = button.GetComponentInChildren<Text>();
-                if (text == null || !text.text.StartsWith(label) || !button.interactable || !button.gameObject.activeInHierarchy) continue;
-                button.onClick.Invoke();
-                return true;
+                if (text != null && text.text.StartsWith(label) && button.interactable && button.gameObject.activeInHierarchy) return button;
             }
 
-            return false;
+            return null;
         }
     }
 }

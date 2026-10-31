@@ -146,6 +146,7 @@ namespace Lazpoly.Presentation.UI
             ((RectTransform)text.transform).offsetMin = new Vector2(12f, 0f);
             ((RectTransform)text.transform).offsetMax = new Vector2(-12f, 0f);
             text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.alignment = TextAnchor.MiddleLeft;
 
             var input = element.AddComponent<InputField>();
             input.targetGraphic = image;
