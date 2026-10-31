@@ -1,0 +1,16 @@
+{
+    "name": "Lazpoly.Net",
+    "rootNamespace": "Lazpoly.Net",
+    "references": [
+        "Lazpoly.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

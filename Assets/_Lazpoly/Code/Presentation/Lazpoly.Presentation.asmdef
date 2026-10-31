@@ -1,0 +1,18 @@
+{
+    "name": "Lazpoly.Presentation",
+    "rootNamespace": "Lazpoly.Presentation",
+    "references": [
+        "Lazpoly.Core",
+        "Lazpoly.App",
+        "Lazpoly.Infra"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
