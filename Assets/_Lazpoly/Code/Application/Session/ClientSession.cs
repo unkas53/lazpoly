@@ -4,6 +4,7 @@ using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
+using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Net.Messages;
 using Lazpoly.Net.Transport;
@@ -24,10 +25,11 @@ namespace Lazpoly.App.Session
         private bool _awaitingSnapshot;
         private bool _ended;
 
-        public ClientSession(ITransport transport, ulong hostPeer, BoardDefinition board, ulong boardChecksum)
+        public ClientSession(ITransport transport, ulong hostPeer, BoardDefinition board, RulesConfig rules, ulong boardChecksum)
         {
             _transport = transport ?? throw new ArgumentNullException(nameof(transport));
             Board = board ?? throw new ArgumentNullException(nameof(board));
+            Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             _hostPeer = hostPeer;
             _boardChecksum = boardChecksum;
             _transport.Received += OnReceived;
@@ -35,6 +37,7 @@ namespace Lazpoly.App.Session
         }
 
         public BoardDefinition Board { get; }
+        public RulesConfig Rules { get; }
         public GameState State { get; private set; }
         public bool IsReady => State != null;
         public int MyPlayerId { get; private set; } = -1;

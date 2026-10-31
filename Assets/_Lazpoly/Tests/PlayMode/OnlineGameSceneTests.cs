@@ -41,17 +41,6 @@ namespace Lazpoly.PlayTests
             Time.timeScale = _previousTimeScale;
         }
 
-        private static GameCommand NextCommand(GameState state)
-        {
-            int player = state.CurrentPlayer.Id;
-            switch (state.Phase)
-            {
-                case GamePhase.WaitingForRoll: return new RollDiceCommand(player);
-                case GamePhase.AwaitingBuyDecision: return new BuyPropertyCommand(player);
-                default: return new EndTurnCommand(player);
-            }
-        }
-
         private static IEnumerator LoadGameScene(Action<GameSceneController> found)
         {
             SceneManager.LoadScene("Game");
@@ -71,7 +60,7 @@ namespace Lazpoly.PlayTests
             OnlineSeatPlan plan = OnlineSeatPlan.Create(1000, new[] { new LobbyMember(1000, "Ev Sahibi"), new LobbyMember(1001, "Misafir") });
             OnlineGameSetup.Set(OnlineLaunch.AsHost(hostTransport, plan));
 
-            var guest = new ClientSession(network.CreateTransport(1001), 1000, data.Board, data.Checksum);
+            var guest = new ClientSession(network.CreateTransport(1001), 1000, data.Board, data.Rules, data.Checksum);
             var guestRejections = new List<RejectionReason>();
             guest.CommandRejected += guestRejections.Add;
             guest.Start();
@@ -94,7 +83,7 @@ namespace Lazpoly.PlayTests
                     continue;
                 }
 
-                GameCommand command = NextCommand(hostState);
+                GameCommand command = PlayBot.Next(controller.Session.Board, controller.Session.Rules, hostState);
                 if (command.PlayerId == plan.HostPlayerId)
                 {
                     controller.Submit(command);
@@ -160,7 +149,7 @@ namespace Lazpoly.PlayTests
                     continue;
                 }
 
-                GameCommand command = NextCommand(engine.State);
+                GameCommand command = PlayBot.Next(engine.Board, engine.Rules, engine.State);
                 if (command.PlayerId == 1) host.Submit(command);
                 else controller.Submit(command);
 

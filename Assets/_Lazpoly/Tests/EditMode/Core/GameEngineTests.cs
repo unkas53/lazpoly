@@ -60,27 +60,33 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void DecliningLeavesThePropertyWithTheBank()
+        public void DecliningStartsAnAuctionThatEveryoneCanPass()
         {
             var engine = NewGame(new ScriptedDice(2, 3));
 
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new DeclinePurchaseCommand(Alice));
+            Assert.AreEqual(GamePhase.AuctionInProgress, engine.State.Phase);
+            Assert.AreEqual(5, engine.State.Auction.SquareIndex);
 
+            Accept(engine, new PassBidCommand(Bob));
+            Accept(engine, new PassBidCommand(Alice));
+
+            Assert.IsNull(engine.State.Auction);
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(5));
             Assert.AreEqual(1000, P(engine, Alice).Money);
             Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
         }
 
         [Test]
-        public void UnaffordablePropertyIsNotOffered()
+        public void UnaffordablePropertyIsOfferedButCannotBeBoughtWithoutMoney()
         {
             var engine = NewGame(new ScriptedDice(2, 3), rules: TestRules(startingMoney: 100));
 
             Accept(engine, new RollDiceCommand(Alice));
 
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
-            Assert.AreEqual(RejectionReason.WrongPhase, engine.Execute(new BuyPropertyCommand(Alice)).Reason);
+            Assert.AreEqual(GamePhase.AwaitingBuyDecision, engine.State.Phase);
+            Assert.AreEqual(RejectionReason.InsufficientFunds, engine.Execute(new BuyPropertyCommand(Alice)).Reason);
         }
 
         [Test]
@@ -210,7 +216,7 @@ namespace Lazpoly.Core.Tests
                 SquareDefinition.Property("Pricey", 50, 500, 0),
                 SquareDefinition.Rest("Rest"),
             });
-            var rules = new RulesConfig(100, 0, 6, 3, 2);
+            var rules = new RulesConfig(100, 0, 6, 3, 2, 10, 50);
             // Alice 1+1 buys Pricey, rolls again 1+2. Bob 1+1 lands on Pricey and cannot pay.
             var engine = NewGame(new ScriptedDice(1, 1, 1, 2, 1, 1), rules: rules, board: board);
 
@@ -218,9 +224,14 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new BuyPropertyCommand(Alice));
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new EndTurnCommand(Alice));
-            CommandResult result = Accept(engine, new RollDiceCommand(Bob));
+            Accept(engine, new RollDiceCommand(Bob));
+            Assert.AreEqual(GamePhase.AwaitingDebtPayment, engine.State.Phase);
+            Assert.AreEqual(500, engine.State.Debt.Amount);
+            Assert.AreEqual(RejectionReason.InsufficientFunds, engine.Execute(new PayDebtCommand(Bob)).Reason);
+            CommandResult result = Accept(engine, new DeclareBankruptcyCommand(Bob));
 
             Assert.IsTrue(P(engine, Bob).IsBankrupt);
+            Assert.IsNull(engine.State.Debt);
             Assert.AreEqual(0, P(engine, Bob).Money);
             Assert.AreEqual(50 + 100, P(engine, Alice).Money);
             Assert.AreEqual(GamePhase.GameOver, engine.State.Phase);
@@ -241,7 +252,7 @@ namespace Lazpoly.Core.Tests
                 SquareDefinition.Property("Cheap", 40, 10, 0),
                 SquareDefinition.Rest("Rest 3"),
             });
-            var rules = new RulesConfig(100, 0, 6, 3, 2);
+            var rules = new RulesConfig(100, 0, 6, 3, 2, 10, 50);
             var engine = NewGame(new ScriptedDice(1, 1, 1, 2, 1, 3, 1, 2, 2, 4, 1, 3), players: 3, rules: rules, board: board);
 
             Accept(engine, new RollDiceCommand(Alice));      // 1+1 -> Pricey
@@ -256,6 +267,7 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new RollDiceCommand(Alice));      // 2+4 -> back to Rest 3
             Accept(engine, new EndTurnCommand(Alice));
             Accept(engine, new RollDiceCommand(Bob));        // 1+3 -> Pricey, rent 500
+            Accept(engine, new DeclareBankruptcyCommand(Bob));
 
             Assert.IsTrue(P(engine, Bob).IsBankrupt);
             Assert.AreEqual(50 + 60, P(engine, Alice).Money);
@@ -277,15 +289,18 @@ namespace Lazpoly.Core.Tests
                 SquareDefinition.Tax("Ruin", 500),
                 SquareDefinition.Rest("Rest"),
             });
-            var rules = new RulesConfig(100, 0, 6, 3, 2);
+            var rules = new RulesConfig(100, 0, 6, 3, 2, 10, 50);
             // Alice 1+1 buys Cheap, then 1+1 again onto Ruin.
             var engine = NewGame(new ScriptedDice(1, 1, 1, 1), players: 3, rules: rules, board: board);
 
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new BuyPropertyCommand(Alice));
+            Accept(engine, new MortgageCommand(Alice, 2));
             Accept(engine, new RollDiceCommand(Alice));
+            Accept(engine, new DeclareBankruptcyCommand(Alice));
 
             Assert.IsTrue(P(engine, Alice).IsBankrupt);
+            Assert.IsFalse(engine.State.IsMortgaged(2), "The bank takes properties back free of mortgages.");
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(2));
             Assert.AreEqual(Bob, engine.State.CurrentPlayer.Id);
             Assert.AreEqual(100, P(engine, Bob).Money, "Money paid to the bank goes to nobody.");

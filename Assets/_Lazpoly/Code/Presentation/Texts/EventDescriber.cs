@@ -28,6 +28,30 @@ namespace Lazpoly.Presentation.Texts
                     return $"{NameOf(state, e.PlayerId)} iflas etti!";
                 case GameEndedEvent e:
                     return $"Oyun bitti! Kazanan: {NameOf(state, e.WinnerId)}";
+                case BuildingLevelChangedEvent e:
+                    return $"{board[e.SquareIndex].Name}: {LevelText(e.Level)}";
+                case MortgageChangedEvent e:
+                    return e.IsMortgaged ? $"{board[e.SquareIndex].Name} ipotek edildi" : $"{board[e.SquareIndex].Name} ipotekten kurtarıldı";
+                case AuctionStartedEvent e:
+                    return $"{board[e.SquareIndex].Name} açık artırmada";
+                case BidPlacedEvent e:
+                    return $"{NameOf(state, e.PlayerId)} teklif: {e.Amount}";
+                case BidPassedEvent e:
+                    return $"{NameOf(state, e.PlayerId)} artırmadan çekildi";
+                case AuctionEndedEvent e:
+                    return e.WinnerId == GameState.NoOwner
+                        ? $"{board[e.SquareIndex].Name} satılmadı"
+                        : $"{board[e.SquareIndex].Name} → {NameOf(state, e.WinnerId)} ({e.Price})";
+                case TradeProposedEvent e:
+                    return $"{NameOf(state, e.Offer.FromPlayerId)}, {NameOf(state, e.Offer.ToPlayerId)} oyuncusuna takas teklif etti";
+                case TradeResolvedEvent e:
+                    return e.Outcome == TradeOutcome.Accepted ? "Takas kabul edildi"
+                        : e.Outcome == TradeOutcome.Rejected ? "Takas reddedildi"
+                        : "Takas geri çekildi";
+                case DebtIncurredEvent e:
+                    return $"{NameOf(state, e.PlayerId)} {e.Amount} ödeyemiyor ({ReasonText(e.Reason)}): para bulmalı ya da iflas etmeli";
+                case DebtClearedEvent _:
+                    return null;
                 default:
                     return null;
             }
@@ -42,8 +66,21 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Rent: return "kira";
                 case MoneyReason.Tax: return "vergi";
                 case MoneyReason.Bankruptcy: return "iflas";
+                case MoneyReason.Building: return "inşaat";
+                case MoneyReason.BuildingSale: return "bina satışı";
+                case MoneyReason.Mortgage: return "ipotek";
+                case MoneyReason.Redeem: return "ipotek ödemesi";
+                case MoneyReason.Auction: return "açık artırma";
+                case MoneyReason.Trade: return "takas";
                 default: return reason.ToString();
             }
+        }
+
+        /// <summary>"bina yok", "2 ev" or "otel".</summary>
+        public static string LevelText(int level)
+        {
+            if (level <= 0) return "bina yok";
+            return level >= SquareDefinition.MaxBuildingLevel ? "otel" : $"{level} ev";
         }
 
         private static string NameOf(GameState state, int playerId) => state.FindPlayer(playerId)?.Name ?? $"#{playerId}";

@@ -27,6 +27,12 @@ namespace Lazpoly.Core.State
         public int WinnerId;
         public List<PlayerEntry> Players = new List<PlayerEntry>();
         public int[] Owners = Array.Empty<int>();
+        public int[] BuildingLevels = Array.Empty<int>();
+        public bool[] Mortgaged = Array.Empty<bool>();
+        public AuctionState Auction;
+        public TradeOffer PendingTrade;
+        public GamePhase TradeReturnPhase;
+        public DebtState Debt;
 
         public static GameStateSnapshot Capture(GameState state)
         {
@@ -42,6 +48,12 @@ namespace Lazpoly.Core.State
                 ConsecutiveDoubles = state.ConsecutiveDoubles,
                 WinnerId = state.WinnerId,
                 Owners = new int[state.SquareCount],
+                BuildingLevels = new int[state.SquareCount],
+                Mortgaged = new bool[state.SquareCount],
+                Auction = state.Auction?.Copy(),
+                PendingTrade = state.PendingTrade,
+                TradeReturnPhase = state.TradeReturnPhase,
+                Debt = state.Debt,
             };
 
             foreach (PlayerState player in state.Players)
@@ -56,7 +68,12 @@ namespace Lazpoly.Core.State
                 });
             }
 
-            for (int i = 0; i < state.SquareCount; i++) snapshot.Owners[i] = state.GetOwner(i);
+            for (int i = 0; i < state.SquareCount; i++)
+            {
+                snapshot.Owners[i] = state.GetOwner(i);
+                snapshot.BuildingLevels[i] = state.GetBuildingLevel(i);
+                snapshot.Mortgaged[i] = state.IsMortgaged(i);
+            }
             return snapshot;
         }
 

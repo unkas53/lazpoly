@@ -30,6 +30,63 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ShippedBoardIsFullyDevelopable()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+
+            Assert.AreEqual(10, data.Rules.MortgageInterestPercent);
+            Assert.AreEqual(50, data.Rules.BuildingSellbackPercent);
+            for (int i = 0; i < data.Board.Count; i++)
+            {
+                SquareDefinition square = data.Board[i];
+                if (square.Type != SquareType.Property) continue;
+                Assert.IsTrue(square.IsDevelopable, $"Square {i} '{square.Name}' takes no buildings.");
+                Assert.AreEqual(SquareDefinition.MaxBuildingLevel, square.DevelopedRents.Count);
+            }
+        }
+
+        [Test]
+        public void ReadsBuildingCostsAndRents()
+        {
+            const string json = @"{
+                ""startingMoney"": 500, ""passStartBonus"": 50, ""diceSides"": 6,
+                ""maxConsecutiveDoubles"": 3, ""fullGroupRentMultiplier"": 2,
+                ""mortgageInterestPercent"": 15, ""buildingSellbackPercent"": 40,
+                ""groups"": [ { ""id"": 1, ""name"": ""G"", ""color"": ""#FF0000"" } ],
+                ""squares"": [
+                    { ""type"": ""start"", ""name"": ""S"" },
+                    { ""type"": ""property"", ""name"": ""P"", ""price"": 60, ""rent"": 5, ""group"": 1,
+                      ""buildingCost"": 50, ""rents"": [25, 75, 200, 275, 350] },
+                    { ""type"": ""property"", ""name"": ""Q"", ""price"": 60, ""rent"": 5, ""group"": 1 }
+                ]
+            }";
+
+            BoardData data = BoardDataLoader.Parse(json);
+
+            Assert.AreEqual(15, data.Rules.MortgageInterestPercent);
+            Assert.AreEqual(40, data.Rules.BuildingSellbackPercent);
+            Assert.AreEqual(50, data.Board[1].BuildingCost);
+            CollectionAssert.AreEqual(new[] { 25, 75, 200, 275, 350 }, data.Board[1].DevelopedRents);
+            Assert.IsFalse(data.Board[2].IsDevelopable);
+        }
+
+        [Test]
+        public void RejectsBuildingCostWithoutRents()
+        {
+            const string json = @"{
+                ""startingMoney"": 500, ""passStartBonus"": 50, ""diceSides"": 6,
+                ""maxConsecutiveDoubles"": 3, ""fullGroupRentMultiplier"": 2,
+                ""groups"": [ { ""id"": 1, ""name"": ""G"", ""color"": ""#FF0000"" } ],
+                ""squares"": [
+                    { ""type"": ""start"", ""name"": ""S"" },
+                    { ""type"": ""property"", ""name"": ""P"", ""price"": 60, ""rent"": 5, ""group"": 1, ""buildingCost"": 50 }
+                ]
+            }";
+
+            Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json));
+        }
+
+        [Test]
         public void ParsesAMinimalBoard()
         {
             const string json = @"{

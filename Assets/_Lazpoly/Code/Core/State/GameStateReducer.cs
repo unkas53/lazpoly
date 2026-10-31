@@ -54,6 +54,59 @@ namespace Lazpoly.Core.State
                     state.Phase = GamePhase.GameOver;
                     break;
 
+                case BuildingLevelChangedEvent e:
+                    RequireSquare(state, e.SquareIndex);
+                    state.SetBuildingLevel(e.SquareIndex, e.Level);
+                    break;
+
+                case MortgageChangedEvent e:
+                    RequireSquare(state, e.SquareIndex);
+                    state.SetMortgaged(e.SquareIndex, e.IsMortgaged);
+                    break;
+
+                case AuctionStartedEvent e:
+                    RequireSquare(state, e.SquareIndex);
+                    state.Auction = new AuctionState(e.SquareIndex, 0, GameState.NoOwner, null);
+                    break;
+
+                case BidPlacedEvent e:
+                    RequirePlayer(state, e.PlayerId);
+                    RequireAuction(state).HighestBid = e.Amount;
+                    state.Auction.HighestBidderId = e.PlayerId;
+                    break;
+
+                case BidPassedEvent e:
+                    RequirePlayer(state, e.PlayerId);
+                    RequireAuction(state).AddPassed(e.PlayerId);
+                    break;
+
+                case AuctionEndedEvent _:
+                    RequireAuction(state);
+                    state.Auction = null;
+                    break;
+
+                case TradeProposedEvent e:
+                    RequirePlayer(state, e.Offer.FromPlayerId);
+                    RequirePlayer(state, e.Offer.ToPlayerId);
+                    state.PendingTrade = e.Offer;
+                    state.TradeReturnPhase = state.Phase;
+                    break;
+
+                case TradeResolvedEvent _:
+                    if (state.PendingTrade == null) throw new InvalidOperationException("No trade is open.");
+                    state.PendingTrade = null;
+                    break;
+
+                case DebtIncurredEvent e:
+                    RequirePlayer(state, e.PlayerId);
+                    state.Debt = new DebtState(e.PlayerId, e.CreditorId, e.Amount, e.Reason);
+                    break;
+
+                case DebtClearedEvent _:
+                    if (state.Debt == null) throw new InvalidOperationException("No debt is open.");
+                    state.Debt = null;
+                    break;
+
                 case null:
                     throw new ArgumentNullException(nameof(gameEvent));
 
@@ -66,6 +119,19 @@ namespace Lazpoly.Core.State
         {
             return state.FindPlayer(playerId)
                    ?? throw new InvalidOperationException($"Event refers to unknown player {playerId}.");
+        }
+
+        private static void RequireSquare(GameState state, int squareIndex)
+        {
+            if (squareIndex < 0 || squareIndex >= state.SquareCount)
+            {
+                throw new InvalidOperationException($"Event refers to square {squareIndex} outside the board.");
+            }
+        }
+
+        private static AuctionState RequireAuction(GameState state)
+        {
+            return state.Auction ?? throw new InvalidOperationException("No auction is running.");
         }
 
         private static int RequireIndex(GameState state, int playerId)

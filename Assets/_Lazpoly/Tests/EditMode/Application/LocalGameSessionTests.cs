@@ -22,7 +22,7 @@ namespace Lazpoly.App.Tests
                 SquareDefinition.Rest("B"),
                 SquareDefinition.Rest("C"),
             });
-            var rules = new RulesConfig(1000, 100, 6, 3, 2);
+            var rules = new RulesConfig(1000, 100, 6, 3, 2, 10, 50);
             var seats = new[] { new PlayerSeat(1, "Bir"), new PlayerSeat(2, "İki") };
             return new LocalGameSession(new GameEngine(board, rules, seats, new Pcg32Random(5UL)));
         }

@@ -13,6 +13,8 @@ namespace Lazpoly.Presentation.Data
         public int diceSides;
         public int maxConsecutiveDoubles;
         public int fullGroupRentMultiplier;
+        public int mortgageInterestPercent;
+        public int buildingSellbackPercent;
         public GroupEntry[] groups;
         public SquareEntry[] squares;
     }
@@ -34,5 +36,11 @@ namespace Lazpoly.Presentation.Data
         public int rent;
         public int group;
         public int amount;
+
+        /// <summary>Cost of one house or the hotel; 0 or missing means the property takes no buildings.</summary>
+        public int buildingCost;
+
+        /// <summary>Rent with 1-4 houses and with a hotel (5 values).</summary>
+        public int[] rents;
     }
 }

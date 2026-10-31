@@ -94,6 +94,16 @@ namespace Lazpoly.Presentation.Game
             if (_host != null) _host.RemotePlayerConnectionChanged -= OnRemoteConnectionChanged;
         }
 
+        /// <summary>
+        /// Whether this machine may send the command and the rules would accept it now. The HUD
+        /// offers only such actions; the host still validates whatever arrives.
+        /// </summary>
+        public bool IsAllowed(GameCommand command)
+        {
+            if (_session == null || !_session.IsReady || EndReason.HasValue || !_session.CanControl(command.PlayerId)) return false;
+            return GameRules.Validate(_session.Board, _session.Rules, _session.State, command) == RejectionReason.None;
+        }
+
         public void Submit(GameCommand command)
         {
             LastRejection = null;
@@ -119,7 +129,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             _isOnline = true;
-            if (!online.IsHost) return new ClientSession(online.Transport, online.HostPeer, _data.Board, _data.Checksum);
+            if (!online.IsHost) return new ClientSession(online.Transport, online.HostPeer, _data.Board, _data.Rules, _data.Checksum);
 
             OnlineSeatPlan plan = online.HostPlan;
             var engine = new GameEngine(_data.Board, _data.Rules, plan.Seats, NewRandom());
@@ -162,6 +172,8 @@ namespace Lazpoly.Presentation.Game
             {
                 int owner = state.GetOwner(i);
                 _board.SetOwner(i, owner == GameState.NoOwner ? (Color?)null : ColorOf(owner));
+                _board.SetBuildingLevel(i, state.GetBuildingLevel(i));
+                _board.SetMortgaged(i, state.IsMortgaged(i));
             }
         }
 
@@ -237,6 +249,12 @@ namespace Lazpoly.Presentation.Game
                         break;
                     case PlayerBankruptedEvent bankrupt:
                         _pawns[bankrupt.PlayerId].SetEliminated();
+                        break;
+                    case BuildingLevelChangedEvent building:
+                        _board.SetBuildingLevel(building.SquareIndex, building.Level);
+                        break;
+                    case MortgageChangedEvent mortgage:
+                        _board.SetMortgaged(mortgage.SquareIndex, mortgage.IsMortgaged);
                         break;
                 }
             }

@@ -11,7 +11,8 @@ namespace Lazpoly.Core.Engine
 {
     /// <summary>
     /// The authoritative rules. Runs only on the host (or locally in single player): it validates
-    /// each command, decides the resulting events and applies them through <see cref="GameStateReducer"/>.
+    /// each command with <see cref="GameRules"/>, decides the resulting events and applies them
+    /// through <see cref="GameStateReducer"/>.
     /// </summary>
     public sealed class GameEngine
     {
@@ -41,7 +42,7 @@ namespace Lazpoly.Core.Engine
             }
 
             _pending = new List<GameEvent>();
-            PlayerState player = State.CurrentPlayer;
+            PlayerState player = State.FindPlayer(command.PlayerId);
             switch (command)
             {
                 case RollDiceCommand _:
@@ -51,11 +52,56 @@ namespace Lazpoly.Core.Engine
                     BuyCurrentSquare(player);
                     break;
                 case DeclinePurchaseCommand _:
-                    FinishMove();
+                    StartAuction(player.Position);
                     break;
                 case EndTurnCommand _:
                     StartNextTurn();
                     break;
+                case BuildCommand c:
+                    Emit(new MoneyChangedEvent(player.Id, -Board[c.SquareIndex].BuildingCost, MoneyReason.Building));
+                    Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) + 1));
+                    break;
+                case SellBuildingCommand c:
+                    Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) - 1));
+                    Emit(new MoneyChangedEvent(player.Id, Rules.SellbackValue(Board[c.SquareIndex].BuildingCost), MoneyReason.BuildingSale));
+                    break;
+                case MortgageCommand c:
+                    Emit(new MortgageChangedEvent(c.SquareIndex, true));
+                    Emit(new MoneyChangedEvent(player.Id, Board[c.SquareIndex].MortgageValue, MoneyReason.Mortgage));
+                    break;
+                case RedeemCommand c:
+                    Emit(new MoneyChangedEvent(player.Id, -Rules.RedeemCost(Board[c.SquareIndex].MortgageValue), MoneyReason.Redeem));
+                    Emit(new MortgageChangedEvent(c.SquareIndex, false));
+                    break;
+                case PlaceBidCommand c:
+                    Emit(new BidPlacedEvent(player.Id, c.Amount));
+                    CloseAuctionIfDecided();
+                    break;
+                case PassBidCommand _:
+                    Emit(new BidPassedEvent(player.Id));
+                    CloseAuctionIfDecided();
+                    break;
+                case ProposeTradeCommand c:
+                    Emit(new TradeProposedEvent(c.Offer));
+                    Emit(new PhaseChangedEvent(GamePhase.AwaitingTradeResponse));
+                    break;
+                case AcceptTradeCommand _:
+                    CompleteTrade();
+                    break;
+                case RejectTradeCommand _:
+                    CloseTrade(TradeOutcome.Rejected);
+                    break;
+                case CancelTradeCommand _:
+                    CloseTrade(TradeOutcome.Cancelled);
+                    break;
+                case PayDebtCommand _:
+                    PayDebt(player);
+                    break;
+                case DeclareBankruptcyCommand _:
+                    GoBankrupt(player, State.Debt.CreditorId);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Validated command {command.GetType().Name} has no handler.");
             }
 
             List<GameEvent> events = _pending;
@@ -64,49 +110,10 @@ namespace Lazpoly.Core.Engine
         }
 
         /// <summary>Checks a command against the current state without changing anything.</summary>
-        public RejectionReason Validate(GameCommand command)
-        {
-            if (command == null) throw new ArgumentNullException(nameof(command));
-            if (State.Phase == GamePhase.GameOver) return RejectionReason.GameOver;
-            if (State.FindPlayer(command.PlayerId) == null) return RejectionReason.UnknownPlayer;
-            if (State.CurrentPlayer.Id != command.PlayerId) return RejectionReason.NotYourTurn;
-
-            switch (command)
-            {
-                case RollDiceCommand _:
-                    return RequirePhase(GamePhase.WaitingForRoll);
-                case BuyPropertyCommand _:
-                    RejectionReason phase = RequirePhase(GamePhase.AwaitingBuyDecision);
-                    if (phase != RejectionReason.None) return phase;
-                    SquareDefinition square = Board[State.CurrentPlayer.Position];
-                    return State.CurrentPlayer.Money >= square.Price
-                        ? RejectionReason.None
-                        : RejectionReason.InsufficientFunds;
-                case DeclinePurchaseCommand _:
-                    return RequirePhase(GamePhase.AwaitingBuyDecision);
-                case EndTurnCommand _:
-                    return RequirePhase(GamePhase.TurnEnd);
-                default:
-                    return RejectionReason.UnknownCommand;
-            }
-        }
+        public RejectionReason Validate(GameCommand command) => GameRules.Validate(Board, Rules, State, command);
 
         /// <summary>Rent the owner would collect on a property right now.</summary>
-        public int CalculateRent(int squareIndex)
-        {
-            SquareDefinition square = Board[squareIndex];
-            if (square.Type != SquareType.Property) return 0;
-
-            int ownerId = State.GetOwner(squareIndex);
-            if (ownerId == GameState.NoOwner) return 0;
-
-            return OwnsWholeGroup(ownerId, square.GroupId)
-                ? square.BaseRent * Rules.FullGroupRentMultiplier
-                : square.BaseRent;
-        }
-
-        private RejectionReason RequirePhase(GamePhase expected) =>
-            State.Phase == expected ? RejectionReason.None : RejectionReason.WrongPhase;
+        public int CalculateRent(int squareIndex) => GameRules.CalculateRent(Board, Rules, State, squareIndex);
 
         private void Emit(GameEvent gameEvent)
         {
@@ -130,12 +137,8 @@ namespace Lazpoly.Core.Engine
             MovePlayer(player, die1 + die2);
             ResolveLanding(player);
 
-            if (player.IsBankrupt || State.Phase == GamePhase.AwaitingBuyDecision || State.Phase == GamePhase.GameOver)
-            {
-                return;
-            }
-
-            FinishMove();
+            // Landing may have opened a decision (buy, debt); the move finishes once it is made.
+            if (State.Phase == GamePhase.WaitingForRoll) FinishMove();
         }
 
         private void MovePlayer(PlayerState player, int steps)
@@ -161,10 +164,8 @@ namespace Lazpoly.Core.Engine
                     int ownerId = State.GetOwner(player.Position);
                     if (ownerId == GameState.NoOwner)
                     {
-                        if (player.Money >= square.Price)
-                        {
-                            Emit(new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
-                        }
+                        // Offered even when the player is short: they may mortgage to afford it, or decline into an auction.
+                        Emit(new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
                     }
                     else if (ownerId != player.Id)
                     {
@@ -193,47 +194,133 @@ namespace Lazpoly.Core.Engine
             Emit(new PhaseChangedEvent(State.LastRollWasDouble ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
         }
 
-        /// <summary>Moves money from payer to creditor (or the bank). A payer who cannot pay goes bankrupt.</summary>
+        /// <summary>Moves money to the creditor (or the bank), or opens a debt the payer must settle.</summary>
         private void Charge(PlayerState payer, int creditorId, int amount, MoneyReason reason)
         {
             if (amount <= 0) return;
 
             if (payer.Money >= amount)
             {
-                Emit(new MoneyChangedEvent(payer.Id, -amount, reason));
-                if (creditorId != GameState.NoOwner)
-                {
-                    Emit(new MoneyChangedEvent(creditorId, amount, reason));
-                }
-
+                Transfer(payer.Id, creditorId, amount, reason);
                 return;
             }
 
-            DeclareBankrupt(payer, creditorId);
+            Emit(new DebtIncurredEvent(payer.Id, creditorId, amount, reason));
+            Emit(new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
         }
 
-        // Phase 1 rule: a player who cannot pay is bankrupt at once. Selling and mortgaging
-        // to raise money arrive with property development in Phase 4.
-        private void DeclareBankrupt(PlayerState player, int creditorId)
+        private void Transfer(int payerId, int receiverId, int amount, MoneyReason reason)
         {
-            int remaining = player.Money;
-            if (remaining > 0)
+            if (amount <= 0) return;
+            Emit(new MoneyChangedEvent(payerId, -amount, reason));
+            if (receiverId != GameState.NoOwner) Emit(new MoneyChangedEvent(receiverId, amount, reason));
+        }
+
+        private void PayDebt(PlayerState player)
+        {
+            DebtState debt = State.Debt;
+            Transfer(player.Id, debt.CreditorId, debt.Amount, debt.Reason);
+            Emit(new DebtClearedEvent(player.Id));
+            FinishMove();
+        }
+
+        private void StartAuction(int squareIndex)
+        {
+            Emit(new AuctionStartedEvent(squareIndex));
+            Emit(new PhaseChangedEvent(GamePhase.AuctionInProgress));
+            CloseAuctionIfDecided();
+        }
+
+        /// <summary>
+        /// Ends the auction once it is decided: the leader is the only one left, or everyone passed
+        /// without a bid (the property then stays with the bank).
+        /// </summary>
+        private void CloseAuctionIfDecided()
+        {
+            AuctionState auction = State.Auction;
+            int stillIn = 0;
+            bool othersStillIn = false;
+            foreach (PlayerState candidate in State.Players)
             {
+                if (candidate.IsBankrupt || auction.HasPassed(candidate.Id)) continue;
+                stillIn++;
+                if (candidate.Id != auction.HighestBidderId) othersStillIn = true;
+            }
+
+            bool hasLeader = auction.HighestBidderId != GameState.NoOwner;
+            if (hasLeader ? othersStillIn : stillIn > 0) return;
+
+            int square = auction.SquareIndex;
+            int winner = auction.HighestBidderId;
+            int price = auction.HighestBid;
+            Emit(new AuctionEndedEvent(square, winner, price));
+            if (hasLeader)
+            {
+                Emit(new MoneyChangedEvent(winner, -price, MoneyReason.Auction));
+                Emit(new PropertyOwnerChangedEvent(square, GameState.NoOwner, winner));
+            }
+
+            FinishMove();
+        }
+
+        private void CompleteTrade()
+        {
+            TradeOffer offer = State.PendingTrade;
+            Transfer(offer.FromPlayerId, offer.ToPlayerId, offer.GiveMoney, MoneyReason.Trade);
+            Transfer(offer.ToPlayerId, offer.FromPlayerId, offer.TakeMoney, MoneyReason.Trade);
+            foreach (int square in offer.GiveSquares)
+            {
+                Emit(new PropertyOwnerChangedEvent(square, offer.FromPlayerId, offer.ToPlayerId));
+            }
+
+            foreach (int square in offer.TakeSquares)
+            {
+                Emit(new PropertyOwnerChangedEvent(square, offer.ToPlayerId, offer.FromPlayerId));
+            }
+
+            CloseTrade(TradeOutcome.Accepted);
+        }
+
+        private void CloseTrade(TradeOutcome outcome)
+        {
+            GamePhase back = State.TradeReturnPhase;
+            Emit(new TradeResolvedEvent(outcome));
+            Emit(new PhaseChangedEvent(back));
+        }
+
+        /// <summary>
+        /// The player leaves the game. Buildings go back to the bank for their sell-back value, then
+        /// all money and properties pass to the creditor; a bank creditor takes the properties back
+        /// free of mortgages.
+        /// </summary>
+        private void GoBankrupt(PlayerState player, int creditorId)
+        {
+            int proceeds = 0;
+            for (int square = 0; square < Board.Count; square++)
+            {
+                int level = State.GetBuildingLevel(square);
+                if (State.GetOwner(square) != player.Id || level == 0) continue;
+                proceeds += level * Rules.SellbackValue(Board[square].BuildingCost);
+                Emit(new BuildingLevelChangedEvent(square, 0));
+            }
+
+            if (proceeds > 0) Emit(new MoneyChangedEvent(player.Id, proceeds, MoneyReason.BuildingSale));
+
+            if (player.Money > 0)
+            {
+                int remaining = player.Money;
                 Emit(new MoneyChangedEvent(player.Id, -remaining, MoneyReason.Bankruptcy));
-                if (creditorId != GameState.NoOwner)
-                {
-                    Emit(new MoneyChangedEvent(creditorId, remaining, MoneyReason.Bankruptcy));
-                }
+                if (creditorId != GameState.NoOwner) Emit(new MoneyChangedEvent(creditorId, remaining, MoneyReason.Bankruptcy));
             }
 
             for (int square = 0; square < Board.Count; square++)
             {
-                if (State.GetOwner(square) == player.Id)
-                {
-                    Emit(new PropertyOwnerChangedEvent(square, player.Id, creditorId));
-                }
+                if (State.GetOwner(square) != player.Id) continue;
+                if (creditorId == GameState.NoOwner && State.IsMortgaged(square)) Emit(new MortgageChangedEvent(square, false));
+                Emit(new PropertyOwnerChangedEvent(square, player.Id, creditorId));
             }
 
+            if (State.Debt != null) Emit(new DebtClearedEvent(player.Id));
             Emit(new PlayerBankruptedEvent(player.Id, creditorId));
 
             if (State.ActivePlayerCount() == 1)
@@ -269,25 +356,6 @@ namespace Lazpoly.Core.Engine
             }
 
             throw new InvalidOperationException("No active player left to take a turn.");
-        }
-
-        private bool OwnsWholeGroup(int ownerId, int groupId)
-        {
-            int groupSize = Board.CountInGroup(groupId);
-            if (groupSize == 0) return false;
-
-            int owned = 0;
-            for (int square = 0; square < Board.Count; square++)
-            {
-                SquareDefinition definition = Board[square];
-                if (definition.Type == SquareType.Property && definition.GroupId == groupId &&
-                    State.GetOwner(square) == ownerId)
-                {
-                    owned++;
-                }
-            }
-
-            return owned == groupSize;
         }
     }
 }

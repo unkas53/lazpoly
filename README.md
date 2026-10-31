@@ -74,6 +74,34 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
 - **Bilinen sınır:** Bağlantısı kopan oyuncunun sırası gelirse oyun o oyuncu dönene kadar bekler.
   Yerine yapay zekânın oynaması Faz 5'te gelecek.
 
+## Faz 4: gelişmiş ekonomi
+
+- **Satın alma ve açık artırma:** Sahipsiz mülke gelen oyuncu ya satın alır ya da "Alma, açık artırmaya çıkar" der; o zaman mülk
+  hemen açık artırmaya çıkar. Teklifi en yüksek olan dışındaki herkes teklif verebilir ya da çekilebilir.
+  Bir kişi kalınca o kazanır ve teklifini öder; kimse teklif vermezse mülk bankada kalır.
+- **Bina:** Bir grubun tamamına sahip olan oyuncu, sırası geldiğinde (zar atmadan önce ya da tur sonunda)
+  ev kurabilir: en fazla 4 ev, 5. seviye oteldir. Binalar grupta eşit kurulur ve eşit satılır (seviye farkı en
+  çok 1). Bina satışı kuruluş fiyatının yarısını geri verir. Kira seviyeye göre `rents` listesinden okunur.
+- **İpotek:** Binası olmayan grubun mülkü ipotek edilebilir; oyuncu fiyatın yarısını alır, ipotekli mülkten
+  kira alınmaz ve o grupta bina kurulamaz. Kurtarmak ipotek değeri + %10 faizdir.
+- **Takas:** Sırası gelen oyuncu bir başkasına para ve mülk karışımı teklif eder; karşı taraf kabul ya da
+  reddeder, teklif eden geri çekebilir. Binası olan gruptan mülk takas edilemez (önce binalar satılır).
+  İpotekli mülk ipoteğiyle birlikte el değiştirir.
+- **Borç ve iflas:** Ödeyemeyen oyuncunun oyunu durur ve önünde "Borcu Öde" ile "İflas Et" çıkar. Bu sırada
+  bina satıp mülk ipotek ederek para bulabilir. İflasta binalar bankaya satılır, tüm para alacaklıya geçer;
+  mülkler alacaklı oyuncuya ipotekleriyle gider, alacaklı banka ise ipotekleri silinip bankaya döner.
+- **Veri:** `board.json` içinde `mortgageInterestPercent`, `buildingSellbackPercent` ve her mülk için
+  `buildingCost` ile 5 elemanlı `rents` (1-4 ev, otel). Şu anki değerler taslaktır (bina fiyatı grup grup
+  50-200, kiralar taban kiranın 5/15/40/55/70 katı).
+- **Arayüz (geçici):** Sol paneldeki mülk listesinde yalnızca o an kurala uyan düğmeler (Ev +, Ev Sat,
+  İpotek, Kurtar) görünür; açık artırma ve takas için ayrı paneller açılır. Kurallar `GameRules` içinde tek
+  yerdedir; host doğrulamak, arayüz düğmeleri göstermek için aynı fonksiyonu kullanır.
+- **Testler:** `EconomyTests` her kuralı tek tek, `GameSimulationTests` 200 rastgele oyunda tutarlılığı,
+  `NetworkSessionTests` istemciler arası takas ve açık artırmayı, `MessageCodecTests` yeni mesajları dener.
+- **Bilinen sınırlar:** Açık artırmada süre sınırı yok; takas teklifine cevap vermeyen ya da artırmada
+  bekleyen oyuncu oyunu bekletir (Faz 5'teki yapay zekâ ve süre aşımı ile çözülecek). Bankaya dönen mülkler
+  yeniden açık artırmaya çıkmaz, biri üstüne gelene kadar bekler.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

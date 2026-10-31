@@ -4,6 +4,7 @@ using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
+using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 
 namespace Lazpoly.App.Session
@@ -19,6 +20,7 @@ namespace Lazpoly.App.Session
         }
 
         public BoardDefinition Board => _engine.Board;
+        public RulesConfig Rules => _engine.Rules;
         public GameState State => _engine.State;
         public bool IsReady => true;
 

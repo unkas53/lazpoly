@@ -33,4 +33,91 @@ namespace Lazpoly.Core.Commands
     {
         public EndTurnCommand(int playerId) : base(playerId) { }
     }
+
+    /// <summary>Base for commands that act on one board square.</summary>
+    public abstract class SquareCommand : GameCommand
+    {
+        protected SquareCommand(int playerId, int squareIndex) : base(playerId)
+        {
+            SquareIndex = squareIndex;
+        }
+
+        public int SquareIndex { get; }
+    }
+
+    /// <summary>Adds one building level (house, then hotel) to a property.</summary>
+    public sealed class BuildCommand : SquareCommand
+    {
+        public BuildCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+    }
+
+    /// <summary>Sells one building level back to the bank.</summary>
+    public sealed class SellBuildingCommand : SquareCommand
+    {
+        public SellBuildingCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+    }
+
+    public sealed class MortgageCommand : SquareCommand
+    {
+        public MortgageCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+    }
+
+    /// <summary>Pays off a mortgage with interest.</summary>
+    public sealed class RedeemCommand : SquareCommand
+    {
+        public RedeemCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+    }
+
+    public sealed class PlaceBidCommand : GameCommand
+    {
+        public PlaceBidCommand(int playerId, int amount) : base(playerId)
+        {
+            Amount = amount;
+        }
+
+        public int Amount { get; }
+    }
+
+    /// <summary>Leaves the running auction for good.</summary>
+    public sealed class PassBidCommand : GameCommand
+    {
+        public PassBidCommand(int playerId) : base(playerId) { }
+    }
+
+    public sealed class ProposeTradeCommand : GameCommand
+    {
+        public ProposeTradeCommand(State.TradeOffer offer) : base(offer?.FromPlayerId ?? -1)
+        {
+            Offer = offer;
+        }
+
+        public State.TradeOffer Offer { get; }
+    }
+
+    public sealed class AcceptTradeCommand : GameCommand
+    {
+        public AcceptTradeCommand(int playerId) : base(playerId) { }
+    }
+
+    public sealed class RejectTradeCommand : GameCommand
+    {
+        public RejectTradeCommand(int playerId) : base(playerId) { }
+    }
+
+    /// <summary>The proposer withdraws the open offer.</summary>
+    public sealed class CancelTradeCommand : GameCommand
+    {
+        public CancelTradeCommand(int playerId) : base(playerId) { }
+    }
+
+    public sealed class PayDebtCommand : GameCommand
+    {
+        public PayDebtCommand(int playerId) : base(playerId) { }
+    }
+
+    /// <summary>Gives up: everything goes to the creditor (or the bank) and the player leaves the game.</summary>
+    public sealed class DeclareBankruptcyCommand : GameCommand
+    {
+        public DeclareBankruptcyCommand(int playerId) : base(playerId) { }
+    }
 }

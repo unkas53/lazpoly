@@ -17,11 +17,15 @@ namespace Lazpoly.Core.State
 
         private readonly List<PlayerState> _players;
         private readonly int[] _owners;
+        private readonly int[] _buildingLevels;
+        private readonly bool[] _mortgaged;
 
         private GameState(List<PlayerState> players, int squareCount)
         {
             _players = players;
             _owners = new int[squareCount];
+            _buildingLevels = new int[squareCount];
+            _mortgaged = new bool[squareCount];
             for (int i = 0; i < _owners.Length; i++) _owners[i] = NoOwner;
             WinnerId = NoWinner;
         }
@@ -44,6 +48,18 @@ namespace Lazpoly.Core.State
         public int ConsecutiveDoubles { get; internal set; }
 
         public int WinnerId { get; internal set; }
+
+        /// <summary>The running auction; null unless <see cref="Phase"/> is <see cref="GamePhase.AuctionInProgress"/>.</summary>
+        public AuctionState Auction { get; internal set; }
+
+        /// <summary>The open trade offer; null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingTradeResponse"/>.</summary>
+        public TradeOffer PendingTrade { get; internal set; }
+
+        /// <summary>Phase to return to once the open trade is answered.</summary>
+        public GamePhase TradeReturnPhase { get; internal set; }
+
+        /// <summary>The unpaid debt; null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingDebtPayment"/>.</summary>
+        public DebtState Debt { get; internal set; }
 
         public static GameState CreateInitial(BoardDefinition board, RulesConfig rules, IReadOnlyList<PlayerSeat> seats)
         {
@@ -132,12 +148,87 @@ namespace Lazpoly.Core.State
                 state.SetOwner(i, owner);
             }
 
+            if (snapshot.BuildingLevels == null || snapshot.BuildingLevels.Length != snapshot.Owners.Length ||
+                snapshot.Mortgaged == null || snapshot.Mortgaged.Length != snapshot.Owners.Length)
+            {
+                throw new ArgumentException("Snapshot building or mortgage data does not match the board.", nameof(snapshot));
+            }
+
+            for (int i = 0; i < snapshot.Owners.Length; i++)
+            {
+                int level = snapshot.BuildingLevels[i];
+                bool unowned = snapshot.Owners[i] == NoOwner;
+                if (level < 0 || level > SquareDefinition.MaxBuildingLevel || (unowned && (level != 0 || snapshot.Mortgaged[i])))
+                {
+                    throw new ArgumentException($"Square {i} has impossible building or mortgage data.", nameof(snapshot));
+                }
+
+                state.SetBuildingLevel(i, level);
+                state.SetMortgaged(i, snapshot.Mortgaged[i]);
+            }
+
+            if (snapshot.Auction != null)
+            {
+                AuctionState auction = snapshot.Auction;
+                if (auction.SquareIndex < 0 || auction.SquareIndex >= snapshot.Owners.Length ||
+                    (auction.HighestBidderId != NoOwner && !ids.Contains(auction.HighestBidderId)))
+                {
+                    throw new ArgumentException("Snapshot auction is inconsistent.", nameof(snapshot));
+                }
+
+                foreach (int passed in auction.PassedPlayerIds)
+                {
+                    if (!ids.Contains(passed)) throw new ArgumentException("Snapshot auction names an unknown player.", nameof(snapshot));
+                }
+
+                state.Auction = auction.Copy();
+            }
+
+            if (snapshot.PendingTrade != null)
+            {
+                TradeOffer trade = snapshot.PendingTrade;
+                if (!ids.Contains(trade.FromPlayerId) || !ids.Contains(trade.ToPlayerId))
+                {
+                    throw new ArgumentException("Snapshot trade names an unknown player.", nameof(snapshot));
+                }
+
+                foreach (int square in trade.GiveSquares) RequireSquare(square, snapshot.Owners.Length);
+                foreach (int square in trade.TakeSquares) RequireSquare(square, snapshot.Owners.Length);
+                state.PendingTrade = trade;
+                state.TradeReturnPhase = snapshot.TradeReturnPhase;
+            }
+
+            if (snapshot.Debt != null)
+            {
+                DebtState debt = snapshot.Debt;
+                if (!ids.Contains(debt.PlayerId) || (debt.CreditorId != NoOwner && !ids.Contains(debt.CreditorId)) || debt.Amount <= 0)
+                {
+                    throw new ArgumentException("Snapshot debt is inconsistent.", nameof(snapshot));
+                }
+
+                state.Debt = debt;
+            }
+
             return state;
+        }
+
+        private static void RequireSquare(int square, int count)
+        {
+            if (square < 0 || square >= count) throw new ArgumentException($"Square {square} is outside the board.");
         }
 
         public int GetOwner(int squareIndex) => _owners[squareIndex];
 
         internal void SetOwner(int squareIndex, int ownerId) => _owners[squareIndex] = ownerId;
+
+        /// <summary>0 = no buildings, 1-4 = houses, 5 = hotel.</summary>
+        public int GetBuildingLevel(int squareIndex) => _buildingLevels[squareIndex];
+
+        internal void SetBuildingLevel(int squareIndex, int level) => _buildingLevels[squareIndex] = level;
+
+        public bool IsMortgaged(int squareIndex) => _mortgaged[squareIndex];
+
+        internal void SetMortgaged(int squareIndex, bool mortgaged) => _mortgaged[squareIndex] = mortgaged;
 
         public PlayerState FindPlayer(int playerId)
         {
@@ -207,6 +298,42 @@ namespace Lazpoly.Core.State
             foreach (int owner in _owners)
             {
                 Mix(owner);
+            }
+
+            foreach (int level in _buildingLevels) Mix(level);
+            foreach (bool mortgaged in _mortgaged) Mix(mortgaged ? 1 : 0);
+
+            Mix(Auction == null ? 0 : 1);
+            if (Auction != null)
+            {
+                Mix(Auction.SquareIndex);
+                Mix(Auction.HighestBid);
+                Mix(Auction.HighestBidderId);
+                Mix(Auction.PassedPlayerIds.Count);
+                foreach (int id in Auction.PassedPlayerIds) Mix(id);
+            }
+
+            Mix(PendingTrade == null ? 0 : 1);
+            if (PendingTrade != null)
+            {
+                Mix(PendingTrade.FromPlayerId);
+                Mix(PendingTrade.ToPlayerId);
+                Mix(PendingTrade.GiveMoney);
+                Mix(PendingTrade.TakeMoney);
+                Mix(PendingTrade.GiveSquares.Count);
+                foreach (int square in PendingTrade.GiveSquares) Mix(square);
+                Mix(PendingTrade.TakeSquares.Count);
+                foreach (int square in PendingTrade.TakeSquares) Mix(square);
+                Mix((int)TradeReturnPhase);
+            }
+
+            Mix(Debt == null ? 0 : 1);
+            if (Debt != null)
+            {
+                Mix(Debt.PlayerId);
+                Mix(Debt.CreditorId);
+                Mix(Debt.Amount);
+                Mix((int)Debt.Reason);
             }
 
             return hash;

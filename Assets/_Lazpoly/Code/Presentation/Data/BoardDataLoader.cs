@@ -33,7 +33,7 @@ namespace Lazpoly.Presentation.Data
             }
 
             var rules = new RulesConfig(file.startingMoney, file.passStartBonus, file.diceSides,
-                file.maxConsecutiveDoubles, file.fullGroupRentMultiplier);
+                file.maxConsecutiveDoubles, file.fullGroupRentMultiplier, file.mortgageInterestPercent, file.buildingSellbackPercent);
 
             var groupColors = new Dictionary<int, Color>();
             if (file.groups != null)
@@ -74,7 +74,16 @@ namespace Lazpoly.Presentation.Data
                         throw new FormatException($"Square {index} '{entry.name}' uses undefined group {entry.group}.");
                     }
 
-                    return SquareDefinition.Property(entry.name, entry.price, entry.rent, entry.group);
+                    bool developable = entry.buildingCost > 0;
+                    bool hasRents = entry.rents != null && entry.rents.Length > 0;
+                    if (developable != hasRents)
+                    {
+                        throw new FormatException($"Square {index} '{entry.name}' needs both buildingCost and rents, or neither.");
+                    }
+
+                    return developable
+                        ? SquareDefinition.Property(entry.name, entry.price, entry.rent, entry.group, entry.buildingCost, entry.rents)
+                        : SquareDefinition.Property(entry.name, entry.price, entry.rent, entry.group);
                 default:
                     throw new FormatException($"Square {index} '{entry.name}' has unknown type '{entry.type}'.");
             }

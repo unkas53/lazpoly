@@ -47,6 +47,34 @@ namespace Lazpoly.Core.Board
             return count;
         }
 
+        private static void ValidateDevelopment(SquareDefinition square, int index)
+        {
+            if (square.BuildingCost < 0) throw new ArgumentException($"Square {index} '{square.Name}': building cost cannot be negative.");
+            if (!square.IsDevelopable)
+            {
+                if (square.DevelopedRents.Count != 0)
+                {
+                    throw new ArgumentException($"Square {index} '{square.Name}': building rents need a building cost.");
+                }
+
+                return;
+            }
+
+            if (square.GroupId == 0) throw new ArgumentException($"Square {index} '{square.Name}': only grouped properties can be developed.");
+            if (square.DevelopedRents.Count != SquareDefinition.MaxBuildingLevel)
+            {
+                throw new ArgumentException(
+                    $"Square {index} '{square.Name}': needs {SquareDefinition.MaxBuildingLevel} building rents, got {square.DevelopedRents.Count}.");
+            }
+
+            int previous = square.BaseRent;
+            foreach (int rent in square.DevelopedRents)
+            {
+                if (rent < previous) throw new ArgumentException($"Square {index} '{square.Name}': building rents must not decrease.");
+                previous = rent;
+            }
+        }
+
         private static void Validate(SquareDefinition square, int index)
         {
             if (index > 0 && square.Type == SquareType.Start)
@@ -60,6 +88,7 @@ namespace Lazpoly.Core.Board
                     if (square.Price <= 0) throw new ArgumentException($"Square {index} '{square.Name}': price must be positive.");
                     if (square.BaseRent < 0) throw new ArgumentException($"Square {index} '{square.Name}': rent cannot be negative.");
                     if (square.GroupId < 0) throw new ArgumentException($"Square {index} '{square.Name}': group id cannot be negative.");
+                    ValidateDevelopment(square, index);
                     break;
                 case SquareType.Tax:
                     if (square.TaxAmount <= 0) throw new ArgumentException($"Square {index} '{square.Name}': tax must be positive.");

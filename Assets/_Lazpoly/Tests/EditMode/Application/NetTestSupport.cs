@@ -43,7 +43,7 @@ namespace Lazpoly.App.Tests
                 ITransport transport = Network.CreateTransport(peer);
                 if (wrapClient != null) transport = wrapClient(peer, transport);
                 ClientTransports[player] = transport;
-                Clients[player] = new ClientSession(transport, HostPeer, Board, Checksum);
+                Clients[player] = new ClientSession(transport, HostPeer, Board, Rules, Checksum);
             }
         }
 
@@ -87,17 +87,47 @@ namespace Lazpoly.App.Tests
 
         public IGameSession SessionOf(int playerId) => playerId == 1 ? (IGameSession)Host : Clients[playerId];
 
-        /// <summary>The obvious next command for whoever's turn it is (always buys).</summary>
+        /// <summary>
+        /// A legal next command for whoever must act: buys most squares it can afford, auctions the rest with
+        /// small bids, rejects trades, and pays debts by mortgaging or goes bankrupt.
+        /// </summary>
         public GameCommand NextCommand()
         {
-            int player = HostState.CurrentPlayer.Id;
-            switch (HostState.Phase)
+            GameState state = HostState;
+            int me = state.CurrentPlayer.Id;
+            switch (state.Phase)
             {
-                case GamePhase.WaitingForRoll: return new RollDiceCommand(player);
-                case GamePhase.AwaitingBuyDecision: return new BuyPropertyCommand(player);
-                default: return new EndTurnCommand(player);
+                case GamePhase.WaitingForRoll: return new RollDiceCommand(me);
+                case GamePhase.TurnEnd: return new EndTurnCommand(me);
+                case GamePhase.AwaitingBuyDecision:
+                    // Every third square goes to auction even when affordable, so auctions happen often.
+                    bool buy = state.CurrentPlayer.Position % 3 != 0 && Legal(new BuyPropertyCommand(me));
+                    return buy ? new BuyPropertyCommand(me) : (GameCommand)new DeclinePurchaseCommand(me);
+                case GamePhase.AwaitingTradeResponse:
+                    return new RejectTradeCommand(state.PendingTrade.ToPlayerId);
+                case GamePhase.AwaitingDebtPayment:
+                    if (Legal(new PayDebtCommand(me))) return new PayDebtCommand(me);
+                    for (int square = 0; square < Board.Count; square++)
+                    {
+                        if (Legal(new MortgageCommand(me, square))) return new MortgageCommand(me, square);
+                    }
+
+                    return new DeclareBankruptcyCommand(me);
+                case GamePhase.AuctionInProgress:
+                    foreach (PlayerState player in state.Players)
+                    {
+                        if (!Legal(new PassBidCommand(player.Id))) continue;
+                        var bid = new PlaceBidCommand(player.Id, state.Auction.HighestBid + 10);
+                        return bid.Amount <= Board[state.Auction.SquareIndex].Price / 2 && Legal(bid) ? bid : (GameCommand)new PassBidCommand(player.Id);
+                    }
+
+                    break;
             }
+
+            return new EndTurnCommand(me);
         }
+
+        public bool Legal(GameCommand command) => Engine.Validate(command) == RejectionReason.None;
 
         /// <summary>The current player acts from their own machine. Returns false once the game is over.</summary>
         public bool Step()
@@ -126,7 +156,7 @@ namespace Lazpoly.App.Tests
             SquareDefinition.Tax("Küçük vergi", 50),
         });
 
-        public static RulesConfig Rules() => new RulesConfig(800, 100, 6, 3, 2);
+        public static RulesConfig Rules() => new RulesConfig(800, 100, 6, 3, 2, 10, 50);
     }
 
     /// <summary>Wraps a client's transport so a test can lose chosen incoming messages.</summary>

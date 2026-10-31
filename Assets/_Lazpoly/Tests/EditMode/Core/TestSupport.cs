@@ -58,9 +58,36 @@ namespace Lazpoly.Core.Tests
             });
         }
 
+        /// <summary>
+        /// Same layout as <see cref="TestBoard"/>, but groups 1-3 take buildings
+        /// (cost 50, 100, 150; rents rising to a hotel).
+        /// </summary>
+        public static BoardDefinition DevelopableBoard()
+        {
+            SquareDefinition Dev(string name, int price, int rent, int group, int cost) =>
+                SquareDefinition.Property(name, price, rent, group, cost,
+                    new[] { rent * 5, rent * 15, rent * 40, rent * 55, rent * 70 });
+
+            return new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Start"),
+                Dev("A1", 60, 10, 1, 50),
+                Dev("A2", 80, 12, 1, 50),
+                SquareDefinition.Tax("Tax", 100),
+                SquareDefinition.Rest("Rest 1"),
+                Dev("B1", 120, 20, 2, 100),
+                Dev("B2", 140, 24, 2, 100),
+                SquareDefinition.Property("Solo", 150, 30, 0),
+                SquareDefinition.Rest("Rest 2"),
+                Dev("C1", 200, 40, 3, 150),
+                Dev("C2", 220, 44, 3, 150),
+                SquareDefinition.Tax("Small tax", 50),
+            });
+        }
+
         public static RulesConfig TestRules(int startingMoney = 1000, int passStartBonus = 200) =>
             new RulesConfig(startingMoney, passStartBonus, diceSides: 6, maxConsecutiveDoubles: 3,
-                fullGroupRentMultiplier: 2);
+                fullGroupRentMultiplier: 2, mortgageInterestPercent: 10, buildingSellbackPercent: 50);
 
         public static PlayerSeat[] TestSeats(int count = 2)
         {

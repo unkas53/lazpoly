@@ -41,6 +41,8 @@ namespace Lazpoly.Core.Board
             Mix(rules.DiceSides);
             Mix(rules.MaxConsecutiveDoubles);
             Mix(rules.FullGroupRentMultiplier);
+            Mix(rules.MortgageInterestPercent);
+            Mix(rules.BuildingSellbackPercent);
 
             Mix(board.Count);
             for (int i = 0; i < board.Count; i++)
@@ -52,6 +54,9 @@ namespace Lazpoly.Core.Board
                 Mix(square.BaseRent);
                 Mix(square.GroupId);
                 Mix(square.TaxAmount);
+                Mix(square.BuildingCost);
+                Mix(square.DevelopedRents.Count);
+                foreach (int rent in square.DevelopedRents) Mix(rent);
             }
 
             return hash;

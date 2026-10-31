@@ -1,11 +1,19 @@
 using System;
+using System.Collections.Generic;
 
 namespace Lazpoly.Core.Board
 {
     /// <summary>Immutable description of one board square. Loaded from data, never changed during a game.</summary>
     public sealed class SquareDefinition
     {
-        private SquareDefinition(string name, SquareType type, int price, int baseRent, int groupId, int taxAmount)
+        /// <summary>Building levels a property can reach: four houses, then a hotel.</summary>
+        public const int MaxBuildingLevel = 5;
+
+        private static readonly int[] NoRents = new int[0];
+        private readonly int[] _developedRents;
+
+        private SquareDefinition(string name, SquareType type, int price, int baseRent, int groupId, int taxAmount,
+            int buildingCost, int[] developedRents)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Type = type;
@@ -13,6 +21,8 @@ namespace Lazpoly.Core.Board
             BaseRent = baseRent;
             GroupId = groupId;
             TaxAmount = taxAmount;
+            BuildingCost = buildingCost;
+            _developedRents = developedRents ?? NoRents;
         }
 
         public string Name { get; }
@@ -30,14 +40,37 @@ namespace Lazpoly.Core.Board
         /// <summary>Amount paid to the bank. Only meaningful for <see cref="SquareType.Tax"/>.</summary>
         public int TaxAmount { get; }
 
-        public static SquareDefinition Start(string name) => new SquareDefinition(name, SquareType.Start, 0, 0, 0, 0);
+        /// <summary>Price of one building level (house or hotel). 0 means the property cannot be developed.</summary>
+        public int BuildingCost { get; }
 
-        public static SquareDefinition Rest(string name) => new SquareDefinition(name, SquareType.Rest, 0, 0, 0, 0);
+        public bool IsDevelopable => BuildingCost > 0;
+
+        /// <summary>Rent at building levels 1..<see cref="MaxBuildingLevel"/>; empty when not developable.</summary>
+        public IReadOnlyList<int> DevelopedRents => _developedRents;
+
+        /// <summary>What the bank lends against the property: half its price.</summary>
+        public int MortgageValue => Price / 2;
+
+        public static SquareDefinition Start(string name) => new SquareDefinition(name, SquareType.Start, 0, 0, 0, 0, 0, null);
+
+        public static SquareDefinition Rest(string name) => new SquareDefinition(name, SquareType.Rest, 0, 0, 0, 0, 0, null);
 
         public static SquareDefinition Tax(string name, int amount) =>
-            new SquareDefinition(name, SquareType.Tax, 0, 0, 0, amount);
+            new SquareDefinition(name, SquareType.Tax, 0, 0, 0, amount, 0, null);
 
+        /// <summary>A property without buildings.</summary>
         public static SquareDefinition Property(string name, int price, int baseRent, int groupId) =>
-            new SquareDefinition(name, SquareType.Property, price, baseRent, groupId, 0);
+            new SquareDefinition(name, SquareType.Property, price, baseRent, groupId, 0, 0, null);
+
+        /// <summary>A property that takes up to <see cref="MaxBuildingLevel"/> buildings once its whole group is owned.</summary>
+        /// <param name="developedRents">Rent at levels 1..<see cref="MaxBuildingLevel"/>.</param>
+        public static SquareDefinition Property(string name, int price, int baseRent, int groupId, int buildingCost,
+            IReadOnlyList<int> developedRents)
+        {
+            if (developedRents == null) throw new ArgumentNullException(nameof(developedRents));
+            var rents = new int[developedRents.Count];
+            for (int i = 0; i < rents.Length; i++) rents[i] = developedRents[i];
+            return new SquareDefinition(name, SquareType.Property, price, baseRent, groupId, 0, buildingCost, rents);
+        }
     }
 }

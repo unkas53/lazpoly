@@ -18,7 +18,14 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
         private static readonly Color TableColor = new Color(0.20f, 0.36f, 0.27f);
 
+        private static readonly Color HouseColor = new Color(0.30f, 0.69f, 0.31f);
+        private static readonly Color HotelColor = new Color(0.83f, 0.18f, 0.18f);
+
         private GameObject[] _ownerMarkers;
+        private Color?[] _ownerColors;
+        private bool[] _mortgaged;
+        private GameObject[][] _buildings;
+        private float _tile;
 
         public BoardLayout Layout { get; private set; }
 
@@ -42,8 +49,36 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject marker = _ownerMarkers[squareIndex];
             if (marker == null) return;
 
-            marker.SetActive(ownerColor.HasValue);
-            if (ownerColor.HasValue) Paint(marker, ownerColor.Value);
+            _ownerColors[squareIndex] = ownerColor;
+            RefreshOwnerMarker(squareIndex);
+        }
+
+        /// <summary>A mortgaged property shows its owner marker dimmed.</summary>
+        public void SetMortgaged(int squareIndex, bool mortgaged)
+        {
+            if (_ownerMarkers[squareIndex] == null) return;
+            _mortgaged[squareIndex] = mortgaged;
+            RefreshOwnerMarker(squareIndex);
+        }
+
+        /// <summary>Shows 1-4 small houses, or one hotel at the top level.</summary>
+        public void SetBuildingLevel(int squareIndex, int level)
+        {
+            GameObject[] pieces = _buildings[squareIndex];
+            if (pieces == null) return;
+
+            bool hotel = level >= SquareDefinition.MaxBuildingLevel;
+            for (int i = 0; i < pieces.Length - 1; i++) pieces[i].SetActive(!hotel && i < level);
+            pieces[pieces.Length - 1].SetActive(hotel);
+        }
+
+        private void RefreshOwnerMarker(int squareIndex)
+        {
+            GameObject marker = _ownerMarkers[squareIndex];
+            Color? color = _ownerColors[squareIndex];
+            marker.SetActive(color.HasValue);
+            if (!color.HasValue) return;
+            Paint(marker, _mortgaged[squareIndex] ? Color.Lerp(color.Value, Color.black, 0.65f) : color.Value);
         }
 
         private void Build(BoardData data)
@@ -59,7 +94,11 @@ namespace Lazpoly.Presentation.Tabletop
             table.transform.localScale = new Vector3(2f * HalfSize + 2f * tile, 0.1f, 2f * HalfSize + 2f * tile);
             Paint(table, TableColor);
 
+            _tile = tile;
             _ownerMarkers = new GameObject[board.Count];
+            _ownerColors = new Color?[board.Count];
+            _mortgaged = new bool[board.Count];
+            _buildings = new GameObject[board.Count][];
             for (int i = 0; i < board.Count; i++)
             {
                 SquareDefinition square = board[i];
@@ -87,8 +126,41 @@ namespace Lazpoly.Presentation.Tabletop
                     Object.Destroy(marker.GetComponent<Collider>());
                     marker.SetActive(false);
                     _ownerMarkers[i] = marker;
+                    if (square.IsDevelopable) _buildings[i] = CreateBuildings(center);
                 }
             }
+        }
+
+        // Four houses in a row along the tile's inner edge plus one hotel, all hidden until built.
+        private GameObject[] CreateBuildings(Vector3 center)
+        {
+            const int houses = SquareDefinition.MaxBuildingLevel - 1;
+            var pieces = new GameObject[houses + 1];
+            Vector3 inward = -new Vector3(center.x, 0f, center.z).normalized;
+            Vector3 side = Vector3.Cross(Vector3.up, inward);
+            Vector3 rowCenter = center + inward * (_tile * 0.36f) + Vector3.up * TileHeight;
+
+            for (int i = 0; i < houses; i++)
+            {
+                float offset = (i - (houses - 1) / 2f) * _tile * 0.2f;
+                pieces[i] = CreatePiece("House", rowCenter + side * offset, new Vector3(_tile * 0.14f, _tile * 0.14f, _tile * 0.14f), HouseColor);
+            }
+
+            pieces[houses] = CreatePiece("Hotel", rowCenter, new Vector3(_tile * 0.5f, _tile * 0.2f, _tile * 0.18f), HotelColor);
+            return pieces;
+        }
+
+        private GameObject CreatePiece(string name, Vector3 baseCenter, Vector3 size, Color color)
+        {
+            GameObject piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            piece.name = name;
+            piece.transform.SetParent(transform, false);
+            piece.transform.localPosition = baseCenter + Vector3.up * (size.y / 2f);
+            piece.transform.localScale = size;
+            Object.Destroy(piece.GetComponent<Collider>());
+            Paint(piece, color);
+            piece.SetActive(false);
+            return piece;
         }
 
         private void CreateLabel(string text, Vector3 localPosition, float tile)

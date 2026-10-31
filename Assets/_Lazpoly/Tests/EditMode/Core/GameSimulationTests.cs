@@ -35,30 +35,14 @@ namespace Lazpoly.Core.Tests
         {
             var result = new SimulationResult
             {
-                Engine = new GameEngine(TestData.TestBoard(), rules, Seats(playerCount), new Pcg32Random(seed)),
+                Engine = new GameEngine(TestData.DevelopableBoard(), rules, Seats(playerCount), new Pcg32Random(seed)),
             };
             var decisions = new Pcg32Random(seed, stream: 7UL);
             GameEngine engine = result.Engine;
 
             for (int i = 0; i < CommandLimit && engine.State.Phase != GamePhase.GameOver; i++)
             {
-                int playerId = engine.State.CurrentPlayer.Id;
-                GameCommand command;
-                switch (engine.State.Phase)
-                {
-                    case GamePhase.WaitingForRoll:
-                        command = new RollDiceCommand(playerId);
-                        break;
-                    case GamePhase.AwaitingBuyDecision:
-                        command = decisions.NextInt(0, 4) == 0
-                            ? (GameCommand)new DeclinePurchaseCommand(playerId)
-                            : new BuyPropertyCommand(playerId);
-                        break;
-                    default:
-                        command = new EndTurnCommand(playerId);
-                        break;
-                }
-
+                GameCommand command = TestBot.Next(engine, decisions);
                 CommandResult outcome = engine.Execute(command);
                 Assert.IsTrue(outcome.IsAccepted, $"Seed {seed}, step {i}: legal {command.GetType().Name} rejected ({outcome.Reason}).");
                 result.Events.AddRange(outcome.Events);
@@ -100,6 +84,31 @@ namespace Lazpoly.Core.Tests
                 Assert.IsFalse(ownerState.IsBankrupt, $"{where}: bankrupt player still owns square {square}.");
             }
 
+            for (int square = 0; square < engine.Board.Count; square++)
+            {
+                int level = state.GetBuildingLevel(square);
+                if (state.GetOwner(square) == GameState.NoOwner)
+                {
+                    Assert.AreEqual(0, level, $"{where}: unowned square {square} has buildings.");
+                    Assert.IsFalse(state.IsMortgaged(square), $"{where}: unowned square {square} is mortgaged.");
+                }
+
+                if (level > 0)
+                {
+                    Assert.IsFalse(state.IsMortgaged(square), $"{where}: square {square} has buildings and a mortgage.");
+                    foreach (int other in GameRules.GroupSquares(engine.Board, engine.Board[square].GroupId))
+                    {
+                        Assert.AreEqual(state.GetOwner(square), state.GetOwner(other), $"{where}: buildings without the whole group.");
+                        Assert.That(System.Math.Abs(state.GetBuildingLevel(other) - level), Is.LessThanOrEqualTo(1),
+                            $"{where}: uneven buildings in group of square {square}.");
+                    }
+                }
+            }
+
+            Assert.AreEqual(state.Phase == GamePhase.AuctionInProgress, state.Auction != null, $"{where}: auction state and phase disagree.");
+            Assert.AreEqual(state.Phase == GamePhase.AwaitingTradeResponse, state.PendingTrade != null, $"{where}: trade state and phase disagree.");
+            Assert.AreEqual(state.Phase == GamePhase.AwaitingDebtPayment, state.Debt != null, $"{where}: debt state and phase disagree.");
+
             if (state.Phase == GamePhase.GameOver)
             {
                 Assert.AreEqual(1, state.ActivePlayerCount(), $"{where}: game over with several players left.");
@@ -112,7 +121,7 @@ namespace Lazpoly.Core.Tests
         {
             // Low starting money and pass bonus so that bankruptcies and game endings happen often.
             var rules = new RulesConfig(startingMoney: 400, passStartBonus: 50, diceSides: 6,
-                maxConsecutiveDoubles: 3, fullGroupRentMultiplier: 2);
+                maxConsecutiveDoubles: 3, fullGroupRentMultiplier: 2, mortgageInterestPercent: 10, buildingSellbackPercent: 50);
             int finished = 0;
 
             for (ulong seed = 1; seed <= 200; seed++)
@@ -123,6 +132,27 @@ namespace Lazpoly.Core.Tests
             }
 
             Assert.That(finished, Is.GreaterThan(0), "No simulated game reached the end; bankruptcy path untested.");
+        }
+
+        [Test]
+        public void SimulatedGamesUseEveryEconomyRule()
+        {
+            var rules = new RulesConfig(400, 50, 6, 3, 2, 10, 50);
+            var seen = new System.Collections.Generic.HashSet<System.Type>();
+            for (ulong seed = 1; seed <= 60; seed++)
+            {
+                foreach (GameEvent gameEvent in Play(seed, 2 + (int)(seed % 4), rules).Events) seen.Add(gameEvent.GetType());
+            }
+
+            foreach (System.Type expected in new[]
+                     {
+                         typeof(BuildingLevelChangedEvent), typeof(MortgageChangedEvent), typeof(AuctionEndedEvent),
+                         typeof(BidPlacedEvent), typeof(TradeResolvedEvent), typeof(DebtIncurredEvent), typeof(DebtClearedEvent),
+                         typeof(PlayerBankruptedEvent),
+                     })
+            {
+                Assert.IsTrue(seen.Contains(expected), $"No simulated game produced {expected.Name}.");
+            }
         }
 
         [Test]
@@ -139,13 +169,13 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void ReplayingTheEventsRebuildsTheHostState()
         {
-            RulesConfig rules = new RulesConfig(400, 50, 6, 3, 2);
+            RulesConfig rules = new RulesConfig(400, 50, 6, 3, 2, 10, 50);
             for (ulong seed = 1; seed <= 20; seed++)
             {
                 SimulationResult host = Play(seed, 4, rules);
 
                 // A client starts from the same lobby setup and applies only what the host broadcast.
-                GameState client = GameState.CreateInitial(TestData.TestBoard(), rules, Seats(4));
+                GameState client = GameState.CreateInitial(TestData.DevelopableBoard(), rules, Seats(4));
                 foreach (GameEvent gameEvent in host.Events)
                 {
                     GameStateReducer.Apply(client, gameEvent);

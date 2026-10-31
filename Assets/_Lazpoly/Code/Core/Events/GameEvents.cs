@@ -15,6 +15,12 @@ namespace Lazpoly.Core.Events
         Rent = 2,
         Tax = 3,
         Bankruptcy = 4,
+        Building = 5,
+        BuildingSale = 6,
+        Mortgage = 7,
+        Redeem = 8,
+        Auction = 9,
+        Trade = 10,
     }
 
     public sealed class TurnStartedEvent : GameEvent
@@ -113,5 +119,116 @@ namespace Lazpoly.Core.Events
     {
         public GameEndedEvent(int winnerId) { WinnerId = winnerId; }
         public int WinnerId { get; }
+    }
+
+    /// <summary>A property's buildings changed (built, sold or cleared by bankruptcy).</summary>
+    public sealed class BuildingLevelChangedEvent : GameEvent
+    {
+        public BuildingLevelChangedEvent(int squareIndex, int level)
+        {
+            SquareIndex = squareIndex;
+            Level = level;
+        }
+
+        public int SquareIndex { get; }
+        public int Level { get; }
+    }
+
+    public sealed class MortgageChangedEvent : GameEvent
+    {
+        public MortgageChangedEvent(int squareIndex, bool isMortgaged)
+        {
+            SquareIndex = squareIndex;
+            IsMortgaged = isMortgaged;
+        }
+
+        public int SquareIndex { get; }
+        public bool IsMortgaged { get; }
+    }
+
+    public sealed class AuctionStartedEvent : GameEvent
+    {
+        public AuctionStartedEvent(int squareIndex) { SquareIndex = squareIndex; }
+        public int SquareIndex { get; }
+    }
+
+    public sealed class BidPlacedEvent : GameEvent
+    {
+        public BidPlacedEvent(int playerId, int amount)
+        {
+            PlayerId = playerId;
+            Amount = amount;
+        }
+
+        public int PlayerId { get; }
+        public int Amount { get; }
+    }
+
+    public sealed class BidPassedEvent : GameEvent
+    {
+        public BidPassedEvent(int playerId) { PlayerId = playerId; }
+        public int PlayerId { get; }
+    }
+
+    /// <summary>The auction closed. Payment and ownership follow as their own events.</summary>
+    public sealed class AuctionEndedEvent : GameEvent
+    {
+        public AuctionEndedEvent(int squareIndex, int winnerId, int price)
+        {
+            SquareIndex = squareIndex;
+            WinnerId = winnerId;
+            Price = price;
+        }
+
+        public int SquareIndex { get; }
+
+        /// <summary><see cref="State.GameState.NoOwner"/> when nobody bid.</summary>
+        public int WinnerId { get; }
+
+        public int Price { get; }
+    }
+
+    public sealed class TradeProposedEvent : GameEvent
+    {
+        public TradeProposedEvent(State.TradeOffer offer) { Offer = offer; }
+        public State.TradeOffer Offer { get; }
+    }
+
+    public enum TradeOutcome
+    {
+        Accepted = 1,
+        Rejected = 2,
+        Cancelled = 3,
+    }
+
+    /// <summary>The open trade was answered. On acceptance the transfers precede this event.</summary>
+    public sealed class TradeResolvedEvent : GameEvent
+    {
+        public TradeResolvedEvent(TradeOutcome outcome) { Outcome = outcome; }
+        public TradeOutcome Outcome { get; }
+    }
+
+    /// <summary>The current player could not pay; the game waits until they pay or go bankrupt.</summary>
+    public sealed class DebtIncurredEvent : GameEvent
+    {
+        public DebtIncurredEvent(int playerId, int creditorId, int amount, MoneyReason reason)
+        {
+            PlayerId = playerId;
+            CreditorId = creditorId;
+            Amount = amount;
+            Reason = reason;
+        }
+
+        public int PlayerId { get; }
+        public int CreditorId { get; }
+        public int Amount { get; }
+        public MoneyReason Reason { get; }
+    }
+
+    /// <summary>The open debt is closed, paid or written off by bankruptcy.</summary>
+    public sealed class DebtClearedEvent : GameEvent
+    {
+        public DebtClearedEvent(int playerId) { PlayerId = playerId; }
+        public int PlayerId { get; }
     }
 }

@@ -4,6 +4,7 @@ using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
+using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 
 namespace Lazpoly.App.Session
@@ -23,6 +24,8 @@ namespace Lazpoly.App.Session
     public interface IGameSession
     {
         BoardDefinition Board { get; }
+
+        RulesConfig Rules { get; }
 
         /// <summary>The current state; null until <see cref="IsReady"/> (a client waits for the host).</summary>
         GameState State { get; }

@@ -1,0 +1,57 @@
+using Lazpoly.Core.Board;
+using Lazpoly.Core.Commands;
+using Lazpoly.Core.Engine;
+using Lazpoly.Core.Rules;
+using Lazpoly.Core.State;
+
+namespace Lazpoly.PlayTests
+{
+    /// <summary>
+    /// Picks a legal command for whoever has to act next, so scene tests can drive a game
+    /// through every phase: buys when it can, lets auctions and trades lapse, settles debts.
+    /// </summary>
+    internal static class PlayBot
+    {
+        public static GameCommand Next(BoardDefinition board, RulesConfig rules, GameState state)
+        {
+            int me = state.CurrentPlayer.Id;
+            bool Legal(GameCommand command) => GameRules.Validate(board, rules, state, command) == RejectionReason.None;
+
+            switch (state.Phase)
+            {
+                case GamePhase.WaitingForRoll:
+                    return new RollDiceCommand(me);
+                case GamePhase.AwaitingBuyDecision:
+                    var buy = new BuyPropertyCommand(me);
+                    return Legal(buy) ? buy : (GameCommand)new DeclinePurchaseCommand(me);
+                case GamePhase.AuctionInProgress:
+                    foreach (PlayerState player in state.Players)
+                    {
+                        var pass = new PassBidCommand(player.Id);
+                        if (Legal(pass)) return pass;
+                    }
+
+                    break;
+                case GamePhase.AwaitingTradeResponse:
+                    return new RejectTradeCommand(state.PendingTrade.ToPlayerId);
+                case GamePhase.AwaitingDebtPayment:
+                    if (Legal(new PayDebtCommand(me))) return new PayDebtCommand(me);
+                    for (int square = 0; square < board.Count; square++)
+                    {
+                        var sell = new SellBuildingCommand(me, square);
+                        if (Legal(sell)) return sell;
+                    }
+
+                    for (int square = 0; square < board.Count; square++)
+                    {
+                        var mortgage = new MortgageCommand(me, square);
+                        if (Legal(mortgage)) return mortgage;
+                    }
+
+                    return new DeclareBankruptcyCommand(me);
+            }
+
+            return new EndTurnCommand(me);
+        }
+    }
+}

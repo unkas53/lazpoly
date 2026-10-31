@@ -16,5 +16,26 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>The command could not be delivered or the session is not running.</summary>
         NotConnected = 8,
+
+        /// <summary>The square is not a property, or not one this action applies to.</summary>
+        InvalidSquare = 9,
+
+        /// <summary>The square belongs to someone else.</summary>
+        NotOwner = 10,
+
+        /// <summary>Building needs the whole group, unmortgaged, and even building across it.</summary>
+        CannotBuild = 11,
+
+        /// <summary>Nothing to sell, or selling would break even building.</summary>
+        CannotSell = 12,
+
+        /// <summary>Already mortgaged, not mortgaged, or the group still has buildings.</summary>
+        CannotMortgage = 13,
+
+        /// <summary>Bid too low, above the bidder's money, or the bidder already passed or leads.</summary>
+        InvalidBid = 14,
+
+        /// <summary>The trade is empty, names squares the sides do not own, or squares with buildings.</summary>
+        InvalidTrade = 15,
     }
 }

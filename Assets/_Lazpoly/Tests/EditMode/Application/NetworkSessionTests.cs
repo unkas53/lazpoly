@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Lazpoly.App.Session;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
+using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
 using Lazpoly.Net.Messages;
 using Lazpoly.Net.Transport;
@@ -125,7 +126,7 @@ namespace Lazpoly.App.Tests
             NetTable table = NetTable.Create(2);
             table.StartAll();
             ITransport strangerTransport = table.Network.CreateTransport(999);
-            var stranger = new ClientSession(strangerTransport, NetTable.HostPeer, table.Board, table.Checksum);
+            var stranger = new ClientSession(strangerTransport, NetTable.HostPeer, table.Board, table.Rules, table.Checksum);
             var ended = new List<SessionEndReason>();
             stranger.Ended += ended.Add;
 
@@ -149,7 +150,7 @@ namespace Lazpoly.App.Tests
             // Replace player 2's machine with one whose data does not match the host's.
             table.Network.Disconnect(NetTable.PeerOf(2));
             ITransport transport = table.Network.CreateTransport(NetTable.PeerOf(2));
-            var client = new ClientSession(transport, NetTable.HostPeer, table.Board, table.Checksum + 1);
+            var client = new ClientSession(transport, NetTable.HostPeer, table.Board, table.Rules, table.Checksum + 1);
             client.Ended += ended.Add;
             table.Clients[2] = client;
 
@@ -250,7 +251,7 @@ namespace Lazpoly.App.Tests
             }
 
             ITransport transport = table.Network.CreateTransport(peer);
-            var rejoined = new ClientSession(transport, NetTable.HostPeer, table.Board, table.Checksum);
+            var rejoined = new ClientSession(transport, NetTable.HostPeer, table.Board, table.Rules, table.Checksum);
             table.Clients[3] = rejoined;
             table.ClientTransports[3] = transport;
             rejoined.Start();
@@ -303,5 +304,94 @@ namespace Lazpoly.App.Tests
             Assert.Throws<System.ArgumentException>(() =>
                 new HostSession(table.Engine, transport, 7, new Dictionary<ulong, int>(), table.Checksum));
         }
+    
+        private static void PlayUntil(NetTable table, System.Func<GameState, bool> condition)
+        {
+            for (int i = 0; i < 500 && !condition(table.HostState); i++)
+            {
+                Assert.IsTrue(table.Step(), "The game ended before the situation came up.");
+            }
+
+            Assert.IsTrue(condition(table.HostState), "The situation never came up.");
+        }
+
+        [Test]
+        public void ClientsTradeWithEachOtherThroughTheHost()
+        {
+            NetTable table = NetTable.Create(3, seed: 5UL);
+            table.StartAll();
+            PlayUntil(table, s => s.CurrentPlayer.Id == 2 && s.Phase == GamePhase.WaitingForRoll);
+            int money2 = table.HostState.FindPlayer(2).Money;
+            int money3 = table.HostState.FindPlayer(3).Money;
+            var rejections = new List<RejectionReason>();
+            table.Clients[2].CommandRejected += rejections.Add;
+
+            table.Clients[2].Submit(new ProposeTradeCommand(new TradeOffer(2, 3, 50, 0, null, null)));
+            table.Pump();
+            Assert.AreEqual(GamePhase.AwaitingTradeResponse, table.Clients[3].State.Phase);
+
+            // Player 2 cannot answer for player 3, not even with a hand-made message.
+            table.Clients[2].Submit(new AcceptTradeCommand(3));
+            table.ClientTransports[2].Send(NetTable.HostPeer, MessageCodec.Encode(new CommandMessage { Command = new AcceptTradeCommand(3) }));
+            table.Pump();
+            CollectionAssert.AreEqual(new[] { RejectionReason.NotYourPlayer, RejectionReason.NotYourPlayer }, rejections);
+            Assert.AreEqual(GamePhase.AwaitingTradeResponse, table.HostState.Phase);
+
+            table.Clients[3].Submit(new AcceptTradeCommand(3));
+            table.Pump();
+
+            Assert.AreEqual(money2 - 50, table.HostState.FindPlayer(2).Money);
+            Assert.AreEqual(money3 + 50, table.HostState.FindPlayer(3).Money);
+            Assert.AreEqual(GamePhase.WaitingForRoll, table.HostState.Phase);
+            AssertAllInStep(table);
+        }
+
+        [Test]
+        public void EveryMachineBidsInAnAuction()
+        {
+            NetTable table = NetTable.Create(3, seed: 9UL);
+            table.StartAll();
+            PlayUntil(table, s => s.Phase == GamePhase.AwaitingBuyDecision);
+            int decider = table.HostState.CurrentPlayer.Id;
+            int square = table.HostState.FindPlayer(decider).Position;
+
+            table.SessionOf(decider).Submit(new DeclinePurchaseCommand(decider));
+            table.Pump();
+            Assert.AreEqual(GamePhase.AuctionInProgress, table.Clients[2].State.Phase);
+
+            table.Host.Submit(new PlaceBidCommand(1, 10));
+            table.Pump();
+            table.Clients[2].Submit(new PlaceBidCommand(2, 20));
+            table.Pump();
+            table.Clients[3].Submit(new PassBidCommand(3));
+            table.Pump();
+            table.Host.Submit(new PassBidCommand(1));
+            table.Pump();
+
+            Assert.AreEqual(2, table.HostState.GetOwner(square));
+            Assert.IsNull(table.HostState.Auction);
+            AssertAllInStep(table);
+        }
+
+        [Test]
+        public void LongGamesWithAuctionsStayInStep()
+        {
+            NetTable table = NetTable.Create(4, seed: 77UL);
+            var seen = new HashSet<System.Type>();
+            table.Host.EventsPublished += events =>
+            {
+                foreach (GameEvent gameEvent in events) seen.Add(gameEvent.GetType());
+            };
+            table.StartAll();
+
+            for (int i = 0; i < 1500 && table.Step(); i++)
+            {
+            }
+
+            AssertAllInStep(table);
+            Assert.IsTrue(seen.Contains(typeof(AuctionEndedEvent)), "No auction happened.");
+            Assert.IsTrue(seen.Contains(typeof(BidPlacedEvent)), "Nobody bid.");
+        }
     }
 }
+

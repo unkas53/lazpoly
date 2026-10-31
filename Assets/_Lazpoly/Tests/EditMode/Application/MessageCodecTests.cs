@@ -28,11 +28,34 @@ namespace Lazpoly.App.Tests
                 ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 12345UL, YourPlayerId = 2, Sequence = 17,
                 Snapshot = SampleSnapshot(),
             };
+            GameStateSnapshot busy = SampleSnapshot();
+            busy.BuildingLevels[1] = 3;
+            busy.Mortgaged[4] = true;
+            busy.Auction = new AuctionState(7, 40, 2, new[] { 1 });
+            busy.PendingTrade = new TradeOffer(1, 2, 10, 20, new[] { 1 }, new[] { 2, 4 });
+            busy.TradeReturnPhase = GamePhase.TurnEnd;
+            busy.Debt = new DebtState(1, 2, 75, MoneyReason.Rent);
+            yield return new GameStartMessage
+            {
+                ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 1UL, YourPlayerId = 1, Sequence = 3, Snapshot = busy,
+            };
             yield return new RefusedMessage { Reason = RefusalReason.BoardMismatch };
             yield return new CommandMessage { Command = new RollDiceCommand(1) };
             yield return new CommandMessage { Command = new BuyPropertyCommand(2) };
             yield return new CommandMessage { Command = new DeclinePurchaseCommand(3) };
             yield return new CommandMessage { Command = new EndTurnCommand(4) };
+            yield return new CommandMessage { Command = new BuildCommand(1, 5) };
+            yield return new CommandMessage { Command = new SellBuildingCommand(1, 5) };
+            yield return new CommandMessage { Command = new MortgageCommand(2, 7) };
+            yield return new CommandMessage { Command = new RedeemCommand(2, 7) };
+            yield return new CommandMessage { Command = new PlaceBidCommand(3, 140) };
+            yield return new CommandMessage { Command = new PassBidCommand(3) };
+            yield return new CommandMessage { Command = new ProposeTradeCommand(new TradeOffer(1, 2, 30, 0, new[] { 1, 2 }, new[] { 4 })) };
+            yield return new CommandMessage { Command = new AcceptTradeCommand(2) };
+            yield return new CommandMessage { Command = new RejectTradeCommand(2) };
+            yield return new CommandMessage { Command = new CancelTradeCommand(1) };
+            yield return new CommandMessage { Command = new PayDebtCommand(1) };
+            yield return new CommandMessage { Command = new DeclareBankruptcyCommand(1) };
             var events = new EventsMessage { Sequence = 9, StateHash = 0xDEADBEEFUL };
             events.Events.AddRange(new GameEvent[]
             {
@@ -44,6 +67,16 @@ namespace Lazpoly.App.Tests
                 new PlayerBankruptedEvent(2, 1),
                 new PhaseChangedEvent(GamePhase.TurnEnd),
                 new GameEndedEvent(1),
+                new BuildingLevelChangedEvent(4, 5),
+                new MortgageChangedEvent(7, true),
+                new AuctionStartedEvent(4),
+                new BidPlacedEvent(2, 60),
+                new BidPassedEvent(1),
+                new AuctionEndedEvent(4, GameState.NoOwner, 0),
+                new TradeProposedEvent(new TradeOffer(1, 2, 0, 15, null, new[] { 8 })),
+                new TradeResolvedEvent(TradeOutcome.Cancelled),
+                new DebtIncurredEvent(1, GameState.NoOwner, 100, MoneyReason.Tax),
+                new DebtClearedEvent(1),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -91,6 +124,37 @@ namespace Lazpoly.App.Tests
             Assert.AreEqual(9, move.FromSquare);
             Assert.AreEqual(1, move.ToSquare);
             Assert.IsTrue(move.PassedStart);
+        }
+
+        [Test]
+        public void TradeOfferFieldsSurvive()
+        {
+            var offer = new TradeOffer(1, 2, 30, 5, new[] { 1, 2 }, new[] { 4 });
+            var decoded = (ProposeTradeCommand)((CommandMessage)MessageCodec.Decode(
+                MessageCodec.Encode(new CommandMessage { Command = new ProposeTradeCommand(offer) }))).Command;
+
+            Assert.AreEqual(1, decoded.PlayerId);
+            Assert.AreEqual(2, decoded.Offer.ToPlayerId);
+            Assert.AreEqual(30, decoded.Offer.GiveMoney);
+            Assert.AreEqual(5, decoded.Offer.TakeMoney);
+            CollectionAssert.AreEqual(new[] { 1, 2 }, decoded.Offer.GiveSquares);
+            CollectionAssert.AreEqual(new[] { 4 }, decoded.Offer.TakeSquares);
+        }
+
+        [Test]
+        public void TradeOfferFromSomeoneElseIsRejected()
+        {
+            var writer = new NetWriter();
+            writer.WriteByte((byte)MessageType.Command);
+            writer.WriteByte(11); // ProposeTrade
+            writer.WriteInt(2);   // Commanding player...
+            writer.WriteInt(1);   // ...but the offer claims to come from player 1.
+            writer.WriteInt(3);
+            writer.WriteInt(10);
+            writer.WriteInt(0);
+            writer.WriteInt(0);
+            writer.WriteInt(0);
+            Assert.Throws<FormatException>(() => MessageCodec.Decode(writer.ToArray()));
         }
 
         [Test]

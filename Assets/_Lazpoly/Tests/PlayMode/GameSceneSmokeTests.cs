@@ -1,5 +1,5 @@
 using System.Collections;
-using Lazpoly.Core.Commands;
+using Lazpoly.App.Session;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Menu;
@@ -68,14 +68,8 @@ namespace Lazpoly.PlayTests
                     continue;
                 }
 
-                GameState state = controller.Session.State;
-                int player = state.CurrentPlayer.Id;
-                switch (state.Phase)
-                {
-                    case GamePhase.WaitingForRoll: controller.Submit(new RollDiceCommand(player)); break;
-                    case GamePhase.AwaitingBuyDecision: controller.Submit(new BuyPropertyCommand(player)); break;
-                    case GamePhase.TurnEnd: controller.Submit(new EndTurnCommand(player)); break;
-                }
+                IGameSession session = controller.Session;
+                controller.Submit(PlayBot.Next(session.Board, session.Rules, session.State));
 
                 Assert.IsNull(controller.LastRejection, "A legal action was rejected.");
                 done++;
