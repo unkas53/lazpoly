@@ -61,10 +61,17 @@ namespace Lazpoly.Presentation.UI
             return image;
         }
 
-        /// <summary>A panel whose content stacks from the top and scrolls when it is taller than the panel.</summary>
+        /// <summary>Width of the scrollbar track at the right edge of a scrolling panel.</summary>
+        public const float ScrollbarWidth = 8f;
+
+        /// <summary>
+        /// A panel whose content stacks from the top and scrolls when it is taller than the panel. A thin
+        /// scrollbar on the right shows that there is more; it hides when everything fits.
+        /// </summary>
         public static UiBuilder ScrollPanel(RectTransform panel, int padding = UiTheme.Padding)
         {
-            RectTransform viewport = Rect(panel, "Viewport", Vector2.zero, Vector2.one, new Vector2(padding, padding), new Vector2(-padding, -padding));
+            RectTransform viewport = Rect(panel, "Viewport", Vector2.zero, Vector2.one, new Vector2(padding, padding),
+                new Vector2(-padding - ScrollbarWidth - 4f, -padding));
             viewport.gameObject.AddComponent<RectMask2D>();
 
             RectTransform content = Rect(viewport, "Content", new Vector2(0f, 1f), Vector2.one, Vector2.zero, Vector2.zero);
@@ -78,7 +85,24 @@ namespace Lazpoly.Presentation.UI
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
             scroll.scrollSensitivity = 30f;
+            scroll.verticalScrollbar = AddScrollbar(panel, padding);
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
             return new UiBuilder(content);
+        }
+
+        private static Scrollbar AddScrollbar(RectTransform panel, int padding)
+        {
+            RectTransform track = Rect(panel, "Scrollbar", new Vector2(1f, 0f), Vector2.one, new Vector2(-padding - ScrollbarWidth, padding), new Vector2(-padding, -padding));
+            Background(track, new Color(1f, 1f, 1f, 0.07f));
+            var scrollbar = track.gameObject.AddComponent<Scrollbar>();
+            scrollbar.direction = Scrollbar.Direction.BottomToTop;
+
+            RectTransform sliding = Rect(track, "Sliding Area", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            RectTransform handle = Rect(sliding, "Handle", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Image handleImage = Background(handle, UiTheme.Muted);
+            scrollbar.handleRect = handle;
+            scrollbar.targetGraphic = handleImage;
+            return scrollbar;
         }
 
         /// <summary>A full-screen dimmed layer with a centred window that sizes itself to its content.</summary>
