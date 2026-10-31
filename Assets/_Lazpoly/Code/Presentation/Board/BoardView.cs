@@ -4,6 +4,7 @@ using Lazpoly.Core.Board;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Models;
+using Lazpoly.Presentation.UI;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Tabletop
@@ -25,12 +26,14 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color TravelColor = new Color(0.62f, 0.74f, 0.95f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color TableColor = new Color(0.36f, 0.24f, 0.16f);
-        private static readonly Color FeltColor = new Color(0.20f, 0.42f, 0.31f);
+        private static readonly Color SeaColor = new Color(0.12f, 0.40f, 0.54f);
+        private static readonly Color WaveColor = new Color(0.55f, 0.78f, 0.86f);
+        private static readonly Color SandColor = new Color(0.90f, 0.82f, 0.62f);
+        private static readonly Color GrassColor = new Color(0.42f, 0.62f, 0.36f);
+        private static readonly Color TreeColor = new Color(0.22f, 0.46f, 0.28f);
+        private static readonly Color BoatColor = new Color(0.95f, 0.93f, 0.86f);
         private static readonly Color PropertyBodyColor = new Color(0.96f, 0.94f, 0.88f);
         private static readonly Color TitleColor = new Color(0.95f, 0.86f, 0.55f);
-
-        private static readonly Color HouseColor = new Color(0.30f, 0.69f, 0.31f);
-        private static readonly Color HotelColor = new Color(0.83f, 0.18f, 0.18f);
 
         private GameObject[] _ownerMarkers;
         private Color?[] _ownerColors;
@@ -194,9 +197,11 @@ namespace Lazpoly.Presentation.Tabletop
             table.transform.localPosition = new Vector3(0f, -0.15f, 0f);
 
             float inner = 2f * HalfSize - tile * 1.05f;
-            GameObject felt = ModelParts.Create("Felt", transform, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f), FeltColor, 0.05f);
-            felt.transform.localPosition = new Vector3(0f, 0.02f, 0f);
-            CreateTitle(new Vector3(0f, 0.045f, inner * 0.22f), inner);
+            // The middle of the board is the sea, with the town on an island and the title across the far side.
+            GameObject sea = ModelParts.Create("Sea", transform, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f), SeaColor, 0.75f);
+            sea.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            CreateTown(inner);
+            CreateTitle(new Vector3(0f, 0.045f, inner * 0.28f), inner);
             if (board.HasPot)
             {
                 _pot = CreateText("Pot", "", new Vector3(0f, 0.045f, inner * 0.06f), 96, inner * 0.0035f, TitleColor);
@@ -267,6 +272,67 @@ namespace Lazpoly.Presentation.Tabletop
             }
         }
 
+        /// <summary>A small island with the town's houses, a lighthouse and trees, ripples around it, and a boat out at sea.</summary>
+        private void CreateTown(float inner)
+        {
+            var town = new GameObject("Town");
+            town.transform.SetParent(transform, false);
+            Transform root = town.transform;
+            var center = new Vector3(-inner * 0.26f, 0.04f, inner * 0.05f);
+            float radius = inner * 0.16f;
+
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject ripple = ModelParts.Create("Ripple", root, MeshFactory.Ring(0.97f, 0.01f), WaveColor, 0.6f);
+                ripple.transform.localPosition = center + Vector3.up * 0.001f;
+                ripple.transform.localScale = Vector3.one * (radius * (1.25f + i * 0.22f));
+            }
+
+            GameObject sand = ModelParts.Create("Island", root, MeshFactory.Disc(0.06f, 40), SandColor, 0.1f);
+            sand.transform.localPosition = center;
+            sand.transform.localScale = new Vector3(radius, 1f, radius * 0.85f);
+            GameObject grass = ModelParts.Create("Grass", root, MeshFactory.Disc(0.05f, 40), GrassColor, 0.05f);
+            grass.transform.localPosition = center + Vector3.up * 0.05f;
+            grass.transform.localScale = new Vector3(radius * 0.72f, 1f, radius * 0.6f);
+
+            Vector3 ground = center + Vector3.up * 0.1f;
+            float house = radius * 0.22f;
+            Vector2[] houseSpots = { new Vector2(-0.35f, -0.1f), new Vector2(-0.05f, 0.25f), new Vector2(0.25f, -0.2f), new Vector2(0.05f, -0.42f), new Vector2(-0.42f, 0.3f) };
+            for (int i = 0; i < houseSpots.Length; i++)
+            {
+                GameObject piece = BuildingParts.House($"Town house {i + 1}", root);
+                piece.transform.localPosition = ground + new Vector3(houseSpots[i].x * radius, 0f, houseSpots[i].y * radius);
+                piece.transform.localRotation = Quaternion.Euler(0f, 20f + i * 37f, 0f);
+                piece.transform.localScale = Vector3.one * house;
+            }
+
+            GameObject mansion = BuildingParts.Mansion("Town mansion", root);
+            mansion.transform.localPosition = ground + new Vector3(0.3f * radius, 0f, 0.3f * radius);
+            mansion.transform.localRotation = Quaternion.Euler(0f, -30f, 0f);
+            mansion.transform.localScale = Vector3.one * (house * 1.3f);
+
+            GameObject lighthouse = ModelParts.Create("Lighthouse", root, PawnShapes.Lighthouse(), Color.white, 0.3f);
+            lighthouse.transform.localPosition = ground + new Vector3(0.62f * radius, 0f, -0.5f * radius);
+            lighthouse.transform.localScale = Vector3.one * (radius * 0.9f);
+
+            Vector2[] treeSpots = { new Vector2(-0.6f, 0.0f), new Vector2(-0.2f, 0.55f), new Vector2(0.45f, 0.6f), new Vector2(-0.25f, -0.5f) };
+            foreach (Vector2 spot in treeSpots)
+            {
+                Vector3 at = ground + new Vector3(spot.x * radius, 0f, spot.y * radius);
+                GameObject trunk = ModelParts.Create("Trunk", root, MeshFactory.Cylinder(8), BuildingParts.DarkTimber, 0.1f);
+                trunk.transform.localPosition = at;
+                trunk.transform.localScale = new Vector3(radius * 0.025f, radius * 0.12f, radius * 0.025f);
+                GameObject crown = ModelParts.Create("Crown", root, MeshFactory.Cone(10), TreeColor, 0.1f);
+                crown.transform.localPosition = at + Vector3.up * (radius * 0.1f);
+                crown.transform.localScale = new Vector3(radius * 0.11f, radius * 0.3f, radius * 0.11f);
+            }
+
+            GameObject boat = ModelParts.Create("Boat", root, PawnShapes.Boat(), BoatColor, 0.3f);
+            boat.transform.localPosition = new Vector3(inner * 0.27f, 0.04f, -inner * 0.08f);
+            boat.transform.localRotation = Quaternion.Euler(0f, -35f, 0f);
+            boat.transform.localScale = Vector3.one * (inner * 0.12f);
+        }
+
         /// <summary>Owner token outline (radius, height): a low rounded disc.</summary>
         private static readonly Vector2[] OwnerProfile =
         {
@@ -291,17 +357,16 @@ namespace Lazpoly.Presentation.Tabletop
             for (int i = 0; i < houses; i++)
             {
                 float offset = (i - (houses - 1) / 2f) * _tile * 0.2f;
-                pieces[i] = CreatePiece("House", rowCenter + side * offset, new Vector3(_tile * 0.15f, _tile * 0.16f, _tile * 0.15f), inward, HouseColor);
+                pieces[i] = CreatePiece(BuildingParts.House("House", transform), rowCenter + side * offset, new Vector3(_tile * 0.15f, _tile * 0.16f, _tile * 0.15f), inward);
             }
 
-            pieces[houses] = CreatePiece("Hotel", rowCenter, new Vector3(_tile * 0.5f, _tile * 0.24f, _tile * 0.2f), inward, HotelColor);
+            pieces[houses] = CreatePiece(BuildingParts.Mansion("Mansion", transform), rowCenter, new Vector3(_tile * 0.42f, _tile * 0.26f, _tile * 0.24f), inward);
             return pieces;
         }
 
-        // Houses and the hotel share the house mesh (base at y = 0), with the ridge along the edge.
-        private GameObject CreatePiece(string name, Vector3 baseCenter, Vector3 size, Vector3 inward, Color color)
+        // Houses and the mansion have their base at y = 0 and their long side along the tile's edge.
+        private GameObject CreatePiece(GameObject piece, Vector3 baseCenter, Vector3 size, Vector3 inward)
         {
-            GameObject piece = ModelParts.Create(name, transform, MeshFactory.House(), color, 0.3f);
             piece.transform.localPosition = baseCenter;
             piece.transform.localRotation = Quaternion.LookRotation(inward);
             piece.transform.localScale = size;
@@ -321,10 +386,10 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.fontSize = 192;
-            mesh.fontStyle = FontStyle.Bold;
+            mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = width * 0.006f;
             mesh.color = TitleColor;
-            mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            mesh.font = UiTheme.BoldFont;
             title.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
         }
 
@@ -340,10 +405,10 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.fontSize = fontSize;
-            mesh.fontStyle = FontStyle.Bold;
+            mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = characterSize;
             mesh.color = color;
-            mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            mesh.font = UiTheme.BoldFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
             return mesh;
         }
@@ -361,10 +426,10 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.alignment = TextAlignment.Center;
             // A large font size drawn small keeps the letters sharp when the camera is far away.
             mesh.fontSize = 128;
-            mesh.fontStyle = FontStyle.Bold;
+            mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = tile * 0.0115f;
-            mesh.color = Color.black;
-            mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            mesh.color = new Color(0.12f, 0.10f, 0.08f);
+            mesh.font = UiTheme.BoldFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
         }
 

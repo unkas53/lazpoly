@@ -436,8 +436,8 @@ namespace Lazpoly.Presentation.Game
                 Text value = line.Label(row.Value, color: color, alignment: TextAnchor.MiddleRight);
                 if (row.Current)
                 {
-                    label.fontStyle = FontStyle.Bold;
-                    value.fontStyle = FontStyle.Bold;
+                    label.font = UiTheme.BoldFont;
+                    value.font = UiTheme.BoldFont;
                 }
             }
 
@@ -535,7 +535,7 @@ namespace Lazpoly.Presentation.Game
                 Color color = player.IsBankrupt ? UiTheme.Muted : _controller.ColorOf(player.Id);
                 row.Swatch(color, 20f);
                 Text name = row.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
-                name.fontStyle = current ? FontStyle.Bold : FontStyle.Normal;
+                name.font = current ? UiTheme.BoldFont : UiTheme.Font;
                 Text money = row.Label(player.IsBankrupt ? "iflas" : string.Empty, color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
                 UiBuilder.Fix(money, width: 90f);
                 if (!player.IsBankrupt) TrackMoney(player.Id, money);

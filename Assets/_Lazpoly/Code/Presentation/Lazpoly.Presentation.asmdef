@@ -6,7 +6,9 @@
         "Lazpoly.Net",
         "Lazpoly.App",
         "Lazpoly.Infra",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

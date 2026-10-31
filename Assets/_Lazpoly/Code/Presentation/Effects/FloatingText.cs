@@ -24,10 +24,10 @@ namespace Lazpoly.Presentation.Effects
             mesh.anchor = TextAnchor.LowerCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.fontSize = 96;
-            mesh.fontStyle = FontStyle.Bold;
+            mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = 0.045f;
             mesh.color = color;
-            mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            mesh.font = UI.UiTheme.BoldFont;
             root.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
 
             var floating = root.AddComponent<FloatingText>();

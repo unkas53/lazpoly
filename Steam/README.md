@@ -52,3 +52,21 @@ steamcmd +login <hesap> +run_app_build "C:\...\lazpoly\Steam\app_build.vdf" +qui
 
 Ardından Steamworks > SteamPipe > Builds'te derlemeyi bir dala (önce `beta`) al. Kapalı beta için anahtarları
 Steamworks > Request Steam Product Keys'ten iste ya da Playtest uygulamasını aç.
+
+## 5. Mağaza görselleri (Faz 7d)
+
+`Steam/Art/` içindeki görseller `python Tools/Art/make_capsules.py` ile üretilir (Pillow gerekir; dışarıdan resim kullanılmaz).
+Steamworks > Store Presence > Graphical Assets bölümüne yüklenecek dosyalar:
+
+| Dosya | Boyut | Yer |
+|---|---|---|
+| header_capsule.png | 460×215 | Header Capsule |
+| small_capsule.png | 231×87 | Small Capsule |
+| main_capsule.png | 616×353 | Main Capsule |
+| library_capsule.png | 600×900 | Library Capsule |
+| library_hero.png | 3840×1240 | Library Hero |
+| library_logo.png | 1280×720, saydam | Library Logo |
+| page_background.png | 1438×810 | Page Background |
+| logo_1024.png / logo_256.png | kare | Uygulama simgesi (Unity Player Settings > Icon) ve Steam istemci simgesi |
+
+Vitrin ekran görüntüleri (en az 5 adet, 1920×1080) oyunun kendisinden alınır; henüz yok.

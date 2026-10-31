@@ -73,7 +73,7 @@ namespace Lazpoly.Presentation.UI
             Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small);
             text.color = UiTheme.Label(style);
             text.alignment = TextAnchor.MiddleCenter;
-            text.fontStyle = FontStyle.Bold;
+            text.font = UiTheme.BoldFont;
             return button;
         }
 

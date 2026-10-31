@@ -93,8 +93,9 @@ namespace Lazpoly.Presentation.Menu
 
         private void Start()
         {
+            MenuBackdrop.Create(transform, _boardData);
             Canvas canvas = UiRoot.CreateCanvas(transform, "Main Menu UI", 0);
-            UiRoot.Background(UiRoot.Stretch(canvas.transform, "Backdrop"), UiTheme.Backdrop, rounded: false);
+            UiRoot.Background(UiRoot.Stretch(canvas.transform, "Backdrop"), UiTheme.Veil, rounded: false);
 
             RectTransform title = UiRoot.Rect(canvas.transform, "Title", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-600f, -150f), new Vector2(600f, -40f));
             _titleView = new UiView(new UiBuilder(title), RenderTitle);

@@ -295,6 +295,7 @@ namespace Lazpoly.Presentation.Game
 
             GameState state = _session.State;
             _board = BoardView.Create(transform, _data);
+            RoomDressing.CreateRoom(transform, _board.HalfExtent);
             _dice = DiceView.Create(transform, new Vector3(0f, 0.04f, -1.2f));
             _dice.Speed = Settings.AnimationSpeed;
             for (int i = 0; i < state.Players.Count; i++)
@@ -540,18 +541,8 @@ namespace Lazpoly.Presentation.Game
             camera.fieldOfView = 50f;
             CameraRig = camera.GetComponent<BoardCameraRig>();
             if (CameraRig == null) CameraRig = camera.gameObject.AddComponent<BoardCameraRig>();
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.10f, 0.11f, 0.13f);
-
-            // A warm key light with soft shadows so the pieces stand out from the board.
-            Light sun = FindAnyObjectByType<Light>();
-            if (sun == null) sun = new GameObject("Directional Light").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.96f, 0.88f);
-            sun.intensity = 1.2f;
-            sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.6f;
-            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            RoomDressing.DressCamera(camera, postProcessing: true);
+            RoomDressing.LightScene();
         }
     }
 }

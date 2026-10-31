@@ -158,6 +158,77 @@ namespace Lazpoly.Presentation.Models
             return Store(key, vertices, null, triangles);
         }
 
+        /// <summary>A triangular prism: a pitched roof. Base at y = 0, size (1, 1, 1), ridge along X.</summary>
+        public static Mesh Prism()
+        {
+            const string key = "prism";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+            {
+                int i = vertices.Count;
+                vertices.AddRange(new[] { a, b, c, d });
+                triangles.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
+            }
+
+            void Triangle(Vector3 a, Vector3 b, Vector3 c)
+            {
+                int i = vertices.Count;
+                vertices.AddRange(new[] { a, b, c });
+                triangles.AddRange(new[] { i, i + 1, i + 2 });
+            }
+
+            const float h = 0.5f;
+            Vector3 P(float x, float y, float z) => new Vector3(x, y, z);
+            Quad(P(-h, 0, -h), P(-h, 1f, 0), P(h, 1f, 0), P(h, 0, -h));   // front slope
+            Quad(P(h, 0, h), P(h, 1f, 0), P(-h, 1f, 0), P(-h, 0, h));     // back slope
+            Triangle(P(-h, 0, h), P(-h, 1f, 0), P(-h, 0, -h));            // gable left
+            Triangle(P(h, 0, -h), P(h, 1f, 0), P(h, 0, h));               // gable right
+            Quad(P(-h, 0, h), P(-h, 0, -h), P(h, 0, -h), P(h, 0, h));     // underside
+            return Store(key, vertices, null, triangles);
+        }
+
+        /// <summary>A cylinder with flat caps, base at y = 0, radius and height 1 (scale it as needed).</summary>
+        public static Mesh Cylinder(int segments = 24) =>
+            Lathe("cylinder", new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) }, segments);
+
+        /// <summary>A cone, base at y = 0, radius and height 1.</summary>
+        public static Mesh Cone(int segments = 24) =>
+            Lathe("cone", new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 1f) }, segments);
+
+        /// <summary>A flat disc at y = 0 with radius 1 and the given thickness.</summary>
+        public static Mesh Disc(float thickness, int segments = 48) =>
+            Lathe($"disc:{thickness:F3}", new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, thickness), new Vector2(0f, thickness) }, segments);
+
+        /// <summary>A ring lying flat: inner radius <paramref name="inner"/>, outer radius 1, given thickness.</summary>
+        public static Mesh Ring(float inner, float thickness, int segments = 48) =>
+            Lathe($"ring:{inner:F3}:{thickness:F3}", new[]
+            {
+                new Vector2(inner, 0f), new Vector2(1f, 0f), new Vector2(1f, thickness), new Vector2(inner, thickness), new Vector2(inner, 0f),
+            }, segments);
+
+        /// <summary>Several meshes merged into one, each placed by its matrix. Cached under <paramref name="name"/>.</summary>
+        public static Mesh Combine(string name, IReadOnlyList<KeyValuePair<Mesh, Matrix4x4>> parts)
+        {
+            if (parts == null || parts.Count == 0) throw new ArgumentException("Nothing to combine.", nameof(parts));
+            string key = $"combined:{name}";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var combine = new CombineInstance[parts.Count];
+            for (int i = 0; i < parts.Count; i++)
+            {
+                combine[i] = new CombineInstance { mesh = parts[i].Key, transform = parts[i].Value };
+            }
+
+            var mesh = new Mesh { name = key };
+            mesh.CombineMeshes(combine, true, true);
+            mesh.RecalculateBounds();
+            Cache[key] = mesh;
+            return mesh;
+        }
+
         private static Mesh Store(string key, List<Vector3> vertices, List<Vector3> normals, List<int> triangles)
         {
             var mesh = new Mesh { name = key };
