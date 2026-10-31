@@ -3,6 +3,8 @@
     "rootNamespace": "Lazpoly.Editor",
     "references": [
         "Lazpoly.Presentation",
+        "Lazpoly.App",
+        "Lazpoly.Core",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
         "Lazpoly.Platform"

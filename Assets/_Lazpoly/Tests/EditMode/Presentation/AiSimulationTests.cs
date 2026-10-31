@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using Lazpoly.App.AI;
+using Lazpoly.App.Balance;
 using Lazpoly.App.Session;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
@@ -108,6 +110,27 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(8, session.State.Round, "The game should end after the last turn of round 8.");
                 Assert.AreEqual(GameRules.Richest(data.Board, session.State), ended.WinnerId);
             }
+        }
+
+        [Test]
+        public void BalanceSimulationIsRepeatableAndReported()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var settings = new BalanceSettings(12, 4, firstSeed: 3UL);
+            BalanceResult first = BalanceSimulator.Run(data.Board, data.Rules, settings);
+            BalanceResult second = BalanceSimulator.Run(data.Board, data.Rules, settings);
+
+            Assert.AreEqual(12, first.Games);
+            Assert.AreEqual(0, first.Stalled, "A computer game stalled.");
+            CollectionAssert.AreEqual(first.Rounds, second.Rounds, "The same seeds should play the same games.");
+            Assert.AreEqual(12, first.WinsBySeat.Sum());
+            Assert.Greater(first.RentBySquare.Sum(), 0L);
+            Assert.Greater(first.CardDraws, 0L);
+
+            string report = BalanceReport.Markdown(data.Board, data.Rules, settings, first, id => data.GroupName(id));
+            StringAssert.Contains("## Renk grupları", report);
+            StringAssert.Contains("Yalı Konağı", report);
+            TestContext.WriteLine(report);
         }
 
         private static void AssertSound(GameState state, BoardData data, ulong seed)
