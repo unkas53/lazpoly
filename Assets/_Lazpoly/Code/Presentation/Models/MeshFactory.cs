@@ -1,0 +1,173 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Lazpoly.Presentation.Models
+{
+    /// <summary>
+    /// Builds the simple meshes the board uses until the Blender models arrive: rounded boxes,
+    /// turned (lathe) shapes for pawns, and little houses. All meshes are centred on the origin
+    /// unless noted, and are cached because many squares share them.
+    /// </summary>
+    public static class MeshFactory
+    {
+        private static readonly Dictionary<string, Mesh> Cache = new Dictionary<string, Mesh>();
+
+        /// <summary>A box of the given size whose edges and corners are rounded with <paramref name="radius"/>.</summary>
+        public static Mesh RoundedBox(Vector3 size, float radius, int subdivisions = 6)
+        {
+            if (size.x <= 0f || size.y <= 0f || size.z <= 0f) throw new ArgumentOutOfRangeException(nameof(size));
+            if (subdivisions < 1) throw new ArgumentOutOfRangeException(nameof(subdivisions));
+
+            Vector3 half = size / 2f;
+            radius = Mathf.Clamp(radius, 0f, Mathf.Min(half.x, Mathf.Min(half.y, half.z)));
+            string key = $"box:{size.x:F3}:{size.y:F3}:{size.z:F3}:{radius:F3}:{subdivisions}";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var vertices = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var triangles = new List<int>();
+            Vector3 inner = half - Vector3.one * radius;
+
+            // Each face is a grid; every grid point is pulled onto the rounded surface.
+            Vector3[] faceNormals = { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back };
+            foreach (Vector3 n in faceNormals)
+            {
+                Vector3 u = Mathf.Abs(n.y) > 0.5f ? Vector3.right : Vector3.up;
+                Vector3 v = Vector3.Cross(n, u);
+                int start = vertices.Count;
+                for (int i = 0; i <= subdivisions; i++)
+                {
+                    for (int j = 0; j <= subdivisions; j++)
+                    {
+                        float a = (float)i / subdivisions * 2f - 1f;
+                        float b = (float)j / subdivisions * 2f - 1f;
+                        Vector3 p = Vector3.Scale(n + u * a + v * b, half);
+                        Vector3 clamped = new Vector3(
+                            Mathf.Clamp(p.x, -inner.x, inner.x), Mathf.Clamp(p.y, -inner.y, inner.y), Mathf.Clamp(p.z, -inner.z, inner.z));
+                        Vector3 normal = p - clamped;
+                        normal = normal.sqrMagnitude > 1e-12f ? normal.normalized : n;
+                        vertices.Add(clamped + normal * radius);
+                        normals.Add(normal);
+                    }
+                }
+
+                int row = subdivisions + 1;
+                for (int i = 0; i < subdivisions; i++)
+                {
+                    for (int j = 0; j < subdivisions; j++)
+                    {
+                        int k = start + i * row + j;
+                        // Clockwise seen from outside (Unity's front face): cross(u, v) is the face normal.
+                        triangles.Add(k);
+                        triangles.Add(k + row);
+                        triangles.Add(k + 1);
+                        triangles.Add(k + 1);
+                        triangles.Add(k + row);
+                        triangles.Add(k + row + 1);
+                    }
+                }
+            }
+
+            return Store(key, vertices, normals, triangles);
+        }
+
+        /// <summary>
+        /// A shape turned around the Y axis. <paramref name="profile"/> holds (radius, height) points
+        /// from bottom to top; start and end at radius 0 for a closed solid.
+        /// </summary>
+        public static Mesh Lathe(string name, IReadOnlyList<Vector2> profile, int segments = 24)
+        {
+            if (profile == null || profile.Count < 2) throw new ArgumentException("A profile needs at least two points.", nameof(profile));
+            if (segments < 3) throw new ArgumentOutOfRangeException(nameof(segments));
+
+            string key = $"lathe:{name}:{segments}";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            for (int s = 0; s <= segments; s++)
+            {
+                float angle = (float)s / segments * Mathf.PI * 2f;
+                float cos = Mathf.Cos(angle);
+                float sin = Mathf.Sin(angle);
+                foreach (Vector2 point in profile) vertices.Add(new Vector3(point.x * cos, point.y, point.x * sin));
+            }
+
+            int count = profile.Count;
+            for (int s = 0; s < segments; s++)
+            {
+                for (int p = 0; p < count - 1; p++)
+                {
+                    int a = s * count + p;
+                    int b = (s + 1) * count + p;
+                    triangles.Add(a);
+                    triangles.Add(a + 1);
+                    triangles.Add(b);
+                    triangles.Add(b);
+                    triangles.Add(a + 1);
+                    triangles.Add(b + 1);
+                }
+            }
+
+            return Store(key, vertices, null, triangles);
+        }
+
+        /// <summary>A house: a box with a pitched roof. Base at y = 0, size (1, 1, 1) overall, ridge along X.</summary>
+        public static Mesh House()
+        {
+            const string key = "house";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            const float wall = 0.6f;
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+
+            void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+            {
+                int i = vertices.Count;
+                vertices.Add(a);
+                vertices.Add(b);
+                vertices.Add(c);
+                vertices.Add(d);
+                triangles.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
+            }
+
+            void Triangle(Vector3 a, Vector3 b, Vector3 c)
+            {
+                int i = vertices.Count;
+                vertices.Add(a);
+                vertices.Add(b);
+                vertices.Add(c);
+                triangles.AddRange(new[] { i, i + 1, i + 2 });
+            }
+
+            float h = 0.5f;
+            Vector3 P(float x, float y, float z) => new Vector3(x, y, z);
+
+            Quad(P(-h, 0, -h), P(-h, wall, -h), P(h, wall, -h), P(h, 0, -h));   // front
+            Quad(P(h, 0, h), P(h, wall, h), P(-h, wall, h), P(-h, 0, h));       // back
+            Quad(P(-h, 0, h), P(-h, wall, h), P(-h, wall, -h), P(-h, 0, -h));   // left
+            Quad(P(h, 0, -h), P(h, wall, -h), P(h, wall, h), P(h, 0, h));       // right
+            Quad(P(-h, wall, -h), P(-h, 1f, 0), P(h, 1f, 0), P(h, wall, -h));  // roof front
+            Quad(P(h, wall, h), P(h, 1f, 0), P(-h, 1f, 0), P(-h, wall, h));    // roof back
+            Triangle(P(-h, wall, h), P(-h, 1f, 0), P(-h, wall, -h));           // gable left
+            Triangle(P(h, wall, -h), P(h, 1f, 0), P(h, wall, h));              // gable right
+            Quad(P(-h, 0, h), P(-h, 0, -h), P(h, 0, -h), P(h, 0, h));           // floor
+
+            return Store(key, vertices, null, triangles);
+        }
+
+        private static Mesh Store(string key, List<Vector3> vertices, List<Vector3> normals, List<int> triangles)
+        {
+            var mesh = new Mesh { name = key };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            if (normals != null) mesh.SetNormals(normals);
+            else mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            Cache[key] = mesh;
+            return mesh;
+        }
+    }
+}

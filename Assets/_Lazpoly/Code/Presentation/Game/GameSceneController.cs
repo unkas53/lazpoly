@@ -14,6 +14,7 @@ using Lazpoly.Core.State;
 using Lazpoly.Infra;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Data;
+using Lazpoly.Presentation.Dice;
 using Lazpoly.Presentation.Pawns;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.Tabletop;
@@ -47,6 +48,7 @@ namespace Lazpoly.Presentation.Game
         private IPresenceService _presence;
         private AchievementTracker _tracker;
         private BoardView _board;
+        private DiceView _dice;
         private Coroutine _playback;
         private bool _playing;
         private bool _isOnline;
@@ -209,6 +211,8 @@ namespace Lazpoly.Presentation.Game
 
             GameState state = _session.State;
             _board = BoardView.Create(transform, _data);
+            _dice = DiceView.Create(transform, new Vector3(0f, 0.04f, -1.2f));
+            _dice.Speed = Settings.AnimationSpeed;
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
@@ -294,6 +298,7 @@ namespace Lazpoly.Presentation.Game
         private void OnSettingsChanged(GameSettings settings)
         {
             foreach (PawnView pawn in _pawns.Values) pawn.Speed = settings.AnimationSpeed;
+            if (_dice != null) _dice.Speed = settings.AnimationSpeed;
         }
 
         private void OnCommandRejected(RejectionReason reason)
@@ -352,6 +357,9 @@ namespace Lazpoly.Presentation.Game
 
                 switch (gameEvent)
                 {
+                    case DiceRolledEvent rolled:
+                        yield return _dice.Roll(rolled.Die1, rolled.Die2);
+                        break;
                     case PlayerMovedEvent moved:
                         yield return _pawns[moved.PlayerId].WalkTo(moved.ToSquare);
                         break;
@@ -391,6 +399,18 @@ namespace Lazpoly.Presentation.Game
             camera.transform.position = new Vector3(0f, 15f, -11f);
             camera.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
             camera.fieldOfView = 50f;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.10f, 0.11f, 0.13f);
+
+            // A warm key light with soft shadows so the pieces stand out from the board.
+            Light sun = FindAnyObjectByType<Light>();
+            if (sun == null) sun = new GameObject("Directional Light").AddComponent<Light>();
+            sun.type = LightType.Directional;
+            sun.color = new Color(1f, 0.96f, 0.88f);
+            sun.intensity = 1.2f;
+            sun.shadows = LightShadows.Soft;
+            sun.shadowStrength = 0.6f;
+            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
         }
     }
 }

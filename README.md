@@ -153,6 +153,15 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   | `LAZ_BANKRUPT_RIVAL` | Alacaklı | Bir rakibi sana olan borcu yüzünden iflas ettir. |
   | `LAZ_TYCOON` | Kodaman | Aynı anda 5000 paraya sahip ol. |
 
+## Faz 6c: görsel cila (kodla yapılmış modeller)
+
+- Tahta, piyonlar, evler ve zarlar artık kodla üretilen modeller (`MeshFactory`): köşeleri yuvarlatılmış
+  kareler, mülklerde grup rengi şeridi, tornalanmış piyonlar, çatılı evler ve otel, ortada "LAZPOLY" yazısı.
+- Zar atılınca iki zar ortada yuvarlanıp kuralların belirlediği sayılarda durur (`DiceView`); zar sonucu
+  her zaman motordan gelir, animasyon yalnızca gösterir.
+- Yumuşak gölgeli ışık ve koyu arka plan. Animasyon hızı ayarlardaki "Hızlı animasyonlar"a uyar.
+- Gerçek Blender modelleri geldiğinde bu şekillerin yerine geçecek; tahta düzeni ve görünüm API'si aynı kalır.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

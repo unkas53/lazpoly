@@ -1,14 +1,24 @@
 using System.Collections;
+using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Tabletop;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Pawns
 {
-    /// <summary>A player's piece. Placeholder capsule until the Blender pawn models arrive.</summary>
+    /// <summary>A player's piece: a turned pawn shape built in code until the Blender pawn model arrives.</summary>
     public sealed class PawnView : MonoBehaviour
     {
         private const float StepSeconds = 0.18f;
         private const float HopHeight = 0.35f;
+
+        /// <summary>Pawn outline as (radius, height) from the base up; turned around the vertical axis.</summary>
+        private static readonly Vector2[] Profile =
+        {
+            new Vector2(0f, 0f), new Vector2(0.17f, 0f), new Vector2(0.17f, 0.04f), new Vector2(0.13f, 0.07f),
+            new Vector2(0.08f, 0.13f), new Vector2(0.06f, 0.30f), new Vector2(0.10f, 0.34f), new Vector2(0.05f, 0.37f),
+            new Vector2(0.07f, 0.395f), new Vector2(0.09f, 0.44f), new Vector2(0.085f, 0.49f), new Vector2(0.06f, 0.53f),
+            new Vector2(0f, 0.55f),
+        };
 
         private BoardView _board;
         private Vector3 _offset;
@@ -19,12 +29,7 @@ namespace Lazpoly.Presentation.Pawns
 
         public static PawnView Create(Transform parent, BoardView board, int seatIndex, int seatCount, Color color)
         {
-            GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            body.name = $"Pawn {seatIndex + 1}";
-            body.transform.SetParent(parent, false);
-            body.transform.localScale = new Vector3(0.28f, 0.28f, 0.28f);
-            Object.Destroy(body.GetComponent<Collider>());
-            body.GetComponent<Renderer>().material.color = color;
+            GameObject body = ModelParts.Create($"Pawn {seatIndex + 1}", parent, MeshFactory.Lathe("pawn", Profile), color, 0.55f);
 
             var pawn = body.AddComponent<PawnView>();
             pawn._board = board;
@@ -65,7 +70,7 @@ namespace Lazpoly.Presentation.Pawns
             gameObject.SetActive(false);
         }
 
-        private Vector3 Target(int square) => _board.SquarePosition(square) + _offset + Vector3.up * 0.28f;
+        private Vector3 Target(int square) => _board.SquarePosition(square) + _offset;
 
         // Spreads up to 8 pawns on a small grid inside the tile so they never overlap.
         private static Vector3 SeatOffset(int seatIndex, int seatCount, float spacing)
