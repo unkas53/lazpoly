@@ -3,9 +3,10 @@
 Steam için 3D, 2-8 oyunculu çevrim içi masa oyunu. Mimari ve yol haritası:
 https://claude.ai/artifact/3hqmWm5rQuN5tmmuMwSXNn
 
-## Durum: Faz 0 (proje iskeleti)
+## Durum: Faz 0 (proje iskeleti) tamamlandı
 
-Bu klasör yeni bir Unity projesinin içine kopyalanacak dosyaları içerir:
+Doğrulama (2026-10-31, Unity 6000.6.7f1, Windows): derleme hatasız, 14/14 EditMode testi geçti,
+Windows derlemesinde Steam bağlandı (`[Steam] Initialized as ... (App ID 480)`).
 
 | Yol | İçerik |
 | --- | --- |
@@ -17,6 +18,7 @@ Bu klasör yeni bir Unity projesinin içine kopyalanacak dosyaları içerir:
 | `Assets/_Lazpoly/Code/Boot` | `Lazpoly.Boot`: açılış; servisleri ilk sahneden önce kurar. |
 | `Assets/_Lazpoly/Code/Presentation` | `Lazpoly.Presentation`: boş, Faz 2'de dolacak. |
 | `Assets/_Lazpoly/Code/Editor` | `Lazpoly > Create Scenes and Build Settings` menüsü. |
+| `Assets/_Lazpoly/Scenes` | `MainMenu`, `Lobby`, `Game` (Build Settings'te) ve `Sandbox_Board` (yalnızca geliştirme). |
 | `Assets/_Lazpoly/Tests/EditMode` | Core ve Infra birim testleri. |
 | `steam_appid.txt` | Geliştirme için Spacewar (480). |
 
@@ -27,23 +29,22 @@ Mimari belgesinden bir sapma: ayrı bir `Boot` sahnesi yok. Açılış
 `[RuntimeInitializeOnLoadMethod]` ile çalışır, böylece hangi sahnede Play'e basılırsa
 basılsın servisler aynı şekilde kurulur.
 
+Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework, uGUI ve IDE paketleri.
+
 ## Kurulum
 
-1. Unity Hub'da **Unity 6 LTS** ile **Universal 3D (URP)** şablonundan `Lazpoly` adlı yeni bir proje oluştur.
-2. Bu klasördeki `Assets/_Lazpoly`, `steam_appid.txt`, `.gitignore` ve `README.md` dosyalarını proje köküne kopyala.
-3. Unity'de **Window > Package Manager > + > Install package from git URL** ile şunu ekle:
-   `https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net#2025.164.1`
-4. Package Manager'da **Test Framework** paketinin kurulu olduğunu kontrol et (URP şablonunda varsayılan olarak gelir).
-5. Menüden **Lazpoly > Create Scenes and Build Settings** çalıştır. `MainMenu`, `Lobby`, `Game` ve
-   `Sandbox_Board` sahneleri oluşur; ilk üçü Build Settings'e eklenir.
+1. Unity Hub'a **Unity 6000.6.7f1** kur.
+2. Depoyu klonla ve Unity Hub'da **Add > Add project from disk** ile klasörü aç.
+   Steamworks.NET bir git paketi olduğu için bilgisayarda Git kurulu olmalı.
+3. Steam açık ve giriş yapılmış olsun.
 
-## Faz 0 kapısı (kontrol listesi)
+## Testler ve kontrol
 
-- [ ] Proje hatasız derleniyor (Console'da kırmızı hata yok).
-- [ ] **Window > General > Test Runner > EditMode > Run All**: tüm testler yeşil.
-- [ ] Steam açıkken Play'e basınca Console'da `[Steam] Initialized as '<adın>' (App ID 480).` görünüyor.
-- [ ] Bir Windows build alıp `steam_appid.txt` dosyasını exe'nin yanına koyunca Shift+Tab ile Steam overlay açılıyor.
-  (Overlay Unity editöründe güvenilir çalışmaz; bu yüzden build ile denenir.)
+- **Window > General > Test Runner > EditMode > Run All**: tüm testler yeşil olmalı.
+- Komut satırından:
+  `Unity.exe -batchmode -projectPath <klasör> -runTests -testPlatform EditMode -testResults results.xml -logFile editor.log`
+- Steam: bir Windows derlemesi al, `steam_appid.txt` dosyasını exe'nin yanına koy, çalıştır;
+  `Player.log` içinde `[Steam] Initialized as` satırı görünmeli. Editörde Play'e basınca da Console'da aynı satır çıkar.
 
 ## Kurallar
 
