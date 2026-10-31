@@ -40,6 +40,9 @@ namespace Lazpoly.Presentation.Menu
         private UiView _tableView;
         private GameObject _tableLayer;
         private int _boardMoney;
+        private BoardData _boardData;
+        private UiView _howToView;
+        private GameObject _howToLayer;
         private LobbyPanel _lobbyPanel;
         private SavedGame _savedGame;
         private SettingsPanel _settings;
@@ -56,7 +59,8 @@ namespace Lazpoly.Presentation.Menu
             }
 
             FindSavedGame();
-            _boardMoney = BoardDataLoader.LoadFromResources().Rules.StartingMoney;
+            _boardData = BoardDataLoader.LoadFromResources();
+            _boardMoney = _boardData.Rules.StartingMoney;
 
             ITransport transport = null;
             GameServices.Registry?.TryGet(out _lobby);
@@ -108,6 +112,10 @@ namespace Lazpoly.Presentation.Menu
             _settingsLayer.SetActive(false);
             _tableView = new UiView(UiRoot.Modal(canvas.transform, "Table Rules", 560f, out _tableLayer), RenderTableRules);
             _tableLayer.SetActive(false);
+            // The page describes the table rules chosen for the next game.
+            _howToView = new UiView(UiRoot.Modal(canvas.transform, "How To Play", HowToPlayPanel.Width, out _howToLayer),
+                ui => HowToPlayPanel.Render(ui, _boardData.Board, _boardData.Rules.WithTable(TableSetup.Chosen), () => _howToLayer.SetActive(false)));
+            _howToLayer.SetActive(false);
         }
 
         private void LateUpdate()
@@ -119,6 +127,7 @@ namespace Lazpoly.Presentation.Menu
             _footerView.Refresh(0);
             if (_settingsLayer.activeSelf) _settingsView.Refresh(0);
             if (_tableLayer.activeSelf) _tableView.Refresh(TableKey());
+            if (_howToLayer.activeSelf) _howToView.Refresh(TableKey());
         }
 
         private void RenderTitle(UiBuilder ui)
@@ -198,6 +207,11 @@ namespace Lazpoly.Presentation.Menu
 
         private void RenderFooter(UiBuilder ui)
         {
+            ui.Button("Nasıl Oynanır", () =>
+            {
+                _howToLayer.SetActive(true);
+                _howToView.Invalidate();
+            });
             ui.Button("Masa Kuralları", () =>
             {
                 _tableLayer.SetActive(true);

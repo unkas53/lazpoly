@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using Lazpoly.App.AI;
 using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.State;
+using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Menu;
@@ -56,6 +58,12 @@ namespace Lazpoly.Presentation.Game
         private CanvasGroup _cardGroup;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
         private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
+        private TipMemory _tipMemory;
+        private UiView _tipView;
+        private GameObject _tipPanel;
+        private Tip? _tip;
+        private UiView _howToWindow;
+        private GameObject _howToLayer;
 
         private const int NoSquare = -1;
         private const float BannerSeconds = 1.8f;
@@ -69,6 +77,16 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>The square whose card is showing (pinned by a click, else under the pointer), or -1.</summary>
         public int ShownSquare => _pinnedSquare != NoSquare ? _pinnedSquare : _hoveredSquare;
+
+        /// <summary>The first-game hint on screen, or null.</summary>
+        public Tip? ShownTip => _tip;
+
+        /// <summary>Hint memory; tests swap in one that is not kept in PlayerPrefs.</summary>
+        public TipMemory TipMemory
+        {
+            get => _tipMemory ?? (_tipMemory = new TipMemory(new PlayerPrefsStorage()));
+            set => _tipMemory = value;
+        }
 
         /// <summary>Shows a square's card until another square or the empty table is clicked.</summary>
         public void PinSquare(int squareIndex) => _pinnedSquare = squareIndex;
@@ -133,11 +151,15 @@ namespace Lazpoly.Presentation.Game
             _banner.fontSize = 34;
 
             BuildCardPopup();
+            BuildTipPanel();
 
             _tradeWindow = new UiView(UiRoot.Modal(_canvas.transform, "Trade", 760f, out _tradeLayer), RenderTrade);
             _settingsWindow = new UiView(UiRoot.Modal(_canvas.transform, "Settings", 520f, out _settingsLayer),
                 ui => _settings.Render(ui, () => _settingsLayer.SetActive(false)));
             _endWindow = new UiView(UiRoot.Modal(_canvas.transform, "Game End", 560f, out _endLayer), RenderEnd);
+            _howToWindow = new UiView(UiRoot.Modal(_canvas.transform, "How To Play", HowToPlayPanel.Width, out _howToLayer),
+                ui => HowToPlayPanel.Render(ui, _controller.Session.Board, _controller.Session.Rules, () => _howToLayer.SetActive(false)));
+            _howToLayer.SetActive(false);
             _tradeLayer.SetActive(false);
             _settingsLayer.SetActive(false);
             _endLayer.SetActive(false);
@@ -158,6 +180,89 @@ namespace Lazpoly.Presentation.Game
             _cardTitle = builder.Label("SOKAK HABERİ", UiTextStyle.Heading, new Color(0.55f, 0.28f, 0.08f), TextAnchor.MiddleCenter);
             _cardText = builder.Label("", UiTextStyle.Body, new Color(0.15f, 0.12f, 0.10f), TextAnchor.MiddleCenter);
             _cardText.fontSize = 22;
+        }
+
+        /// <summary>A hint box at the bottom centre, between the side columns.</summary>
+        private void BuildTipPanel()
+        {
+            RectTransform tip = UiRoot.Rect(_canvas.transform, "Tip", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, Vector2.zero);
+            tip.pivot = new Vector2(0.5f, 0f);
+            tip.anchoredPosition = new Vector2(0f, Margin);
+            tip.sizeDelta = new Vector2(560f, 0f);
+            UiRoot.Background(tip, new Color(0.10f, 0.16f, 0.22f, 0.96f));
+            UiBuilder.AddColumnLayout(tip.gameObject, 14, 8f);
+            tip.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _tipPanel = tip.gameObject;
+            _tipView = new UiView(new UiBuilder(tip), RenderTip);
+            _tipPanel.SetActive(false);
+        }
+
+        private void RenderTip(UiBuilder ui)
+        {
+            if (!_tip.HasValue) return;
+            ui.Label("İpucu", UiTextStyle.Small, UiTheme.Accent);
+            ui.Label(_tip.Value.Text, UiTextStyle.Small);
+            UiBuilder row = ui.Row();
+            row.Button("Anladım", DismissTip, style: UiButtonStyle.Primary, height: UiTheme.SmallButtonHeight);
+            row.Button("İpuçlarını Kapat", () =>
+            {
+                TipMemory.TurnOff();
+                ShowTip(null);
+            }, height: UiTheme.SmallButtonHeight);
+        }
+
+        /// <summary>Closes the hint on screen for good.</summary>
+        public void DismissTip()
+        {
+            if (_tip.HasValue) TipMemory.MarkSeen(_tip.Value.Id);
+            ShowTip(null);
+        }
+
+        /// <summary>
+        /// Shows the hint that fits the person at this machine now. A hint counts as seen once it is
+        /// dismissed or its situation has passed, so each one appears in a single situation.
+        /// </summary>
+        private void UpdateTip(GameState state)
+        {
+            Tip? next = null;
+            int player = TipPlayer(state);
+            if (TipMemory.Enabled && state != null && player != NoPlayer && !_controller.IsBusy && !_controller.EndReason.HasValue)
+            {
+                next = Tips.Next(_controller.Session.Board, _controller.Session.Rules, state, player, TipMemory.Seen);
+            }
+
+            if (next?.Id == _tip?.Id) return;
+            if (_tip.HasValue && !_controller.IsBusy) TipMemory.MarkSeen(_tip.Value.Id);
+            if (_controller.IsBusy && next == null) return; // Keep the hint while the board animates.
+            ShowTip(next);
+        }
+
+        private void ShowTip(Tip? tip)
+        {
+            _tip = tip;
+            if (_tipPanel.activeSelf != tip.HasValue) _tipPanel.SetActive(tip.HasValue);
+            _tipView.Invalidate();
+            if (tip.HasValue) _tipView.Refresh((int)tip.Value.Id);
+        }
+
+        private const int NoPlayer = -1;
+
+        /// <summary>The person the game waits on at this machine, else the first person seated here.</summary>
+        private int TipPlayer(GameState state)
+        {
+            if (state == null) return NoPlayer;
+            IGameSession session = _controller.Session;
+            foreach (int id in AiTurnOrder.PlayersToAct(state))
+            {
+                if (session.CanControl(id) && !session.IsAiPlaying(id)) return id;
+            }
+
+            foreach (PlayerState player in state.Players)
+            {
+                if (!player.IsBankrupt && session.CanControl(player.Id) && !session.IsAiPlaying(player.Id)) return player.Id;
+            }
+
+            return NoPlayer;
         }
 
         private void UpdateCardPopup()
@@ -194,9 +299,11 @@ namespace Lazpoly.Presentation.Game
             UpdateSquareCard(state, revision);
             UpdateBanner(state);
             UpdateCardPopup();
+            UpdateTip(state);
 
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
+            SetLayer(_howToLayer, _howToWindow, _howToLayer.activeSelf, 0);
             bool ended = !_endDismissed && (_controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver && !_controller.IsBusy));
             SetLayer(_endLayer, _endWindow, ended, revision);
         }
@@ -594,10 +701,16 @@ namespace Lazpoly.Presentation.Game
 
         private void RenderMenu(UiBuilder ui)
         {
-            ui.Button("Ayarlar", () =>
+            UiBuilder row = ui.Row();
+            row.Button("Ayarlar", () =>
             {
                 _settingsLayer.SetActive(true);
                 _settingsWindow.Invalidate();
+            });
+            row.Button("Nasıl Oynanır", () =>
+            {
+                _howToLayer.SetActive(true);
+                _howToWindow.Invalidate();
             });
             ui.Button("Görünümü Sıfırla (Home)", () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
             ui.Button("Oyundan Çık", _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);

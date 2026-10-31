@@ -70,7 +70,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.FirstRoll, myTurn && state.Phase == GamePhase.WaitingForRoll,
                        "Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır.")
                    ?? Offer(TipId.CanBuild, myTurn && (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd) && OwnsBuildableGroup(board, state, playerId),
-                       "Bir rengin bütün kareleri sende! Artık mülk listesinden ev kurabilirsin. Kira çok artar; evleri karelere eşit dağıtmalısın.")
+                       "Bir rengin bütün kareleri sende! Artık \"Mülklerin\" listesindeki \"Ev +\" düğmesiyle ev kurabilirsin. Kira çok artar; evleri karelere eşit dağıtmalısın.")
                    ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasMortgageable(board, state, playerId),
                        "Paran azaldı. Sıkışırsan mülklerini ipotek edip bankadan para alabilirsin; sonra faiziyle geri alırsın.")
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
