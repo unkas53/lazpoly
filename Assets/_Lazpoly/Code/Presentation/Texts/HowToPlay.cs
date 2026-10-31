@@ -1,0 +1,52 @@
+using System.Collections.Generic;
+using Lazpoly.Core.Board;
+using Lazpoly.Core.Rules;
+
+namespace Lazpoly.Presentation.Texts
+{
+    /// <summary>The "Nasıl Oynanır" page: short sections whose numbers come from the board and rules in use.</summary>
+    public static class HowToPlay
+    {
+        public static IReadOnlyList<KeyValuePair<string, string>> Sections(BoardDefinition board, RulesConfig rules)
+        {
+            int fare = 0;
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Travel) fare = board[i].Fee;
+            }
+
+            var sections = new List<KeyValuePair<string, string>>
+            {
+                Section("Amaç", rules.RoundLimit > 0
+                    ? $"Mülk topla, kira al. {rules.RoundLimit} tur sonunda parası, mülkleri ve binaları en değerli olan kazanır; ondan önce herkes iflas ederse son kalan kazanır."
+                    : "Mülk topla, kira al ve diğerlerini iflas ettir. Son kalan oyuncu kazanır."),
+                Section("Sıra", $"Zar at, piyonun o kadar ilerler. Başlangıçtan her geçişte {rules.PassStartBonus} alırsın. Çift atarsan bir kez daha atarsın; üst üste {rules.MaxConsecutiveDoubles} çift atarsan hamlen yanar."),
+                Section("Mülkler", rules.AuctionsEnabled
+                    ? "Sahipsiz bir kareye gelince satın alabilirsin. Almazsan açık artırmaya çıkar ve en çok veren alır. Başkasının karesine gelen sahibine kira öder."
+                    : "Sahipsiz bir kareye gelince satın alabilirsin; almazsan bankada kalır. Başkasının karesine gelen sahibine kira öder."),
+                Section("Renkler ve evler", $"Bir rengin bütün kareleri sendeyse kira {rules.FullGroupRentMultiplier} katına çıkar ve ev kurabilirsin. Evler karelere eşit dağıtılır; dört evden sonra otel gelir."),
+                Section("Para sıkıntısı", $"Parası yetmeyen mülkünü ipotek edip değerinin yarısını alır; ipotekli kareden kira alınmaz. Geri almak %{rules.MortgageInterestPercent} faizlidir. Binalar maliyetinin %{rules.BuildingSellbackPercent} değerine geri satılır. Borcunu ödeyemeyen iflas eder."),
+                Section("Takas", "Kendi sıranda başka bir oyuncuya para ve mülk karşılığında takas teklif edebilirsin. Binalı renkler takas edilemez."),
+            };
+
+            if (HasType(board, SquareType.Card)) sections.Add(Section("Sokak Haberi", "Bu kareye gelen bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir."));
+            if (board.HasPot) sections.Add(Section("Çay Molası", "Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır."));
+            if (HasType(board, SquareType.Travel)) sections.Add(Section("Otogar", $"Otogara gelen isterse {fare} bilet parası ödeyip tahtadaki herhangi bir kareye gider. Bu yolculuk başlangıçtan geçmiş sayılmaz."));
+            if (HasType(board, SquareType.Lookout)) sections.Add(Section("Seyir Terası", "Buraya gelen bir sonraki sırasında iki kez zar atar ve hangisiyle gideceğini seçer."));
+            sections.Add(Section("İpucu", "Bir kareye fareyle gel ya da tıkla: fiyatı, kira tablosu ve sahibi kartında görünür. Fare tekeriyle yakınlaş, sağ tuşla tahtayı döndür, Home ile başa dön."));
+            return sections;
+        }
+
+        private static KeyValuePair<string, string> Section(string title, string body) => new KeyValuePair<string, string>(title, body);
+
+        private static bool HasType(BoardDefinition board, SquareType type)
+        {
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == type) return true;
+            }
+
+            return false;
+        }
+    }
+}

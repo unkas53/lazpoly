@@ -33,9 +33,6 @@ namespace Lazpoly.Presentation.Data
         /// <summary>Money for collect and pay, steps for moveBy (negative = back), cost per house for repairs.</summary>
         public int amount;
 
-        /// <summary>Price of a ride from a travel square.</summary>
-        public int fee;
-
         /// <summary>Cost per hotel for repairs.</summary>
         public int hotel;
 
@@ -60,6 +57,9 @@ namespace Lazpoly.Presentation.Data
         public int rent;
         public int group;
         public int amount;
+
+        /// <summary>Price of a ride from a travel square.</summary>
+        public int fee;
 
         /// <summary>Cost of one house or the hotel; 0 or missing means the property takes no buildings.</summary>
         public int buildingCost;
