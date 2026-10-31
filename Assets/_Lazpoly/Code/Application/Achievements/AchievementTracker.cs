@@ -94,7 +94,7 @@ namespace Lazpoly.App.Achievements
             return earned;
         }
 
-        private bool IsMine(int playerId) => playerId != GameState.NoOwner && _isLocalPerson(playerId);
+        private bool IsMine(int playerId) => GameState.IsPlayerId(playerId) && _isLocalPerson(playerId);
 
         private bool AnyComputerOpponent(GameState state, int winnerId)
         {

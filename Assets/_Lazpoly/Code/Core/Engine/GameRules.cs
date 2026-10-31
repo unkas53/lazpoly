@@ -50,12 +50,12 @@ namespace Lazpoly.Core.Engine
 
                 case SellBuildingCommand c:
                     return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd, GamePhase.AwaitingBuyDecision,
-                            GamePhase.AwaitingDebtPayment)
+                            GamePhase.AwaitingDebtPayment, GamePhase.AwaitingTravelDecision)
                         .Then(() => CanSell(board, state, player, c.SquareIndex));
 
                 case MortgageCommand c:
                     return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd, GamePhase.AwaitingBuyDecision,
-                            GamePhase.AwaitingDebtPayment)
+                            GamePhase.AwaitingDebtPayment, GamePhase.AwaitingTravelDecision)
                         .Then(() => CanMortgage(board, state, player, c.SquareIndex));
 
                 case RedeemCommand c:
@@ -100,6 +100,24 @@ namespace Lazpoly.Core.Engine
 
                 case DeclareBankruptcyCommand _:
                     return OnTurn(state, player, GamePhase.AwaitingDebtPayment);
+
+                case TravelCommand c:
+                {
+                    RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingTravelDecision);
+                    if (turn != RejectionReason.None) return turn;
+                    if (c.SquareIndex < 0 || c.SquareIndex >= board.Count || c.SquareIndex == player.Position) return RejectionReason.InvalidSquare;
+                    return player.Money >= board[player.Position].Fee ? RejectionReason.None : RejectionReason.InsufficientFunds;
+                }
+
+                case DeclineTravelCommand _:
+                    return OnTurn(state, player, GamePhase.AwaitingTravelDecision);
+
+                case ChooseDiceCommand c:
+                {
+                    RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingDiceChoice);
+                    if (turn != RejectionReason.None) return turn;
+                    return c.Option == 0 || c.Option == 1 ? RejectionReason.None : RejectionReason.InvalidChoice;
+                }
 
                 default:
                     return RejectionReason.UnknownCommand;
@@ -157,6 +175,54 @@ namespace Lazpoly.Core.Engine
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// What a player is worth when a round-limited game is scored: money, plus each property at
+        /// its price (half while mortgaged) and each building level at its cost.
+        /// </summary>
+        public static int NetWorth(BoardDefinition board, GameState state, int playerId)
+        {
+            PlayerState player = state.FindPlayer(playerId);
+            if (player == null || player.IsBankrupt) return 0;
+
+            int total = player.Money;
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (state.GetOwner(i) != playerId) continue;
+                total += state.IsMortgaged(i) ? board[i].MortgageValue : board[i].Price;
+                total += state.GetBuildingLevel(i) * board[i].BuildingCost;
+            }
+
+            return total;
+        }
+
+        /// <summary>The solvent player with the highest <see cref="NetWorth"/>; a tie goes to the earlier seat.</summary>
+        public static int Richest(BoardDefinition board, GameState state)
+        {
+            int best = GameState.NoWinner;
+            int bestWorth = int.MinValue;
+            foreach (PlayerState player in state.Players)
+            {
+                if (player.IsBankrupt) continue;
+                int worth = NetWorth(board, state, player.Id);
+                if (worth <= bestWorth) continue;
+                best = player.Id;
+                bestWorth = worth;
+            }
+
+            return best;
+        }
+
+        /// <summary>Where taxes and card fines go: the pot when the board has one, otherwise the bank.</summary>
+        public static int FineCollector(BoardDefinition board) => board.HasPot ? GameState.PotId : GameState.NoOwner;
+
+        /// <summary>The two rolls a lookout offers as (die1, die2); null when no choice is open.</summary>
+        public static int[] DiceOption(GameState state, int option)
+        {
+            int[] dice = state.DiceOptions;
+            if (dice == null || option < 0 || option > 1) return null;
+            return new[] { dice[option * 2], dice[option * 2 + 1] };
         }
 
         /// <summary>Money a player could hold after selling every building and mortgaging every property.</summary>

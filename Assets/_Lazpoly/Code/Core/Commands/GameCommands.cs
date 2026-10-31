@@ -115,6 +115,29 @@ namespace Lazpoly.Core.Commands
         public PayDebtCommand(int playerId) : base(playerId) { }
     }
 
+    /// <summary>Pays the travel square's fee and jumps to <see cref="SquareCommand.SquareIndex"/>.</summary>
+    public sealed class TravelCommand : SquareCommand
+    {
+        public TravelCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+    }
+
+    /// <summary>Stays on the travel square.</summary>
+    public sealed class DeclineTravelCommand : GameCommand
+    {
+        public DeclineTravelCommand(int playerId) : base(playerId) { }
+    }
+
+    /// <summary>Picks one of the two rolls a lookout gave: 0 for the first pair, 1 for the second.</summary>
+    public sealed class ChooseDiceCommand : GameCommand
+    {
+        public ChooseDiceCommand(int playerId, int option) : base(playerId)
+        {
+            Option = option;
+        }
+
+        public int Option { get; }
+    }
+
     /// <summary>Gives up: everything goes to the creditor (or the bank) and the player leaves the game.</summary>
     public sealed class DeclareBankruptcyCommand : GameCommand
     {

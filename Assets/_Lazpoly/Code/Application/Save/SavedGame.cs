@@ -21,6 +21,9 @@ namespace Lazpoly.App.Save
         /// <summary>Players run by the computer, by player id. Everyone else is a person.</summary>
         public Dictionary<int, SavedAiPlayer> AiPlayers = new Dictionary<int, SavedAiPlayer>();
 
+        /// <summary>The house rules the game was set up with.</summary>
+        public Lazpoly.Core.Rules.TableRules Table = Lazpoly.Core.Rules.TableRules.Default;
+
         public GameStateSnapshot Snapshot;
     }
 

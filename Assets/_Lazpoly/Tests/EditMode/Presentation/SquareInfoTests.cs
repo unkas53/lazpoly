@@ -106,5 +106,24 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(9f, turned.z, 1e-4f, "Half a turn puts the camera on the far side.");
             Assert.AreEqual(10f, turned.y, 1e-4f);
         }
-    }
+    
+        [Test]
+        public void SpecialSquaresExplainThemselves()
+        {
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Başlangıç"), SquareDefinition.Card("Sokak Haberi"), SquareDefinition.Pot("Çay Molası"),
+                SquareDefinition.Travel("Otogar", 50), SquareDefinition.Lookout("Seyir Terası"), SquareDefinition.Tax("Vergi", 100),
+            }, new[] { CardDefinition.Collect("Ödül", 10) });
+            GameState state = GameState.CreateInitial(board, Rules, new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
+
+            Assert.AreEqual("Sokak Haberi", SquareInfo.Describe(board, Rules, state, 1, null).Kind);
+            Assert.AreEqual("Çay kumbarası", SquareInfo.Describe(board, Rules, state, 2, null).Kind);
+            SquareInfo ride = SquareInfo.Describe(board, Rules, state, 3, null);
+            Assert.AreEqual("Bilet", ride.Rows[0].Label);
+            Assert.AreEqual("50", ride.Rows[0].Value);
+            Assert.AreEqual("Seyir", SquareInfo.Describe(board, Rules, state, 4, null).Kind);
+            CollectionAssert.Contains(SquareInfo.Describe(board, Rules, state, 5, null).Notes, "Buraya gelen öder; para çay kumbarasına girer.");
+        }
+}
 }

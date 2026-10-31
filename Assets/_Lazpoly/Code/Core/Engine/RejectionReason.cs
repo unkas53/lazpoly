@@ -37,5 +37,8 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>The trade is empty, names squares the sides do not own, or squares with buildings.</summary>
         InvalidTrade = 15,
+
+        /// <summary>A choice that is not one of those offered (for example a third roll).</summary>
+        InvalidChoice = 16,
     }
 }

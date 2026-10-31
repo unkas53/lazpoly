@@ -13,8 +13,9 @@ namespace Lazpoly.Core.Board
         private readonly int[] _developedRents;
 
         private SquareDefinition(string name, SquareType type, int price, int baseRent, int groupId, int taxAmount,
-            int buildingCost, int[] developedRents)
+            int buildingCost, int[] developedRents, int fee = 0)
         {
+            Fee = fee;
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Type = type;
             Price = price;
@@ -40,6 +41,9 @@ namespace Lazpoly.Core.Board
         /// <summary>Amount paid to the bank. Only meaningful for <see cref="SquareType.Tax"/>.</summary>
         public int TaxAmount { get; }
 
+        /// <summary>Price of a ride. Only meaningful for <see cref="SquareType.Travel"/>.</summary>
+        public int Fee { get; }
+
         /// <summary>Price of one building level (house or hotel). 0 means the property cannot be developed.</summary>
         public int BuildingCost { get; }
 
@@ -54,6 +58,19 @@ namespace Lazpoly.Core.Board
         public static SquareDefinition Start(string name) => new SquareDefinition(name, SquareType.Start, 0, 0, 0, 0, 0, null);
 
         public static SquareDefinition Rest(string name) => new SquareDefinition(name, SquareType.Rest, 0, 0, 0, 0, 0, null);
+
+        /// <summary>Draws a card from the board's deck.</summary>
+        public static SquareDefinition Card(string name) => new SquareDefinition(name, SquareType.Card, 0, 0, 0, 0, 0, null);
+
+        /// <summary>Pays out the pot that taxes and card fines fill.</summary>
+        public static SquareDefinition Pot(string name) => new SquareDefinition(name, SquareType.Pot, 0, 0, 0, 0, 0, null);
+
+        /// <summary>Offers a ride to any other square for <paramref name="fee"/>.</summary>
+        public static SquareDefinition Travel(string name, int fee) =>
+            new SquareDefinition(name, SquareType.Travel, 0, 0, 0, 0, 0, null, fee);
+
+        /// <summary>Gives the next roll a choice of two.</summary>
+        public static SquareDefinition Lookout(string name) => new SquareDefinition(name, SquareType.Lookout, 0, 0, 0, 0, 0, null);
 
         public static SquareDefinition Tax(string name, int amount) =>
             new SquareDefinition(name, SquareType.Tax, 0, 0, 0, amount, 0, null);

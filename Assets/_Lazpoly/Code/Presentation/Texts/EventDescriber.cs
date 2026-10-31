@@ -46,7 +46,9 @@ namespace Lazpoly.Presentation.Texts
                 case PlayerBankruptedEvent e:
                     return $"{NameOf(state, e.PlayerId)} iflas etti!";
                 case GameEndedEvent e:
-                    return $"Oyun bitti! Kazanan: {NameOf(state, e.WinnerId)}";
+                    return e.Reason == GameEndReason.RoundLimit
+                        ? $"Tur sınırı doldu! En zengin oyuncu kazandı: {NameOf(state, e.WinnerId)}"
+                        : $"Oyun bitti! Kazanan: {NameOf(state, e.WinnerId)}";
                 case BuildingLevelChangedEvent e:
                     return $"{board[e.SquareIndex].Name}: {LevelText(e.Level)}";
                 case MortgageChangedEvent e:
@@ -71,6 +73,14 @@ namespace Lazpoly.Presentation.Texts
                     return $"{NameOf(state, e.PlayerId)} {e.Amount} ödeyemiyor ({ReasonText(e.Reason)}): para bulmalı ya da iflas etmeli";
                 case DebtClearedEvent _:
                     return null;
+                case CardDrawnEvent e:
+                    return $"{NameOf(state, e.PlayerId)}, Sokak Haberi: {CardText(board, e.CardIndex)}";
+                case LookoutChangedEvent e:
+                    return e.HasLookout ? $"{NameOf(state, e.PlayerId)} sonraki zarında iki atıştan birini seçecek" : null;
+                case DiceOptionsEvent e:
+                    return $"{NameOf(state, e.PlayerId)} iki kez attı: {e.FirstDie1} + {e.FirstDie2} ya da {e.SecondDie1} + {e.SecondDie2}";
+                case PotChangedEvent _:
+                    return null;
                 default:
                     return null;
             }
@@ -91,6 +101,9 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Redeem: return "ipotek ödemesi";
                 case MoneyReason.Auction: return "açık artırma";
                 case MoneyReason.Trade: return "takas";
+                case MoneyReason.Card: return "Sokak Haberi";
+                case MoneyReason.Pot: return "çay kumbarası";
+                case MoneyReason.Travel: return "otogar bileti";
                 default: return reason.ToString();
             }
         }
@@ -101,6 +114,13 @@ namespace Lazpoly.Presentation.Texts
             if (level <= 0) return "bina yok";
             return level >= SquareDefinition.MaxBuildingLevel ? "otel" : $"{level} ev";
         }
+
+        public static string CardText(BoardDefinition board, int cardIndex) =>
+            cardIndex >= 0 && cardIndex < board.Cards.Count ? board.Cards[cardIndex].Text : "?";
+
+        /// <summary>Who a debt is owed to, as the HUD names it.</summary>
+        public static string CreditorText(GameState state, int creditorId) =>
+            creditorId == GameState.PotId ? "çay kumbarası" : creditorId == GameState.NoOwner ? "banka" : NameOf(state, creditorId);
 
         private static string NameOf(GameState state, int playerId) => state.FindPlayer(playerId)?.Name ?? $"#{playerId}";
     }

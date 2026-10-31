@@ -49,7 +49,11 @@ namespace Lazpoly.App.Session
             return new LocalGame(engine, dice, ai);
         }
 
-        /// <summary>Continues a saved game. Throws <see cref="ArgumentException"/> if it was saved on other board data.</summary>
+        /// <summary>
+        /// Continues a saved game with the house rules it was set up with. Throws
+        /// <see cref="ArgumentException"/> if it was saved on other board data.
+        /// </summary>
+        /// <param name="rules">The board data's rules; the save's table rules are applied on top.</param>
         public static LocalGame Resume(BoardDefinition board, RulesConfig rules, ulong boardChecksum, SavedGame save)
         {
             if (save == null) throw new ArgumentNullException(nameof(save));
@@ -57,7 +61,7 @@ namespace Lazpoly.App.Session
 
             Pcg32Random dice = Pcg32Random.FromState(save.DiceState, save.DiceIncrement);
             var ai = new AiRoster(Pcg32Random.FromState(save.AiState, save.AiIncrement));
-            GameEngine engine = GameEngine.Restore(board, rules, save.Snapshot, dice);
+            GameEngine engine = GameEngine.Restore(board, rules.WithTable(save.Table ?? TableRules.Default), save.Snapshot, dice);
             foreach (KeyValuePair<int, SavedAiPlayer> pair in save.AiPlayers)
             {
                 if (pair.Value == null || engine.State.FindPlayer(pair.Key) == null)
@@ -80,6 +84,7 @@ namespace Lazpoly.App.Session
                 DiceIncrement = _dice.Increment,
                 AiState = _ai.Random.State,
                 AiIncrement = _ai.Random.Increment,
+                Table = _engine.Rules.Table,
                 Snapshot = GameStateSnapshot.Capture(_engine.State),
             };
             foreach (AiPlayer player in _ai.Players)

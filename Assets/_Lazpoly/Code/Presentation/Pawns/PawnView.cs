@@ -51,14 +51,14 @@ namespace Lazpoly.Presentation.Pawns
             transform.position = Target(square);
         }
 
-        /// <summary>Walks square by square from the current square to <paramref name="destination"/>.</summary>
-        public IEnumerator WalkTo(int destination)
+        /// <summary>Walks square by square from the current square to <paramref name="destination"/>, forward or back.</summary>
+        public IEnumerator WalkTo(int destination, bool backward = false)
         {
             int count = _board.Layout.SquareCount;
             float speed = Mathf.Max(Speed, 0.1f);
             while (_square != destination)
             {
-                int next = (_square + 1) % count;
+                int next = (_square + (backward ? count - 1 : 1)) % count;
                 Vector3 from = transform.position;
                 Vector3 to = Target(next);
                 for (float t = 0f; t < 1f; t += Time.deltaTime * speed / StepSeconds)
@@ -82,6 +82,27 @@ namespace Lazpoly.Presentation.Pawns
 
                 SetStretch(1f);
             }
+        }
+
+        /// <summary>One high arc straight to <paramref name="destination"/> (a ride from a travel square).</summary>
+        public IEnumerator JumpTo(int destination)
+        {
+            const float seconds = 0.8f;
+            float speed = Mathf.Max(Speed, 0.1f);
+            Vector3 from = transform.position;
+            Vector3 to = Target(destination);
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / seconds)
+            {
+                Vector3 position = Vector3.Lerp(from, to, Ease.OutCubic(t));
+                position.y += Mathf.Sin(t * Mathf.PI) * HopHeight * 5f;
+                transform.position = position;
+                SetStretch(1f + 0.12f * Ease.Bump(t));
+                yield return null;
+            }
+
+            PlaceOn(destination);
+            SetStretch(1f);
+            Stepped?.Invoke(destination);
         }
 
         /// <summary>Hides a bankrupt player's pawn at once (used when the board is rebuilt from the state).</summary>

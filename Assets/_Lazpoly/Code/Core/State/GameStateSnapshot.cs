@@ -16,6 +16,7 @@ namespace Lazpoly.Core.State
             public int Money;
             public int Position;
             public bool IsBankrupt;
+            public bool HasLookout;
         }
 
         public GamePhase Phase;
@@ -25,6 +26,11 @@ namespace Lazpoly.Core.State
         public int LastDie2;
         public int ConsecutiveDoubles;
         public int WinnerId;
+        public int Round = 1;
+        public int Pot;
+
+        /// <summary>Null unless a lookout's two rolls wait for a choice.</summary>
+        public int[] DiceOptions;
         public List<PlayerEntry> Players = new List<PlayerEntry>();
         public int[] Owners = Array.Empty<int>();
         public int[] BuildingLevels = Array.Empty<int>();
@@ -47,6 +53,9 @@ namespace Lazpoly.Core.State
                 LastDie2 = state.LastDie2,
                 ConsecutiveDoubles = state.ConsecutiveDoubles,
                 WinnerId = state.WinnerId,
+                Round = state.Round,
+                Pot = state.Pot,
+                DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],
                 Mortgaged = new bool[state.SquareCount],
@@ -65,6 +74,7 @@ namespace Lazpoly.Core.State
                     Money = player.Money,
                     Position = player.Position,
                     IsBankrupt = player.IsBankrupt,
+                    HasLookout = player.HasLookout,
                 });
             }
 

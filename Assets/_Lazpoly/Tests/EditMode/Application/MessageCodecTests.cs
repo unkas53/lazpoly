@@ -35,9 +35,14 @@ namespace Lazpoly.App.Tests
             busy.PendingTrade = new TradeOffer(1, 2, 10, 20, new[] { 1 }, new[] { 2, 4 });
             busy.TradeReturnPhase = GamePhase.TurnEnd;
             busy.Debt = new DebtState(1, 2, 75, MoneyReason.Rent);
+            busy.Round = 4;
+            busy.Pot = 250;
+            busy.DiceOptions = new[] { 1, 2, 6, 6 };
+            busy.Players[1].HasLookout = true;
             yield return new GameStartMessage
             {
                 ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 1UL, YourPlayerId = 1, Sequence = 3, Snapshot = busy,
+                Table = new Lazpoly.Core.Rules.TableRules(2000, false, 25),
             };
             yield return new RefusedMessage { Reason = RefusalReason.BoardMismatch };
             yield return new CommandMessage { Command = new RollDiceCommand(1) };
@@ -56,6 +61,9 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new CancelTradeCommand(1) };
             yield return new CommandMessage { Command = new PayDebtCommand(1) };
             yield return new CommandMessage { Command = new DeclareBankruptcyCommand(1) };
+            yield return new CommandMessage { Command = new TravelCommand(2, 9) };
+            yield return new CommandMessage { Command = new DeclineTravelCommand(2) };
+            yield return new CommandMessage { Command = new ChooseDiceCommand(1, 1) };
             var events = new EventsMessage { Sequence = 9, StateHash = 0xDEADBEEFUL };
             events.Events.AddRange(new GameEvent[]
             {
@@ -77,6 +85,13 @@ namespace Lazpoly.App.Tests
                 new TradeResolvedEvent(TradeOutcome.Cancelled),
                 new DebtIncurredEvent(1, GameState.NoOwner, 100, MoneyReason.Tax),
                 new DebtClearedEvent(1),
+                new PlayerMovedEvent(2, 7, 3, false, MoveKind.Jump),
+                new GameEndedEvent(2, GameEndReason.RoundLimit),
+                new PotChangedEvent(-120),
+                new CardDrawnEvent(1, 5),
+                new LookoutChangedEvent(2, true),
+                new DiceOptionsEvent(1, 1, 2, 3, 4),
+                new DebtIncurredEvent(1, GameState.PotId, 40, MoneyReason.Card),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -94,6 +109,30 @@ namespace Lazpoly.App.Tests
                 Assert.AreEqual(message.GetType(), decoded.GetType());
                 CollectionAssert.AreEqual(encoded, MessageCodec.Encode(decoded), $"{message.Type} changed in transit.");
             }
+        }
+
+        [Test]
+        public void NewRulesFieldsSurvive()
+        {
+            var start = (GameStartMessage)MessageCodec.Decode(MessageCodec.Encode(new GameStartMessage
+            {
+                ProtocolVersion = MessageCodec.ProtocolVersion, Sequence = 1, Snapshot = SampleSnapshot(),
+                Table = new Lazpoly.Core.Rules.TableRules(1800, false, 12),
+            }));
+            Assert.AreEqual(1800, start.Table.StartingMoney);
+            Assert.IsFalse(start.Table.AuctionsEnabled);
+            Assert.AreEqual(12, start.Table.RoundLimit);
+
+            var events = new EventsMessage();
+            events.Events.Add(new PlayerMovedEvent(1, 4, 1, false, MoveKind.Back));
+            events.Events.Add(new DiceOptionsEvent(1, 6, 5, 4, 3));
+            var decoded = (EventsMessage)MessageCodec.Decode(MessageCodec.Encode(events));
+            Assert.AreEqual(MoveKind.Back, ((PlayerMovedEvent)decoded.Events[0]).Kind);
+            var options = (DiceOptionsEvent)decoded.Events[1];
+            Assert.AreEqual(new[] { 6, 5, 4, 3 }, new[] { options.FirstDie1, options.FirstDie2, options.SecondDie1, options.SecondDie2 });
+
+            var choose = (CommandMessage)MessageCodec.Decode(MessageCodec.Encode(new CommandMessage { Command = new ChooseDiceCommand(3, 1) }));
+            Assert.AreEqual(1, ((ChooseDiceCommand)choose.Command).Option);
         }
 
         [Test]

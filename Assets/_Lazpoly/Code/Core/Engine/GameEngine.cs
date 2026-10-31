@@ -81,7 +81,8 @@ namespace Lazpoly.Core.Engine
                     BuyCurrentSquare(player);
                     break;
                 case DeclinePurchaseCommand _:
-                    StartAuction(player.Position);
+                    if (Rules.AuctionsEnabled) StartAuction(player.Position);
+                    else FinishMove();
                     break;
                 case EndTurnCommand _:
                     StartNextTurn();
@@ -129,6 +130,16 @@ namespace Lazpoly.Core.Engine
                 case DeclareBankruptcyCommand _:
                     GoBankrupt(player, State.Debt.CreditorId);
                     break;
+                case TravelCommand c:
+                    Travel(player, c.SquareIndex);
+                    break;
+                case DeclineTravelCommand _:
+                    FinishMove();
+                    break;
+                case ChooseDiceCommand c:
+                    int[] chosen = GameRules.DiceOption(State, c.Option);
+                    MoveWithDice(player, chosen[0], chosen[1]);
+                    break;
                 default:
                     throw new InvalidOperationException($"Validated command {command.GetType().Name} has no handler.");
             }
@@ -152,8 +163,25 @@ namespace Lazpoly.Core.Engine
 
         private void RollAndMove(PlayerState player)
         {
-            int die1 = _random.NextInt(1, Rules.DiceSides + 1);
-            int die2 = _random.NextInt(1, Rules.DiceSides + 1);
+            if (player.HasLookout)
+            {
+                // A lookout: two rolls now, the player keeps one of them (ChooseDiceCommand).
+                int a1 = RollDie(), a2 = RollDie(), b1 = RollDie(), b2 = RollDie();
+                Emit(new LookoutChangedEvent(player.Id, false));
+                Emit(new DiceOptionsEvent(player.Id, a1, a2, b1, b2));
+                Emit(new PhaseChangedEvent(GamePhase.AwaitingDiceChoice));
+                return;
+            }
+
+            int die1 = RollDie();
+            int die2 = RollDie();
+            MoveWithDice(player, die1, die2);
+        }
+
+        private int RollDie() => _random.NextInt(1, Rules.DiceSides + 1);
+
+        private void MoveWithDice(PlayerState player, int die1, int die2)
+        {
             Emit(new DiceRolledEvent(player.Id, die1, die2));
 
             if (State.LastRollWasDouble && State.ConsecutiveDoubles >= Rules.MaxConsecutiveDoubles)
@@ -164,10 +192,9 @@ namespace Lazpoly.Core.Engine
             }
 
             MovePlayer(player, die1 + die2);
-            ResolveLanding(player);
 
-            // Landing may have opened a decision (buy, debt); the move finishes once it is made.
-            if (State.Phase == GamePhase.WaitingForRoll) FinishMove();
+            // Landing may open a decision (buy, debt, ride); the move finishes once it is made.
+            if (!ResolveLanding(player, drawCards: true)) FinishMove();
         }
 
         private void MovePlayer(PlayerState player, int steps)
@@ -184,7 +211,19 @@ namespace Lazpoly.Core.Engine
             }
         }
 
-        private void ResolveLanding(PlayerState player)
+        private void MovePlayerBack(PlayerState player, int steps)
+        {
+            int from = player.Position;
+            int to = ((from - steps) % Board.Count + Board.Count) % Board.Count;
+            Emit(new PlayerMovedEvent(player.Id, from, to, false, MoveKind.Back));
+        }
+
+        /// <summary>
+        /// Applies the square the player now stands on. Returns true when it left a decision open
+        /// (buy, pay a debt, take a ride); the move is then finished by that decision.
+        /// </summary>
+        /// <param name="drawCards">False after a card moved the player, so one landing draws at most one card.</param>
+        private bool ResolveLanding(PlayerState player, bool drawCards)
         {
             SquareDefinition square = Board[player.Position];
             switch (square.Type)
@@ -195,18 +234,93 @@ namespace Lazpoly.Core.Engine
                     {
                         // Offered even when the player is short: they may mortgage to afford it, or decline into an auction.
                         Emit(new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
-                    }
-                    else if (ownerId != player.Id)
-                    {
-                        Charge(player, ownerId, CalculateRent(player.Position), MoneyReason.Rent);
+                        return true;
                     }
 
-                    break;
+                    return ownerId != player.Id && Charge(player, ownerId, CalculateRent(player.Position), MoneyReason.Rent);
 
                 case SquareType.Tax:
-                    Charge(player, GameState.NoOwner, square.TaxAmount, MoneyReason.Tax);
-                    break;
+                    return Charge(player, GameRules.FineCollector(Board), square.TaxAmount, MoneyReason.Tax);
+
+                case SquareType.Pot:
+                    if (State.Pot > 0)
+                    {
+                        int pot = State.Pot;
+                        Emit(new PotChangedEvent(-pot));
+                        Emit(new MoneyChangedEvent(player.Id, pot, MoneyReason.Pot));
+                    }
+
+                    return false;
+
+                case SquareType.Travel:
+                    // Offered only when the player can pay the fare.
+                    if (player.Money < square.Fee) return false;
+                    Emit(new PhaseChangedEvent(GamePhase.AwaitingTravelDecision));
+                    return true;
+
+                case SquareType.Lookout:
+                    if (!player.HasLookout) Emit(new LookoutChangedEvent(player.Id, true));
+                    return false;
+
+                case SquareType.Card:
+                    return drawCards && DrawCard(player);
+
+                default:
+                    return false;
             }
+        }
+
+        private bool DrawCard(PlayerState player)
+        {
+            int index = _random.NextInt(0, Board.Cards.Count);
+            CardDefinition card = Board.Cards[index];
+            Emit(new CardDrawnEvent(player.Id, index));
+
+            switch (card.Kind)
+            {
+                case CardKind.Collect:
+                    Emit(new MoneyChangedEvent(player.Id, card.Amount, MoneyReason.Card));
+                    return false;
+
+                case CardKind.Pay:
+                    return Charge(player, GameRules.FineCollector(Board), card.Amount, MoneyReason.Card);
+
+                case CardKind.MoveTo:
+                    MovePlayer(player, (card.Target - player.Position + Board.Count) % Board.Count);
+                    return ResolveLanding(player, drawCards: false);
+
+                case CardKind.MoveBy:
+                    if (card.Amount > 0) MovePlayer(player, card.Amount);
+                    else MovePlayerBack(player, -card.Amount);
+                    return ResolveLanding(player, drawCards: false);
+
+                case CardKind.PayPerBuilding:
+                    int bill = 0;
+                    for (int square = 0; square < Board.Count; square++)
+                    {
+                        if (State.GetOwner(square) != player.Id) continue;
+                        int level = State.GetBuildingLevel(square);
+                        bill += level >= SquareDefinition.MaxBuildingLevel ? card.HotelAmount : level * card.Amount;
+                    }
+
+                    return Charge(player, GameRules.FineCollector(Board), bill, MoneyReason.Card);
+
+                case CardKind.Lookout:
+                    if (!player.HasLookout) Emit(new LookoutChangedEvent(player.Id, true));
+                    return false;
+
+                default:
+                    throw new InvalidOperationException($"Card kind {card.Kind} has no handler.");
+            }
+        }
+
+        /// <summary>Pays the fare and jumps to the chosen square, then lands there as after a roll.</summary>
+        private void Travel(PlayerState player, int target)
+        {
+            int fee = Board[player.Position].Fee;
+            if (fee > 0) Emit(new MoneyChangedEvent(player.Id, -fee, MoneyReason.Travel));
+            Emit(new PlayerMovedEvent(player.Id, player.Position, target, false, MoveKind.Jump));
+            if (!ResolveLanding(player, drawCards: true)) FinishMove();
         }
 
         private void BuyCurrentSquare(PlayerState player)
@@ -223,26 +337,37 @@ namespace Lazpoly.Core.Engine
             Emit(new PhaseChangedEvent(State.LastRollWasDouble ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
         }
 
-        /// <summary>Moves money to the creditor (or the bank), or opens a debt the payer must settle.</summary>
-        private void Charge(PlayerState payer, int creditorId, int amount, MoneyReason reason)
+        /// <summary>
+        /// Moves money to the creditor (a player, the pot or the bank), or opens a debt the payer must
+        /// settle. Returns true when a debt was opened.
+        /// </summary>
+        private bool Charge(PlayerState payer, int creditorId, int amount, MoneyReason reason)
         {
-            if (amount <= 0) return;
+            if (amount <= 0) return false;
 
             if (payer.Money >= amount)
             {
                 Transfer(payer.Id, creditorId, amount, reason);
-                return;
+                return false;
             }
 
             Emit(new DebtIncurredEvent(payer.Id, creditorId, amount, reason));
             Emit(new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
+            return true;
         }
 
         private void Transfer(int payerId, int receiverId, int amount, MoneyReason reason)
         {
             if (amount <= 0) return;
             Emit(new MoneyChangedEvent(payerId, -amount, reason));
-            if (receiverId != GameState.NoOwner) Emit(new MoneyChangedEvent(receiverId, amount, reason));
+            Credit(receiverId, amount, reason);
+        }
+
+        /// <summary>Hands money to a player or into the pot; the bank simply keeps it.</summary>
+        private void Credit(int receiverId, int amount, MoneyReason reason)
+        {
+            if (receiverId == GameState.PotId) Emit(new PotChangedEvent(amount));
+            else if (GameState.IsPlayerId(receiverId)) Emit(new MoneyChangedEvent(receiverId, amount, reason));
         }
 
         private void PayDebt(PlayerState player)
@@ -339,14 +464,16 @@ namespace Lazpoly.Core.Engine
             {
                 int remaining = player.Money;
                 Emit(new MoneyChangedEvent(player.Id, -remaining, MoneyReason.Bankruptcy));
-                if (creditorId != GameState.NoOwner) Emit(new MoneyChangedEvent(creditorId, remaining, MoneyReason.Bankruptcy));
+                Credit(creditorId, remaining, MoneyReason.Bankruptcy);
             }
 
+            // Properties go to a player creditor; owed to the bank or the pot, they return to the bank unmortgaged.
+            int heir = GameState.IsPlayerId(creditorId) ? creditorId : GameState.NoOwner;
             for (int square = 0; square < Board.Count; square++)
             {
                 if (State.GetOwner(square) != player.Id) continue;
-                if (creditorId == GameState.NoOwner && State.IsMortgaged(square)) Emit(new MortgageChangedEvent(square, false));
-                Emit(new PropertyOwnerChangedEvent(square, player.Id, creditorId));
+                if (heir == GameState.NoOwner && State.IsMortgaged(square)) Emit(new MortgageChangedEvent(square, false));
+                Emit(new PropertyOwnerChangedEvent(square, player.Id, heir));
             }
 
             if (State.Debt != null) Emit(new DebtClearedEvent(player.Id));
@@ -375,9 +502,17 @@ namespace Lazpoly.Core.Engine
             int count = State.Players.Count;
             for (int step = 1; step <= count; step++)
             {
-                PlayerState next = State.Players[(State.CurrentPlayerIndex + step) % count];
+                int index = (State.CurrentPlayerIndex + step) % count;
+                PlayerState next = State.Players[index];
                 if (!next.IsBankrupt)
                 {
+                    // The turn going round to the first seat again would start a round past the table's limit.
+                    if (Rules.RoundLimit > 0 && index <= State.CurrentPlayerIndex && State.Round >= Rules.RoundLimit)
+                    {
+                        Emit(new GameEndedEvent(GameRules.Richest(Board, State), GameEndReason.RoundLimit));
+                        return;
+                    }
+
                     Emit(new TurnStartedEvent(next.Id));
                     Emit(new PhaseChangedEvent(GamePhase.WaitingForRoll));
                     return;

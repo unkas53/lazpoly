@@ -227,6 +227,7 @@ namespace Lazpoly.App.Session
                 BoardChecksum = _boardChecksum,
                 YourPlayerId = _remotePlayers[peer],
                 Sequence = _sequence,
+                Table = _engine.Rules.Table,
                 Snapshot = GameStateSnapshot.Capture(_engine.State),
             });
         }

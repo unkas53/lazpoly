@@ -55,6 +55,27 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
+        public void ClientsPlayWithTheHostsTableRules()
+        {
+            NetTable table = NetTable.Create(3, table: new Lazpoly.Core.Rules.TableRules(1600, false, 3));
+            Assert.AreEqual(800, table.Clients[2].Rules.StartingMoney, "Before the game starts a client only has the board data.");
+            table.StartAll();
+
+            foreach (ClientSession client in table.Clients.Values)
+            {
+                Assert.AreEqual(1600, client.Rules.StartingMoney);
+                Assert.IsFalse(client.Rules.AuctionsEnabled);
+                Assert.AreEqual(3, client.Rules.RoundLimit);
+                Assert.AreEqual(1600, client.State.Players[0].Money);
+            }
+
+            int steps = 0;
+            while (steps < 400 && table.Step()) steps++;
+            Assert.AreEqual(GamePhase.GameOver, table.HostState.Phase, "Three rounds should end the game.");
+            AssertAllInStep(table);
+        }
+
+        [Test]
         public void EachMachineControlsOnlyItsOwnPlayer()
         {
             NetTable table = NetTable.Create(3);

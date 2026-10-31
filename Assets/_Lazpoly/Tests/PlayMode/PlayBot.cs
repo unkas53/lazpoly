@@ -34,6 +34,10 @@ namespace Lazpoly.PlayTests
                     break;
                 case GamePhase.AwaitingTradeResponse:
                     return new RejectTradeCommand(state.PendingTrade.ToPlayerId);
+                case GamePhase.AwaitingTravelDecision:
+                    return new DeclineTravelCommand(me);
+                case GamePhase.AwaitingDiceChoice:
+                    return new ChooseDiceCommand(me, 1);
                 case GamePhase.AwaitingDebtPayment:
                     if (Legal(new PayDebtCommand(me))) return new PayDebtCommand(me);
                     for (int square = 0; square < board.Count; square++)

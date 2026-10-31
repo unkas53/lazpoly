@@ -30,6 +30,54 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ShippedBoardHasTheSpecialSquaresAndADeck()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            foreach (SquareType type in new[] { SquareType.Card, SquareType.Pot, SquareType.Travel, SquareType.Lookout })
+            {
+                bool found = false;
+                for (int i = 0; i < data.Board.Count; i++) found |= data.Board[i].Type == type;
+                Assert.IsTrue(found, $"The board has no {type} square.");
+            }
+
+            Assert.IsTrue(data.Board.HasPot);
+            Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
+            foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
+        }
+
+        [Test]
+        public void ParsesSpecialSquaresAndCards()
+        {
+            const string json = @"{
+                ""startingMoney"": 1000, ""passStartBonus"": 100, ""diceSides"": 6, ""maxConsecutiveDoubles"": 3,
+                ""fullGroupRentMultiplier"": 2, ""mortgageInterestPercent"": 10, ""buildingSellbackPercent"": 50,
+                ""squares"": [
+                    { ""type"": ""start"", ""name"": ""S"" },
+                    { ""type"": ""card"", ""name"": ""Haber"" },
+                    { ""type"": ""pot"", ""name"": ""Kumbara"" },
+                    { ""type"": ""travel"", ""name"": ""Otogar"", ""fee"": 40 },
+                    { ""type"": ""lookout"", ""name"": ""Teras"" }
+                ],
+                ""cards"": [
+                    { ""kind"": ""collect"", ""amount"": 10, ""text"": ""Al"" },
+                    { ""kind"": ""moveTo"", ""to"": ""Otogar"", ""text"": ""Git"" },
+                    { ""kind"": ""repairs"", ""amount"": 5, ""hotel"": 20, ""text"": ""Tamir"" }
+                ]
+            }";
+
+            BoardData data = BoardDataLoader.Parse(json);
+            Assert.AreEqual(40, data.Board[3].Fee);
+            Assert.AreEqual(SquareType.Lookout, data.Board[4].Type);
+            Assert.AreEqual(3, data.Board.Cards.Count);
+            Assert.AreEqual(CardKind.MoveTo, data.Board.Cards[1].Kind);
+            Assert.AreEqual(3, data.Board.Cards[1].Target);
+            Assert.AreEqual(20, data.Board.Cards[2].HotelAmount);
+
+            Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""to"": ""Otogar""", @"""to"": ""Yok""")));
+            Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""kind"": ""collect""", @"""kind"": ""magic""")));
+        }
+
+        [Test]
         public void ShippedBoardIsFullyDevelopable()
         {
             BoardData data = BoardDataLoader.LoadFromResources();

@@ -9,9 +9,13 @@ namespace Lazpoly.Core.Board
     /// </summary>
     public sealed class BoardDefinition
     {
-        private readonly SquareDefinition[] _squares;
+        private static readonly CardDefinition[] NoCards = new CardDefinition[0];
 
-        public BoardDefinition(IReadOnlyList<SquareDefinition> squares)
+        private readonly SquareDefinition[] _squares;
+        private readonly CardDefinition[] _cards;
+
+        /// <param name="cards">The deck card squares draw from; required (and only allowed) when the board has a card square.</param>
+        public BoardDefinition(IReadOnlyList<SquareDefinition> squares, IReadOnlyList<CardDefinition> cards = null)
         {
             if (squares == null) throw new ArgumentNullException(nameof(squares));
             if (squares.Count < 2) throw new ArgumentException("A board needs at least two squares.", nameof(squares));
@@ -28,7 +32,32 @@ namespace Lazpoly.Core.Board
             {
                 throw new ArgumentException("Square 0 must be the start square.", nameof(squares));
             }
+
+            HasPot = Array.Exists(_squares, square => square.Type == SquareType.Pot);
+            bool hasCardSquare = Array.Exists(_squares, square => square.Type == SquareType.Card);
+            _cards = NoCards;
+            if (cards != null && cards.Count > 0)
+            {
+                if (!hasCardSquare) throw new ArgumentException("Cards need a card square to be drawn on.", nameof(cards));
+                _cards = new CardDefinition[cards.Count];
+                for (int i = 0; i < cards.Count; i++)
+                {
+                    CardDefinition card = cards[i] ?? throw new ArgumentException($"Card {i} is null.", nameof(cards));
+                    ValidateCard(card, i);
+                    _cards[i] = card;
+                }
+            }
+            else if (hasCardSquare)
+            {
+                throw new ArgumentException("A board with a card square needs cards.", nameof(cards));
+            }
         }
+
+        /// <summary>The deck of the card squares, in data order; empty when the board has none.</summary>
+        public IReadOnlyList<CardDefinition> Cards => _cards;
+
+        /// <summary>Whether taxes and card fines collect in a pot (the board has a pot square) instead of going to the bank.</summary>
+        public bool HasPot { get; }
 
         public int Count => _squares.Length;
 
@@ -75,6 +104,37 @@ namespace Lazpoly.Core.Board
             }
         }
 
+        private void ValidateCard(CardDefinition card, int index)
+        {
+            string name = $"Card {index} '{card.Text}'";
+            switch (card.Kind)
+            {
+                case CardKind.Collect:
+                case CardKind.Pay:
+                    if (card.Amount <= 0) throw new ArgumentException($"{name}: amount must be positive.");
+                    break;
+                case CardKind.MoveTo:
+                    if (card.Target < 0 || card.Target >= _squares.Length) throw new ArgumentException($"{name}: target is outside the board.");
+                    // A card never leads to another card, so one landing draws at most one card.
+                    if (_squares[card.Target].Type == SquareType.Card) throw new ArgumentException($"{name}: cannot send a player to a card square.");
+                    break;
+                case CardKind.MoveBy:
+                    if (card.Amount == 0 || Math.Abs(card.Amount) >= _squares.Length) throw new ArgumentException($"{name}: steps must be 1 to {_squares.Length - 1} either way.");
+                    break;
+                case CardKind.PayPerBuilding:
+                    if (card.Amount < 0 || card.HotelAmount < 0 || card.Amount + card.HotelAmount == 0)
+                    {
+                        throw new ArgumentException($"{name}: needs a house or hotel cost.");
+                    }
+
+                    break;
+                case CardKind.Lookout:
+                    break;
+                default:
+                    throw new ArgumentException($"{name}: unknown kind {card.Kind}.");
+            }
+        }
+
         private static void Validate(SquareDefinition square, int index)
         {
             if (index > 0 && square.Type == SquareType.Start)
@@ -92,6 +152,9 @@ namespace Lazpoly.Core.Board
                     break;
                 case SquareType.Tax:
                     if (square.TaxAmount <= 0) throw new ArgumentException($"Square {index} '{square.Name}': tax must be positive.");
+                    break;
+                case SquareType.Travel:
+                    if (square.Fee < 0) throw new ArgumentException($"Square {index} '{square.Name}': fee cannot be negative.");
                     break;
             }
         }

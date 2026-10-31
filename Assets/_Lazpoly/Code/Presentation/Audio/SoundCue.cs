@@ -49,6 +49,7 @@ namespace Lazpoly.Presentation.Audio
                 case TradeResolvedEvent e: return e.Outcome == TradeOutcome.Accepted ? SoundCue.Trade : SoundCue.None;
                 case PlayerBankruptedEvent _: return SoundCue.Bankrupt;
                 case GameEndedEvent _: return SoundCue.Win;
+                case CardDrawnEvent _: return SoundCue.UiOpen;
                 default: return SoundCue.None;
             }
         }
@@ -61,7 +62,13 @@ namespace Lazpoly.Presentation.Audio
                 case MoneyReason.Building: return SoundCue.Build;
                 case MoneyReason.BuildingSale: return SoundCue.Sell;
                 case MoneyReason.Mortgage: return SoundCue.Mortgage;
-                case MoneyReason.PassedStart: return SoundCue.MoneyIn;
+                case MoneyReason.PassedStart:
+                case MoneyReason.Pot:
+                    return SoundCue.MoneyIn;
+                case MoneyReason.Card:
+                    return e.Delta > 0 ? SoundCue.MoneyIn : SoundCue.MoneyOut;
+                case MoneyReason.Travel:
+                    return SoundCue.MoneyOut;
                 case MoneyReason.Redeem:
                 case MoneyReason.Tax:
                 case MoneyReason.Rent:

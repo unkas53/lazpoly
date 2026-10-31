@@ -20,6 +20,10 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color StartColor = new Color(0.40f, 0.73f, 0.42f);
         private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
+        private static readonly Color CardColor = new Color(0.98f, 0.80f, 0.42f);
+        private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
+        private static readonly Color TravelColor = new Color(0.62f, 0.74f, 0.95f);
+        private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color TableColor = new Color(0.36f, 0.24f, 0.16f);
         private static readonly Color FeltColor = new Color(0.20f, 0.42f, 0.31f);
         private static readonly Color PropertyBodyColor = new Color(0.96f, 0.94f, 0.88f);
@@ -39,6 +43,7 @@ namespace Lazpoly.Presentation.Tabletop
         private readonly Dictionary<Collider, int> _squareOfCollider = new Dictionary<Collider, int>();
         private HashSet<int> _highlighted;
         private float _tile;
+        private TextMesh _pot;
 
         public BoardLayout Layout { get; private set; }
 
@@ -83,6 +88,12 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_highlighted != null) color = _highlighted.Contains(i) ? Color.Lerp(color, Color.white, 0.25f) : Color.Lerp(color, Color.black, 0.45f);
                 Paint(_tiles[i], color);
             }
+        }
+
+        /// <summary>Shows what the pot holds in the middle of the board (boards without a pot show nothing).</summary>
+        public void SetPot(int amount)
+        {
+            if (_pot != null) _pot.text = $"Çay kumbarası\n{amount}";
         }
 
         /// <summary>Shows who owns a square; pass null to show it as unowned.</summary>
@@ -186,6 +197,11 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject felt = ModelParts.Create("Felt", transform, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f), FeltColor, 0.05f);
             felt.transform.localPosition = new Vector3(0f, 0.02f, 0f);
             CreateTitle(new Vector3(0f, 0.045f, inner * 0.22f), inner);
+            if (board.HasPot)
+            {
+                _pot = CreateText("Pot", "", new Vector3(0f, 0.045f, inner * 0.06f), 96, inner * 0.0035f, TitleColor);
+                SetPot(0);
+            }
 
             _tile = tile;
             _ownerMarkers = new GameObject[board.Count];
@@ -221,6 +237,7 @@ namespace Lazpoly.Presentation.Tabletop
 
                 string caption = square.Type == SquareType.Property ? $"{square.Name}\n{square.Price}"
                     : square.Type == SquareType.Tax ? $"{square.Name}\n-{square.TaxAmount}"
+                    : square.Type == SquareType.Travel ? $"{square.Name}\nbilet {square.Fee}"
                     : square.Name;
                 // Name and price sit towards the outer edge; pawns stand on the inner half (PawnSpot).
                 CreateLabel(caption, center + Outward(center) * (tile * 0.07f) + Vector3.up * (TileHeight + 0.01f), tile);
@@ -311,6 +328,26 @@ namespace Lazpoly.Presentation.Tabletop
             title.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
         }
 
+        private TextMesh CreateText(string name, string text, Vector3 localPosition, int fontSize, float characterSize, Color color)
+        {
+            var label = new GameObject(name);
+            label.transform.SetParent(transform, false);
+            label.transform.localPosition = localPosition;
+            label.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+            var mesh = label.AddComponent<TextMesh>();
+            mesh.text = text;
+            mesh.anchor = TextAnchor.MiddleCenter;
+            mesh.alignment = TextAlignment.Center;
+            mesh.fontSize = fontSize;
+            mesh.fontStyle = FontStyle.Bold;
+            mesh.characterSize = characterSize;
+            mesh.color = color;
+            mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
+            return mesh;
+        }
+
         private void CreateLabel(string text, Vector3 localPosition, float tile)
         {
             var label = new GameObject("Label");
@@ -338,6 +375,10 @@ namespace Lazpoly.Presentation.Tabletop
                 case SquareType.Start: return StartColor;
                 case SquareType.Tax: return TaxColor;
                 case SquareType.Property: return data.GroupColor(square.GroupId);
+                case SquareType.Card: return CardColor;
+                case SquareType.Pot: return PotColor;
+                case SquareType.Travel: return TravelColor;
+                case SquareType.Lookout: return LookoutColor;
                 default: return RestColor;
             }
         }

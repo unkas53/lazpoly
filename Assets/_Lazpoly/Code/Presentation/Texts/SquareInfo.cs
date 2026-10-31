@@ -54,7 +54,39 @@ namespace Lazpoly.Presentation.Texts
                 {
                     var info = new SquareInfo(square.Name, "Vergi");
                     info.Rows.Add(new SquareInfoRow("Ödenecek", square.TaxAmount.ToString()));
-                    info.Notes.Add("Buraya gelen bankaya öder.");
+                    info.Notes.Add(board.HasPot ? "Buraya gelen öder; para çay kumbarasına girer." : "Buraya gelen bankaya öder.");
+                    return info;
+                }
+
+                case SquareType.Card:
+                {
+                    var info = new SquareInfo(square.Name, "Sokak Haberi");
+                    info.Rows.Add(new SquareInfoRow("Destedeki kart", board.Cards.Count.ToString()));
+                    info.Notes.Add("Buraya gelen bir kart çeker: para kazanabilir, ödeyebilir ya da başka kareye gidebilir.");
+                    return info;
+                }
+
+                case SquareType.Pot:
+                {
+                    var info = new SquareInfo(square.Name, "Çay kumbarası");
+                    info.Rows.Add(new SquareInfoRow("Kumbarada", state.Pot.ToString(), state.Pot > 0));
+                    info.Notes.Add("Vergiler ve kart cezaları kumbarada birikir; buraya gelen hepsini alır.");
+                    return info;
+                }
+
+                case SquareType.Travel:
+                {
+                    var info = new SquareInfo(square.Name, "Yolculuk");
+                    info.Rows.Add(new SquareInfoRow("Bilet", square.Fee.ToString()));
+                    info.Notes.Add("Buraya gelen isterse bileti ödeyip tahtadaki herhangi bir kareye gider.");
+                    info.Notes.Add("Başlangıçtan geçmiş sayılmaz.");
+                    return info;
+                }
+
+                case SquareType.Lookout:
+                {
+                    var info = new SquareInfo(square.Name, "Seyir");
+                    info.Notes.Add("Buraya gelen bir sonraki zarında iki kez atar ve hangisiyle gideceğini seçer.");
                     return info;
                 }
 

@@ -44,6 +44,13 @@ namespace Lazpoly.Core.Tests
                                         ?? FirstLegal(engine, square => new MortgageCommand(me, square));
                     return raise ?? new DeclareBankruptcyCommand(me);
 
+                case GamePhase.AwaitingTravelDecision:
+                    var ride = new TravelCommand(me, dice.NextInt(0, board.Count));
+                    return dice.NextInt(0, 2) == 0 && Legal(engine, ride) ? ride : (GameCommand)new DeclineTravelCommand(me);
+
+                case GamePhase.AwaitingDiceChoice:
+                    return new ChooseDiceCommand(me, dice.NextInt(0, 2));
+
                 case GamePhase.AwaitingBuyDecision:
                     if (Legal(engine, new BuyPropertyCommand(me)) && dice.NextInt(0, 4) != 0) return new BuyPropertyCommand(me);
                     return new DeclinePurchaseCommand(me);

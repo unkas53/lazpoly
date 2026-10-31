@@ -36,12 +36,16 @@ namespace Lazpoly.Presentation.Game
         private const int MaxLogLines = 10;
         private const float CameraPitch = 55f;
 
+        /// <summary>Pause after a card is drawn so it can be read before it acts.</summary>
+        public const float CardReadSeconds = 1.6f;
+
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
         private readonly List<string> _log = new List<string>();
         private readonly List<LogTone> _logTones = new List<LogTone>();
         private readonly Dictionary<int, int> _shownMoney = new Dictionary<int, int>();
+        private int _shownPot;
 
         private BoardData _data;
         private IGameSession _session;
@@ -92,6 +96,16 @@ namespace Lazpoly.Presentation.Game
         /// </summary>
         public int ShownMoneyOf(int playerId) =>
             _shownMoney.TryGetValue(playerId, out int money) ? money : _session?.State?.FindPlayer(playerId)?.Money ?? 0;
+
+        /// <summary>The pot as far as the animations have got (see <see cref="ShownMoneyOf"/>).</summary>
+        public int ShownPot => _shownPot;
+
+        /// <summary>The card being shown (index into the board's deck) and who drew it; -1 when none.</summary>
+        public int ShownCard { get; private set; } = -1;
+        public int ShownCardPlayer { get; private set; } = -1;
+
+        /// <summary>Real time the shown card was drawn, so the HUD can fade it.</summary>
+        public float ShownCardTime { get; private set; }
 
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
 
@@ -217,7 +231,7 @@ namespace Lazpoly.Presentation.Game
             if (!online.IsHost) return new ClientSession(online.Transport, online.HostPeer, _data.Board, _data.Rules, _data.Checksum);
 
             OnlineSeatPlan plan = online.HostPlan;
-            var engine = new GameEngine(_data.Board, _data.Rules, plan.Seats, NewRandom());
+            var engine = new GameEngine(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), plan.Seats, NewRandom());
             _host = new HostSession(engine, online.Transport, plan.HostPlayerId, plan.RemotePlayers, _data.Checksum, NewSeed());
             return _host;
         }
@@ -240,7 +254,8 @@ namespace Lazpoly.Presentation.Game
                 }
             }
 
-            return LocalGame.Create(_data.Board, _data.Rules, LocalGameSetup.TakeSeats(), LocalGameSetup.TakeAiPlayers(), NewSeed());
+            return LocalGame.Create(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), LocalGameSetup.TakeSeats(),
+                LocalGameSetup.TakeAiPlayers(), NewSeed());
         }
 
         private static Pcg32Random NewRandom() => new Pcg32Random(NewSeed());
@@ -298,6 +313,8 @@ namespace Lazpoly.Presentation.Game
                 if (player.IsBankrupt) pawn.SetEliminated();
             }
 
+            _shownPot = state.Pot;
+            _board.SetPot(state.Pot);
             for (int i = 0; i < state.SquareCount; i++)
             {
                 int owner = state.GetOwner(i);
@@ -426,7 +443,22 @@ namespace Lazpoly.Presentation.Game
                         AudioPlayer.Play(SoundCue.DiceLand);
                         break;
                     case PlayerMovedEvent moved:
-                        yield return _pawns[moved.PlayerId].WalkTo(moved.ToSquare);
+                        PawnView pawn = _pawns[moved.PlayerId];
+                        if (moved.Kind == MoveKind.Jump) yield return pawn.JumpTo(moved.ToSquare);
+                        else yield return pawn.WalkTo(moved.ToSquare, backward: moved.Kind == MoveKind.Back);
+                        break;
+                    case PotChangedEvent pot:
+                        _shownPot += pot.Delta;
+                        _board.SetPot(_shownPot);
+                        Revision++;
+                        break;
+                    case CardDrawnEvent card:
+                        ShownCard = card.CardIndex;
+                        ShownCardPlayer = card.PlayerId;
+                        ShownCardTime = Time.unscaledTime;
+                        Revision++;
+                        // A moment to read the card before its effect plays.
+                        yield return new WaitForSeconds(CardReadSeconds / Mathf.Max(Settings.AnimationSpeed, 0.1f));
                         break;
                     case MoneyChangedEvent money:
                         _shownMoney[money.PlayerId] = ShownMoneyOf(money.PlayerId) + money.Delta;
@@ -456,6 +488,8 @@ namespace Lazpoly.Presentation.Game
 
             // Everything is shown now, so the money on screen is the state's money.
             foreach (PlayerState player in _session.State.Players) _shownMoney[player.Id] = player.Money;
+            _shownPot = _session.State.Pot;
+            _board.SetPot(_shownPot);
             Revision++;
             _playing = false;
         }

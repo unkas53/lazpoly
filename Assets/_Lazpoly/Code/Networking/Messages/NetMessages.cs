@@ -41,6 +41,9 @@ namespace Lazpoly.Net.Messages
         /// <summary>Sequence number of the last event already contained in <see cref="Snapshot"/>.</summary>
         public int Sequence;
 
+        /// <summary>The house rules the host set up; the client plays its board data with them.</summary>
+        public Lazpoly.Core.Rules.TableRules Table = Lazpoly.Core.Rules.TableRules.Default;
+
         public GameStateSnapshot Snapshot;
     }
 

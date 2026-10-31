@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Lazpoly.App.AI;
 using Lazpoly.App.Lobby;
@@ -36,6 +37,9 @@ namespace Lazpoly.Presentation.Menu
         private UiView _footerView;
         private UiView _settingsView;
         private GameObject _settingsLayer;
+        private UiView _tableView;
+        private GameObject _tableLayer;
+        private int _boardMoney;
         private LobbyPanel _lobbyPanel;
         private SavedGame _savedGame;
         private SettingsPanel _settings;
@@ -52,6 +56,7 @@ namespace Lazpoly.Presentation.Menu
             }
 
             FindSavedGame();
+            _boardMoney = BoardDataLoader.LoadFromResources().Rules.StartingMoney;
 
             ITransport transport = null;
             GameServices.Registry?.TryGet(out _lobby);
@@ -101,16 +106,19 @@ namespace Lazpoly.Presentation.Menu
 
             _settingsView = new UiView(UiRoot.Modal(canvas.transform, "Settings", 520f, out _settingsLayer), ui => _settings.Render(ui, CloseSettings));
             _settingsLayer.SetActive(false);
+            _tableView = new UiView(UiRoot.Modal(canvas.transform, "Table Rules", 560f, out _tableLayer), RenderTableRules);
+            _tableLayer.SetActive(false);
         }
 
         private void LateUpdate()
         {
             if (_localView == null) return;
             _titleView.Refresh(_savedGame != null ? 1 : 0);
-            _localView.Refresh(_playerCount);
+            _localView.Refresh(HashCode.Combine(_playerCount, TableKey()));
             _onlineView.Refresh(_lobbyPanel.ViewKey);
             _footerView.Refresh(0);
             if (_settingsLayer.activeSelf) _settingsView.Refresh(0);
+            if (_tableLayer.activeSelf) _tableView.Refresh(TableKey());
         }
 
         private void RenderTitle(UiBuilder ui)
@@ -146,11 +154,55 @@ namespace Lazpoly.Presentation.Menu
             }
 
             ui.Space(8f);
+            ui.Label($"Masa: {TableSetup.Summary(TableSetup.Chosen, _boardMoney)}", UiTextStyle.Small, UiTheme.Muted);
             ui.Button("Oyunu Başlat", StartLocalGame, style: UiButtonStyle.Primary, height: 52f);
+        }
+
+        private static int TableKey()
+        {
+            TableRules table = TableSetup.Chosen;
+            return HashCode.Combine(table.StartingMoney, table.AuctionsEnabled, table.RoundLimit);
+        }
+
+        /// <summary>House rules for the next new game, local or hosted online.</summary>
+        private void RenderTableRules(UiBuilder ui)
+        {
+            TableRules table = TableSetup.Chosen;
+            ui.Label("Masa Kuralları", UiTextStyle.Heading);
+            ui.Label("Yeni yerel oyunlarda ve kurduğun çevrim içi odalarda geçerli. Kayıtlı oyun kendi kurallarıyla sürer.", UiTextStyle.Small, UiTheme.Muted);
+
+            ui.Label("Başlangıç parası");
+            UiBuilder money = ui.Row();
+            foreach (int choice in TableSetup.StartingMoneyChoices)
+            {
+                int value = choice;
+                money.Button(TableSetup.StartingMoneyText(value, _boardMoney), () => TableSetup.Chosen = TableSetup.Chosen.WithStartingMoney(value),
+                    style: table.StartingMoney == value ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Label("Oyun süresi");
+            UiBuilder rounds = ui.Row();
+            foreach (int choice in TableSetup.RoundLimitChoices)
+            {
+                int value = choice;
+                rounds.Button(TableSetup.RoundLimitText(value), () => TableSetup.Chosen = TableSetup.Chosen.WithRoundLimit(value),
+                    style: table.RoundLimit == value ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Label(table.RoundLimit > 0 ? "Sınır dolunca parası, mülkleri ve binaları en değerli olan kazanır." : "Tek bir oyuncu kalana kadar sürer.",
+                UiTextStyle.Small, UiTheme.Muted);
+            ui.Toggle("Alınmayan mülk açık artırmaya çıksın", table.AuctionsEnabled, on => TableSetup.Chosen = TableSetup.Chosen.WithAuctions(on));
+            ui.Space(6f);
+            ui.Button("Tamam", () => _tableLayer.SetActive(false), style: UiButtonStyle.Primary);
         }
 
         private void RenderFooter(UiBuilder ui)
         {
+            ui.Button("Masa Kuralları", () =>
+            {
+                _tableLayer.SetActive(true);
+                _tableView.Invalidate();
+            });
             ui.Button("Ayarlar", OpenSettings);
             ui.Button("Çıkış", Application.Quit, style: UiButtonStyle.Danger);
         }

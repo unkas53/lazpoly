@@ -2,6 +2,7 @@ using System;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
+using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 
 namespace Lazpoly.Net.Messages
@@ -12,7 +13,7 @@ namespace Lazpoly.Net.Messages
     /// </summary>
     public static class MessageCodec
     {
-        public const int ProtocolVersion = 2;
+        public const int ProtocolVersion = 3;
 
         private enum CommandTag : byte
         {
@@ -21,6 +22,7 @@ namespace Lazpoly.Net.Messages
             Bid = 9, PassBid = 10,
             ProposeTrade = 11, AcceptTrade = 12, RejectTrade = 13, CancelTrade = 14,
             PayDebt = 15, Bankruptcy = 16,
+            Travel = 17, DeclineTravel = 18, ChooseDice = 19,
         }
 
         private enum EventTag : byte
@@ -29,6 +31,7 @@ namespace Lazpoly.Net.Messages
             OwnerChanged = 5, Bankrupted = 6, PhaseChanged = 7, GameEnded = 8,
             BuildingLevel = 9, Mortgage = 10, AuctionStarted = 11, BidPlaced = 12, BidPassed = 13, AuctionEnded = 14,
             TradeProposed = 15, TradeResolved = 16, DebtIncurred = 17, DebtCleared = 18,
+            PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22,
         }
 
         public static byte[] Encode(NetMessage message)
@@ -48,6 +51,7 @@ namespace Lazpoly.Net.Messages
                     w.WriteULong(m.BoardChecksum);
                     w.WriteInt(m.YourPlayerId);
                     w.WriteInt(m.Sequence);
+                    WriteTable(w, m.Table ?? TableRules.Default);
                     WriteSnapshot(w, m.Snapshot);
                     break;
                 case RefusedMessage m:
@@ -91,6 +95,7 @@ namespace Lazpoly.Net.Messages
                         BoardChecksum = r.ReadULong(),
                         YourPlayerId = r.ReadInt(),
                         Sequence = r.ReadInt(),
+                        Table = ReadTable(r),
                         Snapshot = ReadSnapshot(r),
                     };
                     break;
@@ -145,6 +150,9 @@ namespace Lazpoly.Net.Messages
                 case CancelTradeCommand _: w.WriteByte((byte)CommandTag.CancelTrade); break;
                 case PayDebtCommand _: w.WriteByte((byte)CommandTag.PayDebt); break;
                 case DeclareBankruptcyCommand _: w.WriteByte((byte)CommandTag.Bankruptcy); break;
+                case TravelCommand _: w.WriteByte((byte)CommandTag.Travel); break;
+                case DeclineTravelCommand _: w.WriteByte((byte)CommandTag.DeclineTravel); break;
+                case ChooseDiceCommand _: w.WriteByte((byte)CommandTag.ChooseDice); break;
                 default: throw new ArgumentException($"Cannot encode command {command?.GetType().Name}.");
             }
 
@@ -153,6 +161,7 @@ namespace Lazpoly.Net.Messages
             {
                 case SquareCommand c: w.WriteInt(c.SquareIndex); break;
                 case PlaceBidCommand c: w.WriteInt(c.Amount); break;
+                case ChooseDiceCommand c: w.WriteInt(c.Option); break;
                 case ProposeTradeCommand c: WriteOffer(w, c.Offer); break;
             }
         }
@@ -212,6 +221,9 @@ namespace Lazpoly.Net.Messages
                 case CommandTag.CancelTrade: return new CancelTradeCommand(playerId);
                 case CommandTag.PayDebt: return new PayDebtCommand(playerId);
                 case CommandTag.Bankruptcy: return new DeclareBankruptcyCommand(playerId);
+                case CommandTag.Travel: return new TravelCommand(playerId, r.ReadInt());
+                case CommandTag.DeclineTravel: return new DeclineTravelCommand(playerId);
+                case CommandTag.ChooseDice: return new ChooseDiceCommand(playerId, r.ReadInt());
                 default: throw new FormatException($"Unknown command tag {(byte)tag}.");
             }
         }
@@ -228,7 +240,7 @@ namespace Lazpoly.Net.Messages
                     break;
                 case PlayerMovedEvent e:
                     w.WriteByte((byte)EventTag.PlayerMoved); w.WriteInt(e.PlayerId); w.WriteInt(e.FromSquare);
-                    w.WriteInt(e.ToSquare); w.WriteBool(e.PassedStart);
+                    w.WriteInt(e.ToSquare); w.WriteBool(e.PassedStart); w.WriteInt((int)e.Kind);
                     break;
                 case MoneyChangedEvent e:
                     w.WriteByte((byte)EventTag.MoneyChanged); w.WriteInt(e.PlayerId); w.WriteInt(e.Delta); w.WriteInt((int)e.Reason);
@@ -244,7 +256,7 @@ namespace Lazpoly.Net.Messages
                     w.WriteByte((byte)EventTag.PhaseChanged); w.WriteInt((int)e.Phase);
                     break;
                 case GameEndedEvent e:
-                    w.WriteByte((byte)EventTag.GameEnded); w.WriteInt(e.WinnerId);
+                    w.WriteByte((byte)EventTag.GameEnded); w.WriteInt(e.WinnerId); w.WriteInt((int)e.Reason);
                     break;
                 case BuildingLevelChangedEvent e:
                     w.WriteByte((byte)EventTag.BuildingLevel); w.WriteInt(e.SquareIndex); w.WriteInt(e.Level);
@@ -277,6 +289,19 @@ namespace Lazpoly.Net.Messages
                 case DebtClearedEvent e:
                     w.WriteByte((byte)EventTag.DebtCleared); w.WriteInt(e.PlayerId);
                     break;
+                case PotChangedEvent e:
+                    w.WriteByte((byte)EventTag.PotChanged); w.WriteInt(e.Delta);
+                    break;
+                case CardDrawnEvent e:
+                    w.WriteByte((byte)EventTag.CardDrawn); w.WriteInt(e.PlayerId); w.WriteInt(e.CardIndex);
+                    break;
+                case LookoutChangedEvent e:
+                    w.WriteByte((byte)EventTag.Lookout); w.WriteInt(e.PlayerId); w.WriteBool(e.HasLookout);
+                    break;
+                case DiceOptionsEvent e:
+                    w.WriteByte((byte)EventTag.DiceOptions); w.WriteInt(e.PlayerId);
+                    w.WriteInt(e.FirstDie1); w.WriteInt(e.FirstDie2); w.WriteInt(e.SecondDie1); w.WriteInt(e.SecondDie2);
+                    break;
                 default:
                     throw new ArgumentException($"Cannot encode event {gameEvent?.GetType().Name}.");
             }
@@ -289,12 +314,12 @@ namespace Lazpoly.Net.Messages
             {
                 case EventTag.TurnStarted: return new TurnStartedEvent(r.ReadInt());
                 case EventTag.DiceRolled: return new DiceRolledEvent(r.ReadInt(), r.ReadInt(), r.ReadInt());
-                case EventTag.PlayerMoved: return new PlayerMovedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadBool());
+                case EventTag.PlayerMoved: return new PlayerMovedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadBool(), ReadEnum<MoveKind>(r));
                 case EventTag.MoneyChanged: return new MoneyChangedEvent(r.ReadInt(), r.ReadInt(), ReadEnum<MoneyReason>(r));
                 case EventTag.OwnerChanged: return new PropertyOwnerChangedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.Bankrupted: return new PlayerBankruptedEvent(r.ReadInt(), r.ReadInt());
                 case EventTag.PhaseChanged: return new PhaseChangedEvent(ReadEnum<GamePhase>(r));
-                case EventTag.GameEnded: return new GameEndedEvent(r.ReadInt());
+                case EventTag.GameEnded: return new GameEndedEvent(r.ReadInt(), ReadEnum<GameEndReason>(r));
                 case EventTag.BuildingLevel: return new BuildingLevelChangedEvent(r.ReadInt(), r.ReadInt());
                 case EventTag.Mortgage: return new MortgageChangedEvent(r.ReadInt(), r.ReadBool());
                 case EventTag.AuctionStarted: return new AuctionStartedEvent(r.ReadInt());
@@ -305,6 +330,10 @@ namespace Lazpoly.Net.Messages
                 case EventTag.TradeResolved: return new TradeResolvedEvent(ReadEnum<TradeOutcome>(r));
                 case EventTag.DebtIncurred: return new DebtIncurredEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), ReadEnum<MoneyReason>(r));
                 case EventTag.DebtCleared: return new DebtClearedEvent(r.ReadInt());
+                case EventTag.PotChanged: return new PotChangedEvent(r.ReadInt());
+                case EventTag.CardDrawn: return new CardDrawnEvent(r.ReadInt(), r.ReadInt());
+                case EventTag.Lookout: return new LookoutChangedEvent(r.ReadInt(), r.ReadBool());
+                case EventTag.DiceOptions: return new DiceOptionsEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt());
                 default: throw new FormatException($"Unknown event tag {(byte)tag}.");
             }
         }
@@ -320,6 +349,15 @@ namespace Lazpoly.Net.Messages
             w.WriteInt(s.LastDie2);
             w.WriteInt(s.ConsecutiveDoubles);
             w.WriteInt(s.WinnerId);
+            w.WriteInt(s.Round);
+            w.WriteInt(s.Pot);
+            w.WriteBool(s.DiceOptions != null);
+            if (s.DiceOptions != null)
+            {
+                if (s.DiceOptions.Length != 4) throw new ArgumentException("Dice options need four dice.");
+                foreach (int die in s.DiceOptions) w.WriteInt(die);
+            }
+
             w.WriteInt(s.Players.Count);
             foreach (GameStateSnapshot.PlayerEntry p in s.Players)
             {
@@ -328,6 +366,7 @@ namespace Lazpoly.Net.Messages
                 w.WriteInt(p.Money);
                 w.WriteInt(p.Position);
                 w.WriteBool(p.IsBankrupt);
+                w.WriteBool(p.HasLookout);
             }
 
             w.WriteInt(s.Owners.Length);
@@ -377,7 +416,11 @@ namespace Lazpoly.Net.Messages
                 LastDie2 = r.ReadInt(),
                 ConsecutiveDoubles = r.ReadInt(),
                 WinnerId = r.ReadInt(),
+                Round = r.ReadInt(),
+                Pot = r.ReadInt(),
             };
+
+            if (r.ReadBool()) s.DiceOptions = new[] { r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt() };
 
             int players = r.ReadCount();
             for (int i = 0; i < players; i++)
@@ -389,6 +432,7 @@ namespace Lazpoly.Net.Messages
                     Money = r.ReadInt(),
                     Position = r.ReadInt(),
                     IsBankrupt = r.ReadBool(),
+                    HasLookout = r.ReadBool(),
                 });
             }
 
@@ -424,6 +468,23 @@ namespace Lazpoly.Net.Messages
             }
 
             return s;
+        }
+
+        /// <summary>Writes the table's house rules; also used for save files.</summary>
+        public static void WriteTable(NetWriter w, TableRules table)
+        {
+            w.WriteInt(table.StartingMoney);
+            w.WriteBool(table.AuctionsEnabled);
+            w.WriteInt(table.RoundLimit);
+        }
+
+        public static TableRules ReadTable(NetReader r)
+        {
+            int money = r.ReadInt();
+            bool auctions = r.ReadBool();
+            int rounds = r.ReadInt();
+            if (money < 0 || rounds < 0) throw new FormatException("Invalid table rules.");
+            return new TableRules(money, auctions, rounds);
         }
 
         /// <summary>Reads an int-backed enum and refuses values the enum does not define.</summary>

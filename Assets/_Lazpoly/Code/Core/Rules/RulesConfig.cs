@@ -18,7 +18,9 @@ namespace Lazpoly.Core.Rules
             int maxConsecutiveDoubles,
             int fullGroupRentMultiplier,
             int mortgageInterestPercent,
-            int buildingSellbackPercent)
+            int buildingSellbackPercent,
+            bool auctionsEnabled = true,
+            int roundLimit = 0)
         {
             if (startingMoney <= 0) throw new ArgumentOutOfRangeException(nameof(startingMoney));
             if (passStartBonus < 0) throw new ArgumentOutOfRangeException(nameof(passStartBonus));
@@ -27,6 +29,7 @@ namespace Lazpoly.Core.Rules
             if (fullGroupRentMultiplier < 1) throw new ArgumentOutOfRangeException(nameof(fullGroupRentMultiplier));
             if (mortgageInterestPercent < 0 || mortgageInterestPercent > 100) throw new ArgumentOutOfRangeException(nameof(mortgageInterestPercent));
             if (buildingSellbackPercent < 0 || buildingSellbackPercent > 100) throw new ArgumentOutOfRangeException(nameof(buildingSellbackPercent));
+            if (roundLimit < 0) throw new ArgumentOutOfRangeException(nameof(roundLimit));
 
             StartingMoney = startingMoney;
             PassStartBonus = passStartBonus;
@@ -35,6 +38,8 @@ namespace Lazpoly.Core.Rules
             FullGroupRentMultiplier = fullGroupRentMultiplier;
             MortgageInterestPercent = mortgageInterestPercent;
             BuildingSellbackPercent = buildingSellbackPercent;
+            AuctionsEnabled = auctionsEnabled;
+            RoundLimit = roundLimit;
         }
 
         public int StartingMoney { get; }
@@ -56,6 +61,27 @@ namespace Lazpoly.Core.Rules
 
         /// <summary>Share of the building cost the bank pays back when a building is sold, in percent.</summary>
         public int BuildingSellbackPercent { get; }
+
+        /// <summary>Whether a declined purchase goes to auction; otherwise the square simply stays with the bank.</summary>
+        public bool AuctionsEnabled { get; }
+
+        /// <summary>
+        /// Rounds (every player has had a turn) after which the game ends and the richest player
+        /// wins; 0 plays until one player is left.
+        /// </summary>
+        public int RoundLimit { get; }
+
+        /// <summary>The choices made at the table for this game.</summary>
+        public TableRules Table => new TableRules(StartingMoney, AuctionsEnabled, RoundLimit);
+
+        /// <summary>These rules with the table's choices applied; a table value of 0 keeps the board's starting money.</summary>
+        public RulesConfig WithTable(TableRules table)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            return new RulesConfig(table.StartingMoney > 0 ? table.StartingMoney : StartingMoney, PassStartBonus, DiceSides,
+                MaxConsecutiveDoubles, FullGroupRentMultiplier, MortgageInterestPercent, BuildingSellbackPercent,
+                table.AuctionsEnabled, table.RoundLimit);
+        }
 
         /// <summary>What it costs to lift the mortgage on a property worth <paramref name="mortgageValue"/>.</summary>
         public int RedeemCost(int mortgageValue) => mortgageValue + (mortgageValue * MortgageInterestPercent + 99) / 100;

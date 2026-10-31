@@ -118,6 +118,7 @@ namespace Lazpoly.Presentation.Menu
             if (_lobby.IsOwner)
             {
                 bool enough = _lobby.Members.Count >= RulesConfig.AbsoluteMinPlayers;
+                ui.Label("Masa kuralları alttaki \"Masa Kuralları\" düğmesinden seçilir.", UiTextStyle.Small, UiTheme.Muted);
                 ui.Button(enough ? "Çevrim İçi Oyunu Başlat" : "En az 2 oyuncu gerekli", StartAsHost, enough, UiButtonStyle.Primary);
             }
             else

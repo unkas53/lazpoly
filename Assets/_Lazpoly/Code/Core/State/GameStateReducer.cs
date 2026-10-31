@@ -16,17 +16,43 @@ namespace Lazpoly.Core.State
             switch (gameEvent)
             {
                 case TurnStartedEvent e:
-                    state.CurrentPlayerIndex = RequireIndex(state, e.PlayerId);
+                {
+                    int next = RequireIndex(state, e.PlayerId);
+                    // Going round to a seat at or before the current one starts a new round.
+                    if (next <= state.CurrentPlayerIndex) state.Round++;
+                    state.CurrentPlayerIndex = next;
                     state.TurnNumber++;
                     state.LastDie1 = 0;
                     state.LastDie2 = 0;
                     state.ConsecutiveDoubles = 0;
+                    state.DiceOptions = null;
                     break;
+                }
 
                 case DiceRolledEvent e:
                     state.LastDie1 = e.Die1;
                     state.LastDie2 = e.Die2;
+                    state.DiceOptions = null;
                     if (e.IsDouble) state.ConsecutiveDoubles++;
+                    break;
+
+                case DiceOptionsEvent e:
+                    RequirePlayer(state, e.PlayerId);
+                    state.DiceOptions = new[] { e.FirstDie1, e.FirstDie2, e.SecondDie1, e.SecondDie2 };
+                    break;
+
+                case LookoutChangedEvent e:
+                    RequirePlayer(state, e.PlayerId).HasLookout = e.HasLookout;
+                    break;
+
+                case PotChangedEvent e:
+                    if (state.Pot + e.Delta < 0) throw new InvalidOperationException("The pot cannot go below zero.");
+                    state.Pot += e.Delta;
+                    break;
+
+                case CardDrawnEvent e:
+                    // Only announces the card; its effect arrives as the events that follow.
+                    RequirePlayer(state, e.PlayerId);
                     break;
 
                 case PlayerMovedEvent e:

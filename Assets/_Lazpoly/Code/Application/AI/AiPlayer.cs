@@ -67,6 +67,10 @@ namespace Lazpoly.App.AI
                     return DecidePurchase(view);
                 case GamePhase.AwaitingDebtPayment:
                     return RaiseMoney(view);
+                case GamePhase.AwaitingTravelDecision:
+                    return DecideTravel(view);
+                case GamePhase.AwaitingDiceChoice:
+                    return ChooseDice(view);
                 default:
                     return null;
             }
@@ -82,6 +86,46 @@ namespace Lazpoly.App.AI
             // A square that completes a group is worth dipping into the reserve for.
             int reserve = view.CompletesGroup(square, PlayerId) ? view.Reserve / 3 : view.Reserve;
             return view.Me.Money - price >= reserve ? buy : (GameCommand)new DeclinePurchaseCommand(PlayerId);
+        }
+
+        /// <summary>Takes a ride to a free property it can afford (one completing a group first) or to a rich pot.</summary>
+        private GameCommand DecideTravel(View view)
+        {
+            var stay = new DeclineTravelCommand(PlayerId);
+            int fee = view.Board[view.Me.Position].Fee;
+            int best = -1;
+            int bestScore = 0;
+            for (int square = 0; square < view.Board.Count; square++)
+            {
+                SquareDefinition definition = view.Board[square];
+                int score = 0;
+                if (definition.Type == SquareType.Property && view.State.GetOwner(square) == GameState.NoOwner &&
+                    view.Me.Money - fee - definition.Price >= view.Reserve)
+                {
+                    score = definition.Price + (view.CompletesGroup(square, PlayerId) ? 10000 : 0);
+                }
+                else if (definition.Type == SquareType.Pot && view.State.Pot > fee * 2)
+                {
+                    score = view.State.Pot;
+                }
+
+                if (score <= bestScore || !view.Legal(new TravelCommand(PlayerId, square))) continue;
+                best = square;
+                bestScore = score;
+            }
+
+            if (best < 0 || view.MakesMistake()) return stay;
+            return new TravelCommand(PlayerId, best);
+        }
+
+        /// <summary>Of the two rolls a lookout offers, keeps the one whose landing looks better.</summary>
+        private GameCommand ChooseDice(View view)
+        {
+            int[] first = GameRules.DiceOption(view.State, 0);
+            int[] second = GameRules.DiceOption(view.State, 1);
+            int firstScore = view.LandingScore(first[0] + first[1]);
+            int secondScore = view.LandingScore(second[0] + second[1]);
+            return new ChooseDiceCommand(PlayerId, secondScore > firstScore ? 1 : 0);
         }
 
         private GameCommand DecideBid(View view)
@@ -243,6 +287,38 @@ namespace Lazpoly.App.AI
                 }
 
                 return false;
+            }
+
+            /// <summary>Rough value of moving <paramref name="steps"/> squares: good squares and the start bonus count up, rent and taxes down.</summary>
+            public int LandingScore(int steps)
+            {
+                int total = Me.Position + steps;
+                int square = total % Board.Count;
+                int score = total >= Board.Count ? Rules.PassStartBonus : 0;
+                SquareDefinition definition = Board[square];
+                switch (definition.Type)
+                {
+                    case SquareType.Property:
+                        int owner = State.GetOwner(square);
+                        if (owner == GameState.NoOwner)
+                        {
+                            if (Me.Money - definition.Price >= Reserve) score += definition.Price / 2 + (CompletesGroup(square, Me.Id) ? definition.Price : 0);
+                        }
+                        else if (owner != Me.Id)
+                        {
+                            score -= GameRules.CalculateRent(Board, Rules, State, square);
+                        }
+
+                        break;
+                    case SquareType.Tax:
+                        score -= definition.TaxAmount;
+                        break;
+                    case SquareType.Pot:
+                        score += State.Pot;
+                        break;
+                }
+
+                return score;
             }
 
             /// <summary>What a square is worth to a player who receives it along with <paramref name="bundle"/>.</summary>

@@ -19,7 +19,7 @@ namespace Lazpoly.App.Tests
     {
         public const ulong HostPeer = 100;
 
-        private NetTable(int players, ulong seed, Func<ulong, ITransport, ITransport> wrapClient)
+        private NetTable(int players, ulong seed, Func<ulong, ITransport, ITransport> wrapClient, TableRules table)
         {
             Board = NetTestData.Board();
             Rules = NetTestData.Rules();
@@ -33,7 +33,8 @@ namespace Lazpoly.App.Tests
                 if (i > 0) remote.Add(PeerOf(i + 1), i + 1);
             }
 
-            Engine = new GameEngine(Board, Rules, seats, new Pcg32Random(seed));
+            // The host plays with the table's rules; clients only know the board data and learn the table from the host.
+            Engine = new GameEngine(Board, Rules.WithTable(table ?? TableRules.Default), seats, new Pcg32Random(seed));
             HostTransport = Network.CreateTransport(HostPeer);
             Host = new HostSession(Engine, HostTransport, 1, remote, Checksum);
 
@@ -64,8 +65,9 @@ namespace Lazpoly.App.Tests
 
         public static ulong PeerOf(int playerId) => HostPeer + (ulong)(playerId - 1);
 
-        public static NetTable Create(int players, ulong seed = 1UL, Func<ulong, ITransport, ITransport> wrapClient = null) =>
-            new NetTable(players, seed, wrapClient);
+        public static NetTable Create(int players, ulong seed = 1UL, Func<ulong, ITransport, ITransport> wrapClient = null,
+            TableRules table = null) =>
+            new NetTable(players, seed, wrapClient, table);
 
         /// <summary>Connects everyone and waits until every client has the state.</summary>
         public void StartAll()

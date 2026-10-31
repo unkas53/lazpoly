@@ -59,12 +59,55 @@ namespace Lazpoly.Presentation.Tests
                      {
                          typeof(BuildingLevelChangedEvent), typeof(AuctionEndedEvent), typeof(BidPlacedEvent), typeof(TradeResolvedEvent),
                          typeof(MortgageChangedEvent), typeof(DebtIncurredEvent), typeof(PlayerBankruptedEvent),
+                         typeof(CardDrawnEvent), typeof(PotChangedEvent), typeof(DiceOptionsEvent),
                      })
             {
                 Assert.IsTrue(seen.Contains(expected), $"The computer players never produced {expected.Name}.");
             }
 
             TestContext.WriteLine($"{Games} games, {totalTurns / Games} turns on average.");
+        }
+
+        [Test]
+        public void AShortGameEndsAtItsRoundLimitWithTheRichestPlayer()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var seats = new PlayerSeat[4];
+            var ai = new Dictionary<int, AiDifficulty>();
+            for (int i = 0; i < seats.Length; i++)
+            {
+                seats[i] = new PlayerSeat(i + 1, $"AI {i + 1}");
+                ai.Add(i + 1, AiDifficulty.Normal);
+            }
+
+            var table = new Core.Rules.TableRules(2000, auctionsEnabled: false, roundLimit: 8);
+            LocalGame game = LocalGame.Create(data.Board, data.Rules.WithTable(table), seats, ai, 7UL);
+            LocalGameSession session = game.Session;
+            GameEndedEvent ended = null;
+            bool auctioned = false;
+            session.EventsPublished += events =>
+            {
+                foreach (GameEvent gameEvent in events)
+                {
+                    if (gameEvent is GameEndedEvent end) ended = end;
+                    if (gameEvent is AuctionStartedEvent) auctioned = true;
+                }
+            };
+
+            Assert.AreEqual(2000, session.State.Players[0].Money);
+            for (int commands = 0; session.State.Phase != GamePhase.GameOver; commands++)
+            {
+                Assert.Less(commands, CommandLimit, "The short game did not end.");
+                Assert.IsTrue(session.StepAi());
+            }
+
+            Assert.IsFalse(auctioned, "An auction ran although the table turned auctions off.");
+            Assert.IsNotNull(ended);
+            if (ended.Reason == GameEndReason.RoundLimit)
+            {
+                Assert.AreEqual(8, session.State.Round, "The game should end after the last turn of round 8.");
+                Assert.AreEqual(GameRules.Richest(data.Board, session.State), ended.WinnerId);
+            }
         }
 
         private static void AssertSound(GameState state, BoardData data, ulong seed)

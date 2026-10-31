@@ -21,6 +21,7 @@ namespace Lazpoly.App.Session
         private readonly ITransport _transport;
         private readonly ulong _hostPeer;
         private readonly ulong _boardChecksum;
+        private readonly RulesConfig _boardRules;
         private int _lastSequence;
         private bool _awaitingSnapshot;
         private bool _ended;
@@ -29,7 +30,8 @@ namespace Lazpoly.App.Session
         {
             _transport = transport ?? throw new ArgumentNullException(nameof(transport));
             Board = board ?? throw new ArgumentNullException(nameof(board));
-            Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+            _boardRules = rules ?? throw new ArgumentNullException(nameof(rules));
+            Rules = rules;
             _hostPeer = hostPeer;
             _boardChecksum = boardChecksum;
             _transport.Received += OnReceived;
@@ -37,7 +39,8 @@ namespace Lazpoly.App.Session
         }
 
         public BoardDefinition Board { get; }
-        public RulesConfig Rules { get; }
+        /// <summary>The board data's rules with the host's table rules, once the game has started.</summary>
+        public RulesConfig Rules { get; private set; }
         public GameState State { get; private set; }
         public bool IsReady => State != null;
         public int MyPlayerId { get; private set; } = -1;
@@ -151,6 +154,7 @@ namespace Lazpoly.App.Session
             }
 
             bool first = State == null;
+            Rules = _boardRules.WithTable(start.Table ?? TableRules.Default);
             State = restored;
             MyPlayerId = start.YourPlayerId;
             _lastSequence = start.Sequence;

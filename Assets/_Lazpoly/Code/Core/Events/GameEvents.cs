@@ -21,6 +21,38 @@ namespace Lazpoly.Core.Events
         Redeem = 8,
         Auction = 9,
         Trade = 10,
+
+        /// <summary>A drawn card paid or charged the player.</summary>
+        Card = 11,
+
+        /// <summary>The player collected the pot.</summary>
+        Pot = 12,
+
+        /// <summary>The fare of a ride from a travel square.</summary>
+        Travel = 13,
+    }
+
+    /// <summary>How a pawn gets to its new square, so every screen animates the move the same way.</summary>
+    public enum MoveKind
+    {
+        /// <summary>Forward square by square (dice, or a card sending the player ahead).</summary>
+        Walk = 0,
+
+        /// <summary>Backward square by square; never passes start.</summary>
+        Back = 1,
+
+        /// <summary>Straight to the square (a ride from a travel square).</summary>
+        Jump = 2,
+    }
+
+    /// <summary>Why the game ended.</summary>
+    public enum GameEndReason
+    {
+        /// <summary>Everyone else went bankrupt.</summary>
+        LastPlayerStanding = 0,
+
+        /// <summary>The table's round limit was reached; the richest player won.</summary>
+        RoundLimit = 1,
     }
 
     public sealed class TurnStartedEvent : GameEvent
@@ -46,18 +78,20 @@ namespace Lazpoly.Core.Events
 
     public sealed class PlayerMovedEvent : GameEvent
     {
-        public PlayerMovedEvent(int playerId, int fromSquare, int toSquare, bool passedStart)
+        public PlayerMovedEvent(int playerId, int fromSquare, int toSquare, bool passedStart, MoveKind kind = MoveKind.Walk)
         {
             PlayerId = playerId;
             FromSquare = fromSquare;
             ToSquare = toSquare;
             PassedStart = passedStart;
+            Kind = kind;
         }
 
         public int PlayerId { get; }
         public int FromSquare { get; }
         public int ToSquare { get; }
         public bool PassedStart { get; }
+        public MoveKind Kind { get; }
     }
 
     public sealed class MoneyChangedEvent : GameEvent
@@ -117,8 +151,68 @@ namespace Lazpoly.Core.Events
 
     public sealed class GameEndedEvent : GameEvent
     {
-        public GameEndedEvent(int winnerId) { WinnerId = winnerId; }
+        public GameEndedEvent(int winnerId, GameEndReason reason = GameEndReason.LastPlayerStanding)
+        {
+            WinnerId = winnerId;
+            Reason = reason;
+        }
+
         public int WinnerId { get; }
+        public GameEndReason Reason { get; }
+    }
+
+    /// <summary>Money went into the pot (positive) or was paid out of it (negative).</summary>
+    public sealed class PotChangedEvent : GameEvent
+    {
+        public PotChangedEvent(int delta) { Delta = delta; }
+        public int Delta { get; }
+    }
+
+    /// <summary>A player drew a card; its effect follows as separate events.</summary>
+    public sealed class CardDrawnEvent : GameEvent
+    {
+        public CardDrawnEvent(int playerId, int cardIndex)
+        {
+            PlayerId = playerId;
+            CardIndex = cardIndex;
+        }
+
+        public int PlayerId { get; }
+
+        /// <summary>Index into <see cref="Board.BoardDefinition.Cards"/>.</summary>
+        public int CardIndex { get; }
+    }
+
+    /// <summary>A player gained (or used up) the choice of two rolls next time.</summary>
+    public sealed class LookoutChangedEvent : GameEvent
+    {
+        public LookoutChangedEvent(int playerId, bool hasLookout)
+        {
+            PlayerId = playerId;
+            HasLookout = hasLookout;
+        }
+
+        public int PlayerId { get; }
+        public bool HasLookout { get; }
+    }
+
+    /// <summary>A player with a lookout rolled twice; they pick one pair, which then counts as their roll.</summary>
+    public sealed class DiceOptionsEvent : GameEvent
+    {
+        public DiceOptionsEvent(int playerId, int firstDie1, int firstDie2, int secondDie1, int secondDie2)
+        {
+            PlayerId = playerId;
+            FirstDie1 = firstDie1;
+            FirstDie2 = firstDie2;
+            SecondDie1 = secondDie1;
+            SecondDie2 = secondDie2;
+        }
+
+        public int PlayerId { get; }
+        public int FirstDie1 { get; }
+        public int FirstDie2 { get; }
+        public int SecondDie1 { get; }
+        public int SecondDie2 { get; }
     }
 
     /// <summary>A property's buildings changed (built, sold or cleared by bankruptcy).</summary>

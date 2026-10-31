@@ -15,6 +15,9 @@ namespace Lazpoly.Core.State
         public const int NoOwner = -1;
         public const int NoWinner = -1;
 
+        /// <summary>Creditor id of the pot: taxes and card fines are owed to it instead of the bank when the board has one.</summary>
+        public const int PotId = -2;
+
         private readonly List<PlayerState> _players;
         private readonly int[] _owners;
         private readonly int[] _buildingLevels;
@@ -43,6 +46,18 @@ namespace Lazpoly.Core.State
         public int LastDie1 { get; internal set; }
         public int LastDie2 { get; internal set; }
         public bool LastRollWasDouble => LastDie1 != 0 && LastDie1 == LastDie2;
+
+        /// <summary>1-based round counter: goes up each time the turn passes the first seat again.</summary>
+        public int Round { get; internal set; }
+
+        /// <summary>Money waiting in the pot for the next player who lands on the pot square.</summary>
+        public int Pot { get; internal set; }
+
+        /// <summary>The two rolls to choose from (die1, die2, die1, die2); null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingDiceChoice"/>.</summary>
+        public int[] DiceOptions { get; internal set; }
+
+        /// <summary>True for a real player's id, false for the bank (<see cref="NoOwner"/>) and the pot (<see cref="PotId"/>).</summary>
+        public static bool IsPlayerId(int id) => id != NoOwner && id != PotId;
 
         /// <summary>Doubles rolled so far in the current turn.</summary>
         public int ConsecutiveDoubles { get; internal set; }
@@ -87,6 +102,7 @@ namespace Lazpoly.Core.State
                 CurrentPlayerIndex = 0,
                 Phase = GamePhase.WaitingForRoll,
                 TurnNumber = 1,
+                Round = 1,
             };
         }
 
@@ -123,6 +139,7 @@ namespace Lazpoly.Core.State
                 {
                     Position = entry.Position,
                     IsBankrupt = entry.IsBankrupt,
+                    HasLookout = entry.HasLookout,
                 });
             }
 
@@ -135,7 +152,20 @@ namespace Lazpoly.Core.State
                 LastDie2 = snapshot.LastDie2,
                 ConsecutiveDoubles = snapshot.ConsecutiveDoubles,
                 WinnerId = snapshot.WinnerId,
+                Round = snapshot.Round,
+                Pot = snapshot.Pot,
             };
+
+            if (snapshot.Round < 1 || snapshot.Pot < 0) throw new ArgumentException("Snapshot round or pot is out of range.", nameof(snapshot));
+            if (snapshot.DiceOptions != null)
+            {
+                if (snapshot.DiceOptions.Length != 4 || Array.Exists(snapshot.DiceOptions, die => die < 1))
+                {
+                    throw new ArgumentException("Snapshot dice options are malformed.", nameof(snapshot));
+                }
+
+                state.DiceOptions = (int[])snapshot.DiceOptions.Clone();
+            }
 
             for (int i = 0; i < snapshot.Owners.Length; i++)
             {
@@ -201,7 +231,7 @@ namespace Lazpoly.Core.State
             if (snapshot.Debt != null)
             {
                 DebtState debt = snapshot.Debt;
-                if (!ids.Contains(debt.PlayerId) || (debt.CreditorId != NoOwner && !ids.Contains(debt.CreditorId)) || debt.Amount <= 0)
+                if (!ids.Contains(debt.PlayerId) || (IsPlayerId(debt.CreditorId) && !ids.Contains(debt.CreditorId)) || debt.Amount <= 0)
                 {
                     throw new ArgumentException("Snapshot debt is inconsistent.", nameof(snapshot));
                 }
@@ -287,12 +317,21 @@ namespace Lazpoly.Core.State
             Mix(LastDie2);
             Mix(ConsecutiveDoubles);
             Mix(WinnerId);
+            Mix(Round);
+            Mix(Pot);
+            Mix(DiceOptions == null ? 0 : 1);
+            if (DiceOptions != null)
+            {
+                foreach (int die in DiceOptions) Mix(die);
+            }
+
             foreach (PlayerState player in _players)
             {
                 Mix(player.Id);
                 Mix(player.Money);
                 Mix(player.Position);
                 Mix(player.IsBankrupt ? 1 : 0);
+                Mix(player.HasLookout ? 1 : 0);
             }
 
             foreach (int owner in _owners)

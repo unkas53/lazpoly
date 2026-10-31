@@ -57,7 +57,32 @@ namespace Lazpoly.Presentation.Data
                 squares.Add(ToSquare(file.squares[i], i, groupColors));
             }
 
-            return new BoardData(new BoardDefinition(squares), rules, groupColors, groupNames);
+            var cards = new List<CardDefinition>();
+            if (file.cards != null)
+            {
+                for (int i = 0; i < file.cards.Length; i++) cards.Add(ToCard(file.cards[i], i, squares));
+            }
+
+            return new BoardData(new BoardDefinition(squares, cards), rules, groupColors, groupNames);
+        }
+
+        private static CardDefinition ToCard(CardEntry entry, int index, List<SquareDefinition> squares)
+        {
+            if (entry == null || string.IsNullOrWhiteSpace(entry.text)) throw new FormatException($"Card {index} has no text.");
+            switch (entry.kind)
+            {
+                case "collect": return CardDefinition.Collect(entry.text, entry.amount);
+                case "pay": return CardDefinition.Pay(entry.text, entry.amount);
+                case "moveBy": return CardDefinition.MoveBy(entry.text, entry.amount);
+                case "repairs": return CardDefinition.Repairs(entry.text, entry.amount, entry.hotel);
+                case "lookout": return CardDefinition.Lookout(entry.text);
+                case "moveTo":
+                    int target = squares.FindIndex(square => square.Name == entry.to);
+                    if (target < 0) throw new FormatException($"Card {index} '{entry.text}' goes to unknown square '{entry.to}'.");
+                    return CardDefinition.MoveTo(entry.text, target);
+                default:
+                    throw new FormatException($"Card {index} '{entry.text}' has unknown kind '{entry.kind}'.");
+            }
         }
 
         private static SquareDefinition ToSquare(SquareEntry entry, int index, Dictionary<int, Color> groups)
@@ -70,6 +95,14 @@ namespace Lazpoly.Presentation.Data
                     return SquareDefinition.Rest(entry.name);
                 case "tax":
                     return SquareDefinition.Tax(entry.name, entry.amount);
+                case "card":
+                    return SquareDefinition.Card(entry.name);
+                case "pot":
+                    return SquareDefinition.Pot(entry.name);
+                case "travel":
+                    return SquareDefinition.Travel(entry.name, entry.fee);
+                case "lookout":
+                    return SquareDefinition.Lookout(entry.name);
                 case "property":
                     if (entry.group != 0 && !groups.ContainsKey(entry.group))
                     {

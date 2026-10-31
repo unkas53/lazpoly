@@ -57,6 +57,17 @@ namespace Lazpoly.Core.Board
                 Mix(square.BuildingCost);
                 Mix(square.DevelopedRents.Count);
                 foreach (int rent in square.DevelopedRents) Mix(rent);
+                Mix(square.Fee);
+            }
+
+            Mix(board.Cards.Count);
+            foreach (CardDefinition card in board.Cards)
+            {
+                MixText(card.Text);
+                Mix((int)card.Kind);
+                Mix(card.Amount);
+                Mix(card.Target);
+                Mix(card.HotelAmount);
             }
 
             return hash;

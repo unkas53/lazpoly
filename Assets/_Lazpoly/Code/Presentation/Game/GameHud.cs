@@ -51,6 +51,9 @@ namespace Lazpoly.Presentation.Game
         private float _bannerUntil;
         private int _lastTurnPlayer = -1;
         private int _lastTurnNumber = -1;
+        private Text _cardTitle;
+        private Text _cardText;
+        private CanvasGroup _cardGroup;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
         private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
 
@@ -129,6 +132,8 @@ namespace Lazpoly.Presentation.Game
             bannerRect.offsetMax = Vector2.zero;
             _banner.fontSize = 34;
 
+            BuildCardPopup();
+
             _tradeWindow = new UiView(UiRoot.Modal(_canvas.transform, "Trade", 760f, out _tradeLayer), RenderTrade);
             _settingsWindow = new UiView(UiRoot.Modal(_canvas.transform, "Settings", 520f, out _settingsLayer),
                 ui => _settings.Render(ui, () => _settingsLayer.SetActive(false)));
@@ -138,6 +143,40 @@ namespace Lazpoly.Presentation.Game
             _endLayer.SetActive(false);
         }
 
+        /// <summary>The drawn "Sokak Haberi" card, shown in the middle for a few seconds. It never takes the mouse.</summary>
+        private void BuildCardPopup()
+        {
+            RectTransform card = UiRoot.Rect(_canvas.transform, "Card Popup", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-260f, -40f), new Vector2(260f, 150f));
+            UiRoot.Background(card, new Color(0.98f, 0.93f, 0.78f, 0.97f));
+            _cardGroup = card.gameObject.AddComponent<CanvasGroup>();
+            _cardGroup.blocksRaycasts = false;
+            _cardGroup.interactable = false;
+            _cardGroup.alpha = 0f;
+            UiBuilder.AddColumnLayout(card.gameObject, 18, 8f);
+            var builder = new UiBuilder(card);
+            _cardTitle = builder.Label("SOKAK HABERİ", UiTextStyle.Heading, new Color(0.55f, 0.28f, 0.08f), TextAnchor.MiddleCenter);
+            _cardText = builder.Label("", UiTextStyle.Body, new Color(0.15f, 0.12f, 0.10f), TextAnchor.MiddleCenter);
+            _cardText.fontSize = 22;
+        }
+
+        private void UpdateCardPopup()
+        {
+            int card = _controller.ShownCard;
+            float age = Time.unscaledTime - _controller.ShownCardTime;
+            float visible = GameSceneController.CardReadSeconds + 1.6f;
+            if (card < 0 || age > visible)
+            {
+                _cardGroup.alpha = 0f;
+                return;
+            }
+
+            string player = _controller.Session.State.FindPlayer(_controller.ShownCardPlayer)?.Name;
+            _cardTitle.text = player == null ? "SOKAK HABERİ" : $"SOKAK HABERİ · {player}";
+            _cardText.text = EventDescriber.CardText(_controller.Session.Board, card);
+            _cardGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
+        }
+
         private void LateUpdate()
         {
             if (_controller?.Session == null || _side == null) return;
@@ -145,7 +184,8 @@ namespace Lazpoly.Presentation.Game
             int revision = _controller.Revision;
 
             bool tradeOpen = state != null && !_controller.EndReason.HasValue && _trade.KeepOpen(state);
-            _side.Refresh(HashCode.Combine(revision, _controller.IsBusy, _controller.EndReason, tradeOpen));
+            // The pinned square is the destination of a ride, so the side panel follows it too.
+            _side.Refresh(HashCode.Combine(revision, _controller.IsBusy, _controller.EndReason, tradeOpen, _pinnedSquare));
             _log.Refresh(revision);
             _menu.Refresh(0);
 
@@ -153,6 +193,7 @@ namespace Lazpoly.Presentation.Game
             UpdatePointer();
             UpdateSquareCard(state, revision);
             UpdateBanner(state);
+            UpdateCardPopup();
 
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
@@ -319,7 +360,8 @@ namespace Lazpoly.Presentation.Game
         {
             _moneyLabels.Clear();
             UiBuilder header = ui.Row();
-            header.Label($"Tur {state.TurnNumber}", UiTextStyle.Heading);
+            int limit = _controller.Session.Rules.RoundLimit;
+            header.Label(limit > 0 ? $"Tur {state.Round} / {limit}" : $"Tur {state.Round}", UiTextStyle.Heading);
             if (state.LastDie1 != 0) header.Label($"Zar: {state.LastDie1} + {state.LastDie2}", color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
 
             foreach (PlayerState player in state.Players)
@@ -425,6 +467,14 @@ namespace Lazpoly.Presentation.Game
                 case GamePhase.AwaitingDebtPayment:
                     RenderDebt(ui, state, player);
                     break;
+
+                case GamePhase.AwaitingTravelDecision:
+                    RenderTravel(ui, player);
+                    break;
+
+                case GamePhase.AwaitingDiceChoice:
+                    RenderDiceChoice(ui, state, player);
+                    break;
             }
 
             if (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd)
@@ -452,10 +502,54 @@ namespace Lazpoly.Presentation.Game
             ui.Button("Alma, açık artırmaya çıkar", () => _controller.Submit(new DeclinePurchaseCommand(player.Id)));
         }
 
+        /// <summary>A ride from the travel square: the player picks the destination by clicking a square on the board.</summary>
+        private void RenderTravel(UiBuilder ui, PlayerState player)
+        {
+            BoardDefinition board = _controller.Session.Board;
+            int fee = board[player.Position].Fee;
+            UiBuilder card = ui.Card();
+            card.Label($"{board[player.Position].Name}: {fee} ödeyip istediğin kareye gidebilirsin.");
+            card.Label("Tahtada gitmek istediğin kareye tıkla.", UiTextStyle.Small, UiTheme.Muted);
+
+            int target = _pinnedSquare;
+            var travel = new TravelCommand(player.Id, target);
+            if (target >= 0 && _controller.IsAllowed(travel))
+            {
+                ui.Button($"{board[target].Name} karesine git ({fee})", () =>
+                {
+                    _pinnedSquare = NoSquare;
+                    _controller.Submit(travel);
+                }, style: UiButtonStyle.Primary, height: 52f);
+            }
+            else
+            {
+                ui.Button("Önce bir kare seç", null, false, UiButtonStyle.Primary, 52f);
+            }
+
+            ui.Button("Burada kal", () => _controller.Submit(new DeclineTravelCommand(player.Id)));
+        }
+
+        /// <summary>The lookout's two rolls, each with where it would take the player.</summary>
+        private void RenderDiceChoice(UiBuilder ui, GameState state, PlayerState player)
+        {
+            BoardDefinition board = _controller.Session.Board;
+            ui.Label("Seyir Terası: iki atıştan birini seç.", UiTextStyle.Small);
+            for (int option = 0; option < 2; option++)
+            {
+                int[] dice = GameRules.DiceOption(state, option);
+                if (dice == null) continue;
+                int sum = dice[0] + dice[1];
+                string destination = board[(player.Position + sum) % board.Count].Name;
+                var choose = new ChooseDiceCommand(player.Id, option);
+                ui.Button($"{dice[0]} + {dice[1]} = {sum}  →  {destination}", () => _controller.Submit(choose), _controller.IsAllowed(choose),
+                    UiButtonStyle.Primary, 52f);
+            }
+        }
+
         private void RenderDebt(UiBuilder ui, GameState state, PlayerState player)
         {
             DebtState debt = state.Debt;
-            string creditor = debt.CreditorId == GameState.NoOwner ? "banka" : state.FindPlayer(debt.CreditorId)?.Name;
+            string creditor = EventDescriber.CreditorText(state, debt.CreditorId);
             UiBuilder card = ui.Card(new Color(0.30f, 0.16f, 0.16f));
             card.Label($"Borç: {debt.Amount} → {creditor}", UiTextStyle.Heading);
             card.Label(EventDescriber.ReasonText(debt.Reason), UiTextStyle.Small);
@@ -475,6 +569,26 @@ namespace Lazpoly.Presentation.Game
             {
                 Color color = tones[i] == LogTone.Gain ? UiTheme.Gain : tones[i] == LogTone.Loss ? UiTheme.Warning : i == lines.Count - 1 ? UiTheme.Text : UiTheme.Muted;
                 ui.Label(lines[i], UiTextStyle.Small, color);
+            }
+        }
+
+        /// <summary>Each solvent player's worth (money, properties and buildings), richest first.</summary>
+        private void RenderWorthTable(UiBuilder ui, GameState state)
+        {
+            var players = new List<PlayerState>();
+            foreach (PlayerState player in state.Players)
+            {
+                if (!player.IsBankrupt) players.Add(player);
+            }
+
+            BoardDefinition board = _controller.Session.Board;
+            players.Sort((a, b) => GameRules.NetWorth(board, state, b.Id).CompareTo(GameRules.NetWorth(board, state, a.Id)));
+            foreach (PlayerState player in players)
+            {
+                UiBuilder row = ui.Row();
+                row.Swatch(_controller.ColorOf(player.Id), 16f);
+                row.Label(player.Name);
+                row.Label($"{GameRules.NetWorth(board, state, player.Id)} değer", color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
             }
         }
 
@@ -508,7 +622,10 @@ namespace Lazpoly.Presentation.Game
                 PlayerState winner = state.FindPlayer(state.WinnerId);
                 ui.Label("Oyun bitti", UiTextStyle.Heading);
                 ui.Label($"Kazanan: {winner?.Name}", UiTextStyle.Title, winner != null ? _controller.ColorOf(winner.Id) : UiTheme.Accent, TextAnchor.MiddleCenter);
-                ui.Label($"{state.TurnNumber} turda bitti.", UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
+                bool byLimit = _controller.Session.Rules.RoundLimit > 0 && state.ActivePlayerCount() > 1;
+                ui.Label(byLimit ? $"Tur sınırı doldu ({state.Round} tur): en zengin oyuncu kazandı." : $"{state.Round} turda bitti.",
+                    UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
+                if (byLimit) RenderWorthTable(ui, state);
             }
 
             ui.Space(8f);

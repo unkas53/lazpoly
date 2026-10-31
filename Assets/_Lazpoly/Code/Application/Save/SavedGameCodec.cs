@@ -11,7 +11,7 @@ namespace Lazpoly.App.Save
     /// </summary>
     public static class SavedGameCodec
     {
-        public const int FormatVersion = 1;
+        public const int FormatVersion = 2;
         private const ulong Magic = 0x4C415A504F4C5953UL; // "LAZPOLYS"
 
         public static byte[] Encode(SavedGame save)
@@ -38,6 +38,7 @@ namespace Lazpoly.App.Save
                 w.WriteInt(save.AiPlayers[id].LastProposalTurn);
             }
 
+            MessageCodec.WriteTable(w, save.Table ?? Core.Rules.TableRules.Default);
             MessageCodec.WriteSnapshot(w, save.Snapshot);
             return w.ToArray();
         }
@@ -73,6 +74,7 @@ namespace Lazpoly.App.Save
                 save.AiPlayers.Add(id, new SavedAiPlayer { Difficulty = (AiDifficulty)difficulty, LastProposalTurn = lastProposalTurn });
             }
 
+            save.Table = MessageCodec.ReadTable(r);
             save.Snapshot = MessageCodec.ReadSnapshot(r);
             if (!r.AtEnd) throw new FormatException("Unexpected data after the save.");
             return save;

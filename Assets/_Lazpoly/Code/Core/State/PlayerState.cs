@@ -18,5 +18,8 @@ namespace Lazpoly.Core.State
         public int Position { get; internal set; }
 
         public bool IsBankrupt { get; internal set; }
+
+        /// <summary>The player's next roll is a choice of two (from a lookout square or card).</summary>
+        public bool HasLookout { get; internal set; }
     }
 }

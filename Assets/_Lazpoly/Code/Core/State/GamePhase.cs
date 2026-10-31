@@ -22,5 +22,11 @@ namespace Lazpoly.Core.State
 
         /// <summary>The current player owes more than they hold and must raise money or go bankrupt.</summary>
         AwaitingDebtPayment = 6,
+
+        /// <summary>The current player stands on a travel square and may pay for a ride or stay.</summary>
+        AwaitingTravelDecision = 7,
+
+        /// <summary>The current player rolled twice thanks to a lookout and must pick one roll.</summary>
+        AwaitingDiceChoice = 8,
     }
 }

@@ -131,6 +131,22 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
+        public void SaveKeepsTheTableRules()
+        {
+            var table = new TableRules(1200, false, 18);
+            LocalGame game = LocalGame.Create(Board, Rules.WithTable(table), Seats(2), new Dictionary<int, AiDifficulty>(), 4UL);
+
+            SavedGame save = SavedGameCodec.Decode(SavedGameCodec.Encode(game.Save(Checksum)));
+            Assert.IsTrue(save.Table.SameAs(table));
+
+            // Resuming takes the board data's rules and puts the saved table on top.
+            LocalGame resumed = LocalGame.Resume(Board, Rules, Checksum, save);
+            Assert.AreEqual(1200, resumed.Session.Rules.StartingMoney);
+            Assert.IsFalse(resumed.Session.Rules.AuctionsEnabled);
+            Assert.AreEqual(18, resumed.Session.Rules.RoundLimit);
+        }
+
+        [Test]
         public void SaveFromOtherBoardDataIsRefused()
         {
             SavedGame save = AllAi(2, 1UL).Save(Checksum);
