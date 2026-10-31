@@ -113,9 +113,44 @@ namespace Lazpoly.Platform.Steam
             SteamMatchmaking.JoinLobby(new CSteamID(lobbyId));
         }
 
+        public bool IsOverlayAvailable => IsAvailable && SteamUtils.IsOverlayEnabled();
+
         public void InviteFriends()
         {
             if (InLobby) SteamFriends.ActivateGameOverlayInviteDialog(_lobby);
+        }
+
+        public bool Invite(ulong friendId)
+        {
+            return InLobby && SteamMatchmaking.InviteUserToLobby(_lobby, new CSteamID(friendId));
+        }
+
+        public IReadOnlyList<LobbyFriend> GetFriends()
+        {
+            var friends = new List<LobbyFriend>();
+            if (!IsAvailable) return friends;
+
+            uint appId = SteamUtils.GetAppID().m_AppId;
+            int count = SteamFriends.GetFriendCount(EFriendFlags.k_EFriendFlagImmediate);
+            for (int i = 0; i < count; i++)
+            {
+                CSteamID friend = SteamFriends.GetFriendByIndex(i, EFriendFlags.k_EFriendFlagImmediate);
+                bool online = SteamFriends.GetFriendPersonaState(friend) != EPersonaState.k_EPersonaStateOffline;
+
+                ulong lobbyId = 0;
+                if (SteamFriends.GetFriendGamePlayed(friend, out FriendGameInfo_t game) &&
+                    game.m_gameID.AppID().m_AppId == appId && game.m_steamIDLobby.IsValid())
+                {
+                    lobbyId = game.m_steamIDLobby.m_SteamID;
+                }
+
+                friends.Add(new LobbyFriend(friend.m_SteamID, SteamFriends.GetFriendPersonaName(friend), online, lobbyId));
+            }
+
+            friends.Sort((a, b) => a.IsOnline != b.IsOnline
+                ? (a.IsOnline ? -1 : 1)
+                : string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+            return friends;
         }
 
         public void StartGame()

@@ -17,6 +17,25 @@ namespace Lazpoly.App.Lobby
         public string Name { get; }
     }
 
+    /// <summary>A platform friend as the lobby menu shows them.</summary>
+    public readonly struct LobbyFriend
+    {
+        public LobbyFriend(ulong id, string name, bool isOnline, ulong lobbyId)
+        {
+            Id = id;
+            Name = name ?? string.Empty;
+            IsOnline = isOnline;
+            LobbyId = lobbyId;
+        }
+
+        public ulong Id { get; }
+        public string Name { get; }
+        public bool IsOnline { get; }
+
+        /// <summary>The Lazpoly room the friend is in right now; 0 when none.</summary>
+        public ulong LobbyId { get; }
+    }
+
     public enum LobbyStatus
     {
         /// <summary>Not in a lobby.</summary>
@@ -73,8 +92,17 @@ namespace Lazpoly.App.Lobby
 
         void Join(ulong lobbyId);
 
-        /// <summary>Opens the platform's invite dialog for the current lobby.</summary>
+        /// <summary>Whether the platform's in-game overlay (and so its invite dialog) works in this process.</summary>
+        bool IsOverlayAvailable { get; }
+
+        /// <summary>Opens the platform's invite dialog for the current lobby. Needs the overlay.</summary>
         void InviteFriends();
+
+        /// <summary>Sends an invite for the current lobby straight to one friend; works without the overlay.</summary>
+        bool Invite(ulong friendId);
+
+        /// <summary>The player's friends, online ones first.</summary>
+        IReadOnlyList<LobbyFriend> GetFriends();
 
         /// <summary>Owner only: tells every member that the game has begun.</summary>
         void StartGame();

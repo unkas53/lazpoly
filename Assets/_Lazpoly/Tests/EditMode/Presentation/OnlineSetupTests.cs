@@ -29,7 +29,12 @@ namespace Lazpoly.Presentation.Tests
             public bool IsMember(ulong peer) => MemberList.Exists(m => m.Id == peer);
             public void Create(int maxMembers) { }
             public void Join(ulong lobbyId) { }
+            public bool IsOverlayAvailable => false;
+            public List<LobbyFriend> FriendList { get; } = new List<LobbyFriend>();
+            public List<ulong> Invited { get; } = new List<ulong>();
             public void InviteFriends() { }
+            public bool Invite(ulong friendId) { Invited.Add(friendId); return true; }
+            public IReadOnlyList<LobbyFriend> GetFriends() => FriendList;
             public void StartGame() => StartCalls++;
             public void Leave() => Status = LobbyStatus.Idle;
         }
@@ -88,6 +93,29 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.AreEqual(0, loads);
             Assert.IsNull(OnlineGameSetup.Take());
+        }
+
+        [Test]
+        public void FriendsAreLoadedWhenTheRoomChangesAndCanBeInvitedDirectly()
+        {
+            var lobby = new FakeLobby { LocalId = 1, Status = LobbyStatus.Idle };
+            lobby.FriendList.Add(new LobbyFriend(42, "Deniz", true, 0));
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(1), () => { });
+
+            panel.Update();
+            Assert.AreEqual(1, panel.Friends.Count);
+
+            lobby.FriendList.Add(new LobbyFriend(43, "Ece", true, 777));
+            panel.Update();
+            Assert.AreEqual(1, panel.Friends.Count, "Reloaded although nothing changed.");
+
+            lobby.Status = LobbyStatus.InLobby;
+            panel.Update();
+            Assert.AreEqual(2, panel.Friends.Count, "Not reloaded after entering the room.");
+
+            panel.InviteFriend(panel.Friends[0]);
+            CollectionAssert.AreEqual(new[] { 42UL }, lobby.Invited);
+            panel.Dispose();
         }
 
         [Test]

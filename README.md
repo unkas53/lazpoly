@@ -63,8 +63,10 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   Diğer oyuncular hamle isteği gönderir; host doğrular, kabul ettiği hamlenin olaylarını sıra numarası ve
   durum özetiyle (hash) herkese yollar. Bir istemci olay kaçırırsa ya da özeti tutmazsa hosttan tam durumu
   yeniden ister. Kopan oyuncu odaya yeniden girince kaldığı yerden devam eder.
-- **Oynamak:** Ana menüde "Oda Kur", sonra "Arkadaş Davet Et". Arkadaş daveti Steam'den kabul edince odaya
-  girer. Ev sahibi "Çevrim İçi Oyunu Başlat" deyince herkes oyuna geçer.
+- **Oynamak:** Ana menüde "Oda Kur", sonra çevrim içi arkadaş listesinden "Davet". Arkadaş, Lazpoly açıkken
+  Steam sohbetindeki daveti kabul eder ya da kendi menüsündeki "Odası açık arkadaşlar" listesinden "Katıl" der.
+  Steam arayüzü (overlay) oyunda çalışıyorsa "Steam ile Davet Et" düğmesi de görünür. Ev sahibi
+  "Çevrim İçi Oyunu Başlat" deyince herkes oyuna geçer.
 - **Gerçek test için** iki ayrı Steam hesabı gerekir (iki bilgisayar ya da bir bilgisayar + bir sanal makine).
   Geliştirme App ID'si 480 olduğu için Steam arayüzünde oyun "Spacewar" görünür.
 - **Steam'siz test:** `NetworkSessionTests` (1 host + 7 istemci, hile denemesi, kayıp mesaj, kopma, bozuk veri)
