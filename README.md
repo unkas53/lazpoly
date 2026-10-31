@@ -161,6 +161,11 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   her zaman motordan gelir, animasyon yalnızca gösterir.
 - Yumuşak gölgeli ışık ve koyu arka plan. Animasyon hızı ayarlardaki "Hızlı animasyonlar"a uyar.
 - Gerçek Blender modelleri geldiğinde bu şekillerin yerine geçecek; tahta düzeni ve görünüm API'si aynı kalır.
+- Proje URP ile çizer: `Assets/_Lazpoly/Settings/Lazpoly_URP.asset` Graphics ve tüm Quality seviyelerinde atanmış,
+  modeller `Resources/Lazpoly/Materials/Model.mat` malzemesini kullanır. Bunlar eksikse oyun derlemesinde her şey
+  eflatun çizilir; `Lazpoly > Set Up Render Pipeline` menüsü (veya
+  `-executeMethod Lazpoly.Editor.RenderPipelineSetup.Run`) ikisini de oluşturur, `RenderingSetupTests` denetler.
+- Kamera, tahtayı ekran boyutuna göre yan panellerin arasına sığacak uzaklığa çeker.
 
 ## Kurallar
 

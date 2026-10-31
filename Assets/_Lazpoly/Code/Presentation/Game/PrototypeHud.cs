@@ -17,6 +17,9 @@ namespace Lazpoly.Presentation.Game
     {
         private const float LeftWidth = 340f;
 
+        /// <summary>Screen pixels each side panel covers, margins included; the camera keeps the board clear of them.</summary>
+        public const float ReservedSideWidth = LeftWidth + 24f;
+
         private GameSceneController _controller;
         private PropertyPanel _properties;
         private TradePanel _trade;

@@ -36,6 +36,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Top surface height of the tiles, where pawns stand.</summary>
         public float SurfaceY => TileHeight;
 
+        /// <summary>Half the width of the table the board sits on.</summary>
+        public float HalfExtent { get; private set; }
+
         public static BoardView Create(Transform parent, BoardData data)
         {
             var root = new GameObject("Board");
@@ -92,6 +95,7 @@ namespace Lazpoly.Presentation.Tabletop
             float tile = Layout.Spacing * 0.92f;
 
             float width = 2f * HalfSize + 2f * tile;
+            HalfExtent = width / 2f;
             GameObject table = ModelParts.Create("Table", transform, MeshFactory.RoundedBox(new Vector3(width, 0.3f, width), 0.15f), TableColor, 0.35f);
             table.transform.localPosition = new Vector3(0f, -0.15f, 0f);
 
@@ -217,7 +221,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.fontSize = 48;
-            mesh.characterSize = tile * 0.025f;
+            mesh.characterSize = tile * 0.03f;
             mesh.color = Color.black;
             mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;

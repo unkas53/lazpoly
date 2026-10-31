@@ -2,7 +2,9 @@
     "name": "Lazpoly.Editor",
     "rootNamespace": "Lazpoly.Editor",
     "references": [
-        "Lazpoly.Presentation"
+        "Lazpoly.Presentation",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [
         "Editor"

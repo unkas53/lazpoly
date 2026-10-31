@@ -32,6 +32,7 @@ namespace Lazpoly.Presentation.Game
     public sealed class GameSceneController : MonoBehaviour
     {
         private const int MaxLogLines = 10;
+        private const float CameraPitch = 55f;
 
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
@@ -52,6 +53,8 @@ namespace Lazpoly.Presentation.Game
         private Coroutine _playback;
         private bool _playing;
         private bool _isOnline;
+        private int _framedWidth;
+        private int _framedHeight;
 
         public IGameSession Session => _session;
         public IReadOnlyList<string> Log => _log;
@@ -105,6 +108,23 @@ namespace Lazpoly.Presentation.Game
 
             if (_board == null || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
             if (_session.StepAi()) _nextAiMoveTime = Time.time + Settings.AiMoveDelaySeconds;
+        }
+
+        private void LateUpdate()
+        {
+            if (_board == null || (Screen.width == _framedWidth && Screen.height == _framedHeight)) return;
+            FrameBoard();
+        }
+
+        private void FrameBoard()
+        {
+            Camera camera = Camera.main;
+            if (camera == null) return;
+            _framedWidth = Screen.width;
+            _framedHeight = Screen.height;
+            float distance = BoardCameraFraming.Distance(_board.HalfExtent, camera.fieldOfView, CameraPitch,
+                Screen.width, Screen.height, PrototypeHud.ReservedSideWidth);
+            camera.transform.position = _board.transform.position - camera.transform.forward * distance;
         }
 
         private void OnDestroy()
@@ -397,7 +417,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             camera.transform.position = new Vector3(0f, 15f, -11f);
-            camera.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
+            camera.transform.rotation = Quaternion.Euler(CameraPitch, 0f, 0f);
             camera.fieldOfView = 50f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.10f, 0.11f, 0.13f);
