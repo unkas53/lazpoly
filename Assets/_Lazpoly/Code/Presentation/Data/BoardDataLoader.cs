@@ -36,6 +36,7 @@ namespace Lazpoly.Presentation.Data
                 file.maxConsecutiveDoubles, file.fullGroupRentMultiplier, file.mortgageInterestPercent, file.buildingSellbackPercent);
 
             var groupColors = new Dictionary<int, Color>();
+            var groupNames = new Dictionary<int, string>();
             if (file.groups != null)
             {
                 foreach (GroupEntry group in file.groups)
@@ -46,6 +47,7 @@ namespace Lazpoly.Presentation.Data
                     }
 
                     groupColors[group.id] = color;
+                    if (!string.IsNullOrWhiteSpace(group.name)) groupNames[group.id] = group.name;
                 }
             }
 
@@ -55,7 +57,7 @@ namespace Lazpoly.Presentation.Data
                 squares.Add(ToSquare(file.squares[i], i, groupColors));
             }
 
-            return new BoardData(new BoardDefinition(squares), rules, groupColors);
+            return new BoardData(new BoardDefinition(squares), rules, groupColors, groupNames);
         }
 
         private static SquareDefinition ToSquare(SquareEntry entry, int index, Dictionary<int, Color> groups)

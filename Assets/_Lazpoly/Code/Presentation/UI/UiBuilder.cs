@@ -170,7 +170,8 @@ namespace Lazpoly.Presentation.UI
         public void Space(float height = 12f) => Fix(NewChild("Space"), height: height);
 
         /// <summary>Elements added to the returned builder sit side by side and share the width.</summary>
-        public UiBuilder Row(float spacing = UiTheme.Spacing)
+        /// <param name="expand">False keeps fixed-size elements (swatches) at their size instead of sharing out the width.</param>
+        public UiBuilder Row(float spacing = UiTheme.Spacing, bool expand = true)
         {
             GameObject element = NewChild("Row");
             var row = element.AddComponent<HorizontalLayoutGroup>();
@@ -178,7 +179,7 @@ namespace Lazpoly.Presentation.UI
             row.childAlignment = TextAnchor.MiddleLeft;
             row.childControlWidth = true;
             row.childControlHeight = true;
-            row.childForceExpandWidth = true;
+            row.childForceExpandWidth = expand;
             row.childForceExpandHeight = false;
             return new UiBuilder((RectTransform)element.transform, Changed);
         }

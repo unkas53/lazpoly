@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lazpoly.Core.Board;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Models;
@@ -29,6 +30,11 @@ namespace Lazpoly.Presentation.Tabletop
         private Color?[] _ownerColors;
         private bool[] _mortgaged;
         private GameObject[][] _buildings;
+        private GameObject[] _ownerFrames;
+        private GameObject[] _tiles;
+        private Color[] _tileColors;
+        private readonly Dictionary<Collider, int> _squareOfCollider = new Dictionary<Collider, int>();
+        private HashSet<int> _highlighted;
         private float _tile;
 
         public BoardLayout Layout { get; private set; }
@@ -49,6 +55,32 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         public Vector3 SquarePosition(int index) => transform.TransformPoint(Layout.SquareCenter(index)) + Vector3.up * SurfaceY;
+
+        /// <summary>Where pawns stand on a square: its inner half, so the name and price on the outer half stay readable.</summary>
+        public Vector3 PawnSpot(int index)
+        {
+            Vector3 center = Layout.SquareCenter(index);
+            return transform.TransformPoint(center - Outward(center) * (_tile * 0.18f)) + Vector3.up * SurfaceY;
+        }
+
+        /// <summary>The square under a screen ray, if any.</summary>
+        public bool TryGetSquare(Ray ray, out int squareIndex)
+        {
+            squareIndex = -1;
+            return Physics.Raycast(ray, out RaycastHit hit, 500f) && _squareOfCollider.TryGetValue(hit.collider, out squareIndex);
+        }
+
+        /// <summary>Lights up these squares and dims the rest; null or empty shows the board normally.</summary>
+        public void Highlight(ICollection<int> squares)
+        {
+            _highlighted = squares == null || squares.Count == 0 ? null : new HashSet<int>(squares);
+            for (int i = 0; i < _tiles.Length; i++)
+            {
+                Color color = _tileColors[i];
+                if (_highlighted != null) color = _highlighted.Contains(i) ? Color.Lerp(color, Color.white, 0.25f) : Color.Lerp(color, Color.black, 0.45f);
+                Paint(_tiles[i], color);
+            }
+        }
 
         /// <summary>Shows who owns a square; pass null to show it as unowned.</summary>
         public void SetOwner(int squareIndex, Color? ownerColor)
@@ -83,9 +115,13 @@ namespace Lazpoly.Presentation.Tabletop
         {
             GameObject marker = _ownerMarkers[squareIndex];
             Color? color = _ownerColors[squareIndex];
+            GameObject frame = _ownerFrames[squareIndex];
             marker.SetActive(color.HasValue);
+            frame.SetActive(color.HasValue);
             if (!color.HasValue) return;
-            Paint(marker, _mortgaged[squareIndex] ? Color.Lerp(color.Value, Color.black, 0.65f) : color.Value);
+            Color shown = _mortgaged[squareIndex] ? Color.Lerp(color.Value, Color.black, 0.65f) : color.Value;
+            Paint(marker, shown);
+            Paint(frame, shown);
         }
 
         private void Build(BoardData data)
@@ -109,6 +145,9 @@ namespace Lazpoly.Presentation.Tabletop
             _ownerColors = new Color?[board.Count];
             _mortgaged = new bool[board.Count];
             _buildings = new GameObject[board.Count][];
+            _ownerFrames = new GameObject[board.Count];
+            _tiles = new GameObject[board.Count];
+            _tileColors = new Color[board.Count];
             for (int i = 0; i < board.Count; i++)
             {
                 SquareDefinition square = board[i];
@@ -118,6 +157,9 @@ namespace Lazpoly.Presentation.Tabletop
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(tile, TileHeight, tile), 0.05f, 4), property ? PropertyBodyColor : TileColor(square, data));
                 tileObject.transform.localPosition = center + Vector3.up * (TileHeight / 2f);
+                _tiles[i] = tileObject;
+                _tileColors[i] = property ? PropertyBodyColor : TileColor(square, data);
+                _squareOfCollider[tileObject.AddComponent<BoxCollider>()] = i;
 
                 if (property)
                 {
@@ -132,7 +174,8 @@ namespace Lazpoly.Presentation.Tabletop
                 string caption = square.Type == SquareType.Property ? $"{square.Name}\n{square.Price}"
                     : square.Type == SquareType.Tax ? $"{square.Name}\n-{square.TaxAmount}"
                     : square.Name;
-                CreateLabel(caption, center + Vector3.up * (TileHeight + 0.01f), tile);
+                // Name and price sit towards the outer edge; pawns stand on the inner half (PawnSpot).
+                CreateLabel(caption, center + Outward(center) * (tile * 0.07f) + Vector3.up * (TileHeight + 0.01f), tile);
 
                 if (square.Type == SquareType.Property)
                 {
@@ -143,6 +186,13 @@ namespace Lazpoly.Presentation.Tabletop
                     marker.transform.localScale = Vector3.one * tile * 0.5f;
                     marker.SetActive(false);
                     _ownerMarkers[i] = marker;
+
+                    // Owner frame: a rim in the owner's colour just around the tile, seen from any angle.
+                    GameObject frame = ModelParts.Create("Owner frame", transform,
+                        MeshFactory.RoundedBox(new Vector3(tile * 1.07f, TileHeight * 0.9f, tile * 1.07f), 0.06f, 4), Color.white, 0.4f);
+                    frame.transform.localPosition = center + Vector3.up * (TileHeight * 0.45f);
+                    frame.SetActive(false);
+                    _ownerFrames[i] = frame;
                     if (square.IsDevelopable) _buildings[i] = CreateBuildings(center);
                 }
             }
@@ -222,6 +272,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.alignment = TextAlignment.Center;
             // A large font size drawn small keeps the letters sharp when the camera is far away.
             mesh.fontSize = 128;
+            mesh.fontStyle = FontStyle.Bold;
             mesh.characterSize = tile * 0.0115f;
             mesh.color = Color.black;
             mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");

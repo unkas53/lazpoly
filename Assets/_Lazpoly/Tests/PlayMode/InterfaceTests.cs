@@ -95,6 +95,20 @@ namespace Lazpoly.PlayTests
             }
 
             Assert.That(controller.Session.State.TurnNumber, Is.GreaterThanOrEqualTo(6));
+
+            // A clicked square opens its card with the square's name and price.
+            hud.PinSquare(1);
+            yield return null;
+            yield return null;
+            Assert.AreEqual(1, hud.ShownSquare);
+            string name = controller.Session.Board[1].Name;
+            bool shown = false;
+            foreach (Text text in hud.GetComponentsInChildren<Text>())
+            {
+                shown |= text.text == name && text.gameObject.activeInHierarchy;
+            }
+
+            Assert.IsTrue(shown, $"The card for '{name}' is not on screen.");
         }
 
         /// <summary>

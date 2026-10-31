@@ -193,6 +193,20 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
 - **Bekleyen (App ID gerekli):** `SteamSettings.AppId`, `steam_appid.txt`, vdf'lerdeki `APP_ID`/`DEPOT_ID`,
   başarımların ve Rich Presence dosyalarının siteye girilmesi, başarım simgeleri, yükleme ve kapalı beta anahtarları.
 
+## Faz 7a: okunurluk ve mülk kartı
+
+- **Kare kartı:** Fareyle bir karenin üstüne gelince kartı açılır; tıklayınca sabitlenir, yeniden tıklayınca kapanır.
+  Kartta fiyat, bütün kira tablosu (geçerli kira vurgulu), ev maliyeti, ipotek değeri, sahibi ve rengin kimde ne
+  kadar olduğu yazar (`Texts/SquareInfo`). Kart, karenin ters tarafında açılır ve fareyi engellemez.
+- **Grup vurgusu:** Kart açıkken aynı renkteki kareler parlar, diğerleri kararır (`BoardView.Highlight`).
+- **Sahiplik:** Sahipli karenin çevresinde sahibin renginde bir çerçeve olur, ipotekliyse koyulaşır. Sol panelde her
+  oyuncunun altında mülkleri tahta sırasıyla küçük renk kutucukları olarak dizilir.
+- **Kare düzeni:** Ad ve fiyat karenin dış yarısında, kalın yazıyla; piyonlar iç yarısında (`BoardView.PawnSpot`).
+- **Kamera:** Fare tekeri yakınlaştırır, sağ tuşla sürükleyince tahtanın çevresinde döner, Home tuşu ya da
+  "Görünümü Sıfırla" başa alır (`BoardCameraRig`).
+- **Sıra sende:** Sıra bu ekrandaki bir oyuncuya geçince üstte kısa bir yazı çıkar.
+- **Olay kaydı:** Gelen para yeşil, giden para kırmızı (`EventDescriber.ToneOf`).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

@@ -70,7 +70,7 @@ namespace Lazpoly.Presentation.Pawns
             gameObject.SetActive(false);
         }
 
-        private Vector3 Target(int square) => _board.SquarePosition(square) + _offset;
+        private Vector3 Target(int square) => _board.PawnSpot(square) + _offset;
 
         // Spreads up to 8 pawns on a small grid inside the tile so they never overlap.
         private static Vector3 SeatOffset(int seatIndex, int seatCount, float spacing)
@@ -79,7 +79,7 @@ namespace Lazpoly.Presentation.Pawns
             int row = seatIndex / columns;
             int column = seatIndex % columns;
             int rows = (seatCount + columns - 1) / columns;
-            float step = spacing * 0.22f;
+            float step = spacing * 0.18f;
             return new Vector3((column - (columns - 1) / 2f) * step, 0f, (row - (rows - 1) / 2f) * step);
         }
     }

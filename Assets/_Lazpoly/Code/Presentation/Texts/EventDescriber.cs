@@ -4,9 +4,28 @@ using Lazpoly.Core.State;
 
 namespace Lazpoly.Presentation.Texts
 {
+    /// <summary>How a log line is coloured: money coming in, going out, or anything else.</summary>
+    public enum LogTone
+    {
+        Neutral,
+        Gain,
+        Loss,
+    }
+
     /// <summary>Turns game events into the Turkish lines shown in the game log.</summary>
     public static class EventDescriber
     {
+        public static LogTone ToneOf(GameEvent gameEvent)
+        {
+            switch (gameEvent)
+            {
+                case MoneyChangedEvent e: return e.Delta > 0 ? LogTone.Gain : e.Delta < 0 ? LogTone.Loss : LogTone.Neutral;
+                case PlayerBankruptedEvent _: return LogTone.Loss;
+                case DebtIncurredEvent _: return LogTone.Loss;
+                default: return LogTone.Neutral;
+            }
+        }
+
         /// <summary>Returns the log line for an event, or null when the event needs no line.</summary>
         public static string Describe(GameEvent gameEvent, GameState state, BoardDefinition board)
         {

@@ -38,6 +38,7 @@ namespace Lazpoly.Presentation.Game
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
         private readonly List<string> _log = new List<string>();
+        private readonly List<LogTone> _logTones = new List<LogTone>();
 
         private BoardData _data;
         private IGameSession _session;
@@ -60,7 +61,16 @@ namespace Lazpoly.Presentation.Game
 
         public IGameSession Session => _session;
         public IReadOnlyList<string> Log => _log;
+
+        /// <summary>The colour of each <see cref="Log"/> line, same order.</summary>
+        public IReadOnlyList<LogTone> LogTones => _logTones;
         public string LastRejection { get; private set; }
+
+        /// <summary>Zoom and turn of the board view; the HUD's reset button uses it.</summary>
+        public BoardCameraRig CameraRig { get; private set; }
+
+        /// <summary>The board on the table, once the game state is known.</summary>
+        public BoardView Board => _board;
 
         /// <summary>Goes up whenever something the HUD shows may have changed, so it knows when to redraw.</summary>
         public int Revision { get; private set; }
@@ -77,6 +87,9 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Colour of the group a square belongs to, as the board shows it.</summary>
         public Color GroupColorOf(int squareIndex) => _data.GroupColor(_session.Board[squareIndex].GroupId);
+
+        /// <summary>Name of the group a square belongs to, from the board file (null if it has none).</summary>
+        public string GroupNameOf(int squareIndex) => _data.GroupName(_session.Board[squareIndex].GroupId);
 
         /// <summary>Whether a player's machine is reachable. Always true except for dropped players seen by the host.</summary>
         public bool IsConnected(int playerId) => _host == null || _host.IsConnected(playerId);
@@ -134,8 +147,9 @@ namespace Lazpoly.Presentation.Game
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
             _framedReserve = reservedSidePixels;
-            camera.transform.position = BoardCameraFraming.CameraPosition(_board.transform.position, _board.HalfExtent, camera.fieldOfView,
+            Vector3 framed = BoardCameraFraming.CameraPosition(_board.transform.position, _board.HalfExtent, camera.fieldOfView,
                 CameraPitch, Screen.width, Screen.height, reservedSidePixels);
+            CameraRig.SetBase(_board.transform.position, framed, CameraPitch);
         }
 
         private void OnDestroy()
@@ -387,7 +401,7 @@ namespace Lazpoly.Presentation.Game
             {
                 GameEvent gameEvent = _pendingEvents.Dequeue();
                 string line = EventDescriber.Describe(gameEvent, _session.State, _session.Board);
-                if (line != null) AddLog(line);
+                if (line != null) AddLog(line, EventDescriber.ToneOf(gameEvent));
 
                 switch (gameEvent)
                 {
@@ -416,11 +430,14 @@ namespace Lazpoly.Presentation.Game
             _playing = false;
         }
 
-        private void AddLog(string line)
+        private void AddLog(string line, LogTone tone = LogTone.Neutral)
         {
             Revision++;
             _log.Add(line);
-            if (_log.Count > MaxLogLines) _log.RemoveAt(0);
+            _logTones.Add(tone);
+            if (_log.Count <= MaxLogLines) return;
+            _log.RemoveAt(0);
+            _logTones.RemoveAt(0);
         }
 
         private void SetUpCamera()
@@ -434,6 +451,8 @@ namespace Lazpoly.Presentation.Game
             camera.transform.position = new Vector3(0f, 15f, -11f);
             camera.transform.rotation = Quaternion.Euler(CameraPitch, 0f, 0f);
             camera.fieldOfView = 50f;
+            CameraRig = camera.GetComponent<BoardCameraRig>();
+            if (CameraRig == null) CameraRig = camera.gameObject.AddComponent<BoardCameraRig>();
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.10f, 0.11f, 0.13f);
 

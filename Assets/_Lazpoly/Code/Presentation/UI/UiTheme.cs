@@ -33,6 +33,7 @@ namespace Lazpoly.Presentation.UI
         public static readonly Color Muted = new Color(0.64f, 0.66f, 0.72f);
         public static readonly Color Accent = new Color(0.96f, 0.70f, 0.20f);
         public static readonly Color Warning = new Color(0.95f, 0.45f, 0.40f);
+        public static readonly Color Gain = new Color(0.45f, 0.85f, 0.50f);
 
         private static readonly Color PrimaryFill = Accent;
         private static readonly Color SecondaryFill = new Color(0.27f, 0.29f, 0.36f);

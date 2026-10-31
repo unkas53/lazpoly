@@ -1,0 +1,132 @@
+using System.Collections.Generic;
+using Lazpoly.Core.Board;
+using Lazpoly.Core.Engine;
+using Lazpoly.Core.Rules;
+using Lazpoly.Core.State;
+
+namespace Lazpoly.Presentation.Texts
+{
+    /// <summary>One line of a square's card: a label, its value and whether it is what applies right now.</summary>
+    public readonly struct SquareInfoRow
+    {
+        public SquareInfoRow(string label, string value, bool current = false)
+        {
+            Label = label;
+            Value = value;
+            Current = current;
+        }
+
+        public string Label { get; }
+        public string Value { get; }
+        public bool Current { get; }
+    }
+
+    /// <summary>
+    /// What the square card shows: price, the whole rent table with the rent that applies now marked,
+    /// building cost, mortgage value, owner and how much of the group each player holds.
+    /// </summary>
+    public sealed class SquareInfo
+    {
+        private SquareInfo(string title, string kind)
+        {
+            Title = title;
+            Kind = kind;
+        }
+
+        public string Title { get; }
+        public string Kind { get; }
+        public List<SquareInfoRow> Rows { get; } = new List<SquareInfoRow>();
+        public List<string> Notes { get; } = new List<string>();
+
+        public static SquareInfo Describe(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex, string groupName)
+        {
+            SquareDefinition square = board[squareIndex];
+            switch (square.Type)
+            {
+                case SquareType.Start:
+                {
+                    var info = new SquareInfo(square.Name, "Başlangıç");
+                    info.Notes.Add($"Buradan her geçişte {rules.PassStartBonus} alırsın.");
+                    return info;
+                }
+
+                case SquareType.Tax:
+                {
+                    var info = new SquareInfo(square.Name, "Vergi");
+                    info.Rows.Add(new SquareInfoRow("Ödenecek", square.TaxAmount.ToString()));
+                    info.Notes.Add("Buraya gelen bankaya öder.");
+                    return info;
+                }
+
+                case SquareType.Property:
+                    return DescribeProperty(board, rules, state, squareIndex, groupName);
+
+                default:
+                {
+                    var info = new SquareInfo(square.Name, "Dinlenme");
+                    info.Notes.Add("Burada bir şey olmaz; soluklan.");
+                    return info;
+                }
+            }
+        }
+
+        private static SquareInfo DescribeProperty(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex, string groupName)
+        {
+            SquareDefinition square = board[squareIndex];
+            var info = new SquareInfo(square.Name, string.IsNullOrEmpty(groupName) ? "Mülk" : $"Mülk · {groupName}");
+
+            int owner = state.GetOwner(squareIndex);
+            int level = state.GetBuildingLevel(squareIndex);
+            bool mortgaged = state.IsMortgaged(squareIndex);
+            bool wholeGroup = owner != GameState.NoOwner && GameRules.OwnsWholeGroup(board, state, owner, square.GroupId);
+            bool live = owner != GameState.NoOwner && !mortgaged;
+
+            info.Rows.Add(new SquareInfoRow("Fiyat", square.Price.ToString()));
+            info.Rows.Add(new SquareInfoRow("Kira", square.BaseRent.ToString(), live && level == 0 && !wholeGroup));
+            info.Rows.Add(new SquareInfoRow("Kira, rengin tamamı", (square.BaseRent * rules.FullGroupRentMultiplier).ToString(), live && level == 0 && wholeGroup));
+
+            if (square.IsDevelopable)
+            {
+                for (int i = 0; i < square.DevelopedRents.Count; i++)
+                {
+                    string label = i + 1 == SquareDefinition.MaxBuildingLevel ? "Kira, otel" : $"Kira, {i + 1} ev";
+                    info.Rows.Add(new SquareInfoRow(label, square.DevelopedRents[i].ToString(), live && level == i + 1));
+                }
+
+                info.Rows.Add(new SquareInfoRow("Ev maliyeti", square.BuildingCost.ToString()));
+            }
+
+            info.Rows.Add(new SquareInfoRow("İpotek değeri", square.MortgageValue.ToString()));
+
+            string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
+            info.Notes.Add(ownerName == null ? "Sahibi yok: buraya gelen satın alabilir." : mortgaged ? $"Sahibi {ownerName} (ipotekli, kira alınmaz)." : $"Sahibi {ownerName}.");
+            info.Notes.Add(GroupNote(board, state, square.GroupId));
+            if (square.IsDevelopable) info.Notes.Add("Ev kurmak için rengin bütün kareleri aynı oyuncuda olmalı.");
+            return info;
+        }
+
+        /// <summary>Who holds how much of the group, e.g. "Bu renk: 3 kare; Ayşe 2, sahipsiz 1."</summary>
+        private static string GroupNote(BoardDefinition board, GameState state, int groupId)
+        {
+            var counts = new List<KeyValuePair<int, int>>();
+            int total = 0;
+            foreach (int square in GameRules.GroupSquares(board, groupId))
+            {
+                total++;
+                int owner = state.GetOwner(square);
+                int index = counts.FindIndex(pair => pair.Key == owner);
+                if (index < 0) counts.Add(new KeyValuePair<int, int>(owner, 1));
+                else counts[index] = new KeyValuePair<int, int>(owner, counts[index].Value + 1);
+            }
+
+            var parts = new List<string>();
+            foreach (KeyValuePair<int, int> pair in counts)
+            {
+                string name = pair.Key == GameState.NoOwner ? "sahipsiz" : state.FindPlayer(pair.Key)?.Name;
+                parts.Add($"{name} {pair.Value}");
+            }
+
+            return $"Bu renk: {total} kare; {string.Join(", ", parts)}.";
+        }
+    }
+}
