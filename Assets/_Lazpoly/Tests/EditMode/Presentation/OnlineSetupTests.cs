@@ -34,7 +34,7 @@ namespace Lazpoly.Presentation.Tests
             public List<ulong> Invited { get; } = new List<ulong>();
             public void InviteFriends() { }
             public bool Invite(ulong friendId) { Invited.Add(friendId); return true; }
-            public IReadOnlyList<LobbyFriend> GetFriends() => FriendList;
+            public IReadOnlyList<LobbyFriend> GetFriends() => new List<LobbyFriend>(FriendList); // A fresh list, like Steam.
             public void StartGame() => StartCalls++;
             public void Leave() => Status = LobbyStatus.Idle;
         }
