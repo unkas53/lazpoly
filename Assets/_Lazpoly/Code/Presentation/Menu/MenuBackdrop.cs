@@ -1,3 +1,5 @@
+using Lazpoly.Infra;
+using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Pawns;
 using Lazpoly.Presentation.Tabletop;
@@ -22,6 +24,7 @@ namespace Lazpoly.Presentation.Menu
         private Vector3 _center;
         private float _distance;
         private float _yaw = 200f;
+        private SettingsService _settings;
 
         public static MenuBackdrop Create(Transform parent, BoardData data)
         {
@@ -36,7 +39,8 @@ namespace Lazpoly.Presentation.Menu
         {
             BoardView board = BoardView.Create(transform, data);
             RoomDressing.CreateRoom(transform, board.HalfExtent);
-            RoomDressing.LightScene();
+            GraphicsQuality quality = RoomDressing.CurrentQuality();
+            RoomDressing.LightScene(quality);
 
             int squares = board.Layout.SquareCount;
             for (int seat = 0; seat < PawnCount; seat++)
@@ -50,9 +54,19 @@ namespace Lazpoly.Presentation.Menu
             _camera = Camera.main;
             if (_camera == null) _camera = new GameObject("Main Camera") { tag = "MainCamera" }.AddComponent<Camera>();
             _camera.fieldOfView = 45f;
-            RoomDressing.DressCamera(_camera, postProcessing: true);
+            RoomDressing.DressCamera(_camera, quality);
             Place();
+
+            GameServices.Registry?.TryGet(out _settings);
+            if (_settings != null) _settings.Changed += OnSettingsChanged;
         }
+
+        private void OnDestroy()
+        {
+            if (_settings != null) _settings.Changed -= OnSettingsChanged;
+        }
+
+        private static void OnSettingsChanged(GameSettings settings) => RoomDressing.ApplyQuality(settings.Quality);
 
         private void Update()
         {

@@ -408,9 +408,24 @@ namespace Lazpoly.Net.Messages
             }
         }
 
+        /// <summary>The snapshot layout written today.</summary>
+        public const int SnapshotVersion = 2;
+
+        /// <summary>The layout before the Faz 7c squares: no round, pot, dice options or lookouts.</summary>
+        public const int LegacySnapshotVersion = 1;
+
         /// <summary>Reads what <see cref="WriteSnapshot"/> wrote. Throws <see cref="FormatException"/> on bad data.</summary>
-        public static GameStateSnapshot ReadSnapshot(NetReader r)
+        public static GameStateSnapshot ReadSnapshot(NetReader r) => ReadSnapshot(r, SnapshotVersion);
+
+        /// <summary>
+        /// Reads a snapshot in the given layout version, so old save files still open. A legacy
+        /// snapshot gets its round estimated from the turn number, an empty pot and no lookouts.
+        /// </summary>
+        public static GameStateSnapshot ReadSnapshot(NetReader r, int version)
         {
+            if (version != SnapshotVersion && version != LegacySnapshotVersion) throw new FormatException($"Snapshot layout {version} is not supported.");
+            bool legacy = version == LegacySnapshotVersion;
+
             var s = new GameStateSnapshot
             {
                 Phase = ReadEnum<GamePhase>(r),
@@ -420,11 +435,14 @@ namespace Lazpoly.Net.Messages
                 LastDie2 = r.ReadInt(),
                 ConsecutiveDoubles = r.ReadInt(),
                 WinnerId = r.ReadInt(),
-                Round = r.ReadInt(),
-                Pot = r.ReadInt(),
             };
 
-            if (r.ReadBool()) s.DiceOptions = new[] { r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt() };
+            if (!legacy)
+            {
+                s.Round = r.ReadInt();
+                s.Pot = r.ReadInt();
+                if (r.ReadBool()) s.DiceOptions = new[] { r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt() };
+            }
 
             int players = r.ReadCount();
             for (int i = 0; i < players; i++)
@@ -436,9 +454,11 @@ namespace Lazpoly.Net.Messages
                     Money = r.ReadInt(),
                     Position = r.ReadInt(),
                     IsBankrupt = r.ReadBool(),
-                    HasLookout = r.ReadBool(),
+                    HasLookout = !legacy && r.ReadBool(),
                 });
             }
+
+            if (legacy) s.Round = players > 0 ? s.TurnNumber / players + 1 : 1;
 
             int squares = r.ReadCount();
             s.Owners = new int[squares];

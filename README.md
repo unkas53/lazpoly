@@ -241,6 +241,26 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   hamleyi yapar (zar atar, almaz, pas geçer, reddeder, otogarda kalır); üst üste iki kez dolarsa ya da borç varsa
   bilgisayar o koltukta oynar, oyuncu tek bir hamle yapınca kontrol ona döner. Ekranın üstünde kalan süre görünür.
 
+## Faz 7d: görsel kimlik ve yayın hazırlığı
+
+- **Tema:** piyonlar kasabanın şekilleri (çay bardağı, fener, simit, şamandıra, çan, kayık, çaydanlık, saat kulesi;
+  `PawnShapes`), ev ve otel yerine ahşap ev ve konak (`BuildingParts`), tahtanın ortası deniz ve üstünde kasabalı
+  bir ada, fener, kayık. Hepsi koddan üretilir; Blender modelleri sonraya kaldı.
+- **Ortam:** ahşap masa ve zemin (`RoomDressing`), sıcak güneş + soğuk dolgu ışığı, yumuşak gölgeler, kamerada
+  HDR, SMAA, bloom, renk düzeltme (ACES) ve vinyet. Ana menünün arkasında gerçek tahta yavaşça döner (`MenuBackdrop`).
+- **Yazı tipi ve palet:** Nunito Regular/Bold (OFL, `UI/Resources/Lazpoly/Fonts`), akşam kıyısı paleti (`UiTheme`).
+- **Mağaza görselleri:** `python Tools/Art/make_capsules.py` logo ve Steam kapaklarını `Steam/Art` altına çizer
+  (bkz. `Steam/README.md`).
+- **Ayarlar:** Ses (genel, efektler, müzik ayrı), Görüntü (kalite Düşük/Orta/Yüksek: Düşük post-processing'i ve
+  gölgeleri kapatır, çözünürlük seçici, tam ekran, VSync), Oyun, Sorun bildirme. Eski ayarlar korunur; yeni
+  alanlar varsayılanla gelir.
+- **Müzik:** `python Tools/Audio/make_music.py` iki sakin parça üretir (`kiyi`, `aksam`, 64 sn, 22 kHz);
+  `MusicPlayer` sırayla ve çapraz geçişle çalar.
+- **Hata günlüğü:** `ErrorLogService` hataları ve istisnaları `persistentDataPath/lazpoly-hata.log` dosyasına yazar
+  (512 KB dolunca `.1` olarak saklanır); ayarlardaki "Günlük klasörünü aç" düğmesi klasörü açar.
+- **Kayıt uyumluluğu:** 1. sürüm kayıt dosyaları (masa kuralları öncesi) hâlâ açılır: varsayılan masa, boş
+  kumbara, tur numarası tahmini.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

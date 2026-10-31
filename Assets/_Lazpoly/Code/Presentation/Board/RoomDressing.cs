@@ -1,3 +1,5 @@
+using Lazpoly.Infra;
+using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Models;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -31,22 +33,47 @@ namespace Lazpoly.Presentation.Tabletop
             return room;
         }
 
-        /// <summary>Warm sun from the front left, a cool fill from behind, soft shadows, a dim warm ambient.</summary>
-        public static void LightScene()
+        /// <summary>The quality the player chose, or High when no settings service runs (tests, sandbox scenes).</summary>
+        public static GraphicsQuality CurrentQuality()
         {
-            Light sun = null;
-            foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
-            {
-                if (light.name == "Fill Light") Object.Destroy(light.gameObject);
-                else if (light.type == LightType.Directional && sun == null) sun = light;
-            }
+            SettingsService settings = null;
+            GameServices.Registry?.TryGet(out settings);
+            return settings?.Current.Quality ?? GraphicsQuality.High;
+        }
 
-            if (sun == null) sun = new GameObject("Directional Light").AddComponent<Light>();
+        /// <summary>Re-applies a quality level to the scene that is up now: the main camera, the sun and the pipeline.</summary>
+        public static void ApplyQuality(GraphicsQuality quality)
+        {
+            Camera camera = Camera.main;
+            if (camera != null && camera.GetComponent<Volume>() != null) DressCamera(camera, quality);
+            GameObject sun = GameObject.Find("Sun");
+            if (sun != null && sun.TryGetComponent(out Light light)) light.shadows = ShadowsFor(quality);
+            if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset pipeline)
+            {
+                pipeline.msaaSampleCount = quality == GraphicsQuality.High ? 4 : quality == GraphicsQuality.Medium ? 2 : 1;
+                pipeline.renderScale = quality == GraphicsQuality.Low ? 0.85f : 1f;
+            }
+        }
+
+        /// <summary>Soft shadows on High, hard on Medium, none on Low.</summary>
+        public static LightShadows ShadowsFor(GraphicsQuality quality) =>
+            quality == GraphicsQuality.High ? LightShadows.Soft : quality == GraphicsQuality.Medium ? LightShadows.Hard : LightShadows.None;
+
+        /// <summary>Warm sun from the front left, a cool fill from behind, shadows as the quality allows, a dim warm ambient.</summary>
+        public static void LightScene(GraphicsQuality quality)
+        {
+            // Scenes come with Unity's default "Directional Light"; it becomes the sun. A fill from an
+            // earlier visit (the menu and the game share one run) is rebuilt, not doubled.
+            GameObject oldFill = GameObject.Find("Fill Light");
+            if (oldFill != null) Object.Destroy(oldFill);
+            GameObject sunObject = GameObject.Find("Sun") ?? GameObject.Find("Directional Light") ?? new GameObject("Sun");
+            Light sun = sunObject.GetComponent<Light>();
+            if (sun == null) sun = sunObject.AddComponent<Light>();
             sun.name = "Sun";
             sun.type = LightType.Directional;
             sun.color = new Color(1f, 0.93f, 0.82f);
             sun.intensity = 1.25f;
-            sun.shadows = LightShadows.Soft;
+            sun.shadows = ShadowsFor(quality);
             sun.shadowStrength = 0.55f;
             sun.transform.rotation = Quaternion.Euler(52f, -35f, 0f);
 
@@ -61,16 +88,21 @@ namespace Lazpoly.Presentation.Tabletop
             RenderSettings.ambientLight = new Color(0.26f, 0.27f, 0.32f);
         }
 
-        /// <summary>Post-processing on the camera: a little bloom on the highlights, warm grading, a soft vignette.</summary>
-        public static void DressCamera(Camera camera, bool postProcessing)
+        /// <summary>
+        /// Post-processing on the camera: a little bloom on the highlights, warm grading, a soft vignette.
+        /// Low quality turns all of it off; Medium keeps it with cheaper anti-aliasing.
+        /// </summary>
+        public static void DressCamera(Camera camera, GraphicsQuality quality)
         {
+            bool postProcessing = quality != GraphicsQuality.Low;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = BackgroundColor;
-            camera.allowHDR = true;
+            camera.allowHDR = postProcessing;
 
             UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
             data.renderPostProcessing = postProcessing;
-            data.antialiasing = postProcessing ? AntialiasingMode.SubpixelMorphologicalAntiAliasing : AntialiasingMode.None;
+            data.antialiasing = quality == GraphicsQuality.High ? AntialiasingMode.SubpixelMorphologicalAntiAliasing
+                : quality == GraphicsQuality.Medium ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.None;
 
             Volume volume = camera.GetComponent<Volume>();
             if (volume == null)

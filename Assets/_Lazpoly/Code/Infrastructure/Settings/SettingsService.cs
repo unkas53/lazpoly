@@ -46,9 +46,16 @@ namespace Lazpoly.Infra.Settings
         {
             AudioListener.volume = settings.MasterVolume;
             QualitySettings.vSyncCount = settings.VSync ? 1 : 0;
-            if (!Application.isEditor)
+            if (Application.isEditor) return;
+
+            FullScreenMode mode = settings.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+            if (settings.HasScreenSize && (Screen.width != settings.ScreenWidth || Screen.height != settings.ScreenHeight || Screen.fullScreenMode != mode))
             {
-                Screen.fullScreenMode = settings.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+                Screen.SetResolution(settings.ScreenWidth, settings.ScreenHeight, mode);
+            }
+            else
+            {
+                Screen.fullScreenMode = mode;
             }
         }
     }

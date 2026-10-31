@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Lazpoly.Infra;
+using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,7 +10,8 @@ namespace Lazpoly.Presentation.Audio
     /// <summary>
     /// Plays the game's sound effects through a small pool of 2D audio sources. One instance lives
     /// for the whole run (created on first use) and also gives every interface button its click.
-    /// Volume follows <see cref="AudioListener.volume"/>, which the settings service sets.
+    /// The master volume is <see cref="AudioListener.volume"/>, set by the settings service; the
+    /// effects volume from the same settings scales every cue under it.
     /// </summary>
     public sealed class AudioPlayer : MonoBehaviour
     {
@@ -25,6 +28,8 @@ namespace Lazpoly.Presentation.Audio
         private readonly Dictionary<SoundCue, float> _lastPlayed = new Dictionary<SoundCue, float>();
         private readonly HashSet<SoundCue> _missing = new HashSet<SoundCue>();
         private int _next;
+        private float _effectsVolume = GameSettings.Default.EffectsVolume;
+        private SettingsService _settings;
 
         /// <summary>How many sounds have started since the game launched; tests use it to see that a cue played.</summary>
         public static int PlayedCount { get; private set; }
@@ -65,10 +70,20 @@ namespace Lazpoly.Presentation.Audio
             SceneManager.sceneLoaded += OnSceneLoaded;
             Application.quitting += OnQuitting;
             EnsureListener();
+
+            GameServices.Registry?.TryGet(out _settings);
+            if (_settings != null)
+            {
+                _effectsVolume = _settings.Current.EffectsVolume;
+                _settings.Changed += OnSettingsChanged;
+            }
         }
+
+        private void OnSettingsChanged(GameSettings settings) => _effectsVolume = settings.EffectsVolume;
 
         private void OnDestroy()
         {
+            if (_settings != null) _settings.Changed -= OnSettingsChanged;
             UiBuilder.Pressed -= OnUiPressed;
             UiFadeIn.Shown -= OnWindowShown;
             SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -105,7 +120,7 @@ namespace Lazpoly.Presentation.Audio
             AudioSource source = FreeSource();
             float jitter = SoundCues.PitchJitter(cue);
             source.pitch = 1f + Random.Range(-jitter, jitter);
-            source.volume = SoundCues.Volume(cue);
+            source.volume = SoundCues.Volume(cue) * _effectsVolume;
             source.clip = clip;
             source.Play();
             PlayedCount++;

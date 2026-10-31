@@ -1,29 +1,39 @@
 using System;
+using System.Collections.Generic;
 using Lazpoly.Infra;
+using Lazpoly.Infra.Logging;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// Settings controls, shown in a window from the main menu and from the game. Every change is
-    /// saved at once by <see cref="SettingsService"/>.
+    /// Settings controls, shown in a window from the main menu and from the game, in four groups:
+    /// sound, picture, game and help. Every change is saved at once by <see cref="SettingsService"/>.
     /// </summary>
     public sealed class SettingsPanel
     {
         private static readonly string[] AiSpeedNames = { "Yavaş", "Normal", "Hızlı" };
+        private static readonly string[] QualityNames = { "Düşük", "Orta", "Yüksek" };
+
+        /// <summary>The groups scroll inside the window, so the window fits a small screen.</summary>
+        private const float BodyHeight = 420f;
 
         private readonly SettingsService _settings;
+        private readonly ErrorLogService _errorLog;
 
         public SettingsPanel()
         {
             GameServices.Registry?.TryGet(out _settings);
+            GameServices.Registry?.TryGet(out _errorLog);
         }
 
-        public SettingsPanel(SettingsService settings)
+        public SettingsPanel(SettingsService settings, ErrorLogService errorLog = null)
         {
             _settings = settings;
+            _errorLog = errorLog;
         }
 
         public void Render(UiBuilder ui, Action close)
@@ -36,38 +46,127 @@ namespace Lazpoly.Presentation.Menu
             else
             {
                 GameSettings current = _settings.Current;
-
-                var volumeLabel = ui.Label(VolumeText(current.MasterVolume));
-                ui.Slider(current.MasterVolume, 0f, 1f, value =>
-                {
-                    float rounded = Mathf.Round(value * 20f) / 20f;
-                    volumeLabel.text = VolumeText(rounded);
-                    if (!Mathf.Approximately(rounded, _settings.Current.MasterVolume)) Change(_settings.Current.WithMasterVolume(rounded));
-                });
-
-                ui.Toggle("Tam ekran", current.Fullscreen, on => Change(_settings.Current.WithFullscreen(on)));
-                ui.Toggle("Dikey eşitleme (VSync)", current.VSync, on => Change(_settings.Current.WithVSync(on)));
-                ui.Toggle("Hızlı animasyonlar", current.FastAnimations, on => Change(_settings.Current.WithFastAnimations(on)));
-
-                ui.Label("Bilgisayar hamle hızı");
-                UiBuilder speeds = ui.Row();
-                for (int i = 0; i < AiSpeedNames.Length; i++)
-                {
-                    var speed = (AiSpeed)i;
-                    speeds.Button(AiSpeedNames[i], () => Change(_settings.Current.WithAiSpeed(speed)),
-                        style: current.AiSpeed == speed ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
-                }
+                UiBuilder body = ui.Scroll(BodyHeight);
+                RenderSound(body, current);
+                RenderPicture(body, current);
+                RenderGame(body, current);
+                RenderHelp(body);
             }
 
             ui.Space(8f);
             ui.Button("Kapat", close, style: UiButtonStyle.Primary);
         }
 
+        private void RenderSound(UiBuilder ui, GameSettings current)
+        {
+            ui.Label("Ses", UiTextStyle.Small, UiTheme.Muted);
+            VolumeSlider(ui, "Genel", current.MasterVolume, v => _settings.Current.WithMasterVolume(v));
+            VolumeSlider(ui, "Efektler", current.EffectsVolume, v => _settings.Current.WithEffectsVolume(v));
+            VolumeSlider(ui, "Müzik", current.MusicVolume, v => _settings.Current.WithMusicVolume(v));
+            ui.Space(6f);
+        }
+
+        private void RenderPicture(UiBuilder ui, GameSettings current)
+        {
+            ui.Label("Görüntü", UiTextStyle.Small, UiTheme.Muted);
+            ui.Label("Kalite");
+            UiBuilder qualities = ui.Row();
+            for (int i = 0; i < QualityNames.Length; i++)
+            {
+                var quality = (GraphicsQuality)i;
+                qualities.Button(QualityNames[i], () => Change(_settings.Current.WithQuality(quality)),
+                    style: current.Quality == quality ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Toggle("Tam ekran", current.Fullscreen, on => Change(_settings.Current.WithFullscreen(on)));
+            ui.Toggle("Dikey eşitleme (VSync)", current.VSync, on => Change(_settings.Current.WithVSync(on)));
+            RenderResolution(ui, current);
+            ui.Space(6f);
+        }
+
+        /// <summary>A stepper through the screen's sizes; the choice is applied in builds, the editor keeps its own window.</summary>
+        private void RenderResolution(UiBuilder ui, GameSettings current)
+        {
+            List<Vector2Int> sizes = ScreenSizes();
+            if (sizes.Count == 0) return;
+            int chosen = IndexOf(sizes, current.HasScreenSize ? new Vector2Int(current.ScreenWidth, current.ScreenHeight) : new Vector2Int(Screen.width, Screen.height));
+
+            ui.Label("Çözünürlük");
+            UiBuilder row = ui.Row();
+            row.Button("<", () => PickSize(sizes[(chosen + sizes.Count - 1) % sizes.Count]), height: UiTheme.SmallButtonHeight);
+            Text label = row.Label(SizeText(sizes[chosen]), alignment: TextAnchor.MiddleCenter);
+            UiBuilder.Fix(label, width: 160f);
+            row.Button(">", () => PickSize(sizes[(chosen + 1) % sizes.Count]), height: UiTheme.SmallButtonHeight);
+            if (Application.isEditor) ui.Label("Editörde pencere boyutu değişmez; derlemede uygulanır.", UiTextStyle.Small, UiTheme.Muted);
+        }
+
+        private void RenderGame(UiBuilder ui, GameSettings current)
+        {
+            ui.Label("Oyun", UiTextStyle.Small, UiTheme.Muted);
+            ui.Toggle("Hızlı animasyonlar", current.FastAnimations, on => Change(_settings.Current.WithFastAnimations(on)));
+            ui.Label("Bilgisayar hamle hızı");
+            UiBuilder speeds = ui.Row();
+            for (int i = 0; i < AiSpeedNames.Length; i++)
+            {
+                var speed = (AiSpeed)i;
+                speeds.Button(AiSpeedNames[i], () => Change(_settings.Current.WithAiSpeed(speed)),
+                    style: current.AiSpeed == speed ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Space(6f);
+        }
+
+        private void RenderHelp(UiBuilder ui)
+        {
+            if (_errorLog == null) return;
+            ui.Label("Sorun bildirme", UiTextStyle.Small, UiTheme.Muted);
+            ui.Label("Hatalar şu dosyaya yazılır; bir sorun bildirirken bu dosyayı ekle:", UiTextStyle.Small);
+            ui.Label(_errorLog.FilePath, UiTextStyle.Small, UiTheme.Muted);
+            ui.Button("Günlük klasörünü aç", () => Application.OpenURL("file://" + _errorLog.Folder), height: UiTheme.SmallButtonHeight);
+        }
+
+        private void VolumeSlider(UiBuilder ui, string name, float value, Func<float, GameSettings> with)
+        {
+            Text label = ui.Label(VolumeText(name, value));
+            ui.Slider(value, 0f, 1f, raw =>
+            {
+                float rounded = Mathf.Round(raw * 20f) / 20f;
+                label.text = VolumeText(name, rounded);
+                Change(with(rounded));
+            });
+        }
+
+        private void PickSize(Vector2Int size) => Change(_settings.Current.WithScreenSize(size.x, size.y));
+
         private void Change(GameSettings next)
         {
             if (!next.SameAs(_settings.Current)) _settings.Change(next);
         }
 
-        private static string VolumeText(float volume) => $"Ses: %{Mathf.RoundToInt(volume * 100f)}";
+        /// <summary>Distinct sizes the screen supports, smallest first; the current size is always among them.</summary>
+        public static List<Vector2Int> ScreenSizes()
+        {
+            var sizes = new List<Vector2Int>();
+            foreach (Resolution resolution in Screen.resolutions)
+            {
+                var size = new Vector2Int(resolution.width, resolution.height);
+                if (size.x >= 640 && size.y >= 480 && !sizes.Contains(size)) sizes.Add(size);
+            }
+
+            var now = new Vector2Int(Screen.width, Screen.height);
+            if (now.x >= 640 && now.y >= 480 && !sizes.Contains(now)) sizes.Add(now);
+            sizes.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+            return sizes;
+        }
+
+        private static int IndexOf(List<Vector2Int> sizes, Vector2Int wanted)
+        {
+            int index = sizes.IndexOf(wanted);
+            return index >= 0 ? index : sizes.Count - 1;
+        }
+
+        private static string SizeText(Vector2Int size) => $"{size.x} × {size.y}";
+
+        private static string VolumeText(string name, float volume) => $"{name}: %{Mathf.RoundToInt(volume * 100f)}";
     }
 }

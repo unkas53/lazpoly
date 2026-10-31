@@ -33,16 +33,26 @@ namespace Lazpoly.Infra.Settings
         private const string VSyncKey = Prefix + "vsync";
         private const string AiSpeedKey = Prefix + "aiSpeed";
         private const string FastAnimationsKey = Prefix + "fastAnimations";
+        private const string EffectsKey = Prefix + "effects";
+        private const string MusicKey = Prefix + "music";
+        private const string QualityKey = Prefix + "quality";
+        private const string WidthKey = Prefix + "width";
+        private const string HeightKey = Prefix + "height";
 
         public static GameSettings Read(ISettingsStorage storage)
         {
             GameSettings d = GameSettings.Default;
             return new GameSettings(
                 storage.HasKey(VolumeKey) ? storage.GetFloat(VolumeKey) : d.MasterVolume,
+                storage.HasKey(EffectsKey) ? storage.GetFloat(EffectsKey) : d.EffectsVolume,
+                storage.HasKey(MusicKey) ? storage.GetFloat(MusicKey) : d.MusicVolume,
                 storage.HasKey(FullscreenKey) ? storage.GetInt(FullscreenKey) != 0 : d.Fullscreen,
                 storage.HasKey(VSyncKey) ? storage.GetInt(VSyncKey) != 0 : d.VSync,
                 storage.HasKey(AiSpeedKey) ? (AiSpeed)storage.GetInt(AiSpeedKey) : d.AiSpeed,
-                storage.HasKey(FastAnimationsKey) ? storage.GetInt(FastAnimationsKey) != 0 : d.FastAnimations);
+                storage.HasKey(FastAnimationsKey) ? storage.GetInt(FastAnimationsKey) != 0 : d.FastAnimations,
+                storage.HasKey(QualityKey) ? (GraphicsQuality)storage.GetInt(QualityKey) : d.Quality,
+                storage.HasKey(WidthKey) ? storage.GetInt(WidthKey) : d.ScreenWidth,
+                storage.HasKey(HeightKey) ? storage.GetInt(HeightKey) : d.ScreenHeight);
         }
 
         public static void Write(ISettingsStorage storage, GameSettings settings)
@@ -52,6 +62,11 @@ namespace Lazpoly.Infra.Settings
             storage.SetInt(VSyncKey, settings.VSync ? 1 : 0);
             storage.SetInt(AiSpeedKey, (int)settings.AiSpeed);
             storage.SetInt(FastAnimationsKey, settings.FastAnimations ? 1 : 0);
+            storage.SetFloat(EffectsKey, settings.EffectsVolume);
+            storage.SetFloat(MusicKey, settings.MusicVolume);
+            storage.SetInt(QualityKey, (int)settings.Quality);
+            storage.SetInt(WidthKey, settings.ScreenWidth);
+            storage.SetInt(HeightKey, settings.ScreenHeight);
             storage.Save();
         }
     }

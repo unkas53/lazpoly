@@ -7,11 +7,13 @@ namespace Lazpoly.App.Save
 {
     /// <summary>
     /// Binary save format: a magic number and format version, then the generators, the AI seats and
-    /// the game state written the same way the network writes it.
+    /// the game state written the same way the network writes it. Files of the previous version
+    /// (before table rules and the Faz 7c squares) still open; they get the default table.
     /// </summary>
     public static class SavedGameCodec
     {
         public const int FormatVersion = 2;
+        public const int OldestReadableVersion = 1;
         private const ulong Magic = 0x4C415A504F4C5953UL; // "LAZPOLYS"
 
         public static byte[] Encode(SavedGame save)
@@ -43,7 +45,7 @@ namespace Lazpoly.App.Save
             return w.ToArray();
         }
 
-        /// <summary>Reads a save. Throws <see cref="FormatException"/> for anything that is not a valid save of this version.</summary>
+        /// <summary>Reads a save of this or an older readable version. Throws <see cref="FormatException"/> for anything else.</summary>
         public static SavedGame Decode(byte[] data)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
@@ -51,7 +53,7 @@ namespace Lazpoly.App.Save
             var r = new NetReader(data);
             if (r.ReadULong() != Magic) throw new FormatException("Not a Lazpoly save file.");
             int version = r.ReadInt();
-            if (version != FormatVersion) throw new FormatException($"Save format {version} is not supported.");
+            if (version < OldestReadableVersion || version > FormatVersion) throw new FormatException($"Save format {version} is not supported.");
 
             var save = new SavedGame
             {
@@ -74,8 +76,8 @@ namespace Lazpoly.App.Save
                 save.AiPlayers.Add(id, new SavedAiPlayer { Difficulty = (AiDifficulty)difficulty, LastProposalTurn = lastProposalTurn });
             }
 
-            save.Table = MessageCodec.ReadTable(r);
-            save.Snapshot = MessageCodec.ReadSnapshot(r);
+            save.Table = version >= 2 ? MessageCodec.ReadTable(r) : Core.Rules.TableRules.Default;
+            save.Snapshot = MessageCodec.ReadSnapshot(r, version >= 2 ? MessageCodec.SnapshotVersion : MessageCodec.LegacySnapshotVersion);
             if (!r.AtEnd) throw new FormatException("Unexpected data after the save.");
             return save;
         }

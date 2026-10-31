@@ -133,6 +133,7 @@ namespace Lazpoly.Presentation.Game
         private void Start()
         {
             AudioPlayer.Ensure();
+            MusicPlayer.Ensure();
             _data = BoardDataLoader.LoadFromResources();
             GameServices.Registry?.TryGet(out _settings);
             GameServices.Registry?.TryGet(out _achievements);
@@ -391,6 +392,7 @@ namespace Lazpoly.Presentation.Game
         {
             foreach (PawnView pawn in _pawns.Values) pawn.Speed = settings.AnimationSpeed;
             if (_dice != null) _dice.Speed = settings.AnimationSpeed;
+            RoomDressing.ApplyQuality(settings.Quality);
         }
 
         private void OnCommandRejected(RejectionReason reason)
@@ -541,8 +543,9 @@ namespace Lazpoly.Presentation.Game
             camera.fieldOfView = 50f;
             CameraRig = camera.GetComponent<BoardCameraRig>();
             if (CameraRig == null) CameraRig = camera.gameObject.AddComponent<BoardCameraRig>();
-            RoomDressing.DressCamera(camera, postProcessing: true);
-            RoomDressing.LightScene();
+            GraphicsQuality quality = RoomDressing.CurrentQuality();
+            RoomDressing.DressCamera(camera, quality);
+            RoomDressing.LightScene(quality);
         }
     }
 }

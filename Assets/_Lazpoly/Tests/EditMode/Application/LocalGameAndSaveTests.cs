@@ -8,6 +8,7 @@ using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
+using Lazpoly.Net.Messages;
 using NUnit.Framework;
 
 namespace Lazpoly.App.Tests
@@ -154,6 +155,79 @@ namespace Lazpoly.App.Tests
 
             var otherBoard = new BoardDefinition(new[] { SquareDefinition.Start("S"), SquareDefinition.Rest("R") });
             Assert.Throws<ArgumentException>(() => LocalGame.Resume(otherBoard, Rules, Checksum, save));
+        }
+
+        /// <summary>Writes a save the way version 1 did: no table, snapshot without round, pot, dice options or lookouts.</summary>
+        private static byte[] LegacySave(SavedGame save)
+        {
+            var w = new NetWriter();
+            w.WriteULong(0x4C415A504F4C5953UL);
+            w.WriteInt(1);
+            w.WriteULong(save.BoardChecksum);
+            w.WriteULong(save.DiceState);
+            w.WriteULong(save.DiceIncrement);
+            w.WriteULong(save.AiState);
+            w.WriteULong(save.AiIncrement);
+            w.WriteInt(save.AiPlayers.Count);
+            foreach (KeyValuePair<int, SavedAiPlayer> ai in save.AiPlayers)
+            {
+                w.WriteInt(ai.Key);
+                w.WriteByte((byte)ai.Value.Difficulty);
+                w.WriteInt(ai.Value.LastProposalTurn);
+            }
+
+            GameStateSnapshot s = save.Snapshot;
+            w.WriteInt((int)s.Phase);
+            w.WriteInt(s.CurrentPlayerIndex);
+            w.WriteInt(s.TurnNumber);
+            w.WriteInt(s.LastDie1);
+            w.WriteInt(s.LastDie2);
+            w.WriteInt(s.ConsecutiveDoubles);
+            w.WriteInt(s.WinnerId);
+            w.WriteInt(s.Players.Count);
+            foreach (GameStateSnapshot.PlayerEntry p in s.Players)
+            {
+                w.WriteInt(p.Id);
+                w.WriteString(p.Name);
+                w.WriteInt(p.Money);
+                w.WriteInt(p.Position);
+                w.WriteBool(p.IsBankrupt);
+            }
+
+            w.WriteInt(s.Owners.Length);
+            for (int i = 0; i < s.Owners.Length; i++)
+            {
+                w.WriteInt(s.Owners[i]);
+                w.WriteInt(s.BuildingLevels[i]);
+                w.WriteBool(s.Mortgaged[i]);
+            }
+
+            w.WriteBool(false); // auction
+            w.WriteBool(false); // trade
+            w.WriteBool(false); // debt
+            return w.ToArray();
+        }
+
+        [Test]
+        public void ASaveFromTheVersionBeforeTableRulesStillOpensAndResumes()
+        {
+            LocalGame game = AllAi(3, 11UL);
+            Steps(game, 40);
+            SavedGame original = game.Save(Checksum);
+
+            SavedGame read = SavedGameCodec.Decode(LegacySave(original));
+
+            Assert.IsTrue(read.Table.SameAs(TableRules.Default), "An old save plays with the default table.");
+            Assert.AreEqual(original.Snapshot.TurnNumber, read.Snapshot.TurnNumber);
+            Assert.AreEqual(original.Snapshot.Players.Count, read.Snapshot.Players.Count);
+            Assert.AreEqual(original.Snapshot.Players[1].Money, read.Snapshot.Players[1].Money);
+            Assert.AreEqual(0, read.Snapshot.Pot);
+            Assert.IsNull(read.Snapshot.DiceOptions);
+            Assert.AreEqual(original.Snapshot.TurnNumber / 3 + 1, read.Snapshot.Round);
+            Assert.AreEqual(original.AiPlayers.Count, read.AiPlayers.Count);
+
+            LocalGame resumed = LocalGame.Resume(Board, Rules, Checksum, read);
+            Steps(resumed, 5);
         }
 
         [Test]

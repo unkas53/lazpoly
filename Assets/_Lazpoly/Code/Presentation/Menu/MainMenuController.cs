@@ -58,6 +58,7 @@ namespace Lazpoly.Presentation.Menu
         private void Awake()
         {
             AudioPlayer.Ensure();
+            MusicPlayer.Ensure();
             for (int i = 0; i < RulesConfig.AbsoluteMaxPlayers; i++)
             {
                 _names.Add($"Oyuncu {i + 1}");
