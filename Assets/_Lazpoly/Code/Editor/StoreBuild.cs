@@ -10,7 +10,7 @@ namespace Lazpoly.Editor
 {
     /// <summary>
     /// Builds the Windows version that goes to Steam: no development options, into Builds/Store/windows,
-    /// without steam_appid.txt (Steam itself starts a store build). Refuses while the game still runs as
+    /// without steam_appid.txt (Steam itself starts a store build) or Unity's do-not-ship folders. Refuses while the game still runs as
     /// the test App ID, unless -allowDevelopmentAppId is passed for a rehearsal build that is never uploaded.
     /// Also callable from the command line with -executeMethod Lazpoly.Editor.StoreBuild.Run
     /// </summary>
@@ -55,6 +55,13 @@ namespace Lazpoly.Editor
 
             string appIdFile = Path.Combine(OutputFolder, "steam_appid.txt");
             if (File.Exists(appIdFile)) File.Delete(appIdFile);
+
+            // Unity leaves debug-only folders next to the player ("..._DoNotShip", "..._ButDontShipItWithYourGame").
+            foreach (string folder in Directory.GetDirectories(OutputFolder))
+            {
+                string name = Path.GetFileName(folder);
+                if (name.EndsWith("_DoNotShip") || name.EndsWith("_ButDontShipItWithYourGame")) Directory.Delete(folder, true);
+            }
 
             string kind = SteamSettings.IsDevelopmentAppId ? "REHEARSAL build (test App ID, do not upload)" : $"store build for App ID {SteamSettings.AppId}";
             Debug.Log($"[Lazpoly] {kind} in {OutputFolder}, {report.summary.totalSize / (1024 * 1024)} MB.");
