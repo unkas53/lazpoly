@@ -31,8 +31,13 @@ namespace Lazpoly.Presentation.Game
                 int rent = GameRules.CalculateRent(board, controller.Session.Rules, state, square);
                 card.Label($"{status}, kira {rent}", UiTextStyle.Small);
 
+                // The build button appears only when the rules allow it; otherwise say what is missing.
+                var build = new BuildCommand(playerId, square);
+                string hint = controller.IsAllowed(build) ? null : BuildHint.For(board, state, playerId, square);
+                if (hint != null) card.Label(hint, UiTextStyle.Small, UiTheme.Accent);
+
                 UiBuilder actions = card.Row(6f);
-                Offer(actions, controller, new BuildCommand(playerId, square), $"Ev +{definition.BuildingCost}");
+                Offer(actions, controller, build, $"Ev +{definition.BuildingCost}");
                 Offer(actions, controller, new SellBuildingCommand(playerId, square), "Ev Sat");
                 Offer(actions, controller, new MortgageCommand(playerId, square), $"İpotek +{definition.MortgageValue}");
                 Offer(actions, controller, new RedeemCommand(playerId, square), $"Kurtar -{controller.Session.Rules.RedeemCost(definition.MortgageValue)}");
