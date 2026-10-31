@@ -140,16 +140,24 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(1000 - 80 + 200, P(engine, Alice).Money);
         }
 
+        /// <summary>Alice declines the square; nobody bids, so it stays with the bank and her move goes on.</summary>
+        private static void DeclineAndLetAuctionLapse(GameEngine engine)
+        {
+            Accept(engine, new DeclinePurchaseCommand(Alice));
+            Accept(engine, new PassBidCommand(Bob));
+            Accept(engine, new PassBidCommand(Alice));
+        }
+
         [Test]
         public void ThirdDoubleForfeitsTheMove()
         {
             var engine = NewGame(new ScriptedDice(1, 1, 2, 2, 3, 3));
 
             Accept(engine, new RollDiceCommand(Alice));
-            Accept(engine, new DeclinePurchaseCommand(Alice));
+            DeclineAndLetAuctionLapse(engine);
             Accept(engine, new RollDiceCommand(Alice));
             Assert.AreEqual(6, P(engine, Alice).Position);
-            Accept(engine, new DeclinePurchaseCommand(Alice));
+            DeclineAndLetAuctionLapse(engine);
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
 
             CommandResult third = Accept(engine, new RollDiceCommand(Alice));

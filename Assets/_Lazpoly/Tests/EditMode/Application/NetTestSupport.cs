@@ -100,8 +100,9 @@ namespace Lazpoly.App.Tests
                 case GamePhase.WaitingForRoll: return new RollDiceCommand(me);
                 case GamePhase.TurnEnd: return new EndTurnCommand(me);
                 case GamePhase.AwaitingBuyDecision:
-                    // Every third square goes to auction even when affordable, so auctions happen often.
-                    bool buy = state.CurrentPlayer.Position % 3 != 0 && Legal(new BuyPropertyCommand(me));
+                    // The first property of each group (squares 1, 4 and 7 on the test board) always goes
+                    // to auction, even when affordable, so auctions happen often.
+                    bool buy = state.CurrentPlayer.Position % 3 != 1 && Legal(new BuyPropertyCommand(me));
                     return buy ? new BuyPropertyCommand(me) : (GameCommand)new DeclinePurchaseCommand(me);
                 case GamePhase.AwaitingTradeResponse:
                     return new RejectTradeCommand(state.PendingTrade.ToPlayerId);
