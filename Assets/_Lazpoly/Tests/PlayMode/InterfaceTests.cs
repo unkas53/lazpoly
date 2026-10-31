@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Lazpoly.App.Save;
 using Lazpoly.Core.State;
+using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Setup;
 using NUnit.Framework;
@@ -78,6 +79,7 @@ namespace Lazpoly.PlayTests
             Assert.IsNotNull(hud, "The game has no HUD.");
 
             // Roll, decline every purchase, pass in every auction and end the turn: all through buttons.
+            int soundsBefore = AudioPlayer.PlayedCount;
             string[] order = { "Zar At", "Alma, açık artırmaya çıkar", "Pas", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
             float started = Time.realtimeSinceStartup;
             while (controller.Session.State.TurnNumber < 6 && controller.Session.State.Phase != GamePhase.GameOver)
@@ -95,6 +97,14 @@ namespace Lazpoly.PlayTests
             }
 
             Assert.That(controller.Session.State.TurnNumber, Is.GreaterThanOrEqualTo(6));
+            Assert.Greater(AudioPlayer.PlayedCount, soundsBefore, "Playing turns made no sound.");
+
+            // Once every event is shown, the money on screen is the real money.
+            while (controller.IsBusy) yield return null;
+            foreach (PlayerState player in controller.Session.State.Players)
+            {
+                Assert.AreEqual(player.Money, controller.ShownMoneyOf(player.Id), $"{player.Name}'s money on screen");
+            }
 
             // A clicked square opens its card with the square's name and price.
             hud.PinSquare(1);

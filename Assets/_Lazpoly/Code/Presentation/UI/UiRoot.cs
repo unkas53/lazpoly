@@ -93,6 +93,7 @@ namespace Lazpoly.Presentation.UI
             Background(window, UiTheme.Panel);
             UiBuilder.AddColumnLayout(window.gameObject, UiTheme.Padding + 8, UiTheme.Spacing);
             window.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            UiFadeIn.Attach(layer, window);
             return new UiBuilder(window);
         }
     }

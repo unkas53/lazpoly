@@ -5,6 +5,8 @@ using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.State;
+using Lazpoly.Presentation.Audio;
+using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.Texts;
@@ -49,6 +51,8 @@ namespace Lazpoly.Presentation.Game
         private float _bannerUntil;
         private int _lastTurnPlayer = -1;
         private int _lastTurnNumber = -1;
+        private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
+        private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
 
         private const int NoSquare = -1;
         private const float BannerSeconds = 1.8f;
@@ -145,6 +149,7 @@ namespace Lazpoly.Presentation.Game
             _log.Refresh(revision);
             _menu.Refresh(0);
 
+            UpdateMoney();
             UpdatePointer();
             UpdateSquareCard(state, revision);
             UpdateBanner(state);
@@ -153,6 +158,24 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
             bool ended = !_endDismissed && (_controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver && !_controller.IsBusy));
             SetLayer(_endLayer, _endWindow, ended, revision);
+        }
+
+        /// <summary>Counts each player's money towards its new value; only the labels change, nothing is rebuilt.</summary>
+        private void UpdateMoney()
+        {
+            foreach (KeyValuePair<int, Text> pair in _moneyLabels)
+            {
+                if (pair.Value == null || !_money.TryGetValue(pair.Key, out RollingNumber money)) continue;
+                money.SetTarget(_controller.ShownMoneyOf(pair.Key));
+                money.Step(Time.unscaledDeltaTime);
+                ShowMoney(pair.Value, money);
+            }
+        }
+
+        private static void ShowMoney(Text label, RollingNumber money)
+        {
+            label.text = money.Shown.ToString();
+            label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Accent;
         }
 
         /// <summary>The square under the mouse (not over the interface); a left click pins or unpins its card.</summary>
@@ -247,6 +270,7 @@ namespace Lazpoly.Presentation.Game
                 PlayerState player = state.CurrentPlayer;
                 if (_controller.Session.CanControl(player.Id))
                 {
+                    AudioPlayer.Play(SoundCue.YourTurn);
                     _banner.text = $"Sıra sende, {player.Name}";
                     _banner.color = _controller.ColorOf(player.Id);
                     _bannerUntil = Time.unscaledTime + BannerSeconds;
@@ -293,6 +317,7 @@ namespace Lazpoly.Presentation.Game
 
         private void RenderPlayers(UiBuilder ui, GameState state)
         {
+            _moneyLabels.Clear();
             UiBuilder header = ui.Row();
             header.Label($"Tur {state.TurnNumber}", UiTextStyle.Heading);
             if (state.LastDie1 != 0) header.Label($"Zar: {state.LastDie1} + {state.LastDie2}", color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
@@ -306,12 +331,26 @@ namespace Lazpoly.Presentation.Game
                 row.Swatch(color, 20f);
                 Text name = row.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
                 name.fontStyle = current ? FontStyle.Bold : FontStyle.Normal;
-                UiBuilder.Fix(row.Label(player.IsBankrupt ? "iflas" : player.Money.ToString(), color: UiTheme.Accent, alignment: TextAnchor.MiddleRight), width: 90f);
+                Text money = row.Label(player.IsBankrupt ? "iflas" : string.Empty, color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
+                UiBuilder.Fix(money, width: 90f);
+                if (!player.IsBankrupt) TrackMoney(player.Id, money);
 
                 string tag = PlayerTag(player);
                 if (tag != null) card.Label(tag, UiTextStyle.Small);
                 if (!player.IsBankrupt) RenderOwnedSquares(card, state, player.Id);
             }
+        }
+
+        private void TrackMoney(int playerId, Text label)
+        {
+            if (!_money.TryGetValue(playerId, out RollingNumber money))
+            {
+                money = new RollingNumber(_controller.ShownMoneyOf(playerId));
+                _money[playerId] = money;
+            }
+
+            _moneyLabels[playerId] = label;
+            ShowMoney(label, money);
         }
 
         /// <summary>One small square per property the player owns, in board order (so groups sit together); dim = mortgaged.</summary>

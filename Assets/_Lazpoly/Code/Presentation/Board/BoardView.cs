@@ -1,6 +1,8 @@
+using System.Collections;
 using System.Collections.Generic;
 using Lazpoly.Core.Board;
 using Lazpoly.Presentation.Data;
+using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Models;
 using UnityEngine;
 
@@ -30,6 +32,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Color?[] _ownerColors;
         private bool[] _mortgaged;
         private GameObject[][] _buildings;
+        private Vector3[][] _buildingRest;
         private GameObject[] _ownerFrames;
         private GameObject[] _tiles;
         private Color[] _tileColors;
@@ -100,15 +103,59 @@ namespace Lazpoly.Presentation.Tabletop
             RefreshOwnerMarker(squareIndex);
         }
 
-        /// <summary>Shows 1-4 small houses, or one hotel at the top level.</summary>
-        public void SetBuildingLevel(int squareIndex, int level)
+        /// <summary>
+        /// Shows 1-4 small houses, or one hotel at the top level. With <paramref name="animate"/>, pieces
+        /// that appear drop onto the tile and bounce; pieces that go are removed at once.
+        /// </summary>
+        public void SetBuildingLevel(int squareIndex, int level, bool animate = false)
         {
             GameObject[] pieces = _buildings[squareIndex];
             if (pieces == null) return;
 
             bool hotel = level >= SquareDefinition.MaxBuildingLevel;
-            for (int i = 0; i < pieces.Length - 1; i++) pieces[i].SetActive(!hotel && i < level);
-            pieces[pieces.Length - 1].SetActive(hotel);
+            for (int i = 0; i < pieces.Length; i++)
+            {
+                bool shown = i == pieces.Length - 1 ? hotel : !hotel && i < level;
+                bool appears = shown && !pieces[i].activeSelf;
+                pieces[i].SetActive(shown);
+                pieces[i].transform.localPosition = _buildingRest[squareIndex][i];
+                if (appears && animate) StartCoroutine(Drop(pieces[i].transform, _buildingRest[squareIndex][i]));
+            }
+        }
+
+        /// <summary>A short swell of a square's owner frame, when it is bought or changes hands.</summary>
+        public void PulseOwner(int squareIndex)
+        {
+            GameObject frame = _ownerFrames[squareIndex];
+            if (frame != null && frame.activeInHierarchy) StartCoroutine(Pulse(frame.transform));
+        }
+
+        private static IEnumerator Drop(Transform piece, Vector3 rest)
+        {
+            const float seconds = 0.45f;
+            const float height = 0.9f;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                if (piece == null) yield break;
+                piece.localPosition = rest + Vector3.up * (height * (1f - Ease.OutBounce(t)));
+                yield return null;
+            }
+
+            if (piece != null) piece.localPosition = rest;
+        }
+
+        private static IEnumerator Pulse(Transform frame)
+        {
+            const float seconds = 0.4f;
+            Vector3 size = Vector3.one;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                float swell = 1f + 0.12f * Ease.Bump(t);
+                frame.localScale = new Vector3(size.x * swell, size.y * (1f + 0.6f * Ease.Bump(t)), size.z * swell);
+                yield return null;
+            }
+
+            frame.localScale = size;
         }
 
         private void RefreshOwnerMarker(int squareIndex)
@@ -145,6 +192,7 @@ namespace Lazpoly.Presentation.Tabletop
             _ownerColors = new Color?[board.Count];
             _mortgaged = new bool[board.Count];
             _buildings = new GameObject[board.Count][];
+            _buildingRest = new Vector3[board.Count][];
             _ownerFrames = new GameObject[board.Count];
             _tiles = new GameObject[board.Count];
             _tileColors = new Color[board.Count];
@@ -193,7 +241,11 @@ namespace Lazpoly.Presentation.Tabletop
                     frame.transform.localPosition = center + Vector3.up * (TileHeight * 0.45f);
                     frame.SetActive(false);
                     _ownerFrames[i] = frame;
-                    if (square.IsDevelopable) _buildings[i] = CreateBuildings(center);
+                    if (square.IsDevelopable)
+                    {
+                        _buildings[i] = CreateBuildings(center);
+                        _buildingRest[i] = System.Array.ConvertAll(_buildings[i], piece => piece.transform.localPosition);
+                    }
                 }
             }
         }

@@ -1,4 +1,6 @@
+using System;
 using System.Collections;
+using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Tabletop;
 using UnityEngine;
@@ -10,6 +12,8 @@ namespace Lazpoly.Presentation.Pawns
     {
         private const float StepSeconds = 0.18f;
         private const float HopHeight = 0.35f;
+        private const float SquashSeconds = 0.07f;
+        private const float ToppleSeconds = 0.55f;
 
         /// <summary>Pawn outline as (radius, height) from the base up; turned around the vertical axis.</summary>
         private static readonly Vector2[] Profile =
@@ -26,6 +30,9 @@ namespace Lazpoly.Presentation.Pawns
 
         /// <summary>Animation speed multiplier from the settings (1 = normal).</summary>
         public float Speed { get; set; } = 1f;
+
+        /// <summary>Raised each time the pawn lands on a square while walking; the scene plays a step sound.</summary>
+        public event Action<int> Stepped;
 
         public static PawnView Create(Transform parent, BoardView board, int seatIndex, int seatCount, Color color)
         {
@@ -48,26 +55,71 @@ namespace Lazpoly.Presentation.Pawns
         public IEnumerator WalkTo(int destination)
         {
             int count = _board.Layout.SquareCount;
+            float speed = Mathf.Max(Speed, 0.1f);
             while (_square != destination)
             {
                 int next = (_square + 1) % count;
                 Vector3 from = transform.position;
                 Vector3 to = Target(next);
-                for (float t = 0f; t < 1f; t += Time.deltaTime * Mathf.Max(Speed, 0.1f) / StepSeconds)
+                for (float t = 0f; t < 1f; t += Time.deltaTime * speed / StepSeconds)
                 {
                     Vector3 position = Vector3.Lerp(from, to, t);
                     position.y += Mathf.Sin(t * Mathf.PI) * HopHeight;
                     transform.position = position;
+                    // Stretches a little in the air.
+                    SetStretch(1f + 0.08f * Ease.Bump(t));
                     yield return null;
                 }
 
                 PlaceOn(next);
+                Stepped?.Invoke(next);
+                // A short squash on landing, back to shape before the next hop.
+                for (float t = 0f; t < 1f; t += Time.deltaTime * speed / SquashSeconds)
+                {
+                    SetStretch(1f - 0.16f * Ease.Bump(t));
+                    yield return null;
+                }
+
+                SetStretch(1f);
             }
         }
 
+        /// <summary>Hides a bankrupt player's pawn at once (used when the board is rebuilt from the state).</summary>
         public void SetEliminated()
         {
             gameObject.SetActive(false);
+        }
+
+        /// <summary>A bankrupt pawn tips over, sinks into the table and disappears.</summary>
+        public IEnumerator Topple()
+        {
+            if (!gameObject.activeSelf) yield break;
+            float speed = Mathf.Max(Speed, 0.1f);
+            Vector3 start = transform.position;
+            Vector3 axis = Vector3.Cross(Vector3.up, (start - _board.transform.position).normalized);
+            if (axis.sqrMagnitude < 0.01f) axis = Vector3.right;
+            Quaternion upright = transform.rotation;
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / ToppleSeconds)
+            {
+                transform.rotation = Quaternion.AngleAxis(88f * Ease.InCubic(t), axis) * upright;
+                yield return null;
+            }
+
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / (ToppleSeconds * 0.6f))
+            {
+                transform.position = start + Vector3.down * (0.25f * t);
+                transform.localScale = Vector3.one * (1f - t);
+                yield return null;
+            }
+
+            SetEliminated();
+        }
+
+        // Keeps the pawn's volume: taller and thinner, or shorter and wider.
+        private void SetStretch(float height)
+        {
+            float width = 1f / Mathf.Sqrt(height);
+            transform.localScale = new Vector3(width, height, width);
         }
 
         private Vector3 Target(int square) => _board.PawnSpot(square) + _offset;

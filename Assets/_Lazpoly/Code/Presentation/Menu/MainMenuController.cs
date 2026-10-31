@@ -7,6 +7,7 @@ using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Infra;
 using Lazpoly.Net.Transport;
+using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.Tabletop;
@@ -43,6 +44,7 @@ namespace Lazpoly.Presentation.Menu
 
         private void Awake()
         {
+            AudioPlayer.Ensure();
             for (int i = 0; i < RulesConfig.AbsoluteMaxPlayers; i++)
             {
                 _names.Add($"Oyuncu {i + 1}");

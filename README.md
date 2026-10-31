@@ -207,6 +207,20 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
 - **Sıra sende:** Sıra bu ekrandaki bir oyuncuya geçince üstte kısa bir yazı çıkar.
 - **Olay kaydı:** Gelen para yeşil, giden para kırmızı (`EventDescriber.ToneOf`).
 
+## Faz 7b: ses ve animasyon
+
+- **Sesler:** 18 kısa efekt (zar, adım, satın alma, para, inşaat, ipotek, açık artırma, takas, sıra, başarım,
+  kazanma, iflas, tıklama). Hepsi `Tools/Audio/make_sfx.py` ile koddan üretildi, yani tamamen bizim; dış paket yok.
+  Yeniden üretmek için: `python Tools/Audio/make_sfx.py` (numpy gerekir). Müzik daha sonra.
+- **Hangi olay hangi ses:** `Audio/SoundCues.For` tek yerde karar verir ve test edilir. Bir eylem birden çok olay
+  üretse de bir kez ses çıkar (satın alma ödemede çalar, kira ödeyen tarafta).
+- **Çalıcı:** `AudioPlayer` oyun boyunca yaşar, 10 sesli bir havuzdan çalar, tekrarlanan seslerin perdesini biraz
+  oynatır. Ses düzeyi ayarlardaki "Ses" kaydırıcısına bağlı. Her arayüz düğmesi tıklar, her pencere açılırken ses verir.
+- **Animasyonlar:** piyon zıplarken uzar, inerken basılır; para değişince piyonun üstünde "+200 / -60" yükselir ve
+  sol paneldeki para sayarak değişir (ödeme ekranda görülmeden önce para değişmez); evler tahtaya düşüp seker; satın
+  alınan karenin çerçevesi kabarır; iflas eden piyon devrilip tahtaya gömülür; kazanınca tahtaya konfeti yağar;
+  pencereler yumuşakça açılır. Parçacık sistemi kullanılmadı, her şey kodla yapılmış basit parçalar.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

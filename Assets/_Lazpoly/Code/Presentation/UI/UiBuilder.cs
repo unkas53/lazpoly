@@ -23,6 +23,9 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Called after a button, toggle or choice reacts, so the owner can redraw.</summary>
         public Action Changed { get; set; }
 
+        /// <summary>Raised when any button or toggle made by a builder is pressed; the audio player clicks on it.</summary>
+        public static event Action Pressed;
+
         /// <summary>Removes everything this builder added.</summary>
         public void Clear()
         {
@@ -60,6 +63,7 @@ namespace Lazpoly.Presentation.UI
             {
                 button.onClick.AddListener(() =>
                 {
+                    Pressed?.Invoke();
                     onClick();
                     Changed?.Invoke();
                 });
@@ -101,6 +105,7 @@ namespace Lazpoly.Presentation.UI
             toggle.interactable = enabled;
             toggle.onValueChanged.AddListener(on =>
             {
+                Pressed?.Invoke();
                 changed?.Invoke(on);
                 Changed?.Invoke();
             });

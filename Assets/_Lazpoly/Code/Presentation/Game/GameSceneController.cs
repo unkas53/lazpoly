@@ -13,8 +13,10 @@ using Lazpoly.Core.Random;
 using Lazpoly.Core.State;
 using Lazpoly.Infra;
 using Lazpoly.Infra.Settings;
+using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Dice;
+using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Pawns;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.Tabletop;
@@ -39,6 +41,7 @@ namespace Lazpoly.Presentation.Game
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
         private readonly List<string> _log = new List<string>();
         private readonly List<LogTone> _logTones = new List<LogTone>();
+        private readonly Dictionary<int, int> _shownMoney = new Dictionary<int, int>();
 
         private BoardData _data;
         private IGameSession _session;
@@ -83,6 +86,13 @@ namespace Lazpoly.Presentation.Game
 
         private GameSettings Settings => _settings?.Current ?? GameSettings.Default;
 
+        /// <summary>
+        /// A player's money as far as the animations have got: the state already holds the result of
+        /// events still waiting to be shown, and the HUD should not give away a payment before it happens.
+        /// </summary>
+        public int ShownMoneyOf(int playerId) =>
+            _shownMoney.TryGetValue(playerId, out int money) ? money : _session?.State?.FindPlayer(playerId)?.Money ?? 0;
+
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
 
         /// <summary>Colour of the group a square belongs to, as the board shows it.</summary>
@@ -96,6 +106,7 @@ namespace Lazpoly.Presentation.Game
 
         private void Start()
         {
+            AudioPlayer.Ensure();
             _data = BoardDataLoader.LoadFromResources();
             GameServices.Registry?.TryGet(out _settings);
             GameServices.Registry?.TryGet(out _achievements);
@@ -266,6 +277,7 @@ namespace Lazpoly.Presentation.Game
                 _playerColors[player.Id] = color;
                 PawnView pawn = PawnView.Create(transform, _board, i, state.Players.Count, color);
                 pawn.Speed = Settings.AnimationSpeed;
+                pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
                 _pawns[player.Id] = pawn;
             }
 
@@ -280,6 +292,7 @@ namespace Lazpoly.Presentation.Game
             GameState state = _session.State;
             foreach (PlayerState player in state.Players)
             {
+                _shownMoney[player.Id] = player.Money;
                 PawnView pawn = _pawns[player.Id];
                 pawn.PlaceOn(player.Position);
                 if (player.IsBankrupt) pawn.SetEliminated();
@@ -311,6 +324,7 @@ namespace Lazpoly.Presentation.Game
             foreach (string id in _tracker.Observe(events, _session.State))
             {
                 _achievements.Unlock(id);
+                AudioPlayer.Play(SoundCue.Achievement);
                 AddLog($"Başarım: {TitleOf(id)}");
             }
         }
@@ -403,31 +417,56 @@ namespace Lazpoly.Presentation.Game
                 string line = EventDescriber.Describe(gameEvent, _session.State, _session.Board);
                 if (line != null) AddLog(line, EventDescriber.ToneOf(gameEvent));
 
+                AudioPlayer.Play(SoundCues.For(gameEvent));
                 switch (gameEvent)
                 {
                     case DiceRolledEvent rolled:
+                        AudioPlayer.Play(SoundCue.DiceShake);
                         yield return _dice.Roll(rolled.Die1, rolled.Die2);
+                        AudioPlayer.Play(SoundCue.DiceLand);
                         break;
                     case PlayerMovedEvent moved:
                         yield return _pawns[moved.PlayerId].WalkTo(moved.ToSquare);
                         break;
+                    case MoneyChangedEvent money:
+                        _shownMoney[money.PlayerId] = ShownMoneyOf(money.PlayerId) + money.Delta;
+                        Revision++;
+                        ShowMoney(money);
+                        break;
                     case PropertyOwnerChangedEvent owner:
                         _board.SetOwner(owner.SquareIndex,
                             owner.NewOwnerId == GameState.NoOwner ? (Color?)null : ColorOf(owner.NewOwnerId));
+                        if (owner.NewOwnerId != GameState.NoOwner) _board.PulseOwner(owner.SquareIndex);
                         break;
                     case PlayerBankruptedEvent bankrupt:
-                        _pawns[bankrupt.PlayerId].SetEliminated();
+                        yield return _pawns[bankrupt.PlayerId].Topple();
                         break;
                     case BuildingLevelChangedEvent building:
-                        _board.SetBuildingLevel(building.SquareIndex, building.Level);
+                        _board.SetBuildingLevel(building.SquareIndex, building.Level, animate: true);
                         break;
                     case MortgageChangedEvent mortgage:
                         _board.SetMortgaged(mortgage.SquareIndex, mortgage.IsMortgaged);
                         break;
+                    case GameEndedEvent _:
+                        Confetti.Burst(transform, _board.transform.position + Vector3.up * 0.5f, _board.SurfaceY + 0.01f,
+                            new List<Color>(_playerColors.Values));
+                        break;
                 }
             }
 
+            // Everything is shown now, so the money on screen is the state's money.
+            foreach (PlayerState player in _session.State.Players) _shownMoney[player.Id] = player.Money;
+            Revision++;
             _playing = false;
+        }
+
+        /// <summary>"+200" or "-60" rising over the player's pawn.</summary>
+        private void ShowMoney(MoneyChangedEvent money)
+        {
+            if (money.Delta == 0 || !_pawns.TryGetValue(money.PlayerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) return;
+            string text = money.Delta > 0 ? $"+{money.Delta}" : money.Delta.ToString();
+            Color color = money.Delta > 0 ? new Color(0.45f, 0.92f, 0.5f) : new Color(1f, 0.42f, 0.38f);
+            FloatingText.Spawn(transform, pawn.transform.position + Vector3.up * 0.65f, text, color);
         }
 
         private void AddLog(string line, LogTone tone = LogTone.Neutral)
