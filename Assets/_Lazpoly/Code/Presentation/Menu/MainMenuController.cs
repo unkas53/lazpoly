@@ -9,14 +9,17 @@ using Lazpoly.Infra;
 using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Setup;
+using Lazpoly.Presentation.Tabletop;
+using Lazpoly.Presentation.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// Prototype main menu (IMGUI): a local game for 2-8 seats on this machine, each played by a
-    /// person or the computer, a saved local game to continue, or an online room.
+    /// Main menu: a local game for 2-8 seats on this machine, each played by a person or the
+    /// computer, a saved local game to continue, or an online room.
     /// </summary>
     public sealed class MainMenuController : MonoBehaviour
     {
@@ -26,7 +29,12 @@ namespace Lazpoly.Presentation.Menu
         private readonly List<string> _names = new List<string>();
         private readonly List<int> _seatKinds = new List<int>();
         private int _playerCount = 2;
-        private GUIStyle _title;
+        private UiView _titleView;
+        private UiView _localView;
+        private UiView _onlineView;
+        private UiView _footerView;
+        private UiView _settingsView;
+        private GameObject _settingsLayer;
         private LobbyPanel _lobbyPanel;
         private SavedGame _savedGame;
         private SettingsPanel _settings;
@@ -64,49 +72,94 @@ namespace Lazpoly.Presentation.Menu
             _presence.Show(inRoom ? PresenceText.InRoom(_lobby.Members.Count, RulesConfig.AbsoluteMaxPlayers) : PresenceText.MainMenu());
         }
 
-        private void OnGUI()
+        private void Start()
         {
-            _title ??= new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            Canvas canvas = UiRoot.CreateCanvas(transform, "Main Menu UI", 0);
+            UiRoot.Background(UiRoot.Stretch(canvas.transform, "Backdrop"), UiTheme.Backdrop, rounded: false);
 
-            const float width = 360f;
-            GUILayout.BeginArea(new Rect((Screen.width - width) / 2f, 40f, width, Screen.height - 80f), GUI.skin.box);
-            GUILayout.Label("Lazpoly", _title, GUILayout.Height(56));
+            RectTransform title = UiRoot.Rect(canvas.transform, "Title", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-600f, -150f), new Vector2(600f, -40f));
+            _titleView = new UiView(new UiBuilder(title), RenderTitle);
+            UiBuilder.AddColumnLayout(title.gameObject, 0, 4f);
 
+            RectTransform local = UiRoot.Rect(canvas.transform, "Local Game", new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(-600f, 120f), new Vector2(-12f, -170f));
+            UiRoot.Background(local, UiTheme.Panel);
+            _localView = new UiView(UiRoot.ScrollPanel(local, 24), RenderLocalGame);
+
+            RectTransform online = UiRoot.Rect(canvas.transform, "Online Game", new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(12f, 120f), new Vector2(600f, -170f));
+            UiRoot.Background(online, UiTheme.Panel);
+            _onlineView = new UiView(UiRoot.ScrollPanel(online, 24), _lobbyPanel.Render);
+
+            RectTransform footer = UiRoot.Rect(canvas.transform, "Footer", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-600f, 40f), new Vector2(600f, 96f));
+            _footerView = new UiView(new UiBuilder(footer), RenderFooter);
+            var row = footer.gameObject.AddComponent<HorizontalLayoutGroup>();
+            row.spacing = UiTheme.Spacing * 2f;
+            row.childControlWidth = true;
+            row.childControlHeight = true;
+            row.childForceExpandWidth = true;
+
+            _settingsView = new UiView(UiRoot.Modal(canvas.transform, "Settings", 520f, out _settingsLayer), ui => _settings.Render(ui, CloseSettings));
+            _settingsLayer.SetActive(false);
+        }
+
+        private void LateUpdate()
+        {
+            if (_localView == null) return;
+            _titleView.Refresh(_savedGame != null ? 1 : 0);
+            _localView.Refresh(_playerCount);
+            _onlineView.Refresh(_lobbyPanel.ViewKey);
+            _footerView.Refresh(0);
+            if (_settingsLayer.activeSelf) _settingsView.Refresh(0);
+        }
+
+        private void RenderTitle(UiBuilder ui)
+        {
+            ui.Label("LAZPOLY", UiTextStyle.Title, UiTheme.Accent, TextAnchor.MiddleCenter);
+            ui.Label("Arkadaşlarınla ya da bilgisayara karşı mülk topla, kirayı topla, son kalan sen ol.", UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
+        }
+
+        private void RenderLocalGame(UiBuilder ui)
+        {
             if (_savedGame != null)
             {
-                if (GUILayout.Button("Kayıtlı Oyuna Devam Et", GUILayout.Height(40))) ResumeSavedGame();
-                GUILayout.Space(12);
+                ui.Button("Kayıtlı Oyuna Devam Et", ResumeSavedGame, style: UiButtonStyle.Primary, height: 52f);
+                ui.Space(8f);
             }
 
-            GUILayout.Label("Yerel oyun (aynı bilgisayar)");
-            if (GUILayout.Button("Tek Oyunculu: sen + 3 bilgisayar", GUILayout.Height(30))) UseSinglePlayerPreset();
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"Oyuncu sayısı: {_playerCount}");
-            if (GUILayout.Button("-", GUILayout.Width(32)) && _playerCount > RulesConfig.AbsoluteMinPlayers) _playerCount--;
-            if (GUILayout.Button("+", GUILayout.Width(32)) && _playerCount < RulesConfig.AbsoluteMaxPlayers) _playerCount++;
-            GUILayout.EndHorizontal();
+            ui.Label("Yerel oyun (aynı bilgisayar)", UiTextStyle.Heading);
+            ui.Button("Tek Oyunculu: sen + 3 bilgisayar", UseSinglePlayerPreset);
+
+            UiBuilder count = ui.Row();
+            count.Label($"Oyuncu sayısı: {_playerCount}");
+            UiBuilder.Fix(count.Button("-", () => _playerCount--, _playerCount > RulesConfig.AbsoluteMinPlayers), width: 52f);
+            UiBuilder.Fix(count.Button("+", () => _playerCount++, _playerCount < RulesConfig.AbsoluteMaxPlayers), width: 52f);
 
             for (int i = 0; i < _playerCount; i++)
             {
-                GUILayout.BeginHorizontal();
-                _names[i] = GUILayout.TextField(_names[i], 24);
-                if (GUILayout.Button(SeatKinds[_seatKinds[i]], GUILayout.Width(96))) _seatKinds[i] = (_seatKinds[i] + 1) % SeatKinds.Length;
-                GUILayout.EndHorizontal();
+                int seat = i;
+                UiBuilder row = ui.Row();
+                row.Swatch(PlayerPalette.ForSeat(seat), 22f);
+                row.Input(_names[seat], text => _names[seat] = text, 24);
+                UiBuilder.Fix(row.Button(SeatKinds[_seatKinds[seat]], () => _seatKinds[seat] = (_seatKinds[seat] + 1) % SeatKinds.Length,
+                    style: _seatKinds[seat] == 0 ? UiButtonStyle.Secondary : UiButtonStyle.Selected, height: UiTheme.FieldHeight), width: 130f);
             }
 
-            GUILayout.Space(12);
-            if (GUILayout.Button("Oyunu Başlat", GUILayout.Height(40))) StartLocalGame();
-
-            GUILayout.Space(16);
-            _lobbyPanel.Draw();
-            GUILayout.Space(16);
-
-            if (GUILayout.Button(_settings.IsOpen ? "Ayarları Kapat" : "Ayarlar", GUILayout.Height(32))) _settings.IsOpen = !_settings.IsOpen;
-            _settings.Draw();
-            GUILayout.Space(8);
-            if (GUILayout.Button("Çıkış", GUILayout.Height(32))) Application.Quit();
-            GUILayout.EndArea();
+            ui.Space(8f);
+            ui.Button("Oyunu Başlat", StartLocalGame, style: UiButtonStyle.Primary, height: 52f);
         }
+
+        private void RenderFooter(UiBuilder ui)
+        {
+            ui.Button("Ayarlar", OpenSettings);
+            ui.Button("Çıkış", Application.Quit, style: UiButtonStyle.Danger);
+        }
+
+        private void OpenSettings()
+        {
+            _settingsLayer.SetActive(true);
+            _settingsView.Invalidate();
+        }
+
+        private void CloseSettings() => _settingsLayer.SetActive(false);
 
         private void StartLocalGame()
         {

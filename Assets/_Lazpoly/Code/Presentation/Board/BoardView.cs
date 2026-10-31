@@ -201,9 +201,9 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.text = "LAZPOLY";
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
-            mesh.fontSize = 96;
+            mesh.fontSize = 192;
             mesh.fontStyle = FontStyle.Bold;
-            mesh.characterSize = width * 0.012f;
+            mesh.characterSize = width * 0.006f;
             mesh.color = TitleColor;
             mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             title.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
@@ -220,8 +220,9 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.text = text;
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
-            mesh.fontSize = 48;
-            mesh.characterSize = tile * 0.03f;
+            // A large font size drawn small keeps the letters sharp when the camera is far away.
+            mesh.fontSize = 128;
+            mesh.characterSize = tile * 0.0115f;
             mesh.color = Color.black;
             mesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;

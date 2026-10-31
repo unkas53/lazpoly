@@ -55,18 +55,24 @@ namespace Lazpoly.Presentation.Tests
             }
         }
 
-        [Test]
-        public void CameraKeepsTheBoardClearOfTheSidePanels()
+        [TestCase(1920f, 1080f, 412f)]
+        [TestCase(1280f, 1024f, 330f)]
+        [TestCase(3440f, 1440f, 549f)]
+        public void CameraFitsTheWholeBoardBetweenTheSidePanels(float width, float height, float reserved)
         {
-            const float half = 8f, fov = 50f, pitch = 55f;
-            float wide = BoardCameraFraming.Distance(half, fov, pitch, 1920f, 1080f, 364f);
-            float narrow = BoardCameraFraming.Distance(half, fov, pitch, 1280f, 1024f, 364f);
-            Assert.Greater(narrow, wide, "Less free width must move the camera back.");
+            const float half = 7.8f, fov = 50f, pitch = 55f;
+            Vector3 center = new Vector3(0f, 0f, 0f);
+            Vector3 camera = BoardCameraFraming.CameraPosition(center, half, fov, pitch, width, height, reserved);
 
-            // The near corner (closest to the camera, so widest on screen) fits in the free width.
-            double halfHorizontal = System.Math.Tan(fov * System.Math.PI / 360.0) * (1920.0 / 1080.0) * (1.0 - 2.0 * 364.0 / 1920.0);
-            double depth = wide - half * System.Math.Cos(pitch * System.Math.PI / 180.0);
-            Assert.Less(half / depth, halfHorizontal);
+            float tanV = Mathf.Tan(fov * Mathf.Deg2Rad / 2f);
+            float tanH = tanV * (width / height) * BoardCameraFraming.FreeFraction(width, reserved);
+            BoardCameraFraming.Measure(camera, center, half, pitch * Mathf.Deg2Rad, tanH, tanV, out float maxX, out float minY, out float maxY);
+
+            Assert.LessOrEqual(maxX, 1f, "A corner is under a side panel.");
+            Assert.GreaterOrEqual(minY, -1f, "The near edge is below the screen.");
+            Assert.LessOrEqual(maxY, 1f, "The far edge is above the screen.");
+            Assert.Greater(Mathf.Max(maxX, (maxY - minY) / 2f), BoardCameraFraming.Fill - 0.02f, "The board could be bigger.");
+            Assert.AreEqual(0f, (minY + maxY) / 2f, 0.02f, "The board is not centred vertically.");
         }
     }
 }

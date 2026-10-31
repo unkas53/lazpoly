@@ -7,7 +7,8 @@
         "Lazpoly.Presentation",
         "Lazpoly.Core",
         "Lazpoly.App",
-        "Lazpoly.Net"
+        "Lazpoly.Net",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [
         "Editor"

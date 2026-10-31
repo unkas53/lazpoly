@@ -55,10 +55,15 @@ namespace Lazpoly.Presentation.Game
         private bool _isOnline;
         private int _framedWidth;
         private int _framedHeight;
+        private float _framedReserve;
+        private GameHud _hud;
 
         public IGameSession Session => _session;
         public IReadOnlyList<string> Log => _log;
         public string LastRejection { get; private set; }
+
+        /// <summary>Goes up whenever something the HUD shows may have changed, so it knows when to redraw.</summary>
+        public int Revision { get; private set; }
 
         /// <summary>Why an online game stopped; null while it goes on.</summary>
         public SessionEndReason? EndReason { get; private set; }
@@ -69,6 +74,9 @@ namespace Lazpoly.Presentation.Game
         private GameSettings Settings => _settings?.Current ?? GameSettings.Default;
 
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
+
+        /// <summary>Colour of the group a square belongs to, as the board shows it.</summary>
+        public Color GroupColorOf(int squareIndex) => _data.GroupColor(_session.Board[squareIndex].GroupId);
 
         /// <summary>Whether a player's machine is reachable. Always true except for dropped players seen by the host.</summary>
         public bool IsConnected(int playerId) => _host == null || _host.IsConnected(playerId);
@@ -92,7 +100,8 @@ namespace Lazpoly.Presentation.Game
             if (_host != null) _host.RemotePlayerConnectionChanged += OnRemoteConnectionChanged;
 
             SetUpCamera();
-            gameObject.AddComponent<PrototypeHud>().Bind(this);
+            _hud = gameObject.AddComponent<GameHud>();
+            _hud.Bind(this);
 
             if (_session.IsReady) BuildViews();
             else AddLog("Ev sahibine bağlanılıyor...");
@@ -112,19 +121,21 @@ namespace Lazpoly.Presentation.Game
 
         private void LateUpdate()
         {
-            if (_board == null || (Screen.width == _framedWidth && Screen.height == _framedHeight)) return;
-            FrameBoard();
+            if (_board == null || _hud == null) return;
+            float reserved = _hud.ReservedSidePixels;
+            if (Screen.width == _framedWidth && Screen.height == _framedHeight && Mathf.Approximately(reserved, _framedReserve)) return;
+            FrameBoard(reserved);
         }
 
-        private void FrameBoard()
+        private void FrameBoard(float reservedSidePixels)
         {
             Camera camera = Camera.main;
             if (camera == null) return;
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
-            float distance = BoardCameraFraming.Distance(_board.HalfExtent, camera.fieldOfView, CameraPitch,
-                Screen.width, Screen.height, PrototypeHud.ReservedSideWidth);
-            camera.transform.position = _board.transform.position - camera.transform.forward * distance;
+            _framedReserve = reservedSidePixels;
+            camera.transform.position = BoardCameraFraming.CameraPosition(_board.transform.position, _board.HalfExtent, camera.fieldOfView,
+                CameraPitch, Screen.width, Screen.height, reservedSidePixels);
         }
 
         private void OnDestroy()
@@ -152,6 +163,7 @@ namespace Lazpoly.Presentation.Game
         public void Submit(GameCommand command)
         {
             LastRejection = null;
+            Revision++;
             _session.Submit(command);
         }
 
@@ -270,6 +282,7 @@ namespace Lazpoly.Presentation.Game
 
         private void OnEventsPublished(IReadOnlyList<GameEvent> events)
         {
+            Revision++;
             SaveLocalGame();
             UnlockAchievements(events);
             ShowPresence();
@@ -324,6 +337,7 @@ namespace Lazpoly.Presentation.Game
         private void OnCommandRejected(RejectionReason reason)
         {
             LastRejection = $"İşlem reddedildi: {reason}";
+            Revision++;
         }
 
         private void OnStateReset()
@@ -404,6 +418,7 @@ namespace Lazpoly.Presentation.Game
 
         private void AddLog(string line)
         {
+            Revision++;
             _log.Add(line);
             if (_log.Count > MaxLogLines) _log.RemoveAt(0);
         }

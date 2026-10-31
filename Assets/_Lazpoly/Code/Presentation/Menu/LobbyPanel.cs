@@ -4,12 +4,12 @@ using Lazpoly.App.Lobby;
 using Lazpoly.Core.Rules;
 using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Setup;
-using UnityEngine;
+using Lazpoly.Presentation.UI;
 
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// Online part of the prototype main menu (IMGUI): create a room, invite friends, see who is
+    /// Online part of the main menu: create a room, invite friends, see who is
     /// in, and start. Members other than the owner follow the owner into the game automatically.
     /// </summary>
     public sealed class LobbyPanel : IDisposable
@@ -21,7 +21,6 @@ namespace Lazpoly.Presentation.Menu
         private bool _launched;
         private IReadOnlyList<LobbyFriend> _friends = Array.Empty<LobbyFriend>();
         private LobbyStatus? _friendsLoadedFor;
-        private Vector2 _friendScroll;
 
         /// <param name="lobby">Null when no lobby service is registered (the panel then shows why).</param>
         public LobbyPanel(ILobbyService lobby, ITransport transport, Action loadGameScene)
@@ -57,115 +56,117 @@ namespace Lazpoly.Presentation.Menu
             _loadGameScene();
         }
 
-        public void Draw()
+        /// <summary>Changes whenever something this panel shows changes.</summary>
+        public int ViewKey
         {
-            GUILayout.Label("Çevrim içi (Steam)");
+            get
+            {
+                if (!IsAvailable) return 0;
+                int key = HashCode.Combine(_lobby.Status, _lobby.IsOwner, _message, _friends.Count);
+                foreach (LobbyMember member in _lobby.Members) key = HashCode.Combine(key, member.Id, member.Name);
+                return key;
+            }
+        }
+
+        public void Render(UiBuilder ui)
+        {
+            ui.Label("Çevrim içi (Steam)", UiTextStyle.Heading);
             if (!IsAvailable)
             {
-                GUI.enabled = false;
-                GUILayout.Button("Steam açık değil", GUILayout.Height(32));
-                GUI.enabled = true;
+                ui.Label("Steam açık değil. Çevrim içi oynamak için oyunu Steam üzerinden başlat.", UiTextStyle.Small);
                 return;
             }
 
             switch (_lobby.Status)
             {
                 case LobbyStatus.Idle:
-                    if (GUILayout.Button("Oda Kur", GUILayout.Height(32)))
+                    ui.Button("Oda Kur", () =>
                     {
                         _message = null;
                         _lobby.Create(RulesConfig.AbsoluteMaxPlayers);
-                    }
-
-                    DrawJoinableFriends();
+                    }, style: UiButtonStyle.Primary);
+                    RenderJoinableFriends(ui);
                     break;
 
                 case LobbyStatus.Creating:
                 case LobbyStatus.Joining:
-                    GUILayout.Label("Odaya bağlanılıyor...");
-                    if (GUILayout.Button("Vazgeç", GUILayout.Height(28))) _lobby.Leave();
+                    ui.Label("Odaya bağlanılıyor...");
+                    ui.Button("Vazgeç", _lobby.Leave);
                     break;
 
                 case LobbyStatus.InLobby:
-                    DrawRoom();
+                    RenderRoom(ui);
                     break;
             }
 
-            if (_message != null) GUILayout.Label(_message);
+            if (_message != null) ui.Label(_message, UiTextStyle.Small, UiTheme.Accent);
         }
 
-        private void DrawRoom()
+        private void RenderRoom(UiBuilder ui)
         {
-            GUILayout.Label($"Oda ({_lobby.Members.Count}/{RulesConfig.AbsoluteMaxPlayers})");
+            ui.Label($"Oda ({_lobby.Members.Count}/{RulesConfig.AbsoluteMaxPlayers})");
+            UiBuilder members = ui.Card();
             foreach (LobbyMember member in _lobby.Members)
             {
-                string marker = member.Id == _lobby.OwnerId ? " (ev sahibi)" : "";
-                GUILayout.Label($"  {member.Name}{marker}");
+                string marker = member.Id == _lobby.OwnerId ? "  (ev sahibi)" : "";
+                members.Label($"{member.Name}{marker}");
             }
 
-            if (_lobby.IsOverlayAvailable && GUILayout.Button("Steam ile Davet Et", GUILayout.Height(28))) _lobby.InviteFriends();
-            DrawInvitableFriends();
+            if (_lobby.IsOverlayAvailable) ui.Button("Steam ile Davet Et", _lobby.InviteFriends, height: UiTheme.SmallButtonHeight);
+            RenderInvitableFriends(ui);
 
             if (_lobby.IsOwner)
             {
                 bool enough = _lobby.Members.Count >= RulesConfig.AbsoluteMinPlayers;
-                GUI.enabled = enough;
-                if (GUILayout.Button(enough ? "Çevrim İçi Oyunu Başlat" : "En az 2 oyuncu gerekli", GUILayout.Height(36)))
-                {
-                    StartAsHost();
-                }
-
-                GUI.enabled = true;
+                ui.Button(enough ? "Çevrim İçi Oyunu Başlat" : "En az 2 oyuncu gerekli", StartAsHost, enough, UiButtonStyle.Primary);
             }
             else
             {
-                GUILayout.Label("Ev sahibinin oyunu başlatması bekleniyor.");
+                ui.Label("Ev sahibinin oyunu başlatması bekleniyor.", UiTextStyle.Small);
             }
 
-            if (GUILayout.Button("Odadan Çık", GUILayout.Height(28))) _lobby.Leave();
+            ui.Button("Odadan Çık", _lobby.Leave, style: UiButtonStyle.Danger, height: UiTheme.SmallButtonHeight);
         }
 
         /// <summary>Lists friends who are in a Lazpoly room right now, so joining needs no invite.</summary>
-        private void DrawJoinableFriends()
+        private void RenderJoinableFriends(UiBuilder ui)
         {
+            ui.Label("Odası açık arkadaşlar", UiTextStyle.Small);
+            UiBuilder list = ui.Scroll(150f);
             int shown = 0;
             foreach (LobbyFriend friend in _friends)
             {
                 if (friend.LobbyId == 0) continue;
-                if (shown++ == 0) GUILayout.Label("Odası açık arkadaşlar:");
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(friend.Name);
-                if (GUILayout.Button("Katıl", GUILayout.Width(70)))
+                shown++;
+                UiBuilder row = list.Row();
+                row.Label(friend.Name);
+                UiBuilder.Fix(row.Button("Katıl", () =>
                 {
                     _message = null;
                     _lobby.Join(friend.LobbyId);
-                }
-
-                GUILayout.EndHorizontal();
+                }, style: UiButtonStyle.Primary, height: UiTheme.SmallButtonHeight), width: 90f);
             }
 
-            if (shown == 0) GUILayout.Label("Odası açık arkadaşın yok. Arkadaşın oda kurunca burada görünür ya da davet gönderebilir.");
-            if (GUILayout.Button("Listeyi Yenile", GUILayout.Height(24))) RefreshFriends();
+            if (shown == 0) list.Label("Odası açık arkadaşın yok. Arkadaşın oda kurunca burada görünür ya da davet gönderebilir.", UiTextStyle.Small);
+            ui.Button("Listeyi Yenile", RefreshFriends, height: UiTheme.SmallButtonHeight);
         }
 
-        private void DrawInvitableFriends()
+        private void RenderInvitableFriends(UiBuilder ui)
         {
-            GUILayout.Label("Çevrim içi arkadaşlar:");
-            _friendScroll = GUILayout.BeginScrollView(_friendScroll, GUILayout.Height(140));
+            ui.Label("Çevrim içi arkadaşlar", UiTextStyle.Small);
+            UiBuilder list = ui.Scroll(150f);
             int shown = 0;
             foreach (LobbyFriend friend in _friends)
             {
                 if (!friend.IsOnline || _lobby.IsMember(friend.Id)) continue;
                 shown++;
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(friend.Name);
-                if (GUILayout.Button("Davet", GUILayout.Width(70))) InviteFriend(friend);
-                GUILayout.EndHorizontal();
+                UiBuilder row = list.Row();
+                row.Label(friend.Name);
+                UiBuilder.Fix(row.Button("Davet", () => InviteFriend(friend), height: UiTheme.SmallButtonHeight), width: 90f);
             }
 
-            if (shown == 0) GUILayout.Label("Çevrim içi arkadaş bulunamadı.");
-            GUILayout.EndScrollView();
-            if (GUILayout.Button("Listeyi Yenile", GUILayout.Height(24))) RefreshFriends();
+            if (shown == 0) list.Label("Çevrim içi arkadaş bulunamadı.", UiTextStyle.Small);
+            ui.Button("Listeyi Yenile", RefreshFriends, height: UiTheme.SmallButtonHeight);
         }
 
         public void InviteFriend(LobbyFriend friend)

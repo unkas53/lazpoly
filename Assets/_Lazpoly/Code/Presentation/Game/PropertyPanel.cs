@@ -3,24 +3,17 @@ using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Texts;
-using UnityEngine;
+using Lazpoly.Presentation.UI;
 
 namespace Lazpoly.Presentation.Game
 {
-    /// <summary>Prototype (IMGUI) list of a player's properties with build, sell, mortgage and redeem buttons.</summary>
-    public sealed class PropertyPanel
+    /// <summary>A player's properties, each with the build, sell, mortgage and redeem actions the rules allow now.</summary>
+    public static class PropertyPanel
     {
-        private readonly GameSceneController _controller;
-
-        public PropertyPanel(GameSceneController controller)
+        public static void Render(UiBuilder ui, GameSceneController controller, GameState state, int playerId)
         {
-            _controller = controller;
-        }
-
-        public void Draw(GameState state, int playerId)
-        {
-            BoardDefinition board = _controller.Session.Board;
-            GUILayout.Label("Mülkler");
+            BoardDefinition board = controller.Session.Board;
+            ui.Label("Mülklerin", UiTextStyle.Heading);
             bool any = false;
 
             for (int square = 0; square < board.Count; square++)
@@ -29,25 +22,29 @@ namespace Lazpoly.Presentation.Game
                 any = true;
                 SquareDefinition definition = board[square];
 
-                string status = state.IsMortgaged(square) ? "ipotekli" : EventDescriber.LevelText(state.GetBuildingLevel(square));
-                int rent = GameRules.CalculateRent(board, _controller.Session.Rules, state, square);
-                GUILayout.Label($"{definition.Name}: {status}, kira {rent}");
+                UiBuilder card = ui.Card();
+                UiBuilder title = card.Row();
+                UiBuilder.Fix(title.Swatch(controller.GroupColorOf(square), 16f), 16f, 16f);
+                title.Label(definition.Name);
 
-                GUILayout.BeginHorizontal();
-                Offer(new BuildCommand(playerId, square), $"Ev +{definition.BuildingCost}");
-                Offer(new SellBuildingCommand(playerId, square), "Ev Sat");
-                Offer(new MortgageCommand(playerId, square), $"İpotek +{definition.MortgageValue}");
-                Offer(new RedeemCommand(playerId, square), $"Kurtar -{_controller.Session.Rules.RedeemCost(definition.MortgageValue)}");
-                GUILayout.EndHorizontal();
+                string status = state.IsMortgaged(square) ? "ipotekli" : EventDescriber.LevelText(state.GetBuildingLevel(square));
+                int rent = GameRules.CalculateRent(board, controller.Session.Rules, state, square);
+                card.Label($"{status}, kira {rent}", UiTextStyle.Small);
+
+                UiBuilder actions = card.Row(6f);
+                Offer(actions, controller, new BuildCommand(playerId, square), $"Ev +{definition.BuildingCost}");
+                Offer(actions, controller, new SellBuildingCommand(playerId, square), "Ev Sat");
+                Offer(actions, controller, new MortgageCommand(playerId, square), $"İpotek +{definition.MortgageValue}");
+                Offer(actions, controller, new RedeemCommand(playerId, square), $"Kurtar -{controller.Session.Rules.RedeemCost(definition.MortgageValue)}");
             }
 
-            if (!any) GUILayout.Label("Henüz mülk yok.");
+            if (!any) ui.Label("Henüz mülkün yok.", UiTextStyle.Small);
         }
 
         // Only allowed actions get a button, so the row stays short.
-        private void Offer(GameCommand command, string label)
+        private static void Offer(UiBuilder row, GameSceneController controller, GameCommand command, string label)
         {
-            if (_controller.IsAllowed(command) && GUILayout.Button(label)) _controller.Submit(command);
+            if (controller.IsAllowed(command)) row.Button(label, () => controller.Submit(command), height: UiTheme.SmallButtonHeight);
         }
     }
 }

@@ -5,7 +5,8 @@
         "Lazpoly.Core",
         "Lazpoly.Net",
         "Lazpoly.App",
-        "Lazpoly.Infra"
+        "Lazpoly.Infra",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

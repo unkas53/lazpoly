@@ -1,25 +1,25 @@
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.State;
-using UnityEngine;
+using Lazpoly.Presentation.UI;
 
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
-    /// Prototype (IMGUI) auction controls. Every player this machine controls who is still in the
-    /// auction gets a row: all of them in a local game, one in an online game.
+    /// Auction controls. Every player this machine controls who is still in the auction gets a row:
+    /// all of them in a local game, one in an online game.
     /// </summary>
     public static class AuctionPanel
     {
         private static readonly int[] Raises = { 10, 50, 100 };
 
-        public static void Draw(GameSceneController controller, GameState state, GUIStyle title)
+        public static void Render(UiBuilder ui, GameSceneController controller, GameState state)
         {
             AuctionState auction = state.Auction;
-            GUILayout.Label($"Açık artırma: {controller.Session.Board[auction.SquareIndex].Name}", title);
+            ui.Label($"Açık artırma: {controller.Session.Board[auction.SquareIndex].Name}", UiTextStyle.Heading);
             string leader = auction.HighestBidderId == GameState.NoOwner
-                ? "henüz teklif yok"
-                : $"{state.FindPlayer(auction.HighestBidderId)?.Name}: {auction.HighestBid}";
-            GUILayout.Label($"En yüksek: {leader}");
+                ? "Henüz teklif yok"
+                : $"En yüksek: {state.FindPlayer(auction.HighestBidderId)?.Name}, {auction.HighestBid}";
+            ui.Label(leader, color: UiTheme.Accent);
 
             bool anyRow = false;
             foreach (PlayerState player in state.Players)
@@ -28,21 +28,19 @@ namespace Lazpoly.Presentation.Game
                 if (!controller.IsAllowed(pass)) continue;
                 anyRow = true;
 
-                GUILayout.BeginHorizontal();
-                GUILayout.Label($"{player.Name} ({player.Money})", GUILayout.Width(120));
+                UiBuilder card = ui.Card();
+                card.Label($"{player.Name} (parası {player.Money})");
+                UiBuilder row = card.Row();
                 foreach (int raise in Raises)
                 {
                     var bid = new PlaceBidCommand(player.Id, auction.HighestBid + raise);
-                    GUI.enabled = controller.IsAllowed(bid);
-                    if (GUILayout.Button($"+{raise}")) controller.Submit(bid);
+                    row.Button($"+{raise}", () => controller.Submit(bid), controller.IsAllowed(bid), UiButtonStyle.Primary, UiTheme.SmallButtonHeight);
                 }
 
-                GUI.enabled = true;
-                if (GUILayout.Button("Pas")) controller.Submit(pass);
-                GUILayout.EndHorizontal();
+                row.Button("Pas", () => controller.Submit(pass), height: UiTheme.SmallButtonHeight);
             }
 
-            if (!anyRow) GUILayout.Label("Diğer oyuncuların teklifleri bekleniyor.");
+            if (!anyRow) ui.Label("Diğer oyuncuların teklifleri bekleniyor.", UiTextStyle.Small);
         }
     }
 }

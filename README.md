@@ -54,8 +54,8 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   kiralar, vergiler, gruplar ve başlangıç parası buradan okunur; kod değiştirmeden düzenlenebilir.
   Şu anki değerler taslaktır.
 - **Sahne kurulumu:** `Lazpoly > Add Scene Controllers` menüsü MainMenu ve Game sahnelerine kök bileşenleri ekler.
-- **Geçici arayüz:** Menü ve oyun arayüzü IMGUI ile çizilen prototiptir (`PrototypeHud`, `MainMenuController`);
-  Faz 6'da asıl arayüzle değiştirilecek. Tahta ve piyonlar da Blender modelleri gelene kadar basit şekillerdir.
+- **Arayüz:** Faz 6b'den beri uGUI ile koddan kurulur (bkz. Faz 6b). Tahta ve piyonlar Blender modelleri gelene
+  kadar kodla yapılmış şekillerdir.
 
 ## Faz 3: çevrim içi (Steam)
 
@@ -166,6 +166,21 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   eflatun çizilir; `Lazpoly > Set Up Render Pipeline` menüsü (veya
   `-executeMethod Lazpoly.Editor.RenderPipelineSetup.Run`) ikisini de oluşturur, `RenderingSetupTests` denetler.
 - Kamera, tahtayı ekran boyutuna göre yan panellerin arasına sığacak uzaklığa çeker.
+
+## Faz 6b: asıl arayüz
+
+- IMGUI prototipi kalktı; menü ve oyun ekranı uGUI ile koddan kurulur, sahne ya da prefab gerektirmez.
+  Ek paket yok (`com.unity.ugui` zaten projedeydi).
+- `Presentation/UI`: `UiTheme` (renkler, yazı, boyutlar; 1920x1080 referans), `UiRoot` (canvas, panel, pencere),
+  `UiBuilder` (etiket, düğme, onay kutusu, kaydırıcı, metin alanı, satır, kart, kaydırmalı liste) ve `UiView`
+  (içeriği yalnızca gösterdiği şey değişince yeniden kurar; metin alanları odağını kaybetmez).
+- Ana menü: başlık, kayıtlı oyuna devam, yerel oyun (oyuncu adları, renkleri, insan/AI seçimi) ve çevrim içi oda
+  yan yana; ayarlar penceresi.
+- Oyun ekranı (`GameHud`): solda oyuncular, zar, sıradaki hamleler, açık artırma, takas cevabı, borç ve mülkler;
+  sağda olay kaydı ve menü; takas teklifi, ayarlar ve oyun sonu ayrı pencerede.
+- Kamera tahtayı iki yan sütunun arasındaki alana olabildiğince büyük ve dikeyde ortalı yerleştirir
+  (`BoardCameraFraming`). Kare adları daha keskin çizilir.
+- Arayüz hâlâ yalnızca kuralların izin verdiği hamleleri sunar; host her komutu yeniden doğrular.
 
 ## Kurallar
 

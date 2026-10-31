@@ -4,13 +4,14 @@ using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.State;
-using UnityEngine;
+using Lazpoly.Presentation.UI;
+using UnityEngine.UI;
 
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
-    /// Prototype (IMGUI) trading: an editor where the player on turn builds an offer, and the
-    /// answer buttons shown to whoever the offer is for.
+    /// Trading: an editor where the player on turn builds an offer, and the answer buttons shown
+    /// to whoever the offer is for.
     /// </summary>
     public sealed class TradePanel
     {
@@ -22,7 +23,7 @@ namespace Lazpoly.Presentation.Game
         private int _toId;
         private string _giveMoney = "0";
         private string _takeMoney = "0";
-        private Vector2 _scroll;
+        private string _problem;
 
         public TradePanel(GameSceneController controller)
         {
@@ -40,115 +41,118 @@ namespace Lazpoly.Presentation.Game
             _takeMoney = "0";
         }
 
-        public void DrawEditorWindow(GameState state)
+        public bool IsOpen => _open;
+
+        public void Close() => _open = false;
+
+        /// <summary>Closes the editor if the offer can no longer be made; true while it stays open.</summary>
+        public bool KeepOpen(GameState state)
         {
-            if (!_open) return;
+            if (!_open) return false;
             bool stillMyTurn = state.CurrentPlayer.Id == _fromId &&
                                (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd);
-            if (!stillMyTurn)
-            {
-                _open = false;
-                return;
-            }
+            if (stillMyTurn && (_toId == GameState.NoOwner || state.FindPlayer(_toId)?.IsBankrupt != false)) _toId = NextPartner(state, _toId);
+            if (!stillMyTurn || _toId == GameState.NoOwner) _open = false;
+            return _open;
+        }
 
-            if (_toId == GameState.NoOwner || state.FindPlayer(_toId)?.IsBankrupt != false) _toId = NextPartner(state, _toId);
-            if (_toId == GameState.NoOwner)
-            {
-                _open = false;
-                return;
-            }
+        /// <summary>The offer editor, drawn in its own window.</summary>
+        public void RenderEditor(UiBuilder ui, GameState state)
+        {
+            if (!KeepOpen(state)) return;
 
-            const float width = 460f;
-            GUILayout.BeginArea(new Rect((Screen.width - width) / 2f, 60f, width, Screen.height - 120f), GUI.skin.box);
-            GUILayout.Label("Takas teklifi");
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"Kime: {state.FindPlayer(_toId).Name}");
-            if (GUILayout.Button("Değiştir", GUILayout.Width(90)))
+            ui.Label("Takas teklifi", UiTextStyle.Heading);
+            UiBuilder partner = ui.Row();
+            partner.Label($"Kime: {state.FindPlayer(_toId).Name}");
+            UiBuilder.Fix(partner.Button("Değiştir", () =>
             {
                 _toId = NextPartner(state, _toId);
                 _take.Clear();
-            }
+            }, height: UiTheme.SmallButtonHeight), width: 130f);
 
-            GUILayout.EndHorizontal();
+            UiBuilder columns = ui.Row(16f);
+            UiBuilder give = columns.Card();
+            give.Label("Verdiklerin", UiTextStyle.Small);
+            RenderSquareToggles(give, state, _fromId, _give);
+            RenderMoneyField(give, _giveMoney, text => _giveMoney = text);
 
-            _scroll = GUILayout.BeginScrollView(_scroll);
-            GUILayout.BeginHorizontal();
-            GUILayout.BeginVertical(GUILayout.Width(width / 2f - 12f));
-            GUILayout.Label("Verdiklerin");
-            DrawSquareToggles(state, _fromId, _give);
-            _giveMoney = MoneyField(_giveMoney);
-            GUILayout.EndVertical();
+            UiBuilder take = columns.Card();
+            take.Label("İstediklerin", UiTextStyle.Small);
+            RenderSquareToggles(take, state, _toId, _take);
+            RenderMoneyField(take, _takeMoney, text => _takeMoney = text);
 
-            GUILayout.BeginVertical(GUILayout.Width(width / 2f - 12f));
-            GUILayout.Label("İstediklerin");
-            DrawSquareToggles(state, _toId, _take);
-            _takeMoney = MoneyField(_takeMoney);
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            GUILayout.EndScrollView();
-
-            var command = new ProposeTradeCommand(BuildOffer());
-            GUI.enabled = _controller.IsAllowed(command);
-            if (GUILayout.Button("Teklifi Gönder", GUILayout.Height(32)))
+            ui.Space(4f);
+            UiBuilder buttons = ui.Row();
+            buttons.Button("Kapat", Close);
+            buttons.Button("Teklifi Gönder", () =>
             {
-                _controller.Submit(command);
-                _open = false;
-            }
-
-            GUI.enabled = true;
-            if (GUILayout.Button("Kapat", GUILayout.Height(26))) _open = false;
-            GUILayout.EndArea();
+                var command = new ProposeTradeCommand(BuildOffer());
+                if (_controller.IsAllowed(command))
+                {
+                    _controller.Submit(command);
+                    _open = false;
+                }
+                else
+                {
+                    _problem = "Bu teklif kurallara uymuyor: para ya da seçilen mülkleri kontrol et.";
+                }
+            }, style: UiButtonStyle.Primary);
+            if (_problem != null) ui.Label(_problem, UiTextStyle.Small, UiTheme.Warning);
+            _problem = null;
         }
 
-        public void DrawResponse(GameState state, GUIStyle title)
+        /// <summary>The answer buttons, for whoever the pending offer is for (or its sender, to withdraw it).</summary>
+        public void RenderResponse(UiBuilder ui, GameState state)
         {
             TradeOffer offer = state.PendingTrade;
             string from = state.FindPlayer(offer.FromPlayerId)?.Name;
             string to = state.FindPlayer(offer.ToPlayerId)?.Name;
-            GUILayout.Label("Takas teklifi", title);
-            GUILayout.Label($"{from} → {to}");
-            GUILayout.Label($"{from} verir: {Describe(offer.GiveSquares, offer.GiveMoney)}");
-            GUILayout.Label($"{from} ister: {Describe(offer.TakeSquares, offer.TakeMoney)}");
+            ui.Label("Takas teklifi", UiTextStyle.Heading);
+            UiBuilder card = ui.Card();
+            card.Label($"{from} → {to}", color: UiTheme.Accent);
+            card.Label($"{from} verir: {Describe(offer.GiveSquares, offer.GiveMoney)}");
+            card.Label($"{from} ister: {Describe(offer.TakeSquares, offer.TakeMoney)}");
 
             bool answered = false;
-            answered |= Offer(new AcceptTradeCommand(offer.ToPlayerId), $"{to}: Kabul Et");
-            answered |= Offer(new RejectTradeCommand(offer.ToPlayerId), $"{to}: Reddet");
-            answered |= Offer(new CancelTradeCommand(offer.FromPlayerId), $"{from}: Teklifi Geri Çek");
-            if (!answered) GUILayout.Label($"{to} oyuncusunun cevabı bekleniyor.");
+            answered |= Offer(ui, new AcceptTradeCommand(offer.ToPlayerId), $"{to}: Kabul Et", UiButtonStyle.Primary);
+            answered |= Offer(ui, new RejectTradeCommand(offer.ToPlayerId), $"{to}: Reddet", UiButtonStyle.Danger);
+            answered |= Offer(ui, new CancelTradeCommand(offer.FromPlayerId), $"{from}: Teklifi Geri Çek", UiButtonStyle.Secondary);
+            if (!answered) ui.Label($"{to} oyuncusunun cevabı bekleniyor.", UiTextStyle.Small);
         }
 
-        private bool Offer(GameCommand command, string label)
+        private bool Offer(UiBuilder ui, GameCommand command, string label, UiButtonStyle style)
         {
             if (!_controller.IsAllowed(command)) return false;
-            if (GUILayout.Button(label, GUILayout.Height(30))) _controller.Submit(command);
+            ui.Button(label, () => _controller.Submit(command), style: style);
             return true;
         }
 
-        private void DrawSquareToggles(GameState state, int ownerId, HashSet<int> selected)
+        private void RenderSquareToggles(UiBuilder ui, GameState state, int ownerId, HashSet<int> selected)
         {
             BoardDefinition board = _controller.Session.Board;
+            UiBuilder list = ui.Scroll(260f);
             bool any = false;
             for (int square = 0; square < board.Count; square++)
             {
                 if (state.GetOwner(square) != ownerId || GameRules.GroupHasBuildings(board, state, square)) continue;
                 any = true;
+                int index = square;
                 string label = state.IsMortgaged(square) ? $"{board[square].Name} (ipotekli)" : board[square].Name;
-                bool on = GUILayout.Toggle(selected.Contains(square), label);
-                if (on) selected.Add(square);
-                else selected.Remove(square);
+                list.Toggle(label, selected.Contains(square), on =>
+                {
+                    if (on) selected.Add(index);
+                    else selected.Remove(index);
+                });
             }
 
-            if (!any) GUILayout.Label("Takas edilebilir mülk yok.");
+            if (!any) list.Label("Takas edilebilir mülk yok.", UiTextStyle.Small);
         }
 
-        private static string MoneyField(string text)
+        private static void RenderMoneyField(UiBuilder ui, string value, System.Action<string> changed)
         {
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Para:", GUILayout.Width(40));
-            text = GUILayout.TextField(text, 7);
-            GUILayout.EndHorizontal();
-            return text;
+            UiBuilder row = ui.Row();
+            UiBuilder.Fix(row.Label("Para"), width: 56f);
+            row.Input(value, changed, 7, InputField.ContentType.IntegerNumber);
         }
 
         private TradeOffer BuildOffer()
