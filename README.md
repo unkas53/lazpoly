@@ -46,6 +46,17 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
 - Steam: bir Windows derlemesi al, `steam_appid.txt` dosyasını exe'nin yanına koy, çalıştır;
   `Player.log` içinde `[Steam] Initialized as` satırı görünmeli. Editörde Play'e basınca da Console'da aynı satır çıkar.
 
+## Faz 2: yerel prototip
+
+- **Oynamak:** `MainMenu` sahnesini aç, Play'e bas, 2-8 oyuncu seç, "Oyunu Başlat". `Game` sahnesi doğrudan
+  açılırsa iki varsayılan oyuncuyla başlar.
+- **Tahta ve ekonomi verisi:** `Assets/_Lazpoly/Data/Resources/Lazpoly/board.json`. Kare isimleri, fiyatlar,
+  kiralar, vergiler, gruplar ve başlangıç parası buradan okunur; kod değiştirmeden düzenlenebilir.
+  Şu anki değerler taslaktır.
+- **Sahne kurulumu:** `Lazpoly > Add Scene Controllers` menüsü MainMenu ve Game sahnelerine kök bileşenleri ekler.
+- **Geçici arayüz:** Menü ve oyun arayüzü IMGUI ile çizilen prototiptir (`PrototypeHud`, `MainMenuController`);
+  Faz 6'da asıl arayüzle değiştirilecek. Tahta ve piyonlar da Blender modelleri gelene kadar basit şekillerdir.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

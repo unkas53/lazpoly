@@ -1,7 +1,9 @@
 {
     "name": "Lazpoly.Editor",
     "rootNamespace": "Lazpoly.Editor",
-    "references": [],
+    "references": [
+        "Lazpoly.Presentation"
+    ],
     "includePlatforms": [
         "Editor"
     ],
