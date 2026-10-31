@@ -1,0 +1,54 @@
+# Steam mağaza kurulumu (Faz 6d)
+
+Bu klasör Unity projesinin dışında durur; içindekiler Steamworks iş ortağı sitesine ve SteamPipe'a yüklenir.
+Gerçek App ID gelmeden yapılabilecek her şey hazır; aşağıdaki **App ID gerekli** adımları ondan sonra yapılır.
+
+## 1. App ID (App ID gerekli)
+
+1. Steam Direct ücretini öde, Steamworks'te Lazpoly uygulamasını aç; App ID ve Windows depot numarasını not al.
+2. `Assets/_Lazpoly/Code/Platform/Steam/SteamSettings.cs` içinde `AppId`'yi yeni numara yap.
+3. Proje kökündeki `steam_appid.txt` dosyasına aynı numarayı yaz (yalnızca geliştirme içindir, mağaza derlemesine girmez).
+4. `app_build.vdf` ve `depot_build_windows.vdf` içindeki `APP_ID` ve `DEPOT_ID` yerlerine numaraları yaz.
+
+## 2. Başarımlar
+
+Steamworks > Stats & Achievements > Achievements. API adları koddakiyle birebir aynı olmalı
+(`Assets/_Lazpoly/Code/Application/Achievements/AchievementCatalog.cs`):
+
+| API adı | Ad | Açıklama |
+|---|---|---|
+| LAZ_FIRST_WIN | İlk Zafer | Bir oyunu kazan. |
+| LAZ_ONLINE_WIN | Masanın Hâkimi | Çevrim içi bir oyunu kazan. |
+| LAZ_BEAT_COMPUTERS | Makineye Karşı | Bilgisayar oyuncularının da olduğu bir oyunu kazan. |
+| LAZ_FULL_GROUP | Tam Takım | Bir renk grubunun bütün mülklerine sahip ol. |
+| LAZ_FIRST_HOTEL | Otelci | İlk otelini kur. |
+| LAZ_AUCTION_WIN | Son Teklif | Bir açık artırmayı kazan. |
+| LAZ_TRADE_DONE | Pazarlıkçı | Bir takası tamamla. |
+| LAZ_BANKRUPT_RIVAL | Alacaklı | Bir rakibi sana olan borcu yüzünden iflas ettir. |
+| LAZ_TYCOON | Kodaman | Aynı anda 5000 paraya sahip ol. |
+
+Her biri için kilitli ve açık simge (64x64 JPG) gerekir; simgeler henüz yok. Kaydedip **Publish** et.
+`SteamPartnerFilesTests` tablodaki adların kodla aynı kaldığını denetler.
+
+## 3. Rich Presence
+
+Steamworks > Community > Rich Presence: `rich_presence.vdf` (Türkçe) ve `rich_presence_english.vdf` dosyalarını yükle.
+Oyun `status` anahtarına durum satırını, `steam_display` anahtarına `#Status` yazar; arkadaş listesi bunu
+"Bilgisayarlara karşı, 12. tur, 4 oyuncu" gibi gösterir. Test App ID'sinde (480) `steam_display` yazılmaz, çünkü
+o uygulamanın jetonları Lazpoly'nin değil.
+
+## 4. Mağaza derlemesi
+
+Unity menüsü `Lazpoly > Build Store Version` (veya
+`-batchmode -quit -executeMethod Lazpoly.Editor.StoreBuild.Run`) `Builds/Store/windows/` içine geliştirme
+seçenekleri kapalı bir Win64 derlemesi alır. App ID hâlâ 480 ise durur; bu durumda deneme derlemesi için
+`-allowDevelopmentAppId` ekle (bu derleme yüklenmemeli).
+
+## 5. Yükleme (App ID gerekli)
+
+```
+steamcmd +login <hesap> +run_app_build "C:\...\lazpoly\Steam\app_build.vdf" +quit
+```
+
+Ardından Steamworks > SteamPipe > Builds'te derlemeyi bir dala (önce `beta`) al. Kapalı beta için anahtarları
+Steamworks > Request Steam Product Keys'ten iste ya da Playtest uygulamasını aç.

@@ -182,6 +182,17 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   (`BoardCameraFraming`). Kare adları daha keskin çizilir.
 - Arayüz hâlâ yalnızca kuralların izin verdiği hamleleri sunar; host her komutu yeniden doğrular.
 
+## Faz 6d: mağaza hazırlığı
+
+- `Steam/` klasörü (Unity'nin dışında): iş ortağı sitesi kurulum rehberi (`Steam/README.md`, başarım tablosu
+  dahil), Rich Presence dosyaları, SteamPipe `app_build.vdf` / `depot_build_windows.vdf` şablonları.
+- `Lazpoly > Build Store Version` (`Lazpoly.Editor.StoreBuild.Run`): `Builds/Store/windows/` içine geliştirme
+  seçenekleri kapalı, `steam_appid.txt` içermeyen Win64 derlemesi. Test App ID'siyle yalnızca
+  `-allowDevelopmentAppId` verilirse deneme derlemesi alır.
+- Gerçek App ID ile arkadaş listesinde durum satırı da görünür (`steam_display` = `#Status`).
+- **Bekleyen (App ID gerekli):** `SteamSettings.AppId`, `steam_appid.txt`, vdf'lerdeki `APP_ID`/`DEPOT_ID`,
+  başarımların ve Rich Presence dosyalarının siteye girilmesi, başarım simgeleri, yükleme ve kapalı beta anahtarları.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

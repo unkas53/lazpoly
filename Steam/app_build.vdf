@@ -1,0 +1,14 @@
+"AppBuild"
+{
+	// APP_ID and DEPOT_ID are placeholders: replace them with the numbers Steamworks gives Lazpoly.
+	// Upload with:  steamcmd +login <account> +run_app_build "<full path>\Steam\app_build.vdf" +quit
+	"AppID"	"APP_ID"
+	"Desc"	"Lazpoly"
+	"ContentRoot"	"..\Builds\Store\windows\"
+	"BuildOutput"	"..\Builds\Store\output\"
+	"SetLive"	""
+	"Depots"
+	{
+		"DEPOT_ID"	"depot_build_windows.vdf"
+	}
+}

@@ -5,11 +5,15 @@ namespace Lazpoly.Platform.Steam
 {
     /// <summary>
     /// Sets the Steam Rich Presence "status" line, shown in the friends list under "View game info".
-    /// A localized line in the friends list itself needs a Rich Presence file on the partner site (real App ID).
+    /// With Lazpoly's own App ID it also sets "steam_display" to the "#Status" token, which the Rich
+    /// Presence files in the repository's Steam folder turn into that line in the friends list itself.
+    /// The test App ID (480) has its own tokens, so there the display key is left alone.
     /// </summary>
     public sealed class SteamPresenceService : IPresenceService
     {
         private const string StatusKey = "status";
+        private const string DisplayKey = "steam_display";
+        private const string DisplayToken = "#Status";
 
         private readonly SteamService _steam;
         private string _shown;
@@ -22,7 +26,9 @@ namespace Lazpoly.Platform.Steam
         public void Show(string status)
         {
             if (!_steam.IsInitialized || status == _shown) return;
-            if (SteamFriends.SetRichPresence(StatusKey, status)) _shown = status;
+            if (!SteamFriends.SetRichPresence(StatusKey, status)) return;
+            if (!SteamSettings.IsDevelopmentAppId) SteamFriends.SetRichPresence(DisplayKey, DisplayToken);
+            _shown = status;
         }
 
         public void Clear()

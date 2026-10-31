@@ -1,0 +1,16 @@
+"DepotBuild"
+{
+	// DEPOT_ID is a placeholder: the Windows depot number from Steamworks.
+	"DepotID"	"DEPOT_ID"
+	"FileMapping"
+	{
+		"LocalPath"	"*"
+		"DepotPath"	"."
+		"Recursive"	"1"
+	}
+	// Development leftovers never ship.
+	"FileExclusion"	"*.pdb"
+	"FileExclusion"	"steam_appid.txt"
+	"FileExclusion"	"*_BurstDebugInformation_DoNotShip"
+	"FileExclusion"	"*_BackUpThisFolder_ButDontShipItWithYourGame"
+}
