@@ -1,4 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using Lazpoly.App.AI;
+using Lazpoly.App.Save;
 using Lazpoly.App.Session;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Game;
@@ -19,17 +23,27 @@ namespace Lazpoly.PlayTests
     {
         private float _previousTimeScale;
 
+        private string _saveFolder;
+
         [SetUp]
         public void SpeedUp()
         {
             _previousTimeScale = Time.timeScale;
             Time.timeScale = 20f;
+
+            // Local games save themselves; keep that away from the real save slot.
+            _saveFolder = Path.Combine(Application.temporaryCachePath, "lazpoly-test-save");
+            Directory.CreateDirectory(_saveFolder);
+            SaveGameStore.FolderOverride = _saveFolder;
+            SaveGameStore.Delete();
         }
 
         [TearDown]
         public void RestoreSpeed()
         {
             Time.timeScale = _previousTimeScale;
+            SaveGameStore.Delete();
+            SaveGameStore.FolderOverride = null;
         }
 
         [UnityTest]
@@ -80,6 +94,46 @@ namespace Lazpoly.PlayTests
 
             Assert.That(controller.Session.State.TurnNumber, Is.GreaterThan(4), "Turns did not advance.");
             Assert.That(controller.Log.Count, Is.GreaterThan(0), "The event log stayed empty.");
+        }
+
+        [UnityTest]
+        public IEnumerator ComputerPlayersPlayOnTheirOwnAndTheGameResumes()
+        {
+            var ai = new Dictionary<int, AiDifficulty>
+            {
+                { 1, AiDifficulty.Easy }, { 2, AiDifficulty.Normal }, { 3, AiDifficulty.Hard }, { 4, AiDifficulty.Normal },
+            };
+            LocalGameSetup.SetSeats(LocalGameSetup.DefaultSeats(4), ai);
+            SceneManager.LoadScene("Game");
+            yield return null;
+            yield return null;
+
+            var controller = Object.FindAnyObjectByType<GameSceneController>();
+            Assert.IsNotNull(controller);
+            Assert.IsFalse(controller.Session.CanControl(1), "Nobody at the screen plays a computer seat.");
+
+            float started = Time.realtimeSinceStartup;
+            while (controller.Session.State.TurnNumber < 8 && controller.Session.State.Phase != GamePhase.GameOver)
+            {
+                Assert.Less(Time.realtimeSinceStartup - started, 120f, "The computer players stopped playing.");
+                yield return null;
+            }
+
+            while (controller.IsBusy) yield return null;
+            if (controller.Session.State.Phase == GamePhase.GameOver) yield break; // Ended early: nothing left to resume.
+
+            Assert.IsTrue(SaveGameStore.TryRead(out SavedGame save), "The local game was not saved.");
+            int savedTurn = save.Snapshot.TurnNumber;
+
+            LocalGameSetup.SetResume(save);
+            SceneManager.LoadScene("Game");
+            yield return null;
+            yield return null;
+
+            controller = Object.FindAnyObjectByType<GameSceneController>();
+            Assert.That(controller.Session.State.TurnNumber, Is.GreaterThanOrEqualTo(savedTurn), "The saved game did not resume.");
+            Assert.IsTrue(controller.Session.IsAiPlaying(3));
+            CollectionAssert.Contains(controller.Log, "Kayıtlı oyun yüklendi.");
         }
     }
 }

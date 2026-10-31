@@ -27,6 +27,35 @@ namespace Lazpoly.Core.Engine
             State = GameState.CreateInitial(board, rules, seats);
         }
 
+        private GameEngine(BoardDefinition board, RulesConfig rules, GameState state, IRandomSource random)
+        {
+            Board = board;
+            Rules = rules;
+            State = state;
+            _random = random;
+        }
+
+        /// <summary>Continues a game from a saved snapshot. Throws if the snapshot does not fit the board.</summary>
+        public static GameEngine Restore(BoardDefinition board, RulesConfig rules, GameStateSnapshot snapshot, IRandomSource random)
+        {
+            if (board == null) throw new ArgumentNullException(nameof(board));
+            if (rules == null) throw new ArgumentNullException(nameof(rules));
+            if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
+            if (random == null) throw new ArgumentNullException(nameof(random));
+
+            GameState state = snapshot.Restore();
+            if (state.SquareCount != board.Count) throw new ArgumentException("Snapshot was taken on a different board.", nameof(snapshot));
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (state.GetOwner(i) != GameState.NoOwner && board[i].Type != SquareType.Property)
+                {
+                    throw new ArgumentException($"Snapshot gives square {i} an owner but it is not a property.", nameof(snapshot));
+                }
+            }
+
+            return new GameEngine(board, rules, state, random);
+        }
+
         public BoardDefinition Board { get; }
         public RulesConfig Rules { get; }
         public GameState State { get; }

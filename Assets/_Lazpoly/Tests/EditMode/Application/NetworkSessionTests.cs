@@ -392,6 +392,56 @@ namespace Lazpoly.App.Tests
             Assert.IsTrue(seen.Contains(typeof(AuctionEndedEvent)), "No auction happened.");
             Assert.IsTrue(seen.Contains(typeof(BidPlacedEvent)), "Nobody bid.");
         }
+
+        [Test]
+        public void ComputerPlaysForADroppedPlayerUntilTheyReturn()
+        {
+            NetTable table = NetTable.Create(3, seed: 5UL);
+            var turnsStarted = new List<int>();
+            table.Host.EventsPublished += events =>
+            {
+                foreach (GameEvent gameEvent in events)
+                {
+                    if (gameEvent is TurnStartedEvent started) turnsStarted.Add(started.PlayerId);
+                }
+            };
+            table.StartAll();
+
+            ulong peer = NetTable.PeerOf(2);
+            table.Network.Disconnect(peer);
+            table.Pump();
+            Assert.IsTrue(table.Host.IsAiPlaying(2), "The computer takes over the dropped player.");
+            Assert.IsFalse(table.Host.IsAiPlaying(3));
+            Assert.IsFalse(table.Clients[3].IsAiPlaying(2), "Clients do not run the AI.");
+
+            // Players 1 and 3 play from their machines; the host's AI plays player 2's turns.
+            for (int i = 0; i < 2000 && turnsStarted.FindAll(id => id == 2).Count < 3; i++)
+            {
+                if (table.Host.StepAi())
+                {
+                    table.Pump();
+                    continue;
+                }
+
+                if (table.HostState.Phase == GamePhase.GameOver) break;
+                GameCommand command = table.NextCommand();
+                Assert.AreNotEqual(2, command.PlayerId, "The game waited on the dropped player although the AI plays them.");
+                table.SessionOf(command.PlayerId).Submit(command);
+                table.Pump();
+            }
+
+            Assert.That(turnsStarted.FindAll(id => id == 2).Count, Is.GreaterThanOrEqualTo(2), "Player 2's turns were not played.");
+
+            ITransport transport = table.Network.CreateTransport(peer);
+            var rejoined = new ClientSession(transport, NetTable.HostPeer, table.Board, table.Rules, table.Checksum);
+            table.Clients[2] = rejoined;
+            table.ClientTransports[2] = transport;
+            rejoined.Start();
+            table.Pump();
+
+            Assert.IsFalse(table.Host.IsAiPlaying(2), "The player is back in charge after reconnecting.");
+            AssertAllInStep(table);
+        }
     }
 }
 

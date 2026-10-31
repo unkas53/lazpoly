@@ -71,8 +71,8 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   Geliştirme App ID'si 480 olduğu için Steam arayüzünde oyun "Spacewar" görünür.
 - **Steam'siz test:** `NetworkSessionTests` (1 host + 7 istemci, hile denemesi, kayıp mesaj, kopma, bozuk veri)
   ve `OnlineGameSceneTests` (Game sahnesi host ve istemci olarak) sanal bir ağ üzerinde çalışır.
-- **Bilinen sınır:** Bağlantısı kopan oyuncunun sırası gelirse oyun o oyuncu dönene kadar bekler.
-  Yerine yapay zekânın oynaması Faz 5'te gelecek.
+- **Kopan oyuncu:** Faz 5'ten beri bağlantısı kopan oyuncunun yerine bilgisayar (orta seviye) oynar; oyuncu
+  geri bağlanınca kontrol ona döner.
 
 ## Faz 4: gelişmiş ekonomi
 
@@ -98,9 +98,33 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   yerdedir; host doğrulamak, arayüz düğmeleri göstermek için aynı fonksiyonu kullanır.
 - **Testler:** `EconomyTests` her kuralı tek tek, `GameSimulationTests` 200 rastgele oyunda tutarlılığı,
   `NetworkSessionTests` istemciler arası takas ve açık artırmayı, `MessageCodecTests` yeni mesajları dener.
-- **Bilinen sınırlar:** Açık artırmada süre sınırı yok; takas teklifine cevap vermeyen ya da artırmada
-  bekleyen oyuncu oyunu bekletir (Faz 5'teki yapay zekâ ve süre aşımı ile çözülecek). Bankaya dönen mülkler
-  yeniden açık artırmaya çıkmaz, biri üstüne gelene kadar bekler.
+- **Bilinen sınırlar:** Açık artırmada süre sınırı yok; bağlı olduğu hâlde cevap vermeyen bir insan oyuncu
+  oyunu bekletir. Bankaya dönen mülkler yeniden açık artırmaya çıkmaz, biri üstüne gelene kadar bekler.
+
+## Faz 5: yapay zekâ ve tek oyunculu
+
+- **Tek oyunculu:** Ana menüde "Tek Oyunculu: sen + 3 bilgisayar" ya da her koltuğun yanındaki düğmeyle
+  "İnsan / AI: Kolay / AI: Orta / AI: Zor" seçilir. İnsanlar aynı ekranda sırayla oynar, bilgisayar
+  oyuncuları kendi hamlelerini yapar (izlenebilsin diye her hamle arasında kısa bir bekleme var).
+- **Bilgisayar oyuncusu (`AiPlayer`):** Satın alma, açık artırma teklifi, ev kurma, ipotekten kurtarma,
+  takas teklif etme ve cevaplama, borç ödeme kararlarını verir. Kararları yalnızca durumu okur ve her
+  komutu göndermeden önce `GameRules` ile kontrol eder; motor da diğer oyuncular gibi doğrular. Zorluklar
+  `AiProfile` içinde (yedek para, teklif sınırı, takas payı, hata oranı); kolay bazen bilerek hata yapar,
+  zor grubunu tamamlamak için daha çok öder ve rakibe eksik parçasını pahalıya satar.
+- **Kopan oyuncu:** Çevrim içi oyunda kopan oyuncunun yerine host üzerinde orta seviye bilgisayar oynar,
+  oyuncu dönünce kontrol geri verilir. Bilgisayar yalnızca hostta çalışır, istemciler sonucu olay olarak görür.
+- **Kayıt:** Yerel oyun her hamleden sonra tek kayıt yuvasına yazılır (`lazpoly-kayit.dat`, oyuncunun
+  veri klasöründe); oyun bitince silinir. Ana menüde "Kayıtlı Oyuna Devam Et" çıkar. Kayıt zarı ve
+  bilgisayarın rastgele sayılarını da sakladığı için oyun kaldığı yerden aynen devam eder. Tahta verisi
+  değişmişse kayıt açılmaz. Çevrim içi oyunlar kaydedilmez.
+- **Testler:** `AiSimulationTests` (faz kapısı) gerçek tahtada 8 bilgisayarlı 25 oyunu sonuna kadar oynatır;
+  her hamlenin kabul edildiğini, durumun tutarlı kaldığını ve her oyunun bir kazananla bittiğini kontrol eder.
+  `AiPlayerTests` tek tek kararları, `LocalGameAndSaveTests` kaydı ve aynen devam etmeyi,
+  `NetworkSessionTests` kopan oyuncunun yerine oynamayı, sahne testi de kendi kendine oynayan oyunu ve
+  kayıttan devamı dener.
+- **Bilinen sınırlar:** Bilgisayar takas teklif ederken yalnızca para karşılığı tek mülk ister. Oyuna hiç
+  bağlanmayan çevrim içi oyuncunun yerine bilgisayar geçmez (yalnızca bağlanıp kopanların yerine geçer).
+  Zorluk değerleri taslaktır.
 
 ## Kurallar
 

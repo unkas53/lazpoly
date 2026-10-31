@@ -1,17 +1,42 @@
 using System.Collections.Generic;
+using Lazpoly.App.AI;
+using Lazpoly.App.Save;
 using Lazpoly.Core.State;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Setup
 {
-    /// <summary>Hands the players chosen in the main menu to the Game scene.</summary>
+    /// <summary>Hands the main menu's local game choice (new players or a saved game) to the Game scene.</summary>
     public static class LocalGameSetup
     {
-        private static IReadOnlyList<PlayerSeat> _seats;
+        private static readonly IReadOnlyDictionary<int, AiDifficulty> NoAi = new Dictionary<int, AiDifficulty>();
 
-        public static void SetSeats(IReadOnlyList<PlayerSeat> seats)
+        private static IReadOnlyList<PlayerSeat> _seats;
+        private static IReadOnlyDictionary<int, AiDifficulty> _aiPlayers;
+        private static SavedGame _resume;
+
+        /// <param name="aiPlayers">Seats the computer plays, by player id; null when everyone is a person.</param>
+        public static void SetSeats(IReadOnlyList<PlayerSeat> seats, IReadOnlyDictionary<int, AiDifficulty> aiPlayers = null)
         {
             _seats = seats;
+            _aiPlayers = aiPlayers;
+            _resume = null;
+        }
+
+        /// <summary>Asks the Game scene to continue a saved game instead of starting a new one.</summary>
+        public static void SetResume(SavedGame save)
+        {
+            _resume = save;
+            _seats = null;
+            _aiPlayers = null;
+        }
+
+        /// <summary>The saved game to continue, once; null when the menu chose new players.</summary>
+        public static SavedGame TakeResume()
+        {
+            SavedGame save = _resume;
+            _resume = null;
+            return save;
         }
 
         /// <summary>
@@ -23,6 +48,14 @@ namespace Lazpoly.Presentation.Setup
             IReadOnlyList<PlayerSeat> seats = _seats ?? DefaultSeats(2);
             _seats = null;
             return seats;
+        }
+
+        /// <summary>The AI seats chosen with the last <see cref="SetSeats"/>, once; empty when none.</summary>
+        public static IReadOnlyDictionary<int, AiDifficulty> TakeAiPlayers()
+        {
+            IReadOnlyDictionary<int, AiDifficulty> ai = _aiPlayers ?? NoAi;
+            _aiPlayers = null;
+            return ai;
         }
 
         public static IReadOnlyList<PlayerSeat> DefaultSeats(int count)
@@ -40,6 +73,8 @@ namespace Lazpoly.Presentation.Setup
         private static void ResetStatics()
         {
             _seats = null;
+            _aiPlayers = null;
+            _resume = null;
         }
     }
 }

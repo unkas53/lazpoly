@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Lazpoly.App.AI;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
+using Lazpoly.Core.Random;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Net.Messages;
@@ -14,6 +16,7 @@ namespace Lazpoly.App.Session
     /// <summary>
     /// The authoritative side of an online game. Owns the engine, accepts commands only from the
     /// peer that owns the player, and broadcasts numbered events with the resulting state hash.
+    /// When a player's connection drops, the computer plays for them until they come back.
     /// </summary>
     public sealed class HostSession : IGameSession
     {
@@ -23,11 +26,15 @@ namespace Lazpoly.App.Session
         private readonly Dictionary<ulong, int> _remotePlayers;
         private readonly HashSet<ulong> _connected = new HashSet<ulong>();
         private readonly ulong _boardChecksum;
+        private readonly AiRoster _standIns;
         private int _sequence;
+
+        /// <summary>Difficulty of the computer player that stands in for a dropped player.</summary>
+        public const AiDifficulty StandInDifficulty = AiDifficulty.Normal;
 
         /// <param name="remotePlayers">Network peer of every other seat, mapped to the player it controls.</param>
         public HostSession(GameEngine engine, ITransport transport, int localPlayerId,
-            IReadOnlyDictionary<ulong, int> remotePlayers, ulong boardChecksum)
+            IReadOnlyDictionary<ulong, int> remotePlayers, ulong boardChecksum, ulong standInSeed = 1UL)
         {
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
             _transport = transport ?? throw new ArgumentNullException(nameof(transport));
@@ -46,6 +53,7 @@ namespace Lazpoly.App.Session
 
             _localPlayerId = localPlayerId;
             _boardChecksum = boardChecksum;
+            _standIns = new AiRoster(new Pcg32Random(standInSeed, stream: 91UL));
             _transport.Received += OnReceived;
             _transport.PeerDisconnected += OnPeerDisconnected;
         }
@@ -76,6 +84,24 @@ namespace Lazpoly.App.Session
         }
 
         public bool CanControl(int playerId) => playerId == _localPlayerId;
+
+        public bool IsAiPlaying(int playerId) => _standIns.Controls(playerId);
+
+        public bool StepAi()
+        {
+            GameCommand command = _standIns.NextCommand(_engine.Board, _engine.Rules, _engine.State);
+            if (command == null) return false;
+
+            CommandResult result = _engine.Execute(command);
+            if (!result.IsAccepted)
+            {
+                // The AI only picks commands the rules allow, so this is a bug, not a game situation.
+                throw new InvalidOperationException($"AI chose a rejected {command.GetType().Name} ({result.Reason}).");
+            }
+
+            Broadcast(result.Events);
+            return true;
+        }
 
         /// <summary>Sends the starting state to every remote player.</summary>
         public void Start()
@@ -169,13 +195,17 @@ namespace Lazpoly.App.Session
         {
             if (_connected.Remove(peer) && _remotePlayers.TryGetValue(peer, out int playerId))
             {
+                PlayerState player = _engine.State.FindPlayer(playerId);
+                if (player != null && !player.IsBankrupt && !_standIns.Controls(playerId)) _standIns.Add(playerId, StandInDifficulty);
                 RemotePlayerConnectionChanged?.Invoke(playerId, false);
             }
         }
 
         private void MarkConnected(ulong peer, int playerId)
         {
-            if (_connected.Add(peer)) RemotePlayerConnectionChanged?.Invoke(playerId, true);
+            if (!_connected.Add(peer)) return;
+            _standIns.Remove(playerId);
+            RemotePlayerConnectionChanged?.Invoke(playerId, true);
         }
 
         private void Broadcast(IReadOnlyList<GameEvent> events)

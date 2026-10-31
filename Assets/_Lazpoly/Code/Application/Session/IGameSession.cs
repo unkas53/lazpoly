@@ -47,8 +47,17 @@ namespace Lazpoly.App.Session
         /// <summary>Raised when the session can no longer continue (host gone, refused, incompatible).</summary>
         event Action<SessionEndReason> Ended;
 
-        /// <summary>Whether the person (or AI) on this machine plays the given player.</summary>
+        /// <summary>Whether a person at this machine plays the given player (the HUD offers their actions).</summary>
         bool CanControl(int playerId);
+
+        /// <summary>
+        /// Whether the computer plays the given player: a chosen AI seat, or a stand-in for an online
+        /// player whose connection dropped. Known only where the rules run; always false on a client.
+        /// </summary>
+        bool IsAiPlaying(int playerId);
+
+        /// <summary>Lets the computer make one move if the game waits on an AI-played player. Returns whether it moved.</summary>
+        bool StepAi();
 
         void Submit(GameCommand command);
 

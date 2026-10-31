@@ -309,7 +309,8 @@ namespace Lazpoly.Net.Messages
             }
         }
 
-        private static void WriteSnapshot(NetWriter w, GameStateSnapshot s)
+        /// <summary>Writes a full game state; also used for save files.</summary>
+        public static void WriteSnapshot(NetWriter w, GameStateSnapshot s)
         {
             if (s == null) throw new ArgumentException("GameStart needs a snapshot.");
             w.WriteInt((int)s.Phase);
@@ -364,7 +365,8 @@ namespace Lazpoly.Net.Messages
             }
         }
 
-        private static GameStateSnapshot ReadSnapshot(NetReader r)
+        /// <summary>Reads what <see cref="WriteSnapshot"/> wrote. Throws <see cref="FormatException"/> on bad data.</summary>
+        public static GameStateSnapshot ReadSnapshot(NetReader r)
         {
             var s = new GameStateSnapshot
             {

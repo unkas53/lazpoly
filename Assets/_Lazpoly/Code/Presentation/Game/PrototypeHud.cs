@@ -75,7 +75,8 @@ namespace Lazpoly.Presentation.Game
                 GUI.color = player.IsBankrupt ? Color.gray : _controller.ColorOf(player.Id);
                 string marker = current ? "▶ " : "   ";
                 string status = player.IsBankrupt ? "iflas" : player.Money.ToString();
-                string connection = _controller.IsConnected(player.Id) ? "" : " (bağlantı yok)";
+                bool ai = _controller.Session.IsAiPlaying(player.Id);
+                string connection = _controller.IsConnected(player.Id) ? (ai ? " (AI)" : "") : (ai ? " (bağlantı yok, AI oynuyor)" : " (bağlantı yok)");
                 GUILayout.Label($"{marker}{player.Name}: {status}{connection}");
                 GUI.color = previous;
             }
@@ -126,7 +127,7 @@ namespace Lazpoly.Presentation.Game
 
             if (!_controller.Session.CanControl(player.Id))
             {
-                GUILayout.Label("Sıra onda, hamlesi bekleniyor.");
+                GUILayout.Label(_controller.Session.IsAiPlaying(player.Id) ? "Bilgisayar düşünüyor..." : "Sıra onda, hamlesi bekleniyor.");
                 return;
             }
 

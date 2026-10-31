@@ -53,6 +53,12 @@ namespace Lazpoly.App.Session
 
         public bool CanControl(int playerId) => IsReady && playerId == MyPlayerId;
 
+        /// <summary>Only the host knows who the computer plays.</summary>
+        public bool IsAiPlaying(int playerId) => false;
+
+        /// <summary>The host runs every AI move.</summary>
+        public bool StepAi() => false;
+
         /// <summary>Introduces this client to the host, which answers with the game state.</summary>
         public void Start()
         {

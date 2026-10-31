@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Lazpoly.App.Lobby;
+using Lazpoly.App.Save;
 using Lazpoly.App.Session;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
@@ -28,6 +29,9 @@ namespace Lazpoly.Presentation.Game
     {
         private const int MaxLogLines = 10;
 
+        /// <summary>Pause before each computer move, so people can follow what it does.</summary>
+        private const float AiMoveDelaySeconds = 0.6f;
+
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
@@ -36,6 +40,8 @@ namespace Lazpoly.Presentation.Game
         private BoardData _data;
         private IGameSession _session;
         private HostSession _host;
+        private LocalGame _localGame;
+        private float _nextAiMoveTime;
         private BoardView _board;
         private Coroutine _playback;
         private bool _playing;
@@ -80,7 +86,11 @@ namespace Lazpoly.Presentation.Game
 
         private void Update()
         {
-            _session?.Tick();
+            if (_session == null) return;
+            _session.Tick();
+
+            if (_board == null || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
+            if (_session.StepAi()) _nextAiMoveTime = Time.time + AiMoveDelaySeconds;
         }
 
         private void OnDestroy()
@@ -113,6 +123,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Leaves the game (and the online room, if any) and returns to the main menu.</summary>
         public void LeaveToMainMenu()
         {
+            SaveLocalGame();
+
             if (_isOnline && GameServices.Registry != null && GameServices.Registry.TryGet(out ILobbyService lobby))
             {
                 lobby.Leave();
@@ -125,7 +137,8 @@ namespace Lazpoly.Presentation.Game
         {
             if (online == null)
             {
-                return new LocalGameSession(new GameEngine(_data.Board, _data.Rules, LocalGameSetup.TakeSeats(), NewRandom()));
+                _localGame = CreateLocalGame();
+                return _localGame.Session;
             }
 
             _isOnline = true;
@@ -133,11 +146,49 @@ namespace Lazpoly.Presentation.Game
 
             OnlineSeatPlan plan = online.HostPlan;
             var engine = new GameEngine(_data.Board, _data.Rules, plan.Seats, NewRandom());
-            _host = new HostSession(engine, online.Transport, plan.HostPlayerId, plan.RemotePlayers, _data.Checksum);
+            _host = new HostSession(engine, online.Transport, plan.HostPlayerId, plan.RemotePlayers, _data.Checksum, NewSeed());
             return _host;
         }
 
-        private static Pcg32Random NewRandom() => new Pcg32Random(unchecked((ulong)DateTime.UtcNow.Ticks));
+        private LocalGame CreateLocalGame()
+        {
+            SavedGame save = LocalGameSetup.TakeResume();
+            if (save != null)
+            {
+                try
+                {
+                    LocalGame resumed = LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, save);
+                    AddLog("Kayıtlı oyun yüklendi.");
+                    return resumed;
+                }
+                catch (ArgumentException exception)
+                {
+                    Debug.LogWarning($"[Lazpoly] Saved game could not be resumed: {exception.Message}");
+                    AddLog("Kayıt yüklenemedi, yeni oyun başladı.");
+                }
+            }
+
+            return LocalGame.Create(_data.Board, _data.Rules, LocalGameSetup.TakeSeats(), LocalGameSetup.TakeAiPlayers(), NewSeed());
+        }
+
+        private static Pcg32Random NewRandom() => new Pcg32Random(NewSeed());
+
+        private static ulong NewSeed() => unchecked((ulong)DateTime.UtcNow.Ticks);
+
+        /// <summary>Keeps the single local save slot in step with the game; a finished game leaves no save.</summary>
+        private void SaveLocalGame()
+        {
+            if (_localGame == null) return;
+            try
+            {
+                if (_session.State.Phase == GamePhase.GameOver) SaveGameStore.Delete();
+                else SaveGameStore.Write(_localGame.Save(_data.Checksum));
+            }
+            catch (Exception exception) when (exception is System.IO.IOException || exception is UnauthorizedAccessException)
+            {
+                Debug.LogWarning($"[Lazpoly] Game could not be saved: {exception.Message}");
+            }
+        }
 
         private void BuildViews()
         {
@@ -179,6 +230,7 @@ namespace Lazpoly.Presentation.Game
 
         private void OnEventsPublished(IReadOnlyList<GameEvent> events)
         {
+            SaveLocalGame();
             if (_board == null) return;
             foreach (GameEvent gameEvent in events) _pendingEvents.Enqueue(gameEvent);
             if (!_playing) _playback = StartCoroutine(PlayEvents());
