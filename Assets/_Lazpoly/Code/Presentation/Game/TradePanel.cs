@@ -7,6 +7,7 @@ using Lazpoly.Core.State;
 using Lazpoly.Presentation.UI;
 using UnityEngine.UI;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
@@ -63,8 +64,8 @@ namespace Lazpoly.Presentation.Game
             PlayerState me = state.FindPlayer(_fromId);
             PlayerState partner = state.FindPlayer(_toId);
 
-            ui.Label("Takas teklifi", UiTextStyle.Heading);
-            ui.Label("Önce kiminle takas edeceğini seç, sonra iki taraftan mülklere tıklayıp para yaz.", UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Takas teklifi"), UiTextStyle.Heading);
+            ui.Label(L("Önce kiminle takas edeceğini seç, sonra iki taraftan mülklere tıklayıp para yaz."), UiTextStyle.Small, UiTheme.Muted);
 
             UiBuilder partners = ui.Row();
             foreach (PlayerState player in state.Players)
@@ -82,21 +83,21 @@ namespace Lazpoly.Presentation.Game
 
             UiBuilder columns = ui.Row(16f);
             UiBuilder give = columns.Card();
-            give.Label($"Sen verirsin (paran {me.Money})", UiTextStyle.Body, UiTheme.Accent);
+            give.Label(F($"Sen verirsin (paran {me.Money})"), UiTextStyle.Body, UiTheme.Accent);
             RenderSquareChoices(give, state, _fromId, _give);
             RenderMoneyField(give, _giveMoney, text => _giveMoney = text);
 
             UiBuilder take = columns.Card();
-            take.Label($"{partner.Name} verir (parası {partner.Money})", UiTextStyle.Body, UiTheme.Accent);
+            take.Label(F($"{partner.Name} verir (parası {partner.Money})"), UiTextStyle.Body, UiTheme.Accent);
             RenderSquareChoices(take, state, _toId, _take);
             RenderMoneyField(take, _takeMoney, text => _takeMoney = text);
 
             TradeOffer offer = BuildOffer();
-            ui.Label($"Özet: {Describe(offer.GiveSquares, offer.GiveMoney)} veriyorsun, karşılığında {Describe(offer.TakeSquares, offer.TakeMoney)} alıyorsun.", UiTextStyle.Small);
+            ui.Label(F($"Özet: {Describe(offer.GiveSquares, offer.GiveMoney)} veriyorsun, karşılığında {Describe(offer.TakeSquares, offer.TakeMoney)} alıyorsun."), UiTextStyle.Small);
 
             UiBuilder buttons = ui.Row();
-            buttons.Button("Vazgeç", Close);
-            buttons.Button("Teklifi Gönder", () =>
+            buttons.Button(L("Vazgeç"), Close);
+            buttons.Button(L("Teklifi Gönder"), () =>
             {
                 TradeOffer current = BuildOffer();
                 var command = new ProposeTradeCommand(current);
@@ -117,10 +118,10 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Why an offer cannot be sent, in words the player can act on.</summary>
         private static string Problem(GameState state, TradeOffer offer)
         {
-            if (offer.IsEmpty) return "Teklif boş: en az bir mülk seç ya da para yaz.";
-            if (offer.GiveMoney > state.FindPlayer(offer.FromPlayerId).Money) return "Verdiğin para, paranı aşıyor.";
-            if (offer.TakeMoney > state.FindPlayer(offer.ToPlayerId).Money) return "İstediğin para, karşı tarafın parasını aşıyor.";
-            return "Bu teklif şu an gönderilemez.";
+            if (offer.IsEmpty) return L("Teklif boş: en az bir mülk seç ya da para yaz.");
+            if (offer.GiveMoney > state.FindPlayer(offer.FromPlayerId).Money) return L("Verdiğin para, paranı aşıyor.");
+            if (offer.TakeMoney > state.FindPlayer(offer.ToPlayerId).Money) return L("İstediğin para, karşı tarafın parasını aşıyor.");
+            return L("Bu teklif şu an gönderilemez.");
         }
 
         /// <summary>The answer buttons, for whoever the pending offer is for (or its sender, to withdraw it).</summary>
@@ -129,17 +130,17 @@ namespace Lazpoly.Presentation.Game
             TradeOffer offer = state.PendingTrade;
             string from = state.FindPlayer(offer.FromPlayerId)?.Name;
             string to = state.FindPlayer(offer.ToPlayerId)?.Name;
-            ui.Label("Takas teklifi", UiTextStyle.Heading);
+            ui.Label(L("Takas teklifi"), UiTextStyle.Heading);
             UiBuilder card = ui.Card();
             card.Label($"{from} → {to}", color: UiTheme.Accent);
-            card.Label($"{from} verir: {Describe(offer.GiveSquares, offer.GiveMoney)}");
-            card.Label($"{from} ister: {Describe(offer.TakeSquares, offer.TakeMoney)}");
+            card.Label(F($"{from} verir: {Describe(offer.GiveSquares, offer.GiveMoney)}"));
+            card.Label(F($"{from} ister: {Describe(offer.TakeSquares, offer.TakeMoney)}"));
 
             bool answered = false;
-            answered |= Offer(ui, new AcceptTradeCommand(offer.ToPlayerId), $"{to}: Kabul Et", UiButtonStyle.Primary);
-            answered |= Offer(ui, new RejectTradeCommand(offer.ToPlayerId), $"{to}: Reddet", UiButtonStyle.Danger);
-            answered |= Offer(ui, new CancelTradeCommand(offer.FromPlayerId), $"{from}: Teklifi Geri Çek", UiButtonStyle.Secondary);
-            if (!answered) ui.Label($"{to} oyuncusunun cevabı bekleniyor.", UiTextStyle.Small);
+            answered |= Offer(ui, new AcceptTradeCommand(offer.ToPlayerId), F($"{to}: Kabul Et"), UiButtonStyle.Primary);
+            answered |= Offer(ui, new RejectTradeCommand(offer.ToPlayerId), F($"{to}: Reddet"), UiButtonStyle.Danger);
+            answered |= Offer(ui, new CancelTradeCommand(offer.FromPlayerId), F($"{from}: Teklifi Geri Çek"), UiButtonStyle.Secondary);
+            if (!answered) ui.Label(F($"{to} oyuncusunun cevabı bekleniyor."), UiTextStyle.Small);
         }
 
         private bool Offer(UiBuilder ui, GameCommand command, string label, UiButtonStyle style)
@@ -162,7 +163,7 @@ namespace Lazpoly.Presentation.Game
                 int index = square;
                 bool chosen = selected.Contains(square);
                 bool locked = GameRules.GroupHasBuildings(board, state, square);
-                string label = board[square].Name + (state.IsMortgaged(square) ? " (ipotekli)" : "") + (locked ? " (binalı)" : "");
+                string label = board[square].Name + (state.IsMortgaged(square) ? L(" (ipotekli)") : "") + (locked ? L(" (binalı)") : "");
 
                 UiBuilder row = list.Row(8f, expand: false);
                 row.Swatch(_controller.GroupColorOf(square), 16f);
@@ -173,14 +174,14 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder.Fix(button, height: UiTheme.SmallButtonHeight).flexibleWidth = 1f;
             }
 
-            if (!any) list.Label("Mülk yok.", UiTextStyle.Small);
-            else list.Label("Binalı renkler önce bina satılınca takas edilir.", UiTextStyle.Small, UiTheme.Muted);
+            if (!any) list.Label(L("Mülk yok."), UiTextStyle.Small);
+            else list.Label(L("Binalı renkler önce bina satılınca takas edilir."), UiTextStyle.Small, UiTheme.Muted);
         }
 
         private static void RenderMoneyField(UiBuilder ui, string value, System.Action<string> changed)
         {
             UiBuilder row = ui.Row();
-            UiBuilder.Fix(row.Label("Para"), width: 56f);
+            UiBuilder.Fix(row.Label(L("Para")), width: 56f);
             row.Input(value, changed, 7, InputField.ContentType.IntegerNumber);
         }
 
@@ -197,7 +198,7 @@ namespace Lazpoly.Presentation.Game
             foreach (int square in squares)
             {
                 if (text.Length > 0) text.Append(", ");
-                text.Append(_controller.Session.Board[square].Name);
+                text.Append(L(_controller.Session.Board[square].Name));
             }
 
             if (money > 0)
@@ -206,7 +207,7 @@ namespace Lazpoly.Presentation.Game
                 text.Append(money);
             }
 
-            return text.Length > 0 ? text.ToString() : "hiçbir şey";
+            return text.Length > 0 ? text.ToString() : L("hiçbir şey");
         }
 
         private int NextPartner(GameState state, int afterId)

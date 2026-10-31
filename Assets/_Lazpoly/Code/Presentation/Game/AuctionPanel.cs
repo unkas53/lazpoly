@@ -2,6 +2,7 @@ using Lazpoly.Core.Commands;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.UI;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
@@ -15,10 +16,10 @@ namespace Lazpoly.Presentation.Game
         public static void Render(UiBuilder ui, GameSceneController controller, GameState state)
         {
             AuctionState auction = state.Auction;
-            ui.Label($"Açık artırma: {controller.Session.Board[auction.SquareIndex].Name}", UiTextStyle.Heading);
+            ui.Label(F($"Açık artırma: {L(controller.Session.Board[auction.SquareIndex].Name)}"), UiTextStyle.Heading);
             string leader = auction.HighestBidderId == GameState.NoOwner
-                ? "Henüz teklif yok"
-                : $"En yüksek: {state.FindPlayer(auction.HighestBidderId)?.Name}, {auction.HighestBid}";
+                ? L("Henüz teklif yok")
+                : F($"En yüksek: {state.FindPlayer(auction.HighestBidderId)?.Name}, {auction.HighestBid}");
             ui.Label(leader, color: UiTheme.Accent);
 
             bool anyRow = false;
@@ -29,7 +30,7 @@ namespace Lazpoly.Presentation.Game
                 anyRow = true;
 
                 UiBuilder card = ui.Card();
-                card.Label($"{player.Name} (parası {player.Money})");
+                card.Label(F($"{player.Name} (parası {player.Money})"));
                 UiBuilder row = card.Row();
                 foreach (int raise in Raises)
                 {
@@ -37,10 +38,10 @@ namespace Lazpoly.Presentation.Game
                     row.Button($"+{raise}", () => controller.Submit(bid), controller.IsAllowed(bid), UiButtonStyle.Primary, UiTheme.SmallButtonHeight);
                 }
 
-                row.Button("Pas", () => controller.Submit(pass), height: UiTheme.SmallButtonHeight);
+                row.Button(L("Pas"), () => controller.Submit(pass), height: UiTheme.SmallButtonHeight);
             }
 
-            if (!anyRow) ui.Label("Diğer oyuncuların teklifleri bekleniyor.", UiTextStyle.Small);
+            if (!anyRow) ui.Label(L("Diğer oyuncuların teklifleri bekleniyor."), UiTextStyle.Small);
         }
     }
 }

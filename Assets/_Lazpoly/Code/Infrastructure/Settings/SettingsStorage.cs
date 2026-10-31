@@ -38,6 +38,7 @@ namespace Lazpoly.Infra.Settings
         private const string QualityKey = Prefix + "quality";
         private const string WidthKey = Prefix + "width";
         private const string HeightKey = Prefix + "height";
+        private const string LanguageKey = Prefix + "language";
 
         public static GameSettings Read(ISettingsStorage storage)
         {
@@ -52,7 +53,8 @@ namespace Lazpoly.Infra.Settings
                 storage.HasKey(FastAnimationsKey) ? storage.GetInt(FastAnimationsKey) != 0 : d.FastAnimations,
                 storage.HasKey(QualityKey) ? (GraphicsQuality)storage.GetInt(QualityKey) : d.Quality,
                 storage.HasKey(WidthKey) ? storage.GetInt(WidthKey) : d.ScreenWidth,
-                storage.HasKey(HeightKey) ? storage.GetInt(HeightKey) : d.ScreenHeight);
+                storage.HasKey(HeightKey) ? storage.GetInt(HeightKey) : d.ScreenHeight,
+                storage.HasKey(LanguageKey) ? (Language)storage.GetInt(LanguageKey) : d.Language);
         }
 
         public static void Write(ISettingsStorage storage, GameSettings settings)
@@ -67,6 +69,7 @@ namespace Lazpoly.Infra.Settings
             storage.SetInt(QualityKey, (int)settings.Quality);
             storage.SetInt(WidthKey, settings.ScreenWidth);
             storage.SetInt(HeightKey, settings.ScreenHeight);
+            storage.SetInt(LanguageKey, (int)settings.Language);
             storage.Save();
         }
     }

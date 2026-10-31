@@ -1,4 +1,5 @@
 using System;
+using Lazpoly.Presentation.Texts;
 
 namespace Lazpoly.Presentation.UI
 {
@@ -28,6 +29,8 @@ namespace Lazpoly.Presentation.UI
         /// <returns>True when the content was rebuilt.</returns>
         public bool Refresh(int key)
         {
+            // A language change redraws everything, whatever the screen's own key says.
+            key = HashCode.Combine(key, Lang.Version);
             if (!_dirty && key == _key) return false;
             _key = key;
             _dirty = false;

@@ -24,6 +24,7 @@ using Lazpoly.Presentation.Texts;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
@@ -138,7 +139,11 @@ namespace Lazpoly.Presentation.Game
             GameServices.Registry?.TryGet(out _settings);
             GameServices.Registry?.TryGet(out _achievements);
             GameServices.Registry?.TryGet(out _presence);
-            if (_settings != null) _settings.Changed += OnSettingsChanged;
+            if (_settings != null)
+            {
+                Lang.Apply(_settings.Current.Language);
+                _settings.Changed += OnSettingsChanged;
+            }
 
             _session = CreateSession(OnlineGameSetup.Take());
             _tracker = new AchievementTracker(_data.Board, _session.CanControl, _session.IsAiPlaying, _isOnline);
@@ -155,7 +160,7 @@ namespace Lazpoly.Presentation.Game
             _hud.Bind(this);
 
             if (_session.IsReady) BuildViews();
-            else AddLog("Ev sahibine bağlanılıyor...");
+            else AddLog(L("Ev sahibine bağlanılıyor..."));
 
             if (_session is HostSession host) host.Start();
             else if (_session is ClientSession client) client.Start();
@@ -257,13 +262,13 @@ namespace Lazpoly.Presentation.Game
                 try
                 {
                     LocalGame resumed = LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, save);
-                    AddLog("Kayıtlı oyun yüklendi.");
+                    AddLog(L("Kayıtlı oyun yüklendi."));
                     return resumed;
                 }
                 catch (ArgumentException exception)
                 {
                     Debug.LogWarning($"[Lazpoly] Saved game could not be resumed: {exception.Message}");
-                    AddLog("Kayıt yüklenemedi, yeni oyun başladı.");
+                    AddLog(L("Kayıt yüklenemedi, yeni oyun başladı."));
                 }
             }
 
@@ -311,7 +316,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             SyncViewsToState();
-            AddLog($"Sıra: {state.CurrentPlayer.Name}");
+            AddLog(F($"Sıra: {state.CurrentPlayer.Name}"));
             ShowPresence();
         }
 
@@ -357,7 +362,7 @@ namespace Lazpoly.Presentation.Game
             {
                 _achievements.Unlock(id);
                 AudioPlayer.Play(SoundCue.Achievement);
-                AddLog($"Başarım: {TitleOf(id)}");
+                AddLog(F($"Başarım: {L(TitleOf(id))}"));
             }
         }
 
@@ -393,11 +398,12 @@ namespace Lazpoly.Presentation.Game
             foreach (PawnView pawn in _pawns.Values) pawn.Speed = settings.AnimationSpeed;
             if (_dice != null) _dice.Speed = settings.AnimationSpeed;
             RoomDressing.ApplyQuality(settings.Quality);
+            Lang.Apply(settings.Language);
         }
 
         private void OnCommandRejected(RejectionReason reason)
         {
-            LastRejection = $"İşlem reddedildi: {reason}";
+            LastRejection = F($"İşlem reddedildi: {reason}");
             Revision++;
         }
 
@@ -415,7 +421,7 @@ namespace Lazpoly.Presentation.Game
             _playing = false;
             _pendingEvents.Clear();
             SyncViewsToState();
-            AddLog("Oyun durumu ev sahibinden yeniden alındı.");
+            AddLog(L("Oyun durumu ev sahibinden yeniden alındı."));
         }
 
         private void OnEnded(SessionEndReason reason)
@@ -427,18 +433,18 @@ namespace Lazpoly.Presentation.Game
         private void OnRemoteConnectionChanged(int playerId, bool connected)
         {
             string name = _session.State.FindPlayer(playerId)?.Name ?? $"Oyuncu {playerId}";
-            AddLog(connected ? $"{name} bağlandı." : $"{name} bağlantısı koptu.");
+            AddLog(connected ? F($"{name} bağlandı.") : F($"{name} bağlantısı koptu."));
         }
 
         public static string EndReasonText(SessionEndReason reason)
         {
             switch (reason)
             {
-                case SessionEndReason.HostLeft: return "Ev sahibi oyundan ayrıldı.";
-                case SessionEndReason.NotInThisGame: return "Bu oyunda yerin yok.";
-                case SessionEndReason.VersionMismatch: return "Oyun sürümün ev sahibininkiyle aynı değil.";
-                case SessionEndReason.BoardMismatch: return "Tahta verin ev sahibininkiyle aynı değil.";
-                default: return "Oyun sona erdi.";
+                case SessionEndReason.HostLeft: return L("Ev sahibi oyundan ayrıldı.");
+                case SessionEndReason.NotInThisGame: return L("Bu oyunda yerin yok.");
+                case SessionEndReason.VersionMismatch: return L("Oyun sürümün ev sahibininkiyle aynı değil.");
+                case SessionEndReason.BoardMismatch: return L("Tahta verin ev sahibininkiyle aynı değil.");
+                default: return L("Oyun sona erdi.");
             }
         }
 

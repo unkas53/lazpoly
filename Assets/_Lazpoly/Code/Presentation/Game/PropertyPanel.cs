@@ -5,6 +5,7 @@ using Lazpoly.Core.State;
 using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.UI;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>A player's properties, each with the build, sell, mortgage and redeem actions the rules allow now.</summary>
@@ -13,7 +14,7 @@ namespace Lazpoly.Presentation.Game
         public static void Render(UiBuilder ui, GameSceneController controller, GameState state, int playerId)
         {
             BoardDefinition board = controller.Session.Board;
-            ui.Label("Mülklerin", UiTextStyle.Heading);
+            ui.Label(L("Mülklerin"), UiTextStyle.Heading);
             bool any = false;
 
             for (int square = 0; square < board.Count; square++)
@@ -25,11 +26,11 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder card = ui.Card();
                 UiBuilder title = card.Row();
                 UiBuilder.Fix(title.Swatch(controller.GroupColorOf(square), 16f), 16f, 16f);
-                title.Label(definition.Name);
+                title.Label(L(definition.Name));
 
-                string status = state.IsMortgaged(square) ? "ipotekli" : EventDescriber.LevelText(state.GetBuildingLevel(square));
+                string status = state.IsMortgaged(square) ? L("ipotekli") : EventDescriber.LevelText(state.GetBuildingLevel(square));
                 int rent = GameRules.CalculateRent(board, controller.Session.Rules, state, square);
-                card.Label($"{status}, kira {rent}", UiTextStyle.Small);
+                card.Label(F($"{status}, kira {rent}"), UiTextStyle.Small);
 
                 // The build button appears only when the rules allow it; otherwise say what is missing.
                 var build = new BuildCommand(playerId, square);
@@ -37,13 +38,13 @@ namespace Lazpoly.Presentation.Game
                 if (hint != null) card.Label(hint, UiTextStyle.Small, UiTheme.Accent);
 
                 UiBuilder actions = card.Row(6f);
-                Offer(actions, controller, build, $"Ev +{definition.BuildingCost}");
-                Offer(actions, controller, new SellBuildingCommand(playerId, square), "Ev Sat");
-                Offer(actions, controller, new MortgageCommand(playerId, square), $"İpotek +{definition.MortgageValue}");
-                Offer(actions, controller, new RedeemCommand(playerId, square), $"Kurtar -{controller.Session.Rules.RedeemCost(definition.MortgageValue)}");
+                Offer(actions, controller, build, F($"Ev +{definition.BuildingCost}"));
+                Offer(actions, controller, new SellBuildingCommand(playerId, square), L("Ev Sat"));
+                Offer(actions, controller, new MortgageCommand(playerId, square), F($"İpotek +{definition.MortgageValue}"));
+                Offer(actions, controller, new RedeemCommand(playerId, square), F($"Kurtar -{controller.Session.Rules.RedeemCost(definition.MortgageValue)}"));
             }
 
-            if (!any) ui.Label("Henüz mülkün yok.", UiTextStyle.Small);
+            if (!any) ui.Label(L("Henüz mülkün yok."), UiTextStyle.Small);
         }
 
         // Only allowed actions get a button, so the row stays short.

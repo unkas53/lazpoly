@@ -18,6 +18,14 @@ namespace Lazpoly.Infra.Settings
         High = 2,
     }
 
+    /// <summary>Interface language; Auto follows the system language.</summary>
+    public enum Language
+    {
+        Auto = 0,
+        Turkish = 1,
+        English = 2,
+    }
+
     /// <summary>The player's choices, kept between sessions. Immutable; change with the <c>With</c> methods.</summary>
     public sealed class GameSettings
     {
@@ -26,11 +34,12 @@ namespace Lazpoly.Infra.Settings
         private const float DefaultMusic = 0.6f;
 
         public static readonly GameSettings Default = new GameSettings(DefaultMaster, DefaultEffects, DefaultMusic, fullscreen: true, vSync: true,
-            AiSpeed.Normal, fastAnimations: false, GraphicsQuality.High, screenWidth: 0, screenHeight: 0);
+            AiSpeed.Normal, fastAnimations: false, GraphicsQuality.High, screenWidth: 0, screenHeight: 0, Language.Auto);
 
         public GameSettings(float masterVolume, float effectsVolume, float musicVolume, bool fullscreen, bool vSync, AiSpeed aiSpeed,
-            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight)
+            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight, Language language)
         {
+            Language = Enum.IsDefined(typeof(Language), language) ? language : Language.Auto;
             MasterVolume = Volume(masterVolume, DefaultMaster);
             EffectsVolume = Volume(effectsVolume, DefaultEffects);
             MusicVolume = Volume(musicVolume, DefaultMusic);
@@ -63,6 +72,8 @@ namespace Lazpoly.Infra.Settings
 
         public GraphicsQuality Quality { get; }
 
+        public Language Language { get; }
+
         /// <summary>Chosen window size in pixels; 0 keeps the screen's own size.</summary>
         public int ScreenWidth { get; }
 
@@ -86,17 +97,20 @@ namespace Lazpoly.Infra.Settings
         public GameSettings WithFastAnimations(bool value) => Copy(fastAnimations: value);
         public GameSettings WithQuality(GraphicsQuality value) => Copy(quality: value);
         public GameSettings WithScreenSize(int width, int height) => Copy(width: width, height: height);
+        public GameSettings WithLanguage(Language value) => Copy(language: value);
 
         public bool SameAs(GameSettings other) =>
             other != null && MasterVolume.Equals(other.MasterVolume) && EffectsVolume.Equals(other.EffectsVolume) &&
             MusicVolume.Equals(other.MusicVolume) && Fullscreen == other.Fullscreen && VSync == other.VSync &&
             AiSpeed == other.AiSpeed && FastAnimations == other.FastAnimations && Quality == other.Quality &&
-            ScreenWidth == other.ScreenWidth && ScreenHeight == other.ScreenHeight;
+            ScreenWidth == other.ScreenWidth && ScreenHeight == other.ScreenHeight && Language == other.Language;
 
         private GameSettings Copy(float? master = null, float? effects = null, float? music = null, bool? fullscreen = null, bool? vSync = null,
-            AiSpeed? aiSpeed = null, bool? fastAnimations = null, GraphicsQuality? quality = null, int? width = null, int? height = null) =>
+            AiSpeed? aiSpeed = null, bool? fastAnimations = null, GraphicsQuality? quality = null, int? width = null, int? height = null,
+            Language? language = null) =>
             new GameSettings(master ?? MasterVolume, effects ?? EffectsVolume, music ?? MusicVolume, fullscreen ?? Fullscreen, vSync ?? VSync,
-                aiSpeed ?? AiSpeed, fastAnimations ?? FastAnimations, quality ?? Quality, width ?? ScreenWidth, height ?? ScreenHeight);
+                aiSpeed ?? AiSpeed, fastAnimations ?? FastAnimations, quality ?? Quality, width ?? ScreenWidth, height ?? ScreenHeight,
+                language ?? Language);
 
         private static float Volume(float value, float fallback) => float.IsNaN(value) ? fallback : Math.Max(0f, Math.Min(1f, value));
     }

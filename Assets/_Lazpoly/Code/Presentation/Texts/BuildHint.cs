@@ -3,6 +3,7 @@ using Lazpoly.Core.Board;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.State;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Texts
 {
     /// <summary>
@@ -19,27 +20,27 @@ namespace Lazpoly.Presentation.Texts
             if (!square.IsDevelopable || state.GetOwner(squareIndex) != playerId) return null;
 
             int level = state.GetBuildingLevel(squareIndex);
-            if (level >= SquareDefinition.MaxBuildingLevel) return "En yüksek seviyede (otel).";
+            if (level >= SquareDefinition.MaxBuildingLevel) return L("En yüksek seviyede (otel).");
 
             var missing = new List<string>();
             bool mortgaged = false, behind = false;
             foreach (int other in GameRules.GroupSquares(board, square.GroupId))
             {
-                if (state.GetOwner(other) != playerId) missing.Add(board[other].Name);
+                if (state.GetOwner(other) != playerId) missing.Add(L(board[other].Name));
                 if (state.IsMortgaged(other)) mortgaged = true;
                 if (other != squareIndex && state.GetBuildingLevel(other) < level) behind = true;
             }
 
-            if (missing.Count > 0) return $"Ev için bu rengin tamamı gerekli; eksik: {string.Join(", ", missing)}.";
-            if (mortgaged) return "Bu renkte ipotekli kare var; önce onu kurtar.";
-            if (behind) return "Evler eşit kurulur: önce bu rengin diğer karelerine kur.";
+            if (missing.Count > 0) return F($"Ev için bu rengin tamamı gerekli; eksik: {string.Join(", ", missing)}.");
+            if (mortgaged) return L("Bu renkte ipotekli kare var; önce onu kurtar.");
+            if (behind) return L("Evler eşit kurulur: önce bu rengin diğer karelerine kur.");
 
             PlayerState player = state.FindPlayer(playerId);
-            if (player != null && player.Money < square.BuildingCost) return $"Ev için {square.BuildingCost} gerekli, paran yetmiyor.";
+            if (player != null && player.Money < square.BuildingCost) return F($"Ev için {square.BuildingCost} gerekli, paran yetmiyor.");
 
             bool rightTime = state.CurrentPlayer.Id == playerId &&
                              (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd);
-            return rightTime ? null : "Ev, kendi sıranda zar atmadan önce ya da sırayı bitirmeden önce kurulur.";
+            return rightTime ? null : L("Ev, kendi sıranda zar atmadan önce ya da sırayı bitirmeden önce kurulur.");
         }
     }
 }

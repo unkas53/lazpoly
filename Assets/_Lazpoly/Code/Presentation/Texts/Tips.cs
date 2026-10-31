@@ -4,6 +4,7 @@ using Lazpoly.Core.Engine;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Texts
 {
     /// <summary>The first-game hints. Each is shown once, when its situation first comes up.</summary>
@@ -54,29 +55,29 @@ namespace Lazpoly.Presentation.Texts
 
             // Decisions first: they explain the buttons the player is looking at.
             return Offer(TipId.Debt, myTurn && state.Phase == GamePhase.AwaitingDebtPayment,
-                       "Borcunu ödeyecek kadar paran yok. Bina satarak ya da mülk ipotek ederek para bul; bulamazsan iflas edersin.")
+                       L("Borcunu ödeyecek kadar paran yok. Bina satarak ya da mülk ipotek ederek para bul; bulamazsan iflas edersin."))
                    ?? Offer(TipId.Travel, myTurn && state.Phase == GamePhase.AwaitingTravelDecision,
-                       $"Otogardasın. Tahtada bir kareye tıkla ve {board[me.Position].Fee} ödeyerek oraya git. İstemezsen \"Burada kal\".")
+                       F($"Otogardasın. Tahtada bir kareye tıkla ve {board[me.Position].Fee} ödeyerek oraya git. İstemezsen \"Burada kal\"."))
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,
-                       "Seyir Terası sayesinde iki kez attın. Düğmelerde her atışın seni nereye götüreceği yazıyor; birini seç.")
+                       L("Seyir Terası sayesinde iki kez attın. Düğmelerde her atışın seni nereye götüreceği yazıyor; birini seç."))
                    ?? Offer(TipId.BuyOrDecline, myTurn && state.Phase == GamePhase.AwaitingBuyDecision,
                        rules.AuctionsEnabled
-                           ? "Bu kare sahipsiz. Satın alabilirsin; almazsan açık artırmaya çıkar ve herkes teklif verebilir."
-                           : "Bu kare sahipsiz. Satın alabilirsin; almazsan bankada kalır.")
+                           ? L("Bu kare sahipsiz. Satın alabilirsin; almazsan açık artırmaya çıkar ve herkes teklif verebilir.")
+                           : L("Bu kare sahipsiz. Satın alabilirsin; almazsan bankada kalır."))
                    ?? Offer(TipId.Auction, state.Phase == GamePhase.AuctionInProgress && state.Auction != null && !state.Auction.HasPassed(playerId),
-                       "Açık artırma: teklif vererek fiyatı yükselt ya da pas geçip çekil. Son kalan teklifi veren kareyi alır.")
+                       L("Açık artırma: teklif vererek fiyatı yükselt ya da pas geçip çekil. Son kalan teklifi veren kareyi alır."))
                    ?? Offer(TipId.RoundLimit, rules.RoundLimit > 0,
-                       $"Bu oyun {rules.RoundLimit} tur sürecek. Sonunda parası, mülkleri ve binaları en değerli olan kazanır.")
+                       F($"Bu oyun {rules.RoundLimit} tur sürecek. Sonunda parası, mülkleri ve binaları en değerli olan kazanır."))
                    ?? Offer(TipId.FirstRoll, myTurn && state.Phase == GamePhase.WaitingForRoll,
-                       "Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır.")
+                       L("Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır."))
                    ?? Offer(TipId.CanBuild, myTurn && (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd) && OwnsBuildableGroup(board, state, playerId),
-                       "Bir rengin bütün kareleri sende! Artık \"Mülklerin\" listesindeki \"Ev +\" düğmesiyle ev kurabilirsin. Kira çok artar; evleri karelere eşit dağıtmalısın.")
+                       L("Bir rengin bütün kareleri sende! Artık \"Mülklerin\" listesindeki \"Ev +\" düğmesiyle ev kurabilirsin. Kira çok artar; evleri karelere eşit dağıtmalısın."))
                    ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasMortgageable(board, state, playerId),
-                       "Paran azaldı. Sıkışırsan mülklerini ipotek edip bankadan para alabilirsin; sonra faiziyle geri alırsın.")
+                       L("Paran azaldı. Sıkışırsan mülklerini ipotek edip bankadan para alabilirsin; sonra faiziyle geri alırsın."))
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
-                       $"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır.")
+                       F($"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır."))
                    ?? Offer(TipId.Trade, myTurn && state.Phase == GamePhase.WaitingForRoll && state.Round >= 3,
-                       "Eksik rengini başkası mı tutuyor? \"Takas Teklif Et\" ile para ya da mülk karşılığında iste.");
+                       L("Eksik rengini başkası mı tutuyor? \"Takas Teklif Et\" ile para ya da mülk karşılığında iste."));
         }
 
         private static bool OwnsBuildableGroup(BoardDefinition board, GameState state, int playerId)

@@ -1,6 +1,7 @@
 using Lazpoly.Core.Rules;
 using UnityEngine;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Setup
 {
     /// <summary>
@@ -20,14 +21,13 @@ namespace Lazpoly.Presentation.Setup
 
         /// <summary>"Sınırsız", "Kısa (25 tur)"...</summary>
         public static string RoundLimitText(int limit) =>
-            limit == 0 ? "Sınırsız" : limit == RoundLimitChoices[1] ? $"Kısa ({limit} tur)" : $"Çok kısa ({limit} tur)";
+            limit == 0 ? L("Sınırsız") : limit == RoundLimitChoices[1] ? F($"Kısa ({limit} tur)") : F($"Çok kısa ({limit} tur)");
 
-        public static string StartingMoneyText(int money, int boardMoney) => money == 0 ? $"{boardMoney} (normal)" : money.ToString();
+        public static string StartingMoneyText(int money, int boardMoney) => money == 0 ? F($"{boardMoney} (normal)") : money.ToString();
 
         /// <summary>One line for the menu, e.g. "1500 para · açık artırma var · sınırsız".</summary>
         public static string Summary(TableRules table, int boardMoney) =>
-            $"{(table.StartingMoney == 0 ? boardMoney : table.StartingMoney)} para · " +
-            $"{(table.AuctionsEnabled ? "açık artırma var" : "açık artırma yok")} · {RoundLimitText(table.RoundLimit).ToLowerInvariant()}";
+            F($"{(table.StartingMoney == 0 ? boardMoney : table.StartingMoney)} para · {(table.AuctionsEnabled ? L("açık artırma var") : L("açık artırma yok"))} · {RoundLimitText(table.RoundLimit).ToLowerInvariant()}");
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() => Chosen = TableRules.Default;

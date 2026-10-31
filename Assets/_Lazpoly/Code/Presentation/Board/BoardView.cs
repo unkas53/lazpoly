@@ -7,6 +7,7 @@ using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
@@ -96,7 +97,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Shows what the pot holds in the middle of the board (boards without a pot show nothing).</summary>
         public void SetPot(int amount)
         {
-            if (_pot != null) _pot.text = $"Çay kumbarası\n{amount}";
+            if (_pot != null) _pot.text = F($"Çay kumbarası\n{amount}");
         }
 
         /// <summary>Shows who owns a square; pass null to show it as unowned.</summary>
@@ -240,9 +241,9 @@ namespace Lazpoly.Presentation.Tabletop
                     band.transform.localRotation = Quaternion.LookRotation(outward);
                 }
 
-                string caption = square.Type == SquareType.Property ? $"{square.Name}\n{square.Price}"
-                    : square.Type == SquareType.Tax ? $"{square.Name}\n-{square.TaxAmount}"
-                    : square.Type == SquareType.Travel ? $"{square.Name}\nbilet {square.Fee}"
+                string caption = square.Type == SquareType.Property ? F($"{L(square.Name)}\n{square.Price}")
+                    : square.Type == SquareType.Tax ? F($"{L(square.Name)}\n-{square.TaxAmount}")
+                    : square.Type == SquareType.Travel ? F($"{L(square.Name)}\nbilet {square.Fee}")
                     : square.Name;
                 // Name and price sit towards the outer edge; pawns stand on the inner half (PawnSpot).
                 CreateLabel(caption, center + Outward(center) * (tile * 0.07f) + Vector3.up * (TileHeight + 0.01f), tile);

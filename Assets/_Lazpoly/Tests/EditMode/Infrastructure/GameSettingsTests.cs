@@ -31,7 +31,7 @@ namespace Lazpoly.Infra.Tests
             var storage = new MemoryStorage();
             GameSettings chosen = GameSettings.Default.WithMasterVolume(0.25f).WithEffectsVolume(0.5f).WithMusicVolume(0f)
                 .WithFullscreen(false).WithVSync(false).WithAiSpeed(AiSpeed.Fast).WithFastAnimations(true)
-                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900);
+                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900).WithLanguage(Language.English);
 
             SettingsSerializer.Write(storage, chosen);
 
@@ -49,6 +49,7 @@ namespace Lazpoly.Infra.Tests
             storage.Values["lazpoly.settings.quality"] = -3;
             storage.Values["lazpoly.settings.width"] = 20;
             storage.Values["lazpoly.settings.height"] = 2000;
+            storage.Values["lazpoly.settings.language"] = 9;
 
             GameSettings read = SettingsSerializer.Read(storage);
 
@@ -56,6 +57,7 @@ namespace Lazpoly.Infra.Tests
             Assert.AreEqual(AiSpeed.Normal, read.AiSpeed);
             Assert.AreEqual(GraphicsQuality.High, read.Quality);
             Assert.IsFalse(read.HasScreenSize, "A silly size means the screen stays as it is.");
+            Assert.AreEqual(Language.Auto, read.Language);
         }
 
         [Test]

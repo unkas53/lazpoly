@@ -17,6 +17,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
@@ -188,7 +189,7 @@ namespace Lazpoly.Presentation.Game
             _cardGroup.alpha = 0f;
             UiBuilder.AddColumnLayout(card.gameObject, 18, 8f);
             var builder = new UiBuilder(card);
-            _cardTitle = builder.Label("SOKAK HABERİ", UiTextStyle.Heading, new Color(0.55f, 0.28f, 0.08f), TextAnchor.MiddleCenter);
+            _cardTitle = builder.Label(L("SOKAK HABERİ"), UiTextStyle.Heading, new Color(0.55f, 0.28f, 0.08f), TextAnchor.MiddleCenter);
             _cardText = builder.Label("", UiTextStyle.Body, new Color(0.15f, 0.12f, 0.10f), TextAnchor.MiddleCenter);
             _cardText.fontSize = 22;
         }
@@ -211,11 +212,11 @@ namespace Lazpoly.Presentation.Game
         private void RenderTip(UiBuilder ui)
         {
             if (!_tip.HasValue) return;
-            ui.Label("İpucu", UiTextStyle.Small, UiTheme.Accent);
+            ui.Label(L("İpucu"), UiTextStyle.Small, UiTheme.Accent);
             ui.Label(_tip.Value.Text, UiTextStyle.Small);
             UiBuilder row = ui.Row();
-            row.Button("Anladım", DismissTip, style: UiButtonStyle.Primary, height: UiTheme.SmallButtonHeight);
-            row.Button("İpuçlarını Kapat", () =>
+            row.Button(L("Anladım"), DismissTip, style: UiButtonStyle.Primary, height: UiTheme.SmallButtonHeight);
+            row.Button(L("İpuçlarını Kapat"), () =>
             {
                 TipMemory.TurnOff();
                 ShowTip(null);
@@ -270,7 +271,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             int left = Mathf.Max(0, Mathf.CeilToInt(_controller.SecondsLeft));
-            _timer.text = $"Hamle süresi: {left} sn";
+            _timer.text = F($"Hamle süresi: {left} sn");
             _timer.color = left <= 10 ? UiTheme.Warning : UiTheme.Muted;
         }
 
@@ -314,8 +315,8 @@ namespace Lazpoly.Presentation.Game
             }
 
             string player = _controller.Session.State.FindPlayer(_controller.ShownCardPlayer)?.Name;
-            _cardTitle.text = player == null ? "SOKAK HABERİ" : $"SOKAK HABERİ · {player}";
-            _cardText.text = EventDescriber.CardText(_controller.Session.Board, card);
+            _cardTitle.text = player == null ? L("SOKAK HABERİ") : F($"SOKAK HABERİ · {player}");
+            _cardText.text = L(EventDescriber.CardText(_controller.Session.Board, card));
             _cardGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
         }
 
@@ -442,7 +443,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             foreach (string note in info.Notes) ui.Label(note, UiTextStyle.Small);
-            ui.Label(_pinnedSquare == square ? "Kapatmak için kareye yeniden tıkla." : "Sabitlemek için kareye tıkla.", UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(_pinnedSquare == square ? L("Kapatmak için kareye yeniden tıkla.") : L("Sabitlemek için kareye tıkla."), UiTextStyle.Small, UiTheme.Muted);
         }
 
         /// <summary>A short "your turn" banner whenever a new turn goes to someone at this screen.</summary>
@@ -457,7 +458,7 @@ namespace Lazpoly.Presentation.Game
                 if (_controller.Session.CanControl(player.Id))
                 {
                     AudioPlayer.Play(SoundCue.YourTurn);
-                    _banner.text = $"Sıra sende, {player.Name}";
+                    _banner.text = F($"Sıra sende, {player.Name}");
                     _banner.color = _controller.ColorOf(player.Id);
                     _bannerUntil = Time.unscaledTime + BannerSeconds;
                 }
@@ -483,16 +484,16 @@ namespace Lazpoly.Presentation.Game
             GameState state = _controller.Session.State;
             if (_controller.EndReason.HasValue)
             {
-                ui.Label("Oyun durdu", UiTextStyle.Heading);
+                ui.Label(L("Oyun durdu"), UiTextStyle.Heading);
                 ui.Label(GameSceneController.EndReasonText(_controller.EndReason.Value));
-                ui.Button("Ana Menü", _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
+                ui.Button(L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
                 return;
             }
 
             if (state == null)
             {
-                ui.Label("Ev sahibine bağlanılıyor...", UiTextStyle.Heading);
-                ui.Button("Vazgeç", _controller.LeaveToMainMenu);
+                ui.Label(L("Ev sahibine bağlanılıyor..."), UiTextStyle.Heading);
+                ui.Button(L("Vazgeç"), _controller.LeaveToMainMenu);
                 return;
             }
 
@@ -501,7 +502,7 @@ namespace Lazpoly.Presentation.Game
             RenderActions(ui, state);
             RenderOwnProperties(ui, state);
             ui.Space(6f);
-            ui.Label("Oyuncular", UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Oyuncular"), UiTextStyle.Small, UiTheme.Muted);
             RenderPlayers(ui, state);
         }
 
@@ -509,8 +510,8 @@ namespace Lazpoly.Presentation.Game
         {
             UiBuilder header = ui.Row();
             int limit = _controller.Session.Rules.RoundLimit;
-            header.Label(limit > 0 ? $"Tur {state.Round} / {limit}" : $"Tur {state.Round}", UiTextStyle.Small, UiTheme.Muted);
-            if (state.LastDie1 != 0) header.Label($"Son zar: {state.LastDie1} + {state.LastDie2}", UiTextStyle.Small, UiTheme.Accent, TextAnchor.MiddleRight);
+            header.Label(limit > 0 ? F($"Tur {state.Round} / {limit}") : F($"Tur {state.Round}"), UiTextStyle.Small, UiTheme.Muted);
+            if (state.LastDie1 != 0) header.Label(F($"Son zar: {state.LastDie1} + {state.LastDie2}"), UiTextStyle.Small, UiTheme.Accent, TextAnchor.MiddleRight);
         }
 
         /// <summary>The property list of the person on turn here, with its build, sell and mortgage buttons.</summary>
@@ -536,7 +537,7 @@ namespace Lazpoly.Presentation.Game
                 row.Swatch(color, 20f);
                 Text name = row.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
                 name.font = current ? UiTheme.BoldFont : UiTheme.Font;
-                Text money = row.Label(player.IsBankrupt ? "iflas" : string.Empty, color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
+                Text money = row.Label(player.IsBankrupt ? L("iflas") : string.Empty, color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
                 UiBuilder.Fix(money, width: 90f);
                 if (!player.IsBankrupt) TrackMoney(player.Id, money);
 
@@ -575,16 +576,16 @@ namespace Lazpoly.Presentation.Game
         private string PlayerTag(PlayerState player)
         {
             bool ai = _controller.Session.IsAiPlaying(player.Id);
-            if (!_controller.IsConnected(player.Id)) return ai ? "Bağlantı yok, bilgisayar oynuyor" : "Bağlantı yok";
-            return ai ? "Bilgisayar" : null;
+            if (!_controller.IsConnected(player.Id)) return ai ? L("Bağlantı yok, bilgisayar oynuyor") : L("Bağlantı yok");
+            return ai ? L("Bilgisayar") : null;
         }
 
         private void RenderActions(UiBuilder ui, GameState state)
         {
             if (state.Phase == GamePhase.GameOver)
             {
-                ui.Label($"Kazanan: {state.FindPlayer(state.WinnerId)?.Name}", UiTextStyle.Heading, UiTheme.Accent);
-                ui.Button("Ana Menü", _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
+                ui.Label(F($"Kazanan: {state.FindPlayer(state.WinnerId)?.Name}"), UiTextStyle.Heading, UiTheme.Accent);
+                ui.Button(L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
                 return;
             }
 
@@ -607,18 +608,18 @@ namespace Lazpoly.Presentation.Game
             PlayerState player = state.CurrentPlayer;
             UiBuilder turn = ui.Row(10f, expand: false);
             turn.Swatch(_controller.ColorOf(player.Id), 20f);
-            UiBuilder.Fix(turn.Label(_controller.Session.CanControl(player.Id) ? $"Sıra sende, {player.Name}" : $"{player.Name} oynuyor", UiTextStyle.Heading), -1f).flexibleWidth = 1f;
+            UiBuilder.Fix(turn.Label(_controller.Session.CanControl(player.Id) ? F($"Sıra sende, {player.Name}") : F($"{player.Name} oynuyor"), UiTextStyle.Heading), -1f).flexibleWidth = 1f;
 
             if (!_controller.Session.CanControl(player.Id))
             {
-                ui.Label(_controller.Session.IsAiPlaying(player.Id) ? "Bilgisayar düşünüyor..." : "Sıra onda, hamlesi bekleniyor.", UiTextStyle.Small);
+                ui.Label(_controller.Session.IsAiPlaying(player.Id) ? L("Bilgisayar düşünüyor...") : L("Sıra onda, hamlesi bekleniyor."), UiTextStyle.Small);
                 return;
             }
 
             switch (state.Phase)
             {
                 case GamePhase.WaitingForRoll:
-                    ui.Button("Zar At", () => _controller.Submit(new RollDiceCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
+                    ui.Button(L("Zar At"), () => _controller.Submit(new RollDiceCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
                     break;
 
                 case GamePhase.AwaitingBuyDecision:
@@ -626,7 +627,7 @@ namespace Lazpoly.Presentation.Game
                     break;
 
                 case GamePhase.TurnEnd:
-                    ui.Button("Sırayı Bitir", () => _controller.Submit(new EndTurnCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
+                    ui.Button(L("Sırayı Bitir"), () => _controller.Submit(new EndTurnCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
                     break;
 
                 case GamePhase.AwaitingDebtPayment:
@@ -644,7 +645,7 @@ namespace Lazpoly.Presentation.Game
 
             if (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd)
             {
-                ui.Button("Takas Teklif Et", () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
+                ui.Button(L("Takas Teklif Et"), () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
             }
         }
 
@@ -656,12 +657,12 @@ namespace Lazpoly.Presentation.Game
             UiBuilder title = card.Row();
             UiBuilder.Fix(title.Swatch(_controller.GroupColorOf(squareIndex), 16f), 16f, 16f);
             title.Label(square.Name, UiTextStyle.Heading);
-            card.Label($"Fiyat {square.Price}, kira {square.BaseRent}");
+            card.Label(F($"Fiyat {square.Price}, kira {square.BaseRent}"));
 
             var buy = new BuyPropertyCommand(player.Id);
-            ui.Button($"Satın Al ({square.Price})", () => _controller.Submit(buy), _controller.IsAllowed(buy), UiButtonStyle.Primary, 52f);
-            if (player.Money < square.Price) ui.Label("Paran yetmiyor: ipotek ya da bina satışıyla para bulabilirsin.", UiTextStyle.Small, UiTheme.Warning);
-            ui.Button(_controller.Session.Rules.AuctionsEnabled ? "Alma, açık artırmaya çıkar" : "Alma",
+            ui.Button(F($"Satın Al ({square.Price})"), () => _controller.Submit(buy), _controller.IsAllowed(buy), UiButtonStyle.Primary, 52f);
+            if (player.Money < square.Price) ui.Label(L("Paran yetmiyor: ipotek ya da bina satışıyla para bulabilirsin."), UiTextStyle.Small, UiTheme.Warning);
+            ui.Button(_controller.Session.Rules.AuctionsEnabled ? L("Alma, açık artırmaya çıkar") : L("Alma"),
                 () => _controller.Submit(new DeclinePurchaseCommand(player.Id)));
         }
 
@@ -671,14 +672,14 @@ namespace Lazpoly.Presentation.Game
             BoardDefinition board = _controller.Session.Board;
             int fee = board[player.Position].Fee;
             UiBuilder card = ui.Card();
-            card.Label($"{board[player.Position].Name}: {fee} ödeyip istediğin kareye gidebilirsin.");
-            card.Label("Tahtada gitmek istediğin kareye tıkla.", UiTextStyle.Small, UiTheme.Muted);
+            card.Label(F($"{board[player.Position].Name}: {fee} ödeyip istediğin kareye gidebilirsin."));
+            card.Label(L("Tahtada gitmek istediğin kareye tıkla."), UiTextStyle.Small, UiTheme.Muted);
 
             int target = _pinnedSquare;
             var travel = new TravelCommand(player.Id, target);
             if (target >= 0 && _controller.IsAllowed(travel))
             {
-                ui.Button($"{board[target].Name} karesine git ({fee})", () =>
+                ui.Button(F($"{L(board[target].Name)} karesine git ({fee})"), () =>
                 {
                     _pinnedSquare = NoSquare;
                     _controller.Submit(travel);
@@ -686,17 +687,17 @@ namespace Lazpoly.Presentation.Game
             }
             else
             {
-                ui.Button("Önce bir kare seç", null, false, UiButtonStyle.Primary, 52f);
+                ui.Button(L("Önce bir kare seç"), null, false, UiButtonStyle.Primary, 52f);
             }
 
-            ui.Button("Burada kal", () => _controller.Submit(new DeclineTravelCommand(player.Id)));
+            ui.Button(L("Burada kal"), () => _controller.Submit(new DeclineTravelCommand(player.Id)));
         }
 
         /// <summary>The lookout's two rolls, each with where it would take the player.</summary>
         private void RenderDiceChoice(UiBuilder ui, GameState state, PlayerState player)
         {
             BoardDefinition board = _controller.Session.Board;
-            ui.Label("Seyir Terası: iki atıştan birini seç.", UiTextStyle.Small);
+            ui.Label(L("Seyir Terası: iki atıştan birini seç."), UiTextStyle.Small);
             for (int option = 0; option < 2; option++)
             {
                 int[] dice = GameRules.DiceOption(state, option);
@@ -714,18 +715,18 @@ namespace Lazpoly.Presentation.Game
             DebtState debt = state.Debt;
             string creditor = EventDescriber.CreditorText(state, debt.CreditorId);
             UiBuilder card = ui.Card(new Color(0.30f, 0.16f, 0.16f));
-            card.Label($"Borç: {debt.Amount} → {creditor}", UiTextStyle.Heading);
+            card.Label(F($"Borç: {debt.Amount} → {creditor}"), UiTextStyle.Heading);
             card.Label(EventDescriber.ReasonText(debt.Reason), UiTextStyle.Small);
-            card.Label("Bina sat ya da ipotek ederek para bul, sonra öde.", UiTextStyle.Small);
+            card.Label(L("Bina sat ya da ipotek ederek para bul, sonra öde."), UiTextStyle.Small);
 
             var pay = new PayDebtCommand(player.Id);
-            ui.Button($"Borcu Öde ({debt.Amount})", () => _controller.Submit(pay), _controller.IsAllowed(pay), UiButtonStyle.Primary, 52f);
-            ui.Button("İflas Et", () => _controller.Submit(new DeclareBankruptcyCommand(player.Id)), style: UiButtonStyle.Danger, height: UiTheme.SmallButtonHeight);
+            ui.Button(F($"Borcu Öde ({debt.Amount})"), () => _controller.Submit(pay), _controller.IsAllowed(pay), UiButtonStyle.Primary, 52f);
+            ui.Button(L("İflas Et"), () => _controller.Submit(new DeclareBankruptcyCommand(player.Id)), style: UiButtonStyle.Danger, height: UiTheme.SmallButtonHeight);
         }
 
         private void RenderLog(UiBuilder ui)
         {
-            ui.Label("Olaylar", UiTextStyle.Heading);
+            ui.Label(L("Olaylar"), UiTextStyle.Heading);
             var lines = _controller.Log;
             var tones = _controller.LogTones;
             for (int i = lines.Count - 1; i >= 0; i--)
@@ -751,25 +752,25 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder row = ui.Row();
                 row.Swatch(_controller.ColorOf(player.Id), 16f);
                 row.Label(player.Name);
-                row.Label($"{GameRules.NetWorth(board, state, player.Id)} değer", color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
+                row.Label(F($"{GameRules.NetWorth(board, state, player.Id)} değer"), color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
             }
         }
 
         private void RenderMenu(UiBuilder ui)
         {
             UiBuilder row = ui.Row();
-            row.Button("Ayarlar", () =>
+            row.Button(L("Ayarlar"), () =>
             {
                 _settingsLayer.SetActive(true);
                 _settingsWindow.Invalidate();
             });
-            row.Button("Nasıl Oynanır", () =>
+            row.Button(L("Nasıl Oynanır"), () =>
             {
                 _howToLayer.SetActive(true);
                 _howToWindow.Invalidate();
             });
-            ui.Button("Görünümü Sıfırla (Home)", () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
-            ui.Button("Oyundan Çık", _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
+            ui.Button(L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
+            ui.Button(L("Oyundan Çık"), _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
         }
 
         private void RenderTrade(UiBuilder ui)
@@ -782,25 +783,25 @@ namespace Lazpoly.Presentation.Game
         {
             if (_controller.EndReason.HasValue)
             {
-                ui.Label("Oyun durdu", UiTextStyle.Heading);
+                ui.Label(L("Oyun durdu"), UiTextStyle.Heading);
                 ui.Label(GameSceneController.EndReasonText(_controller.EndReason.Value));
             }
             else
             {
                 GameState state = _controller.Session.State;
                 PlayerState winner = state.FindPlayer(state.WinnerId);
-                ui.Label("Oyun bitti", UiTextStyle.Heading);
-                ui.Label($"Kazanan: {winner?.Name}", UiTextStyle.Title, winner != null ? _controller.ColorOf(winner.Id) : UiTheme.Accent, TextAnchor.MiddleCenter);
+                ui.Label(L("Oyun bitti"), UiTextStyle.Heading);
+                ui.Label(F($"Kazanan: {winner?.Name}"), UiTextStyle.Title, winner != null ? _controller.ColorOf(winner.Id) : UiTheme.Accent, TextAnchor.MiddleCenter);
                 bool byLimit = _controller.Session.Rules.RoundLimit > 0 && state.ActivePlayerCount() > 1;
-                ui.Label(byLimit ? $"Tur sınırı doldu ({state.Round} tur): en zengin oyuncu kazandı." : $"{state.Round} turda bitti.",
+                ui.Label(byLimit ? F($"Tur sınırı doldu ({state.Round} tur): en zengin oyuncu kazandı.") : F($"{state.Round} turda bitti."),
                     UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
                 if (byLimit) RenderWorthTable(ui, state);
             }
 
             ui.Space(8f);
             UiBuilder row = ui.Row();
-            row.Button("Tahtaya Bak", () => _endDismissed = true);
-            row.Button("Ana Menü", _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
+            row.Button(L("Tahtaya Bak"), () => _endDismissed = true);
+            row.Button(L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
         }
     }
 }

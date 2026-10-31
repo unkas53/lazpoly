@@ -7,6 +7,7 @@ using Lazpoly.Presentation.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
@@ -17,6 +18,7 @@ namespace Lazpoly.Presentation.Menu
     {
         private static readonly string[] AiSpeedNames = { "Yavaş", "Normal", "Hızlı" };
         private static readonly string[] QualityNames = { "Düşük", "Orta", "Yüksek" };
+        private static readonly string[] LanguageNames = { "Otomatik", "Türkçe", "English" };
 
         /// <summary>The groups scroll inside the window, so the window fits a small screen.</summary>
         private const float BodyHeight = 420f;
@@ -38,10 +40,10 @@ namespace Lazpoly.Presentation.Menu
 
         public void Render(UiBuilder ui, Action close)
         {
-            ui.Label("Ayarlar", UiTextStyle.Heading);
+            ui.Label(L("Ayarlar"), UiTextStyle.Heading);
             if (_settings == null)
             {
-                ui.Label("Ayarlar kullanılamıyor.", UiTextStyle.Small);
+                ui.Label(L("Ayarlar kullanılamıyor."), UiTextStyle.Small);
             }
             else
             {
@@ -54,32 +56,32 @@ namespace Lazpoly.Presentation.Menu
             }
 
             ui.Space(8f);
-            ui.Button("Kapat", close, style: UiButtonStyle.Primary);
+            ui.Button(L("Kapat"), close, style: UiButtonStyle.Primary);
         }
 
         private void RenderSound(UiBuilder ui, GameSettings current)
         {
-            ui.Label("Ses", UiTextStyle.Small, UiTheme.Muted);
-            VolumeSlider(ui, "Genel", current.MasterVolume, v => _settings.Current.WithMasterVolume(v));
-            VolumeSlider(ui, "Efektler", current.EffectsVolume, v => _settings.Current.WithEffectsVolume(v));
-            VolumeSlider(ui, "Müzik", current.MusicVolume, v => _settings.Current.WithMusicVolume(v));
+            ui.Label(L("Ses"), UiTextStyle.Small, UiTheme.Muted);
+            VolumeSlider(ui, L("Genel"), current.MasterVolume, v => _settings.Current.WithMasterVolume(v));
+            VolumeSlider(ui, L("Efektler"), current.EffectsVolume, v => _settings.Current.WithEffectsVolume(v));
+            VolumeSlider(ui, L("Müzik"), current.MusicVolume, v => _settings.Current.WithMusicVolume(v));
             ui.Space(6f);
         }
 
         private void RenderPicture(UiBuilder ui, GameSettings current)
         {
-            ui.Label("Görüntü", UiTextStyle.Small, UiTheme.Muted);
-            ui.Label("Kalite");
+            ui.Label(L("Görüntü"), UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Kalite"));
             UiBuilder qualities = ui.Row();
             for (int i = 0; i < QualityNames.Length; i++)
             {
                 var quality = (GraphicsQuality)i;
-                qualities.Button(QualityNames[i], () => Change(_settings.Current.WithQuality(quality)),
+                qualities.Button(L(QualityNames[i]), () => Change(_settings.Current.WithQuality(quality)),
                     style: current.Quality == quality ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
-            ui.Toggle("Tam ekran", current.Fullscreen, on => Change(_settings.Current.WithFullscreen(on)));
-            ui.Toggle("Dikey eşitleme (VSync)", current.VSync, on => Change(_settings.Current.WithVSync(on)));
+            ui.Toggle(L("Tam ekran"), current.Fullscreen, on => Change(_settings.Current.WithFullscreen(on)));
+            ui.Toggle(L("Dikey eşitleme (VSync)"), current.VSync, on => Change(_settings.Current.WithVSync(on)));
             RenderResolution(ui, current);
             ui.Space(6f);
         }
@@ -91,25 +93,34 @@ namespace Lazpoly.Presentation.Menu
             if (sizes.Count == 0) return;
             int chosen = IndexOf(sizes, current.HasScreenSize ? new Vector2Int(current.ScreenWidth, current.ScreenHeight) : new Vector2Int(Screen.width, Screen.height));
 
-            ui.Label("Çözünürlük");
+            ui.Label(L("Çözünürlük"));
             UiBuilder row = ui.Row();
             row.Button("<", () => PickSize(sizes[(chosen + sizes.Count - 1) % sizes.Count]), height: UiTheme.SmallButtonHeight);
             Text label = row.Label(SizeText(sizes[chosen]), alignment: TextAnchor.MiddleCenter);
             UiBuilder.Fix(label, width: 160f);
             row.Button(">", () => PickSize(sizes[(chosen + 1) % sizes.Count]), height: UiTheme.SmallButtonHeight);
-            if (Application.isEditor) ui.Label("Editörde pencere boyutu değişmez; derlemede uygulanır.", UiTextStyle.Small, UiTheme.Muted);
+            if (Application.isEditor) ui.Label(L("Editörde pencere boyutu değişmez; derlemede uygulanır."), UiTextStyle.Small, UiTheme.Muted);
         }
 
         private void RenderGame(UiBuilder ui, GameSettings current)
         {
-            ui.Label("Oyun", UiTextStyle.Small, UiTheme.Muted);
-            ui.Toggle("Hızlı animasyonlar", current.FastAnimations, on => Change(_settings.Current.WithFastAnimations(on)));
-            ui.Label("Bilgisayar hamle hızı");
+            ui.Label(L("Oyun"), UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Dil"));
+            UiBuilder languages = ui.Row();
+            for (int i = 0; i < LanguageNames.Length; i++)
+            {
+                var language = (Language)i;
+                languages.Button(L(LanguageNames[i]), () => Change(_settings.Current.WithLanguage(language)),
+                    style: current.Language == language ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Toggle(L("Hızlı animasyonlar"), current.FastAnimations, on => Change(_settings.Current.WithFastAnimations(on)));
+            ui.Label(L("Bilgisayar hamle hızı"));
             UiBuilder speeds = ui.Row();
             for (int i = 0; i < AiSpeedNames.Length; i++)
             {
                 var speed = (AiSpeed)i;
-                speeds.Button(AiSpeedNames[i], () => Change(_settings.Current.WithAiSpeed(speed)),
+                speeds.Button(L(AiSpeedNames[i]), () => Change(_settings.Current.WithAiSpeed(speed)),
                     style: current.AiSpeed == speed ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
@@ -119,10 +130,10 @@ namespace Lazpoly.Presentation.Menu
         private void RenderHelp(UiBuilder ui)
         {
             if (_errorLog == null) return;
-            ui.Label("Sorun bildirme", UiTextStyle.Small, UiTheme.Muted);
-            ui.Label("Hatalar şu dosyaya yazılır; bir sorun bildirirken bu dosyayı ekle:", UiTextStyle.Small);
+            ui.Label(L("Sorun bildirme"), UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Hatalar şu dosyaya yazılır; bir sorun bildirirken bu dosyayı ekle:"), UiTextStyle.Small);
             ui.Label(_errorLog.FilePath, UiTextStyle.Small, UiTheme.Muted);
-            ui.Button("Günlük klasörünü aç", () => Application.OpenURL("file://" + _errorLog.Folder), height: UiTheme.SmallButtonHeight);
+            ui.Button(L("Günlük klasörünü aç"), () => Application.OpenURL("file://" + _errorLog.Folder), height: UiTheme.SmallButtonHeight);
         }
 
         private void VolumeSlider(UiBuilder ui, string name, float value, Func<float, GameSettings> with)

@@ -4,6 +4,7 @@ using Lazpoly.App.Save;
 using Lazpoly.Core.State;
 using UnityEngine;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Setup
 {
     /// <summary>Hands the main menu's local game choice (new players or a saved game) to the Game scene.</summary>
@@ -63,7 +64,7 @@ namespace Lazpoly.Presentation.Setup
             var seats = new PlayerSeat[count];
             for (int i = 0; i < count; i++)
             {
-                seats[i] = new PlayerSeat(i + 1, $"Oyuncu {i + 1}");
+                seats[i] = new PlayerSeat(i + 1, F($"Oyuncu {i + 1}"));
             }
 
             return seats;

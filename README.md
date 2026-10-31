@@ -260,6 +260,12 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   (512 KB dolunca `.1` olarak saklanır); ayarlardaki "Günlük klasörünü aç" düğmesi klasörü açar.
 - **Kayıt uyumluluğu:** 1. sürüm kayıt dosyaları (masa kuralları öncesi) hâlâ açılır: varsayılan masa, boş
   kumbara, tur numarası tahmini.
+- **İngilizce:** koddaki Türkçe metin anahtardır; `L("...")` düz, `F($"...")` biçimli metinleri
+  `UI/Resources/Lazpoly/Lang/en.json` dosyasından çevirir (eksik girdi Türkçe kalır). Dil ayarı Otomatik (sistem
+  dili Türkçe değilse İngilizce), Türkçe, English; değişince bütün görünümler yeniden çizilir, tahtadaki 3B
+  yazılar sahne yeniden yüklenince. Sokak ve meydan adları özel ad olarak Türkçe kalır; kartlar, özel kareler ve
+  renk grupları çevrilir. `LangTests.EveryTextInTheCodeHasAnEnglishEntry` kaynak kodu tarar: çevirisi olmayan
+  metin testi kırar.
 
 ## Kurallar
 

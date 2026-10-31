@@ -7,6 +7,7 @@ using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>The "Nasıl Oynanır" window, shared by the main menu and the game screen.</summary>
@@ -17,7 +18,7 @@ namespace Lazpoly.Presentation.Menu
 
         public static void Render(UiBuilder ui, BoardDefinition board, RulesConfig rules, Action close)
         {
-            ui.Label("Nasıl Oynanır", UiTextStyle.Heading);
+            ui.Label(L("Nasıl Oynanır"), UiTextStyle.Heading);
             UiBuilder list = ui.Scroll(TextHeight);
             foreach (KeyValuePair<string, string> section in HowToPlay.Sections(board, rules))
             {
@@ -27,8 +28,8 @@ namespace Lazpoly.Presentation.Menu
             }
 
             UiBuilder row = ui.Row();
-            row.Button("İpuçlarını Yeniden Göster", () => new TipMemory(new PlayerPrefsStorage()).Reset(), height: UiTheme.SmallButtonHeight);
-            row.Button("Kapat", close, style: UiButtonStyle.Primary, height: UiTheme.SmallButtonHeight);
+            row.Button(L("İpuçlarını Yeniden Göster"), () => new TipMemory(new PlayerPrefsStorage()).Reset(), height: UiTheme.SmallButtonHeight);
+            row.Button(L("Kapat"), close, style: UiButtonStyle.Primary, height: UiTheme.SmallButtonHeight);
         }
     }
 }

@@ -11,12 +11,14 @@ using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Setup;
+using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
@@ -52,16 +54,24 @@ namespace Lazpoly.Presentation.Menu
         private LobbyPanel _lobbyPanel;
         private SavedGame _savedGame;
         private SettingsPanel _settings;
+        private SettingsService _settingsService;
         private ILobbyService _lobby;
         private IPresenceService _presence;
 
         private void Awake()
         {
+            GameServices.Registry?.TryGet(out _settingsService);
+            if (_settingsService != null)
+            {
+                Lang.Apply(_settingsService.Current.Language);
+                _settingsService.Changed += OnSettingsChanged;
+            }
+
             AudioPlayer.Ensure();
             MusicPlayer.Ensure();
             for (int i = 0; i < RulesConfig.AbsoluteMaxPlayers; i++)
             {
-                _names.Add($"Oyuncu {i + 1}");
+                _names.Add(F($"Oyuncu {i + 1}"));
                 _seatKinds.Add(0);
             }
 
@@ -79,8 +89,11 @@ namespace Lazpoly.Presentation.Menu
 
         private void OnDestroy()
         {
+            if (_settingsService != null) _settingsService.Changed -= OnSettingsChanged;
             _lobbyPanel?.Dispose();
         }
+
+        private static void OnSettingsChanged(GameSettings settings) => Lang.Apply(settings.Language);
 
         private void Update()
         {
@@ -139,7 +152,7 @@ namespace Lazpoly.Presentation.Menu
         private void RenderTitle(UiBuilder ui)
         {
             ui.Label("LAZPOLY", UiTextStyle.Title, UiTheme.Accent, TextAnchor.MiddleCenter);
-            ui.Label("Arkadaşlarınla ya da bilgisayara karşı mülk topla, kirayı topla, son kalan sen ol.", UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
+            ui.Label(L("Arkadaşlarınla ya da bilgisayara karşı mülk topla, kirayı topla, son kalan sen ol."), UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
         }
 
         private void RenderMain(UiBuilder ui)
@@ -157,14 +170,14 @@ namespace Lazpoly.Presentation.Menu
         {
             if (_savedGame != null)
             {
-                ui.Button("Kayıtlı Oyuna Devam Et", ResumeSavedGame, style: UiButtonStyle.Primary, height: 60f);
+                ui.Button(L("Kayıtlı Oyuna Devam Et"), ResumeSavedGame, style: UiButtonStyle.Primary, height: 60f);
                 ui.Space(10f);
             }
 
-            ui.Label("Nasıl oynamak istersin?", UiTextStyle.Heading);
-            ModeCard(ui, "Tek Oyunculu", "Sen ve bilgisayar rakipler. Rakip sayısını ve zorluğu seçersin.", Mode.Single);
-            ModeCard(ui, "Aynı Bilgisayarda", "2-8 kişi aynı ekranda sırayla oynar; istenen koltuğa bilgisayar da oturabilir.", Mode.Local);
-            ModeCard(ui, "Çevrim İçi (Steam)", "Oda kur, arkadaşlarını davet et ya da açık bir odaya katıl.", Mode.Online);
+            ui.Label(L("Nasıl oynamak istersin?"), UiTextStyle.Heading);
+            ModeCard(ui, L("Tek Oyunculu"), L("Sen ve bilgisayar rakipler. Rakip sayısını ve zorluğu seçersin."), Mode.Single);
+            ModeCard(ui, L("Aynı Bilgisayarda"), L("2-8 kişi aynı ekranda sırayla oynar; istenen koltuğa bilgisayar da oturabilir."), Mode.Local);
+            ModeCard(ui, L("Çevrim İçi (Steam)"), L("Oda kur, arkadaşlarını davet et ya da açık bir odaya katıl."), Mode.Online);
         }
 
         private void ModeCard(UiBuilder ui, string title, string description, Mode mode)
@@ -177,7 +190,7 @@ namespace Lazpoly.Presentation.Menu
         private void BackButton(UiBuilder ui, string title)
         {
             UiBuilder row = ui.Row(12f, expand: false);
-            UiBuilder.Fix(row.Button("< Geri", () => _mode = Mode.Home, height: UiTheme.SmallButtonHeight), width: 110f);
+            UiBuilder.Fix(row.Button(L("< Geri"), () => _mode = Mode.Home, height: UiTheme.SmallButtonHeight), width: 110f);
             UiBuilder.Fix(row.Label(title, UiTextStyle.Heading), -1f).flexibleWidth = 1f;
             ui.Space(4f);
         }
@@ -185,35 +198,35 @@ namespace Lazpoly.Presentation.Menu
         private void RenderTableLine(UiBuilder ui)
         {
             UiBuilder row = ui.Row(12f, expand: false);
-            UiBuilder.Fix(row.Label($"Masa: {TableSetup.Summary(TableSetup.Chosen, _boardMoney)}", UiTextStyle.Small, UiTheme.Muted), -1f).flexibleWidth = 1f;
-            UiBuilder.Fix(row.Button("Değiştir", OpenTableRules, height: UiTheme.SmallButtonHeight), width: 120f);
+            UiBuilder.Fix(row.Label(F($"Masa: {TableSetup.Summary(TableSetup.Chosen, _boardMoney)}"), UiTextStyle.Small, UiTheme.Muted), -1f).flexibleWidth = 1f;
+            UiBuilder.Fix(row.Button(L("Değiştir"), OpenTableRules, height: UiTheme.SmallButtonHeight), width: 120f);
         }
 
         private void RenderSingle(UiBuilder ui)
         {
-            BackButton(ui, "Tek Oyunculu");
+            BackButton(ui, L("Tek Oyunculu"));
             UiBuilder name = ui.Row();
-            UiBuilder.Fix(name.Label("Adın"), width: 150f);
+            UiBuilder.Fix(name.Label(L("Adın")), width: 150f);
             name.Input(_names[0], text => _names[0] = text, 24);
 
             UiBuilder count = ui.Row();
-            UiBuilder.Fix(count.Label("Rakip sayısı"), width: 150f);
+            UiBuilder.Fix(count.Label(L("Rakip sayısı")), width: 150f);
             count.Label(_opponents.ToString(), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
             UiBuilder.Fix(count.Button("-", () => _opponents--, _opponents > 1), width: 52f);
             UiBuilder.Fix(count.Button("+", () => _opponents++, _opponents < RulesConfig.AbsoluteMaxPlayers - 1), width: 52f);
 
             UiBuilder level = ui.Row();
-            UiBuilder.Fix(level.Label("Zorluk"), width: 150f);
+            UiBuilder.Fix(level.Label(L("Zorluk")), width: 150f);
             for (int i = 0; i < DifficultyNames.Length; i++)
             {
                 var difficulty = (AiDifficulty)(i + 1);
-                level.Button(DifficultyNames[i], () => _difficulty = difficulty,
+                level.Button(L(DifficultyNames[i]), () => _difficulty = difficulty,
                     style: _difficulty == difficulty ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
             ui.Space(6f);
             RenderTableLine(ui);
-            ui.Button("Oyunu Başlat", StartSingleGame, style: UiButtonStyle.Primary, height: 56f);
+            ui.Button(L("Oyunu Başlat"), StartSingleGame, style: UiButtonStyle.Primary, height: 56f);
         }
 
         private void RenderOnline(UiBuilder ui)
@@ -225,9 +238,9 @@ namespace Lazpoly.Presentation.Menu
 
         private void RenderLocalGame(UiBuilder ui)
         {
-            BackButton(ui, "Aynı Bilgisayarda");
+            BackButton(ui, L("Aynı Bilgisayarda"));
             UiBuilder count = ui.Row();
-            count.Label($"Oyuncu sayısı: {_playerCount}");
+            count.Label(F($"Oyuncu sayısı: {_playerCount}"));
             UiBuilder.Fix(count.Button("-", () => _playerCount--, _playerCount > RulesConfig.AbsoluteMinPlayers), width: 52f);
             UiBuilder.Fix(count.Button("+", () => _playerCount++, _playerCount < RulesConfig.AbsoluteMaxPlayers), width: 52f);
 
@@ -237,14 +250,14 @@ namespace Lazpoly.Presentation.Menu
                 UiBuilder row = ui.Row();
                 row.Swatch(PlayerPalette.ForSeat(seat), 22f);
                 row.Input(_names[seat], text => _names[seat] = text, 24);
-                UiBuilder.Fix(row.Button(SeatKinds[_seatKinds[seat]], () => _seatKinds[seat] = (_seatKinds[seat] + 1) % SeatKinds.Length,
+                UiBuilder.Fix(row.Button(L(SeatKinds[_seatKinds[seat]]), () => _seatKinds[seat] = (_seatKinds[seat] + 1) % SeatKinds.Length,
                     style: _seatKinds[seat] == 0 ? UiButtonStyle.Secondary : UiButtonStyle.Selected, height: UiTheme.FieldHeight), width: 130f);
             }
 
-            ui.Label("Koltuktaki düğmeye basarak insan ya da bilgisayar (Kolay, Orta, Zor) seçersin.", UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Koltuktaki düğmeye basarak insan ya da bilgisayar (Kolay, Orta, Zor) seçersin."), UiTextStyle.Small, UiTheme.Muted);
             ui.Space(6f);
             RenderTableLine(ui);
-            ui.Button("Oyunu Başlat", StartLocalGame, style: UiButtonStyle.Primary, height: 56f);
+            ui.Button(L("Oyunu Başlat"), StartLocalGame, style: UiButtonStyle.Primary, height: 56f);
         }
 
         private static int TableKey()
@@ -257,10 +270,10 @@ namespace Lazpoly.Presentation.Menu
         private void RenderTableRules(UiBuilder ui)
         {
             TableRules table = TableSetup.Chosen;
-            ui.Label("Masa Kuralları", UiTextStyle.Heading);
-            ui.Label("Yeni yerel oyunlarda ve kurduğun çevrim içi odalarda geçerli. Kayıtlı oyun kendi kurallarıyla sürer.", UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Masa Kuralları"), UiTextStyle.Heading);
+            ui.Label(L("Yeni yerel oyunlarda ve kurduğun çevrim içi odalarda geçerli. Kayıtlı oyun kendi kurallarıyla sürer."), UiTextStyle.Small, UiTheme.Muted);
 
-            ui.Label("Başlangıç parası");
+            ui.Label(L("Başlangıç parası"));
             UiBuilder money = ui.Row();
             foreach (int choice in TableSetup.StartingMoneyChoices)
             {
@@ -269,7 +282,7 @@ namespace Lazpoly.Presentation.Menu
                     style: table.StartingMoney == value ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
-            ui.Label("Oyun süresi");
+            ui.Label(L("Oyun süresi"));
             UiBuilder rounds = ui.Row();
             foreach (int choice in TableSetup.RoundLimitChoices)
             {
@@ -278,23 +291,23 @@ namespace Lazpoly.Presentation.Menu
                     style: table.RoundLimit == value ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
-            ui.Label(table.RoundLimit > 0 ? "Sınır dolunca parası, mülkleri ve binaları en değerli olan kazanır." : "Tek bir oyuncu kalana kadar sürer.",
+            ui.Label(table.RoundLimit > 0 ? L("Sınır dolunca parası, mülkleri ve binaları en değerli olan kazanır.") : L("Tek bir oyuncu kalana kadar sürer."),
                 UiTextStyle.Small, UiTheme.Muted);
-            ui.Toggle("Alınmayan mülk açık artırmaya çıksın", table.AuctionsEnabled, on => TableSetup.Chosen = TableSetup.Chosen.WithAuctions(on));
+            ui.Toggle(L("Alınmayan mülk açık artırmaya çıksın"), table.AuctionsEnabled, on => TableSetup.Chosen = TableSetup.Chosen.WithAuctions(on));
             ui.Space(6f);
-            ui.Button("Tamam", () => _tableLayer.SetActive(false), style: UiButtonStyle.Primary);
+            ui.Button(L("Tamam"), () => _tableLayer.SetActive(false), style: UiButtonStyle.Primary);
         }
 
         private void RenderFooter(UiBuilder ui)
         {
-            ui.Button("Nasıl Oynanır", () =>
+            ui.Button(L("Nasıl Oynanır"), () =>
             {
                 _howToLayer.SetActive(true);
                 _howToView.Invalidate();
             });
-            ui.Button("Masa Kuralları", OpenTableRules);
-            ui.Button("Ayarlar", OpenSettings);
-            ui.Button("Çıkış", Application.Quit, style: UiButtonStyle.Danger);
+            ui.Button(L("Masa Kuralları"), OpenTableRules);
+            ui.Button(L("Ayarlar"), OpenSettings);
+            ui.Button(L("Çıkış"), Application.Quit, style: UiButtonStyle.Danger);
         }
 
         private void OpenTableRules()
@@ -330,10 +343,10 @@ namespace Lazpoly.Presentation.Menu
         {
             var seats = new PlayerSeat[_opponents + 1];
             var ai = new Dictionary<int, AiDifficulty>();
-            seats[0] = new PlayerSeat(1, string.IsNullOrWhiteSpace(_names[0]) ? "Oyuncu 1" : _names[0].Trim());
+            seats[0] = new PlayerSeat(1, string.IsNullOrWhiteSpace(_names[0]) ? L("Oyuncu 1") : _names[0].Trim());
             for (int i = 1; i <= _opponents; i++)
             {
-                seats[i] = new PlayerSeat(i + 1, $"Bilgisayar {i}");
+                seats[i] = new PlayerSeat(i + 1, F($"Bilgisayar {i}"));
                 ai.Add(i + 1, _difficulty);
             }
 
