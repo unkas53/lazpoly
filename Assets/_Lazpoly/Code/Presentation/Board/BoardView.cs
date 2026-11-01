@@ -47,8 +47,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float PlaqueOffset = 0.04f;
         public const float PlaqueDepth = 0.32f;
 
-        private GameObject[] _ownerMarkers;
-        private GameObject[] _pennants;
+        private OwnerMarker[] _ownerMarkers;
         private Vector3[] _flagScale;
         private int[] _levels;
         private Color?[] _ownerColors;
@@ -179,7 +178,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public void SetOwner(int squareIndex, Color? ownerColor)
         {
-            GameObject marker = _ownerMarkers[squareIndex];
+            OwnerMarker marker = _ownerMarkers[squareIndex];
             if (marker == null) return;
 
             _ownerColors[squareIndex] = ownerColor;
@@ -192,9 +191,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public void ClearOwner(int squareIndex, bool animate)
         {
-            GameObject flag = _ownerMarkers[squareIndex];
+            OwnerMarker flag = _ownerMarkers[squareIndex];
             if (flag == null) return;
-            if (animate && flag.activeInHierarchy && _animating.Add(flag.transform))
+            if (animate && flag.gameObject.activeInHierarchy && _animating.Add(flag.transform))
             {
                 StartCoroutine(Lower(flag.transform, _flagScale[squareIndex], () => SetOwner(squareIndex, null)));
                 return;
@@ -222,8 +221,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Raises the owner's flag on a square that was just bought: it grows up from the tile and settles.</summary>
         public void RaiseFlag(int squareIndex)
         {
-            GameObject flag = _ownerMarkers[squareIndex];
-            if (flag != null && flag.activeInHierarchy) StartCoroutine(Raise(flag.transform, _flagScale[squareIndex]));
+            OwnerMarker flag = _ownerMarkers[squareIndex];
+            if (flag != null && flag.gameObject.activeInHierarchy) StartCoroutine(Raise(flag.transform, _flagScale[squareIndex]));
         }
 
         private static IEnumerator Raise(Transform flag, Vector3 size)
@@ -269,14 +268,14 @@ namespace Lazpoly.Presentation.Tabletop
                 if (appears && animate) StartCoroutine(Drop(piece, _buildingRest[squareIndex][i]));
             }
 
-            // The flag gives way to the first building and returns when the last one is sold.
-            GameObject flag = _ownerMarkers[squareIndex];
+            // The tent (or flag) gives way to the first building and returns when the last one is sold.
+            OwnerMarker flag = _ownerMarkers[squareIndex];
             if (flag == null) return;
-            bool flagWasUp = flag.activeSelf;
+            bool flagWasUp = flag.gameObject.activeSelf;
             RefreshOwnerMarker(squareIndex);
-            if (animate && flagWasUp && !flag.activeSelf && _animating.Add(flag.transform))
+            if (animate && flagWasUp && !flag.gameObject.activeSelf && _animating.Add(flag.transform))
             {
-                flag.SetActive(true);
+                flag.gameObject.SetActive(true);
                 StartCoroutine(Lower(flag.transform, _flagScale[squareIndex], () => RefreshOwnerMarker(squareIndex)));
             }
         }
@@ -362,14 +361,14 @@ namespace Lazpoly.Presentation.Tabletop
 
         private void RefreshOwnerMarker(int squareIndex)
         {
-            GameObject marker = _ownerMarkers[squareIndex];
+            OwnerMarker marker = _ownerMarkers[squareIndex];
             Color? color = _ownerColors[squareIndex];
             GameObject frame = _ownerFrames[squareIndex];
-            marker.SetActive(color.HasValue && _levels[squareIndex] == 0);
+            marker.gameObject.SetActive(color.HasValue && _levels[squareIndex] == 0);
             frame.SetActive(color.HasValue);
             if (_buildings[squareIndex] != null) PaintBuildings(squareIndex);
             if (!color.HasValue) return;
-            Paint(_pennants[squareIndex], color.Value);
+            marker.Paint(color.Value);
             Paint(frame, color.Value);
         }
 
@@ -397,8 +396,7 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             _tile = tile;
-            _ownerMarkers = new GameObject[board.Count];
-            _pennants = new GameObject[board.Count];
+            _ownerMarkers = new OwnerMarker[board.Count];
             _flagScale = new Vector3[board.Count];
             _levels = new int[board.Count];
             _ownerColors = new Color?[board.Count];
@@ -448,17 +446,14 @@ namespace Lazpoly.Presentation.Tabletop
 
                 if (square.Type == SquareType.Property)
                 {
-                    // Owner flag: planted where the buildings will stand (the tile's inner half), pennant flying along the edge.
+                    // Owner marker: the owner's tent (or the flag) pitched on the tile's inner half, where the buildings will stand.
                     Vector3 outward = Outward(center);
-                    GameObject flag = BuildingParts.Flag("Owner flag", transform);
-                    flag.transform.localPosition = BuildingRowCenter(center);
-                    flag.transform.localRotation = Quaternion.LookRotation(-outward); // Its +X, the pennant, flies along the row.
-                    _flagScale[i] = new Vector3(tile * 0.5f, tile * 0.62f, tile * 0.5f);
-                    flag.transform.localScale = _flagScale[i];
-                    flag.SetActive(false);
-                    _ownerMarkers[i] = flag;
-                    _pennants[i] = flag.transform.Find(BuildingParts.PennantName).gameObject;
-                    _pennants[i].AddComponent<FlagWave>().Rest(_pennants[i].transform.localRotation, i * 0.9f);
+                    OwnerMarker marker = OwnerMarker.Create("Owner marker", transform, i * 0.9f);
+                    marker.Place(center, outward, tile, TileHeight, BuildingRowCenter(center));
+                    _flagScale[i] = marker.RestScale(tile);
+                    marker.transform.localScale = _flagScale[i];
+                    marker.gameObject.SetActive(false);
+                    _ownerMarkers[i] = marker;
 
                     // Owner frame: a rim in the owner's colour just around the tile, seen from any angle.
                     GameObject frame = ModelParts.Create("Owner frame", transform,

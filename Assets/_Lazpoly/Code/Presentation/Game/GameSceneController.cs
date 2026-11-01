@@ -462,13 +462,20 @@ namespace Lazpoly.Presentation.Game
             Probe.Players = players;
             if (PerfRun.Requested && !_isOnline && !Probe.IsRunning)
             {
-                Probe.StartRun(PerfRun.WarmUpSeconds, PerfRun.Seconds, sample =>
-                {
-                    string path = PerfProbe.WriteReport(sample);
-                    Debug.Log($"[Lazpoly] Perf report written to {path}");
-                    Application.Quit();
-                });
+                Probe.StartRun(PerfRun.WarmUpSeconds, PerfRun.Seconds, sample => StartCoroutine(FinishPerfRun(sample)));
             }
+        }
+
+        /// <summary>Writes the perf report, keeps a picture of the table it measured, and quits.</summary>
+        private IEnumerator FinishPerfRun(PerfSample sample)
+        {
+            string path = PerfProbe.WriteReport(sample);
+            Debug.Log($"[Lazpoly] Perf report written to {path}");
+            Debug.Log($"[Lazpoly] Perf screenshot: {Screenshots.Capture()}");
+            // The screenshot is written over the next frame; quitting at once would lose it.
+            yield return null;
+            yield return null;
+            Application.Quit();
         }
 
         /// <summary>Puts every pawn and owner marker where the state says, without animation.</summary>

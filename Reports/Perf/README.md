@@ -21,7 +21,7 @@ Lazpoly.exe -perf -screen-width 1920 -screen-height 1080 -screen-fullscreen 0
 ```
 
 Oyun ana menüyü atlayıp 8 bilgisayarlı masayı açar, ölçer, `lazpoly-perf.txt` dosyasını exe'nin yanına yazar ve
-kendini kapatır (yaklaşık 20 sn). Kalite ayarı oyuncunun kayıtlı ayarıdır; Orta kalite kapısı için ayarlardan Orta
+kendini kapatır (yaklaşık 20 sn). Kapanmadan önce masanın bir ekran görüntüsünü de `%USERPROFILE%\AppData\LocalLow\DefaultCompany\lazpoly\Screenshots` klasörüne kaydeder. Kalite ayarı oyuncunun kayıtlı ayarıdır; Orta kalite kapısı için ayarlardan Orta
 seçili olmalı. Oyun içinde **F3** kare hızı ve belleği anlık gösterir.
 
 Not: batch mod (`-batchmode -nographics`) gerçek çizim yapmadığından kare hızı için anlamsızdır; koşu pencereli modda

@@ -464,6 +464,23 @@ Plandaki "Görsel cila" bölümünün kalan sahne maddeleri.
 - Testler: `PerfTests` (FPS hesabı, kapılar, rapor metni, -perf bayrağı, ön ayarlar), `RenderingSetupTests` (kalite
   eşlemesi), `HotkeysTests` (F3/F11/F12).
 
+## Çadır: sahipli şehrin işareti
+
+Bayrağın yerini oyuncunun çadırı aldı. Şehir satın alınınca kare üstünde, piyonların arkasında, sahibin renginde bir
+kamp çadırı kurulur (kumaş sahibin rengi, dikişler aynı rengin koyu tonu; direkler, şeritler ve taban kendi renginde).
+İlk ev yapılınca çadır bayrak gibi yere iner, son bina satılınca geri gelir; şehir satılınca kalkar.
+
+- Kaynak model: `Tools/Art/Models/CampTent` (OBJ + MTL, Blender dosyası, model bilgisi). Oyun bu klasörü doğrudan kullanmaz.
+- `python3 Tools/Art/make_tent.py` ipleri, kazıkları ve ip etiketlerini kırpar, çadırı ortalayıp boyunu 1 birime getirir ve
+  `Assets/_Lazpoly/Data/Resources/Lazpoly/Models/camp_tent.txt` dosyasını yazar (1.116 üçgen, 5 parça). Model
+  değişirse yalnızca bu komut yeniden çalıştırılır.
+- `ObjModel` küçük bir OBJ okuyucudur (v/vn/f, nesne ve malzeme grupları, sağ elden sol ele çevirme). `TentParts` modeli
+  bir kez yükler, parça başına `ModelParts` malzemesi kurar ve `Paint` ile kumaşı boyar. `OwnerMarker` kare üstündeki
+  işarettir: model eksikse ya da okunamazsa uyarı verip eski bayrağa döner, oyun durmaz.
+- Boyut ve yer: çadır karenin 0,30'u uzunluğunda, iç kenara yakın (`OwnerMarker.TentLength` / `TentOffset`); piyon
+  yuvalarıyla çakışmaz.
+- Testler: `ObjModelTests` (okuyucu, kırpılmış çadır dosyası, boyama ve yerleşim).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
