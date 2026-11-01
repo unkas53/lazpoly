@@ -48,7 +48,7 @@ namespace Lazpoly.Presentation.UI
 
         public static RectTransform Stretch(Transform parent, string name) => Rect(parent, name, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-        public static Image Background(RectTransform rect, Color color, bool rounded = true)
+        public static Image Background(RectTransform rect, Color color, bool rounded = true, bool shadow = false)
         {
             var image = rect.gameObject.AddComponent<Image>();
             image.color = color;
@@ -58,6 +58,27 @@ namespace Lazpoly.Presentation.UI
                 image.type = Image.Type.Sliced;
             }
 
+            if (shadow) AddShadow(rect.gameObject, 4f);
+            return image;
+        }
+
+        /// <summary>A soft drop shadow under an image, so panels and buttons lift off the scene behind them.</summary>
+        public static Shadow AddShadow(GameObject element, float distance)
+        {
+            var shadow = element.AddComponent<Shadow>();
+            shadow.effectColor = UiTheme.ShadowColor;
+            shadow.effectDistance = new Vector2(0f, -distance);
+            shadow.useGraphicAlpha = true;
+            return shadow;
+        }
+
+        /// <summary>A panel with a thin accent line along its top edge, the look shared by every fixed panel.</summary>
+        public static Image Panel(RectTransform rect)
+        {
+            Image image = Background(rect, UiTheme.Panel, shadow: true);
+            RectTransform trim = Rect(rect, "Trim", new Vector2(0f, 1f), Vector2.one, new Vector2(14f, -3f), new Vector2(-14f, -1f));
+            Image line = Background(trim, UiTheme.Accent, rounded: false);
+            line.raycastTarget = false;
             return image;
         }
 
@@ -114,7 +135,7 @@ namespace Lazpoly.Presentation.UI
 
             RectTransform window = Rect(dim, "Window", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             window.sizeDelta = new Vector2(width, 0f);
-            Background(window, UiTheme.Panel);
+            Panel(window);
             UiBuilder.AddColumnLayout(window.gameObject, UiTheme.Padding + 8, UiTheme.Spacing);
             window.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             UiFadeIn.Attach(layer, window);

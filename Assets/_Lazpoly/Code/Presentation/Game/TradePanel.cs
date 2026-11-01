@@ -162,7 +162,7 @@ namespace Lazpoly.Presentation.Game
                 any = true;
                 int index = square;
                 bool chosen = selected.Contains(square);
-                bool locked = GameRules.GroupHasBuildings(board, state, square);
+                bool locked = GameRules.HasBuildings(state, square);
                 string label = board[square].Name + (state.IsMortgaged(square) ? L(" (ipotekli)") : "") + (locked ? L(" (binalı)") : "");
 
                 UiBuilder row = list.Row(8f, expand: false);
@@ -175,7 +175,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             if (!any) list.Label(L("Mülk yok."), UiTextStyle.Small);
-            else list.Label(L("Binalı renkler önce bina satılınca takas edilir."), UiTextStyle.Small, UiTheme.Muted);
+            else list.Label(L("Binalı şehirler önce bina satılınca takas edilir."), UiTextStyle.Small, UiTheme.Muted);
         }
 
         private static void RenderMoneyField(UiBuilder ui, string value, System.Action<string> changed)

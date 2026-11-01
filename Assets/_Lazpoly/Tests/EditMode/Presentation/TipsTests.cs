@@ -89,11 +89,14 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void OwningAWholeColourSuggestsBuilding()
+        public void ArrivingOnYourOwnTownSuggestsBuilding()
         {
             GameState state = State();
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(1, GameState.NoOwner, 1));
-            GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(2, GameState.NoOwner, 1));
+            Assert.AreNotEqual(TipId.CanBuild, Next(state, 1, null, TipId.FirstRoll), "Away from the town there is nothing to build.");
+
+            GameStateReducer.Apply(state, new PlayerMovedEvent(1, 0, 1, false));
+            GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.TurnEnd));
             Assert.AreEqual(TipId.CanBuild, Next(state, 1, null, TipId.FirstRoll));
         }
 

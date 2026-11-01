@@ -112,12 +112,12 @@ namespace Lazpoly.Presentation.Menu
             Canvas canvas = UiRoot.CreateCanvas(transform, "Main Menu UI", 0);
             UiRoot.Background(UiRoot.Stretch(canvas.transform, "Backdrop"), UiTheme.Veil, rounded: false);
 
-            RectTransform title = UiRoot.Rect(canvas.transform, "Title", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-600f, -150f), new Vector2(600f, -40f));
+            RectTransform title = UiRoot.Rect(canvas.transform, "Title", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-600f, -160f), new Vector2(600f, -30f));
             _titleView = new UiView(new UiBuilder(title), RenderTitle);
-            UiBuilder.AddColumnLayout(title.gameObject, 0, 4f);
+            UiBuilder.AddColumnLayout(title.gameObject, 0, 2f);
 
-            RectTransform main = UiRoot.Rect(canvas.transform, "Main Panel", new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(-420f, 120f), new Vector2(420f, -170f));
-            UiRoot.Background(main, UiTheme.Panel);
+            RectTransform main = UiRoot.Rect(canvas.transform, "Main Panel", new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(-420f, 120f), new Vector2(420f, -176f));
+            UiRoot.Panel(main);
             _mainView = new UiView(UiRoot.ScrollPanel(main, 28), RenderMain);
 
             RectTransform footer = UiRoot.Rect(canvas.transform, "Footer", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-600f, 40f), new Vector2(600f, 96f));
@@ -150,9 +150,15 @@ namespace Lazpoly.Presentation.Menu
             if (_howToLayer.activeSelf) _howToView.Refresh(TableKey());
         }
 
+        /// <summary>The game's mark: a flag beside the name, the tagline underneath.</summary>
         private void RenderTitle(UiBuilder ui)
         {
-            ui.Label("LAZPOLY", UiTextStyle.Title, UiTheme.Accent, TextAnchor.MiddleCenter);
+            UiBuilder row = ui.Row(16f, expand: false);
+            var centre = row.Container.GetComponent<HorizontalLayoutGroup>();
+            centre.childAlignment = TextAnchor.MiddleCenter;
+            row.Icon(UiIcon.Flag, 64f, UiTheme.Accent);
+            Text name = row.Label("LAZPOLY", UiTextStyle.Title, UiTheme.Accent, TextAnchor.MiddleCenter);
+            UiRoot.AddShadow(name.gameObject, 3f);
             ui.Label(L("Arkadaşlarınla ya da bilgisayara karşı mülk topla, kirayı topla, son kalan sen ol."), UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
         }
 
@@ -171,21 +177,25 @@ namespace Lazpoly.Presentation.Menu
         {
             if (_savedGame != null)
             {
-                ui.Button(L("Kayıtlı Oyuna Devam Et"), ResumeSavedGame, style: UiButtonStyle.Primary, height: 60f);
+                ui.IconButton(UiIcon.Bookmark, L("Kayıtlı Oyuna Devam Et"), ResumeSavedGame, style: UiButtonStyle.Primary, height: 60f);
                 ui.Space(10f);
             }
 
             ui.Label(L("Nasıl oynamak istersin?"), UiTextStyle.Heading);
-            ModeCard(ui, L("Tek Oyunculu"), L("Sen ve bilgisayar rakipler. Rakip sayısını ve zorluğu seçersin."), Mode.Single);
-            ModeCard(ui, L("Aynı Bilgisayarda"), L("2-8 kişi aynı ekranda sırayla oynar; istenen koltuğa bilgisayar da oturabilir."), Mode.Local);
-            ModeCard(ui, L("Çevrim İçi (Steam)"), L("Oda kur, arkadaşlarını davet et ya da açık bir odaya katıl."), Mode.Online);
+            ModeCard(ui, UiIcon.Dice, L("Tek Oyunculu"), L("Sen ve bilgisayar rakipler. Rakip sayısını ve zorluğu seçersin."), Mode.Single);
+            ModeCard(ui, UiIcon.People, L("Aynı Bilgisayarda"), L("2-8 kişi aynı ekranda sırayla oynar; istenen koltuğa bilgisayar da oturabilir."), Mode.Local);
+            ModeCard(ui, UiIcon.Network, L("Çevrim İçi (Steam)"), L("Oda kur, arkadaşlarını davet et ya da açık bir odaya katıl."), Mode.Online);
         }
 
-        private void ModeCard(UiBuilder ui, string title, string description, Mode mode)
+        /// <summary>One way to play: an icon, the name and a line about it, all on one clickable tile.</summary>
+        private void ModeCard(UiBuilder ui, UiIcon icon, string title, string description, Mode mode)
         {
-            UiBuilder card = ui.Card(padding: 14);
-            card.Button(title, () => _mode = mode, style: UiButtonStyle.Primary, height: 56f);
-            card.Label(description, UiTextStyle.Small);
+            UiBuilder tile = ui.Tile(() => _mode = mode, padding: 16);
+            UiBuilder row = tile.Row(16f, expand: false);
+            row.Icon(icon, 48f, UiTheme.Accent);
+            UiBuilder text = row.Column();
+            text.Label(title, UiTextStyle.Heading);
+            text.Label(description, UiTextStyle.Small);
         }
 
         private void BackButton(UiBuilder ui, string title)
@@ -271,7 +281,7 @@ namespace Lazpoly.Presentation.Menu
         private void RenderTableRules(UiBuilder ui)
         {
             TableRules table = TableSetup.Chosen;
-            ui.Label(L("Masa Kuralları"), UiTextStyle.Heading);
+            ui.Title(UiIcon.List, L("Masa Kuralları"));
             ui.Label(L("Yeni yerel oyunlarda ve kurduğun çevrim içi odalarda geçerli. Kayıtlı oyun kendi kurallarıyla sürer."), UiTextStyle.Small, UiTheme.Muted);
 
             ui.Label(L("Başlangıç parası"));
@@ -301,14 +311,14 @@ namespace Lazpoly.Presentation.Menu
 
         private void RenderFooter(UiBuilder ui)
         {
-            ui.Button(L("Nasıl Oynanır"), () =>
+            ui.IconButton(UiIcon.Book, L("Nasıl Oynanır"), () =>
             {
                 _howToLayer.SetActive(true);
                 _howToView.Invalidate();
             });
-            ui.Button(L("Masa Kuralları"), OpenTableRules);
-            ui.Button(L("Ayarlar"), OpenSettings);
-            ui.Button(L("Çıkış"), Application.Quit, style: UiButtonStyle.Danger);
+            ui.IconButton(UiIcon.List, L("Masa Kuralları"), OpenTableRules);
+            ui.IconButton(UiIcon.Sliders, L("Ayarlar"), OpenSettings);
+            ui.IconButton(UiIcon.Door, L("Çıkış"), Application.Quit, style: UiButtonStyle.Danger);
         }
 
         private void OpenTableRules()

@@ -491,7 +491,11 @@ namespace Lazpoly.Presentation.Game
                     case PropertyOwnerChangedEvent owner:
                         _board.SetOwner(owner.SquareIndex,
                             owner.NewOwnerId == GameState.NoOwner ? (Color?)null : ColorOf(owner.NewOwnerId));
-                        if (owner.NewOwnerId != GameState.NoOwner) _board.PulseOwner(owner.SquareIndex);
+                        if (owner.NewOwnerId != GameState.NoOwner)
+                        {
+                            _board.PulseOwner(owner.SquareIndex);
+                            _board.RaiseFlag(owner.SquareIndex);
+                        }
                         break;
                     case PlayerBankruptedEvent bankrupt:
                         yield return _pawns[bankrupt.PlayerId].Topple();

@@ -175,7 +175,9 @@ namespace Lazpoly.App.Tests
             GameState state = NewState();
             Own(state, A1, Me);
             Own(state, A2, Me);
+            Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Normal), "Nothing to build away from its towns.");
 
+            Apply(state, new PlayerMovedEvent(Me, 0, A1, false));
             Assert.IsInstanceOf<BuildCommand>(Decide(state, Me, AiDifficulty.Normal));
 
             SetMoney(state, Me, 120);
@@ -233,14 +235,15 @@ namespace Lazpoly.App.Tests
             Own(state, A1, Me);
             Own(state, A2, Me);
             Own(state, Solo, Me);
+            Apply(state, new PlayerMovedEvent(Me, 0, A1, false));
             SetMoney(state, Me, 100);
 
             Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Normal), "Normal waits until it can pay from its spare money.");
             var mortgage = Decide(state, Me, AiDifficulty.Hard) as MortgageCommand;
             Assert.IsNotNull(mortgage, "Hard should raise the money for a house.");
-            Assert.AreEqual(Solo, mortgage.SquareIndex);
+            Assert.AreNotEqual(A1, mortgage.SquareIndex, "Never the town it is building on.");
 
-            Apply(state, new MortgageChangedEvent(Solo, true), new MoneyChangedEvent(Me, Board[Solo].MortgageValue, MoneyReason.Mortgage));
+            Apply(state, new MortgageChangedEvent(mortgage.SquareIndex, true), new MoneyChangedEvent(Me, Board[mortgage.SquareIndex].MortgageValue, MoneyReason.Mortgage));
             Assert.IsInstanceOf<BuildCommand>(Decide(state, Me, AiDifficulty.Hard), "The mortgage pays for a house, it is not bought back at once.");
         }
 

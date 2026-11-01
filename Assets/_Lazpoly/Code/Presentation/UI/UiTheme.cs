@@ -38,6 +38,7 @@ namespace Lazpoly.Presentation.UI
         public static readonly Color Accent = new Color(0.98f, 0.70f, 0.24f);
         public static readonly Color Warning = new Color(0.96f, 0.47f, 0.40f);
         public static readonly Color Gain = new Color(0.48f, 0.84f, 0.56f);
+        public static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.38f);
 
         private static readonly Color PrimaryFill = Accent;
         private static readonly Color SecondaryFill = new Color(0.22f, 0.33f, 0.42f);

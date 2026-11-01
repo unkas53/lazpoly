@@ -3,9 +3,10 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Models
 {
     /// <summary>
-    /// The pieces that stand on a property: a timber house with a tiled roof, and the "konak", a
-    /// two-storey mansion with a jutting upper floor, that stands in for the hotel. Each is a parent
-    /// object (base at y = 0, one unit wide and deep) holding coloured parts, so a board can scale it.
+    /// The pieces that stand on a property: a timber house with a tiled roof, the "konak", a
+    /// two-storey mansion with a jutting upper floor, that stands in for the hotel, and the owner's
+    /// flag. Each is a parent object (base at y = 0, one unit wide and deep) holding coloured parts,
+    /// so a board can scale it.
     /// </summary>
     public static class BuildingParts
     {
@@ -31,6 +32,32 @@ namespace Lazpoly.Presentation.Models
             Part(root, "Chimney", MeshFactory.Cylinder(8), DarkTimber, new Vector3(0.3f, 0.85f, 0.2f), new Vector3(0.06f, 0.25f, 0.06f));
             return root;
         }
+
+        /// <summary>The pennant of a flag made by <see cref="Flag"/>, the part painted in the owner's colour.</summary>
+        public const string PennantName = "Pennant";
+
+        public static readonly Color Pole = new Color(0.93f, 0.90f, 0.82f);
+
+        /// <summary>
+        /// An owner's flag: a slim pole one unit tall with a brass knob, and a pennant flying from its
+        /// top towards +X. The pennant is white until <see cref="ModelParts.Paint"/> colours it.
+        /// </summary>
+        public static GameObject Flag(string name, Transform parent)
+        {
+            GameObject root = Root(name, parent);
+            Part(root, "Pole", MeshFactory.Cylinder(10), Pole, Vector3.zero, new Vector3(0.05f, 1f, 0.05f));
+            Part(root, "Knob", MeshFactory.Lathe("knob", KnobProfile, 10), new Color(0.85f, 0.70f, 0.30f), new Vector3(0f, 1f, 0f), new Vector3(0.1f, 0.1f, 0.1f));
+            // The prism's apex (its local +Y) is turned to +X so the pennant tapers away from the pole.
+            Part(root, PennantName, MeshFactory.Prism(), Color.white, new Vector3(0.025f, 0.84f, 0f), new Vector3(0.03f, 0.55f, 0.28f),
+                Quaternion.LookRotation(Vector3.up, Vector3.right));
+            return root;
+        }
+
+        /// <summary>A ball (radius, height) for the flag's top.</summary>
+        private static readonly Vector2[] KnobProfile =
+        {
+            new Vector2(0f, 0f), new Vector2(0.7f, 0.1f), new Vector2(1f, 0.5f), new Vector2(0.7f, 0.9f), new Vector2(0f, 1f),
+        };
 
         private static GameObject Root(string name, Transform parent)
         {

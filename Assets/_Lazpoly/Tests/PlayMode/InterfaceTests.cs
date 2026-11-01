@@ -81,10 +81,10 @@ namespace Lazpoly.PlayTests
             var hud = Object.FindAnyObjectByType<GameHud>();
             Assert.IsNotNull(hud, "The game has no HUD.");
 
-            // Roll, decline every purchase, pass in every auction and end the turn: all through buttons.
+            // Roll, move on past every city (on its card), pass in every auction and end the turn: all through buttons.
             int soundsBefore = AudioPlayer.PlayedCount;
             // Rides are declined; of the two lookout rolls the first is taken (its button starts with a die).
-            string[] order = { "Zar At", "Alma", "Pas", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
+            string[] order = { "Zar At", "Devam Et", "Pas", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
             float started = Time.realtimeSinceStartup;
             while (controller.Session.State.TurnNumber < 6 && controller.Session.State.Phase != GamePhase.GameOver)
             {
@@ -94,7 +94,7 @@ namespace Lazpoly.PlayTests
 
                 foreach (string label in order)
                 {
-                    if (!Press(hud.SideContent, label)) continue;
+                    if (!Press(hud.transform, label)) continue;
                     Assert.IsNull(controller.LastRejection, $"'{label}' was offered but rejected.");
                     break;
                 }

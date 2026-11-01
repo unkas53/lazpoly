@@ -56,6 +56,28 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheFlagsPennantFliesAwayFromThePole()
+        {
+            var root = new GameObject("Flag Test");
+            try
+            {
+                GameObject flag = BuildingParts.Flag("Flag", root.transform);
+                Transform pennant = flag.transform.Find(BuildingParts.PennantName);
+                Assert.IsNotNull(pennant, "The flag has no pennant to paint.");
+                Vector3 tip = pennant.TransformPoint(new Vector3(0f, 1f, 0f));   // The prism's apex.
+                Vector3 foot = pennant.TransformPoint(new Vector3(0f, 0f, 0.5f)); // One end of its base.
+                Assert.Greater(tip.x, 0.4f, "The pennant's tip is not out along +X.");
+                Assert.Less(Mathf.Abs(foot.x), 0.1f, "The pennant's base is not on the pole.");
+                Assert.Greater(foot.y, 0.6f, "The pennant hangs too low.");
+                Assert.Greater(flag.transform.childCount, 2, "Pole, knob and pennant.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void EveryDieValueEndsOnTop()
         {
             for (int value = 1; value <= 6; value++)

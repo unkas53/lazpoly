@@ -25,9 +25,9 @@ namespace Lazpoly.Presentation.Texts
                 Section(L("Mülkler"), rules.AuctionsEnabled
                     ? L("Sahipsiz bir kareye gelince satın alabilirsin. Almazsan açık artırmaya çıkar ve en çok veren alır. Başkasının karesine gelen sahibine kira öder.")
                     : L("Sahipsiz bir kareye gelince satın alabilirsin; almazsan bankada kalır. Başkasının karesine gelen sahibine kira öder.")),
-                Section(L("Renkler ve evler"), F($"Bir rengin bütün kareleri sendeyse kira {rules.FullGroupRentMultiplier} katına çıkar ve ev kurabilirsin. Evler karelere eşit dağıtılır; dört evden sonra otel gelir.")),
+                Section(L("Şehirler ve evler"), F($"Satın aldığın şehre yeniden gelince ev kurabilirsin: ilk turda bir ev, sonraki turlarda dörde kadar. Dört evli şehre bir daha gelince otel kurulur. Bir rengin bütün kareleri sendeyse boş kirası {rules.FullGroupRentMultiplier} katına çıkar.")),
                 Section(L("Para sıkıntısı"), F($"Parası yetmeyen mülkünü ipotek edip değerinin yarısını alır; ipotekli kareden kira alınmaz. Geri almak %{rules.MortgageInterestPercent} faizlidir. Binalar maliyetinin %{rules.BuildingSellbackPercent} değerine geri satılır. Borcunu ödeyemeyen iflas eder.")),
-                Section(L("Takas"), L("Kendi sıranda başka bir oyuncuya para ve mülk karşılığında takas teklif edebilirsin. Binalı renkler takas edilemez.")),
+                Section(L("Takas"), L("Kendi sıranda başka bir oyuncuya para ve mülk karşılığında takas teklif edebilirsin. Binalı şehirler takas edilemez.")),
             };
 
             if (HasType(board, SquareType.Card)) sections.Add(Section(L("Sokak Haberi"), L("Bu kareye gelen bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));

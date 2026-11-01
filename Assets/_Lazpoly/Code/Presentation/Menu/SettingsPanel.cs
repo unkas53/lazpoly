@@ -40,7 +40,7 @@ namespace Lazpoly.Presentation.Menu
 
         public void Render(UiBuilder ui, Action close)
         {
-            ui.Label(L("Ayarlar"), UiTextStyle.Heading);
+            ui.Title(UiIcon.Sliders, L("Ayarlar"));
             if (_settings == null)
             {
                 ui.Label(L("Ayarlar kullanılamıyor."), UiTextStyle.Small);

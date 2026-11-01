@@ -222,6 +222,7 @@ namespace Lazpoly.App.Tests
             Assert.AreEqual(original.Snapshot.Players.Count, read.Snapshot.Players.Count);
             Assert.AreEqual(original.Snapshot.Players[1].Money, read.Snapshot.Players[1].Money);
             Assert.AreEqual(0, read.Snapshot.Pot);
+            Assert.AreEqual(GameState.NotArrived, read.Snapshot.BuiltThisVisit, "An old save does not know about the visit, so no building until the next move.");
             Assert.IsNull(read.Snapshot.DiceOptions);
             Assert.AreEqual(original.Snapshot.TurnNumber / 3 + 1, read.Snapshot.Round);
             Assert.AreEqual(original.AiPlayers.Count, read.AiPlayers.Count);

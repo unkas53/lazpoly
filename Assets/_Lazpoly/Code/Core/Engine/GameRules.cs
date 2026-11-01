@@ -165,17 +165,8 @@ namespace Lazpoly.Core.Engine
             }
         }
 
-        /// <summary>Whether any property of the square's group carries buildings (always false for group 0).</summary>
-        public static bool GroupHasBuildings(BoardDefinition board, GameState state, int squareIndex)
-        {
-            if (state.GetBuildingLevel(squareIndex) > 0) return true;
-            foreach (int square in GroupSquares(board, board[squareIndex].GroupId))
-            {
-                if (state.GetBuildingLevel(square) > 0) return true;
-            }
-
-            return false;
-        }
+        /// <summary>Whether the square carries houses or a hotel; such a town cannot be mortgaged or traded.</summary>
+        public static bool HasBuildings(GameState state, int squareIndex) => state.GetBuildingLevel(squareIndex) > 0;
 
         /// <summary>
         /// What a player is worth when a round-limited game is scored: money, plus each property at
@@ -242,45 +233,60 @@ namespace Lazpoly.Core.Engine
             return total;
         }
 
+        /// <summary>Houses a square may carry; the level above is the hotel.</summary>
+        public const int MaxHouses = SquareDefinition.MaxBuildingLevel - 1;
+
+        /// <summary>In the first round every town takes a single house; from the second round up to four.</summary>
+        public const int FirstRoundHouseLimit = 1;
+
+        /// <summary>
+        /// Building happens where the player arrived this turn: you own the town, you are on it, and
+        /// it is not mortgaged. The first round allows one house, later rounds up to four; the hotel
+        /// needs a later visit to a town that already has its four houses. Colour groups play no part.
+        /// </summary>
         private static RejectionReason CanBuild(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
         {
             RejectionReason owned = RequireOwnProperty(board, state, player, squareIndex);
             if (owned != RejectionReason.None) return owned;
-
-            SquareDefinition square = board[squareIndex];
-            int level = state.GetBuildingLevel(squareIndex);
-            if (!square.IsDevelopable || level >= SquareDefinition.MaxBuildingLevel) return RejectionReason.CannotBuild;
-            if (!OwnsWholeGroup(board, state, player.Id, square.GroupId)) return RejectionReason.CannotBuild;
-
-            foreach (int other in GroupSquares(board, square.GroupId))
-            {
-                if (state.IsMortgaged(other)) return RejectionReason.CannotBuild;
-                if (state.GetBuildingLevel(other) < level) return RejectionReason.CannotBuild; // Build evenly.
-            }
-
-            return player.Money >= square.BuildingCost ? RejectionReason.None : RejectionReason.InsufficientFunds;
+            if (BuildableNow(board, state, player, squareIndex) == 0) return RejectionReason.CannotBuild;
+            return player.Money >= board[squareIndex].BuildingCost ? RejectionReason.None : RejectionReason.InsufficientFunds;
         }
+
+        /// <summary>
+        /// How many buildings the player may still add to this square on the current visit, money
+        /// aside: the houses up to this round's limit, or one (the hotel) on a four-house town they
+        /// arrived at. Zero when they do not own it, have not arrived on it this turn, or it is mortgaged.
+        /// </summary>
+        public static int BuildableNow(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
+        {
+            if (player == null || squareIndex < 0 || squareIndex >= board.Count) return 0;
+            SquareDefinition square = board[squareIndex];
+            if (square.Type != SquareType.Property || !square.IsDevelopable) return 0;
+            if (state.GetOwner(squareIndex) != player.Id || player.Position != squareIndex || state.IsMortgaged(squareIndex)) return 0;
+            if (state.BuiltThisVisit == GameState.NotArrived || state.CurrentPlayer.Id != player.Id) return 0;
+
+            int level = state.GetBuildingLevel(squareIndex);
+            if (level >= SquareDefinition.MaxBuildingLevel) return 0;
+            if (level == MaxHouses) return state.BuiltThisVisit == 0 ? 1 : 0;
+            int limit = state.Round <= 1 ? FirstRoundHouseLimit : MaxHouses;
+            return Math.Max(0, limit - level);
+        }
+
+        /// <summary>True when the next building on this square would be the hotel.</summary>
+        public static bool NextIsHotel(GameState state, int squareIndex) => state.GetBuildingLevel(squareIndex) == MaxHouses;
 
         private static RejectionReason CanSell(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
         {
             RejectionReason owned = RequireOwnProperty(board, state, player, squareIndex);
             if (owned != RejectionReason.None) return owned;
-
-            int level = state.GetBuildingLevel(squareIndex);
-            if (level == 0) return RejectionReason.CannotSell;
-            foreach (int other in GroupSquares(board, board[squareIndex].GroupId))
-            {
-                if (state.GetBuildingLevel(other) > level) return RejectionReason.CannotSell; // Sell evenly.
-            }
-
-            return RejectionReason.None;
+            return state.GetBuildingLevel(squareIndex) == 0 ? RejectionReason.CannotSell : RejectionReason.None;
         }
 
         private static RejectionReason CanMortgage(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
         {
             RejectionReason owned = RequireOwnProperty(board, state, player, squareIndex);
             if (owned != RejectionReason.None) return owned;
-            if (state.IsMortgaged(squareIndex) || GroupHasBuildings(board, state, squareIndex)) return RejectionReason.CannotMortgage;
+            if (state.IsMortgaged(squareIndex) || HasBuildings(state, squareIndex)) return RejectionReason.CannotMortgage;
             return RejectionReason.None;
         }
 
@@ -322,7 +328,7 @@ namespace Lazpoly.Core.Engine
             {
                 if (square < 0 || square >= board.Count || !seen.Add(square)) return false;
                 if (board[square].Type != SquareType.Property || state.GetOwner(square) != ownerId) return false;
-                if (GroupHasBuildings(board, state, square)) return false; // Buildings must be sold first.
+                if (HasBuildings(state, square)) return false; // Buildings must be sold first.
             }
 
             return true;

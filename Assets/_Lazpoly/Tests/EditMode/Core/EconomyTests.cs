@@ -66,55 +66,101 @@ namespace Lazpoly.Core.Tests
             Assert.Throws<System.ArgumentOutOfRangeException>(() => new Rules.RulesConfig(1000, 0, 6, 3, 2, 10, -1));
         }
 
+        /// <summary>Puts a player on a square without a roll, the way a move event would.</summary>
+        private static void Stand(GameEngine engine, int playerId, int square) =>
+            GameStateReducer.Apply(engine.State, new PlayerMovedEvent(playerId, engine.State.FindPlayer(playerId).Position, square, false));
+
+        /// <summary>Advances the round counter: every seat takes a turn and play returns to the first.</summary>
+        private static void NextRound(GameEngine engine)
+        {
+            int first = engine.State.CurrentPlayerIndex;
+            int count = engine.State.Players.Count;
+            for (int step = 1; step <= count; step++)
+                GameStateReducer.Apply(engine.State, new TurnStartedEvent(engine.State.Players[(first + step) % count].Id));
+            GameStateReducer.Apply(engine.State, new PhaseChangedEvent(GamePhase.WaitingForRoll));
+        }
+
         [Test]
-        public void BuildingNeedsTheWholeGroupAndRaisesRent()
+        public void BuildingHappensWhereTheOwnerStandsAndNeedsNoGroup()
         {
             var engine = NewGame();
             Give(engine, A1, Alice);
-            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)), "Alice is not on A1.");
+            Assert.AreEqual(0, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1));
 
-            Give(engine, A2, Alice);
-            Assert.AreEqual(20, engine.CalculateRent(A1), "Whole group doubles the base rent.");
+            Stand(engine, Alice, A1);
+            Assert.AreEqual(1, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1));
             Accept(engine, new BuildCommand(Alice, A1));
 
             Assert.AreEqual(1, engine.State.GetBuildingLevel(A1));
             Assert.AreEqual(950, Money(engine, Alice));
-            Assert.AreEqual(50, engine.CalculateRent(A1));
+            Assert.AreEqual(50, engine.CalculateRent(A1), "A house raises the rent even without the rest of the colour.");
+            Assert.AreEqual(1, engine.State.BuiltThisVisit);
         }
 
         [Test]
-        public void BuildingAndSellingMustBeEvenAcrossTheGroup()
+        public void FirstRoundAllowsOneHouseLaterRoundsFour()
+        {
+            var engine = NewGame(money: 5000);
+            Give(engine, A1, Alice);
+            Stand(engine, Alice, A1);
+
+            Accept(engine, new BuildCommand(Alice, A1));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)), "One house in the first round.");
+
+            NextRound(engine);
+            Assert.AreEqual(2, engine.State.Round);
+            Assert.AreEqual(GameState.NotArrived, engine.State.BuiltThisVisit);
+            Assert.AreEqual(0, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1), "Standing still is not a visit.");
+            Stand(engine, Alice, A1);
+            Assert.AreEqual(3, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1));
+            for (int i = 0; i < 3; i++) Accept(engine, new BuildCommand(Alice, A1));
+            Assert.AreEqual(4, engine.State.GetBuildingLevel(A1));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)), "The hotel waits for a later visit.");
+        }
+
+        [Test]
+        public void TheHotelNeedsAReturnVisitToAFourHouseTown()
+        {
+            var engine = NewGame(money: 5000);
+            Give(engine, A1, Alice);
+            NextRound(engine);
+            Stand(engine, Alice, A1);
+            for (int i = 0; i < 4; i++) Accept(engine, new BuildCommand(Alice, A1));
+            Assert.IsTrue(GameRules.NextIsHotel(engine.State, A1));
+            Assert.AreEqual(0, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1));
+
+            Stand(engine, Alice, Solo);
+            Stand(engine, Alice, A1);
+            Assert.AreEqual(0, engine.State.BuiltThisVisit, "Moving starts a fresh visit.");
+            Assert.AreEqual(1, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1));
+            Accept(engine, new BuildCommand(Alice, A1));
+
+            Assert.AreEqual(SquareDefinition.MaxBuildingLevel, engine.State.GetBuildingLevel(A1));
+            Assert.AreEqual(700, engine.CalculateRent(A1));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)));
+        }
+
+        [Test]
+        public void SellingIsPerTownAndMortgagesExcludeOnlyThatTownsBuildings()
         {
             var engine = NewGame(money: 5000);
             Give(engine, A1, Alice);
             Give(engine, A2, Alice);
-
-            Accept(engine, new BuildCommand(Alice, A1));
-            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)));
-            Accept(engine, new BuildCommand(Alice, A2));
+            Stand(engine, Alice, A1);
             Accept(engine, new BuildCommand(Alice, A1));
 
+            Accept(engine, new MortgageCommand(Alice, A2));
+            Assert.AreEqual(RejectionReason.CannotMortgage, Reason(engine, new MortgageCommand(Alice, A1)), "A town with a house cannot be mortgaged.");
             Assert.AreEqual(RejectionReason.CannotSell, Reason(engine, new SellBuildingCommand(Alice, A2)));
+
             int before = Money(engine, Alice);
             Accept(engine, new SellBuildingCommand(Alice, A1));
             Assert.AreEqual(before + 25, Money(engine, Alice), "Buildings sell back at half price.");
-            Assert.AreEqual(1, engine.State.GetBuildingLevel(A1));
-        }
+            Assert.AreEqual(0, engine.State.GetBuildingLevel(A1));
 
-        [Test]
-        public void FifthLevelIsAHotelAndTheLast()
-        {
-            var engine = NewGame(money: 5000);
-            Give(engine, A1, Alice);
-            Give(engine, A2, Alice);
-            for (int level = 0; level < SquareDefinition.MaxBuildingLevel; level++)
-            {
-                Accept(engine, new BuildCommand(Alice, A1));
-                Accept(engine, new BuildCommand(Alice, A2));
-            }
-
-            Assert.AreEqual(700, engine.CalculateRent(A1));
-            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)));
+            Accept(engine, new MortgageCommand(Alice, A1));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)), "A mortgaged town takes no houses.");
         }
 
         [Test]
@@ -149,21 +195,6 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new RedeemCommand(Alice, A1));
             Assert.IsFalse(engine.State.IsMortgaged(A1));
             Assert.AreEqual(1030 - 33, Money(engine, Alice), "Redeeming costs the value plus 10%.");
-        }
-
-        [Test]
-        public void BuildingsAndMortgagesExcludeEachOther()
-        {
-            var engine = NewGame();
-            Give(engine, A1, Alice);
-            Give(engine, A2, Alice);
-
-            Accept(engine, new MortgageCommand(Alice, A2));
-            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)));
-            Accept(engine, new RedeemCommand(Alice, A2));
-            Accept(engine, new BuildCommand(Alice, A1));
-            Assert.AreEqual(RejectionReason.CannotMortgage, Reason(engine, new MortgageCommand(Alice, A2)),
-                "A group with buildings cannot be mortgaged.");
         }
 
         // ---- Auctions ----
@@ -270,9 +301,11 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(RejectionReason.InvalidTrade, Reason(engine, new ProposeTradeCommand(new TradeOffer(Alice, Bob, -5, 0, new[] { A1 }, null))));
             Assert.AreEqual(RejectionReason.InsufficientFunds, Reason(engine, new ProposeTradeCommand(new TradeOffer(Alice, Bob, 0, 6000, new[] { A1 }, null))));
 
+            Stand(engine, Alice, A1);
             Accept(engine, new BuildCommand(Alice, A1));
-            Assert.AreEqual(RejectionReason.InvalidTrade, Reason(engine, new ProposeTradeCommand(new TradeOffer(Alice, Bob, 0, 0, new[] { A2 }, new[] { Solo }))),
-                "Properties of a group with buildings cannot be traded.");
+            Assert.AreEqual(RejectionReason.InvalidTrade, Reason(engine, new ProposeTradeCommand(new TradeOffer(Alice, Bob, 0, 0, new[] { A1 }, new[] { Solo }))),
+                "A town with buildings cannot be traded.");
+            Accept(engine, new ProposeTradeCommand(new TradeOffer(Alice, Bob, 0, 0, new[] { A2 }, new[] { Solo })));
         }
 
         // ---- Debts and bankruptcy ----
@@ -369,7 +402,9 @@ namespace Lazpoly.Core.Tests
             var auction = NewGame(players: 3, money: 2000, dice: new[] { 1, 3 });
             Give(auction, A1, Alice);
             Give(auction, A2, Alice);
+            Stand(auction, Alice, A1);
             Accept(auction, new BuildCommand(Alice, A1));
+            Stand(auction, Alice, 0);
             Accept(auction, new RollDiceCommand(Alice));
             Accept(auction, new DeclinePurchaseCommand(Alice));
             Accept(auction, new PlaceBidCommand(Bob, 30));

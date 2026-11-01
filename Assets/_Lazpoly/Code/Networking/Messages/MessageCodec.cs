@@ -13,7 +13,7 @@ namespace Lazpoly.Net.Messages
     /// </summary>
     public static class MessageCodec
     {
-        public const int ProtocolVersion = 3;
+        public const int ProtocolVersion = 4;
 
         private enum CommandTag : byte
         {
@@ -355,6 +355,7 @@ namespace Lazpoly.Net.Messages
             w.WriteInt(s.WinnerId);
             w.WriteInt(s.Round);
             w.WriteInt(s.Pot);
+            w.WriteInt(s.BuiltThisVisit);
             w.WriteBool(s.DiceOptions != null);
             if (s.DiceOptions != null)
             {
@@ -408,8 +409,11 @@ namespace Lazpoly.Net.Messages
             }
         }
 
-        /// <summary>The snapshot layout written today.</summary>
-        public const int SnapshotVersion = 2;
+        /// <summary>The snapshot layout written today (Faz 8: adds the buildings-this-visit count).</summary>
+        public const int SnapshotVersion = 3;
+
+        /// <summary>The Faz 7c layout: round, pot, dice options and lookouts, no build count.</summary>
+        public const int TableSnapshotVersion = 2;
 
         /// <summary>The layout before the Faz 7c squares: no round, pot, dice options or lookouts.</summary>
         public const int LegacySnapshotVersion = 1;
@@ -423,7 +427,7 @@ namespace Lazpoly.Net.Messages
         /// </summary>
         public static GameStateSnapshot ReadSnapshot(NetReader r, int version)
         {
-            if (version != SnapshotVersion && version != LegacySnapshotVersion) throw new FormatException($"Snapshot layout {version} is not supported.");
+            if (version < LegacySnapshotVersion || version > SnapshotVersion) throw new FormatException($"Snapshot layout {version} is not supported.");
             bool legacy = version == LegacySnapshotVersion;
 
             var s = new GameStateSnapshot
@@ -441,6 +445,7 @@ namespace Lazpoly.Net.Messages
             {
                 s.Round = r.ReadInt();
                 s.Pot = r.ReadInt();
+                s.BuiltThisVisit = version >= SnapshotVersion ? r.ReadInt() : GameState.NotArrived;
                 if (r.ReadBool()) s.DiceOptions = new[] { r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt() };
             }
 

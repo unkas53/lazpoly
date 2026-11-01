@@ -101,6 +101,50 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TileRunsItsActionAndHoldsItsContent()
+        {
+            int clicks = 0;
+            var ui = new UiBuilder(_container);
+            UiBuilder tile = ui.Tile(() => clicks++);
+            tile.Label("Tek Oyunculu");
+            Button button = _container.GetComponentInChildren<Button>();
+            Assert.IsNotNull(button, "A tile is a button.");
+            Assert.IsNotNull(button.GetComponent<UiHover>(), "Buttons answer the pointer.");
+            Assert.AreEqual(1, button.GetComponentsInChildren<Text>().Length);
+            button.onClick.Invoke();
+            Assert.AreEqual(1, clicks);
+        }
+
+        [Test]
+        public void EveryIconIsDrawnFromShapesAndAnIconButtonCarriesOne()
+        {
+            var ui = new UiBuilder(_container);
+            foreach (UiIcon icon in System.Enum.GetValues(typeof(UiIcon)))
+            {
+                RectTransform drawn = ui.Icon(icon, 24f);
+                Assert.GreaterOrEqual(drawn.GetComponentsInChildren<Image>().Length, 2, $"{icon} has too few shapes.");
+                foreach (Image shape in drawn.GetComponentsInChildren<Image>()) Assert.IsFalse(shape.raycastTarget, $"{icon} would take clicks.");
+            }
+
+            Button button = ui.IconButton(UiIcon.Door, "Çıkış", () => { });
+            Assert.AreEqual("Çıkış", button.GetComponentInChildren<Text>().text);
+            Assert.IsTrue(button.transform.Find("Icon Door") != null, "The icon sits inside the button.");
+        }
+
+        [Test]
+        public void CircleSpriteIsRoundAndRoundSwatchesUseIt()
+        {
+            Assert.AreEqual(1f, UiSprites.CircleCoverage(16, 16));
+            Assert.AreEqual(0f, UiSprites.CircleCoverage(0, 0));
+            Assert.AreEqual(0f, UiSprites.CircleCoverage(31, 31));
+            Assert.AreSame(UiSprites.Circle, UiSprites.Circle);
+
+            var ui = new UiBuilder(_container);
+            Assert.AreSame(UiSprites.Circle, ui.Swatch(Color.red, 20f, round: true).sprite);
+            Assert.AreSame(UiSprites.Rounded, ui.Swatch(Color.red, 20f).sprite);
+        }
+
+        [Test]
         public void RoundedSpriteIsOpaqueInsideAndClearInTheCorner()
         {
             Assert.AreEqual(1f, UiSprites.Coverage(16, 16));

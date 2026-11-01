@@ -29,34 +29,55 @@ namespace Lazpoly.Presentation.Tests
         private static void Own(GameState state, int square, int owner) =>
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(square, GameState.NoOwner, owner));
 
-        [Test]
-        public void NamesTheSquaresStillMissingFromTheGroup()
+        private static void Arrive(GameState state, int player, int square)
         {
-            GameState state = State();
-            Own(state, 1, 1);
-            Own(state, 2, 2);
-            Assert.AreEqual("Ev için bu rengin tamamı gerekli; eksik: Kuru Yolu.", BuildHint.For(Board, state, 1, 1));
+            GameStateReducer.Apply(state, new PlayerMovedEvent(player, state.FindPlayer(player).Position, square, false));
+            GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.TurnEnd));
+        }
+
+        private static void SecondRound(GameState state)
+        {
+            GameStateReducer.Apply(state, new TurnStartedEvent(2));
+            GameStateReducer.Apply(state, new TurnStartedEvent(1));
+            GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.WaitingForRoll));
         }
 
         [Test]
-        public void AsksToRedeemAMortgagedSquareFirst()
+        public void AsksToComeToTheTownFirst()
         {
             GameState state = State();
             Own(state, 1, 1);
-            Own(state, 2, 1);
-            GameStateReducer.Apply(state, new MortgageChangedEvent(2, true));
-            Assert.AreEqual("Bu renkte ipotekli kare var; önce onu kurtar.", BuildHint.For(Board, state, 1, 1));
+            Assert.AreEqual("Ev ya da otel, kendi sıranda bu şehre gelince kurulur.", BuildHint.For(Board, state, 1, 1));
         }
 
         [Test]
-        public void AsksToBuildEvenly()
+        public void AsksToRedeemAMortgagedTownFirst()
         {
             GameState state = State();
             Own(state, 1, 1);
-            Own(state, 2, 1);
+            Arrive(state, 1, 1);
+            GameStateReducer.Apply(state, new MortgageChangedEvent(1, true));
+            Assert.AreEqual("İpotekli: bina kurmak için önce kurtar.", BuildHint.For(Board, state, 1, 1));
+        }
+
+        [Test]
+        public void ExplainsTheFirstRoundLimitAndTheHotelVisit()
+        {
+            GameState state = State();
+            Own(state, 1, 1);
+            Arrive(state, 1, 1);
             GameStateReducer.Apply(state, new BuildingLevelChangedEvent(1, 1));
-            StringAssert.StartsWith("Evler eşit kurulur", BuildHint.For(Board, state, 1, 1));
-            Assert.IsNull(BuildHint.For(Board, state, 1, 2), "The lower square can be built on.");
+            StringAssert.StartsWith("İlk turda her şehre tek ev", BuildHint.For(Board, state, 1, 1));
+
+            SecondRound(state);
+            Arrive(state, 1, 1);
+            for (int level = 2; level <= 4; level++) GameStateReducer.Apply(state, new BuildingLevelChangedEvent(1, level));
+            Assert.AreEqual("Otel, dört evli şehre bir sonraki gelişinde kurulur.", BuildHint.For(Board, state, 1, 1));
+
+            Arrive(state, 1, 1);
+            Assert.IsNull(BuildHint.For(Board, state, 1, 1), "A fresh visit allows the hotel.");
+            GameStateReducer.Apply(state, new BuildingLevelChangedEvent(1, 5));
+            Assert.AreEqual("En yüksek seviyede (otel).", BuildHint.For(Board, state, 1, 1));
         }
 
         [Test]
@@ -64,7 +85,7 @@ namespace Lazpoly.Presentation.Tests
         {
             GameState state = State(money: 30);
             Own(state, 1, 1);
-            Own(state, 2, 1);
+            Arrive(state, 1, 1);
             Assert.AreEqual("Ev için 50 gerekli, paran yetmiyor.", BuildHint.For(Board, state, 1, 1));
         }
 
@@ -73,8 +94,8 @@ namespace Lazpoly.Presentation.Tests
         {
             GameState state = State();
             Own(state, 1, 2);
-            Own(state, 2, 2);
-            StringAssert.StartsWith("Ev, kendi sıranda", BuildHint.For(Board, state, 2, 1));
+            GameStateReducer.Apply(state, new PlayerMovedEvent(2, 0, 1, false));
+            StringAssert.StartsWith("Ev ya da otel, kendi sıranda", BuildHint.For(Board, state, 2, 1));
         }
 
         [Test]
@@ -82,8 +103,8 @@ namespace Lazpoly.Presentation.Tests
         {
             GameState state = State();
             Own(state, 1, 1);
-            Own(state, 2, 1);
             Own(state, 3, 1);
+            Arrive(state, 1, 1);
             Assert.IsNull(BuildHint.For(Board, state, 1, 3));
             Assert.IsNull(BuildHint.For(Board, state, 1, 1));
         }

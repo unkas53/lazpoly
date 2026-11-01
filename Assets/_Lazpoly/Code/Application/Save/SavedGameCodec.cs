@@ -12,7 +12,7 @@ namespace Lazpoly.App.Save
     /// </summary>
     public static class SavedGameCodec
     {
-        public const int FormatVersion = 2;
+        public const int FormatVersion = 3;
         public const int OldestReadableVersion = 1;
         private const ulong Magic = 0x4C415A504F4C5953UL; // "LAZPOLYS"
 
@@ -44,6 +44,10 @@ namespace Lazpoly.App.Save
             MessageCodec.WriteSnapshot(w, save.Snapshot);
             return w.ToArray();
         }
+
+        /// <summary>Save format 1 wrote the legacy snapshot, format 2 the table-rules one, format 3 the current one.</summary>
+        private static int SnapshotVersionOf(int saveVersion) =>
+            saveVersion >= 3 ? MessageCodec.SnapshotVersion : saveVersion == 2 ? MessageCodec.TableSnapshotVersion : MessageCodec.LegacySnapshotVersion;
 
         /// <summary>Reads a save of this or an older readable version. Throws <see cref="FormatException"/> for anything else.</summary>
         public static SavedGame Decode(byte[] data)
@@ -77,7 +81,7 @@ namespace Lazpoly.App.Save
             }
 
             save.Table = version >= 2 ? MessageCodec.ReadTable(r) : Core.Rules.TableRules.Default;
-            save.Snapshot = MessageCodec.ReadSnapshot(r, version >= 2 ? MessageCodec.SnapshotVersion : MessageCodec.LegacySnapshotVersion);
+            save.Snapshot = MessageCodec.ReadSnapshot(r, SnapshotVersionOf(version));
             if (!r.AtEnd) throw new FormatException("Unexpected data after the save.");
             return save;
         }

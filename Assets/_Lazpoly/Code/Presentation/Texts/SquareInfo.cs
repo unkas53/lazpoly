@@ -134,7 +134,7 @@ namespace Lazpoly.Presentation.Texts
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
             info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : mortgaged ? F($"Sahibi {ownerName} (ipotekli, kira alınmaz).") : F($"Sahibi {ownerName}."));
             info.Notes.Add(GroupNote(board, state, square.GroupId));
-            if (square.IsDevelopable) info.Notes.Add(L("Ev kurmak için rengin bütün kareleri aynı oyuncuda olmalı."));
+            if (square.IsDevelopable) info.Notes.Add(L("Sahibi şehre yeniden gelince ev kurar: ilk turda bir, sonra dörde kadar; dört evden sonra otel."));
             return info;
         }
 

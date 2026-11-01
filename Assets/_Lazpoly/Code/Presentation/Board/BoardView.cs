@@ -37,6 +37,8 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color TitleColor = new Color(0.95f, 0.86f, 0.55f);
 
         private GameObject[] _ownerMarkers;
+        private GameObject[] _pennants;
+        private Vector3[] _flagScale;
         private Color?[] _ownerColors;
         private bool[] _mortgaged;
         private GameObject[][] _buildings;
@@ -100,7 +102,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (_pot != null) _pot.text = F($"Çay kumbarası\n{amount}");
         }
 
-        /// <summary>Shows who owns a square; pass null to show it as unowned.</summary>
+        /// <summary>Shows who owns a square with a flag in their colour; pass null to show it as unowned.</summary>
         public void SetOwner(int squareIndex, Color? ownerColor)
         {
             GameObject marker = _ownerMarkers[squareIndex];
@@ -108,6 +110,26 @@ namespace Lazpoly.Presentation.Tabletop
 
             _ownerColors[squareIndex] = ownerColor;
             RefreshOwnerMarker(squareIndex);
+        }
+
+        /// <summary>Raises the owner's flag on a square that was just bought: it grows up from the tile and settles.</summary>
+        public void RaiseFlag(int squareIndex)
+        {
+            GameObject flag = _ownerMarkers[squareIndex];
+            if (flag != null && flag.activeInHierarchy) StartCoroutine(Raise(flag.transform, _flagScale[squareIndex]));
+        }
+
+        private static IEnumerator Raise(Transform flag, Vector3 size)
+        {
+            const float seconds = 0.6f;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                if (flag == null) yield break;
+                flag.localScale = new Vector3(size.x, size.y * Mathf.Max(0.02f, Ease.OutBack(t)), size.z);
+                yield return null;
+            }
+
+            if (flag != null) flag.localScale = size;
         }
 
         /// <summary>A mortgaged property shows its owner marker dimmed.</summary>
@@ -182,7 +204,7 @@ namespace Lazpoly.Presentation.Tabletop
             frame.SetActive(color.HasValue);
             if (!color.HasValue) return;
             Color shown = _mortgaged[squareIndex] ? Color.Lerp(color.Value, Color.black, 0.65f) : color.Value;
-            Paint(marker, shown);
+            Paint(_pennants[squareIndex], shown);
             Paint(frame, shown);
         }
 
@@ -211,6 +233,8 @@ namespace Lazpoly.Presentation.Tabletop
 
             _tile = tile;
             _ownerMarkers = new GameObject[board.Count];
+            _pennants = new GameObject[board.Count];
+            _flagScale = new Vector3[board.Count];
             _ownerColors = new Color?[board.Count];
             _mortgaged = new bool[board.Count];
             _buildings = new GameObject[board.Count][];
@@ -250,13 +274,17 @@ namespace Lazpoly.Presentation.Tabletop
 
                 if (square.Type == SquareType.Property)
                 {
-                    // Owner token: a coloured disc on the band, beside the price.
-                    GameObject marker = ModelParts.Create("Owner", transform, MeshFactory.Lathe("owner", OwnerProfile), Color.white, 0.5f);
-                    marker.transform.localPosition = center + Outward(center) * (tile * 0.35f) + Vector3.up * (TileHeight + 0.03f) +
-                                                     Vector3.Cross(Vector3.up, Outward(center)) * (tile * 0.33f);
-                    marker.transform.localScale = Vector3.one * tile * 0.5f;
-                    marker.SetActive(false);
-                    _ownerMarkers[i] = marker;
+                    // Owner flag: planted on the band at the tile's outer corner, pennant flying along the edge.
+                    Vector3 outward = Outward(center);
+                    Vector3 along = Vector3.Cross(Vector3.up, outward);
+                    GameObject flag = BuildingParts.Flag("Owner flag", transform);
+                    flag.transform.localPosition = center + outward * (tile * 0.36f) + along * (tile * 0.38f) + Vector3.up * (TileHeight + 0.02f);
+                    flag.transform.localRotation = Quaternion.LookRotation(-outward); // Its +X, the pennant, flies back along the band.
+                    _flagScale[i] = new Vector3(tile * 0.5f, tile * 0.62f, tile * 0.5f);
+                    flag.transform.localScale = _flagScale[i];
+                    flag.SetActive(false);
+                    _ownerMarkers[i] = flag;
+                    _pennants[i] = flag.transform.Find(BuildingParts.PennantName).gameObject;
 
                     // Owner frame: a rim in the owner's colour just around the tile, seen from any angle.
                     GameObject frame = ModelParts.Create("Owner frame", transform,
@@ -333,12 +361,6 @@ namespace Lazpoly.Presentation.Tabletop
             boat.transform.localRotation = Quaternion.Euler(0f, -35f, 0f);
             boat.transform.localScale = Vector3.one * (inner * 0.12f);
         }
-
-        /// <summary>Owner token outline (radius, height): a low rounded disc.</summary>
-        private static readonly Vector2[] OwnerProfile =
-        {
-            new Vector2(0f, 0f), new Vector2(0.18f, 0f), new Vector2(0.2f, 0.03f), new Vector2(0.18f, 0.06f), new Vector2(0f, 0.065f),
-        };
 
         /// <summary>Direction from a square on the edge towards the outside of the board.</summary>
         private static Vector3 Outward(Vector3 center) =>

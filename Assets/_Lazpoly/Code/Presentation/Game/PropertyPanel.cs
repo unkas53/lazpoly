@@ -38,7 +38,7 @@ namespace Lazpoly.Presentation.Game
                 if (hint != null) card.Label(hint, UiTextStyle.Small, UiTheme.Accent);
 
                 UiBuilder actions = card.Row(6f);
-                Offer(actions, controller, build, F($"Ev +{definition.BuildingCost}"));
+                Offer(actions, controller, build, GameRules.NextIsHotel(state, square) ? F($"Otel +{definition.BuildingCost}") : F($"Ev +{definition.BuildingCost}"));
                 Offer(actions, controller, new SellBuildingCommand(playerId, square), L("Ev Sat"));
                 Offer(actions, controller, new MortgageCommand(playerId, square), F($"İpotek +{definition.MortgageValue}"));
                 Offer(actions, controller, new RedeemCommand(playerId, square), F($"Kurtar -{controller.Session.Rules.RedeemCost(definition.MortgageValue)}"));

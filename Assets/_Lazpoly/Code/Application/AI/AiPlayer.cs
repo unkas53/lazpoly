@@ -169,8 +169,9 @@ namespace Lazpoly.App.AI
         }
 
         /// <summary>
-        /// Spends spare money between rolls: buys back mortgages, then builds evenly. A player that
-        /// <see cref="AiProfile.MortgagesToBuild"/> builds first and mortgages lone properties to pay for houses.
+        /// Spends spare money between rolls: buys back mortgages, then builds on the town it stands on.
+        /// A player that <see cref="AiProfile.MortgagesToBuild"/> builds first and mortgages other
+        /// properties to pay for houses.
         /// </summary>
         private GameCommand Manage(View view)
         {
@@ -192,30 +193,23 @@ namespace Lazpoly.App.AI
             return null;
         }
 
+        /// <summary>Building only happens on the town the player stands on, so there is one candidate.</summary>
         private GameCommand Build(View view, int spare)
         {
-            foreach (int square in view.OwnSquaresByValue())
-            {
-                var build = new BuildCommand(PlayerId, square);
-                if (view.Legal(build) && spare - view.Board[square].BuildingCost >= 0) return build;
-            }
-
-            return null;
+            int square = view.Me.Position;
+            var build = new BuildCommand(PlayerId, square);
+            return view.Legal(build) && spare - view.Board[square].BuildingCost >= 0 ? build : null;
         }
 
-        /// <summary>The cost of the next house the rules allow but the spare money does not cover, or 0.</summary>
+        /// <summary>The cost of the next house the rules allow here but the spare money does not cover, or 0.</summary>
         private int WantedHouseCost(View view)
         {
-            foreach (int square in view.OwnSquaresByValue())
-            {
-                RejectionReason reason = GameRules.Validate(view.Board, view.Rules, view.State, new BuildCommand(PlayerId, square));
-                if (reason == RejectionReason.None || reason == RejectionReason.InsufficientFunds) return view.Board[square].BuildingCost;
-            }
-
-            return 0;
+            int square = view.Me.Position;
+            RejectionReason reason = GameRules.Validate(view.Board, view.Rules, view.State, new BuildCommand(PlayerId, square));
+            return reason == RejectionReason.None || reason == RejectionReason.InsufficientFunds ? view.Board[square].BuildingCost : 0;
         }
 
-        /// <summary>Mortgages the cheapest property outside any complete group when that pays for the next house.</summary>
+        /// <summary>Mortgages the cheapest other property when that pays for the next house on this town.</summary>
         private GameCommand MortgageForHouse(View view, int spare)
         {
             int cost = WantedHouseCost(view);
@@ -225,8 +219,8 @@ namespace Lazpoly.App.AI
             for (int i = squares.Count - 1; i >= 0; i--)
             {
                 int square = squares[i];
+                if (square == view.Me.Position) continue;
                 SquareDefinition definition = view.Board[square];
-                if (definition.Type != SquareType.Property || GameRules.OwnsWholeGroup(view.Board, view.State, PlayerId, definition.GroupId)) continue;
                 var mortgage = new MortgageCommand(PlayerId, square);
                 if (spare + definition.MortgageValue >= cost && view.Legal(mortgage)) return mortgage;
             }

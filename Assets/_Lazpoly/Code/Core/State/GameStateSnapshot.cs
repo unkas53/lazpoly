@@ -28,6 +28,7 @@ namespace Lazpoly.Core.State
         public int WinnerId;
         public int Round = 1;
         public int Pot;
+        public int BuiltThisVisit = GameState.NotArrived;
 
         /// <summary>Null unless a lookout's two rolls wait for a choice.</summary>
         public int[] DiceOptions;
@@ -55,6 +56,7 @@ namespace Lazpoly.Core.State
                 WinnerId = state.WinnerId,
                 Round = state.Round,
                 Pot = state.Pot,
+                BuiltThisVisit = state.BuiltThisVisit,
                 DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],

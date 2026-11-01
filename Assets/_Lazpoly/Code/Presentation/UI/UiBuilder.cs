@@ -54,7 +54,61 @@ namespace Lazpoly.Presentation.UI
             float height = UiTheme.ButtonHeight)
         {
             GameObject element = NewChild($"Button {label}");
-            Image image = UiRoot.Background((RectTransform)element.transform, UiTheme.Fill(style));
+            Button button = MakeButton(element, onClick, enabled, style);
+            Fix(element, height: height);
+            Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small);
+            text.color = UiTheme.Label(style);
+            text.alignment = TextAnchor.MiddleCenter;
+            text.font = UiTheme.BoldFont;
+            return button;
+        }
+
+        /// <summary>A button with a small icon before its label.</summary>
+        public Button IconButton(UiIcon icon, string label, Action onClick, bool enabled = true, UiButtonStyle style = UiButtonStyle.Secondary,
+            float height = UiTheme.ButtonHeight)
+        {
+            GameObject element = NewChild($"Button {label}");
+            Button button = MakeButton(element, onClick, enabled, style);
+            Fix(element, height: height);
+            var row = element.AddComponent<HorizontalLayoutGroup>();
+            row.padding = new RectOffset(14, 14, 0, 0);
+            row.spacing = 10f;
+            row.childAlignment = TextAnchor.MiddleCenter;
+            row.childControlWidth = true;
+            row.childControlHeight = true;
+            row.childForceExpandWidth = false;
+            row.childForceExpandHeight = false;
+
+            float size = height >= UiTheme.ButtonHeight ? 22f : 18f;
+            UiIcons.Create((RectTransform)element.transform, icon, size, UiTheme.Label(style));
+            Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small, stretch: false);
+            text.color = UiTheme.Label(style);
+            text.alignment = TextAnchor.MiddleLeft;
+            text.font = UiTheme.BoldFont;
+            return button;
+        }
+
+        /// <summary>
+        /// A clickable card: whatever is added to the returned builder sits inside it, and a click
+        /// anywhere on it runs <paramref name="onClick"/>. For choices that deserve a title and a line of text.
+        /// </summary>
+        public UiBuilder Tile(Action onClick, Color? color = null, int padding = 14)
+        {
+            GameObject element = NewChild("Tile");
+            MakeButton(element, onClick, true, UiButtonStyle.Secondary, color ?? UiTheme.Card);
+            AddColumnLayout(element, padding, 6f);
+            return new UiBuilder((RectTransform)element.transform, Changed);
+        }
+
+        /// <summary>A small picture, such as beside a title.</summary>
+        public RectTransform Icon(UiIcon icon, float size = 28f, Color? color = null) =>
+            UiIcons.Create(Container, icon, size, color ?? UiTheme.Accent);
+
+        private Button MakeButton(GameObject element, Action onClick, bool enabled, UiButtonStyle style, Color? fill = null)
+        {
+            Image image = UiRoot.Background((RectTransform)element.transform, fill ?? UiTheme.Fill(style));
+            UiRoot.AddShadow(element, 2f);
+            element.AddComponent<UiHover>();
             var button = element.AddComponent<Button>();
             button.targetGraphic = image;
             button.colors = ButtonColors();
@@ -69,11 +123,6 @@ namespace Lazpoly.Presentation.UI
                 });
             }
 
-            Fix(element, height: height);
-            Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small);
-            text.color = UiTheme.Label(style);
-            text.alignment = TextAnchor.MiddleCenter;
-            text.font = UiTheme.BoldFont;
             return button;
         }
 
@@ -165,11 +214,17 @@ namespace Lazpoly.Presentation.UI
             return input;
         }
 
-        /// <summary>A coloured square, such as a player's colour.</summary>
-        public Image Swatch(Color color, float size = 18f)
+        /// <summary>A coloured square (or disc), such as a player's colour.</summary>
+        public Image Swatch(Color color, float size = 18f, bool round = false)
         {
             GameObject element = NewChild("Swatch");
             Image image = UiRoot.Background((RectTransform)element.transform, color);
+            if (round)
+            {
+                image.sprite = UiSprites.Circle;
+                image.type = Image.Type.Simple;
+            }
+
             Fix(element, size, size);
             return image;
         }
@@ -191,13 +246,32 @@ namespace Lazpoly.Presentation.UI
             return new UiBuilder((RectTransform)element.transform, Changed);
         }
 
+        /// <summary>Elements added to the returned builder stack top to bottom inside a row, taking the row's spare width.</summary>
+        public UiBuilder Column(float spacing = 2f)
+        {
+            GameObject element = NewChild("Column");
+            AddColumnLayout(element, 0, spacing);
+            Fix(element, -1f).flexibleWidth = 1f;
+            return new UiBuilder((RectTransform)element.transform, Changed);
+        }
+
         /// <summary>A rounded card with its own padding; elements added to it stack inside.</summary>
         public UiBuilder Card(Color? color = null, int padding = 12)
         {
             GameObject element = NewChild("Card");
-            UiRoot.Background((RectTransform)element.transform, color ?? UiTheme.Card);
+            UiRoot.Background((RectTransform)element.transform, color ?? UiTheme.Card, shadow: true);
             AddColumnLayout(element, padding, 6f);
             return new UiBuilder((RectTransform)element.transform, Changed);
+        }
+
+        /// <summary>A heading with an icon before it, for the top of a window or a group.</summary>
+        public Text Title(UiIcon icon, string text, Color? color = null)
+        {
+            UiBuilder row = Row(10f, expand: false);
+            row.Icon(icon, 28f, color ?? UiTheme.Accent);
+            Text label = row.Label(text, UiTextStyle.Heading);
+            Fix(label, -1f).flexibleWidth = 1f;
+            return label;
         }
 
         /// <summary>A fixed-height list that scrolls.</summary>

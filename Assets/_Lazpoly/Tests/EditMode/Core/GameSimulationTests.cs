@@ -96,12 +96,7 @@ namespace Lazpoly.Core.Tests
                 if (level > 0)
                 {
                     Assert.IsFalse(state.IsMortgaged(square), $"{where}: square {square} has buildings and a mortgage.");
-                    foreach (int other in GameRules.GroupSquares(engine.Board, engine.Board[square].GroupId))
-                    {
-                        Assert.AreEqual(state.GetOwner(square), state.GetOwner(other), $"{where}: buildings without the whole group.");
-                        Assert.That(System.Math.Abs(state.GetBuildingLevel(other) - level), Is.LessThanOrEqualTo(1),
-                            $"{where}: uneven buildings in group of square {square}.");
-                    }
+                    Assert.That(level, Is.LessThanOrEqualTo(SquareDefinition.MaxBuildingLevel), $"{where}: square {square} is overbuilt.");
                 }
             }
 

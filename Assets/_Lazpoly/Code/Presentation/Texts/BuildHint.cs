@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.State;
@@ -7,7 +6,7 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Texts
 {
     /// <summary>
-    /// Says why a player cannot build on a property right now, so the property list can explain a
+    /// Says why a player cannot build on a town right now, so the property list can explain a
     /// missing "build" button. The rules themselves stay in <see cref="GameRules"/>; this only names
     /// the first condition that is not met, in the order a player would fix them.
     /// </summary>
@@ -21,26 +20,28 @@ namespace Lazpoly.Presentation.Texts
 
             int level = state.GetBuildingLevel(squareIndex);
             if (level >= SquareDefinition.MaxBuildingLevel) return L("En yüksek seviyede (otel).");
-
-            var missing = new List<string>();
-            bool mortgaged = false, behind = false;
-            foreach (int other in GameRules.GroupSquares(board, square.GroupId))
-            {
-                if (state.GetOwner(other) != playerId) missing.Add(L(board[other].Name));
-                if (state.IsMortgaged(other)) mortgaged = true;
-                if (other != squareIndex && state.GetBuildingLevel(other) < level) behind = true;
-            }
-
-            if (missing.Count > 0) return F($"Ev için bu rengin tamamı gerekli; eksik: {string.Join(", ", missing)}.");
-            if (mortgaged) return L("Bu renkte ipotekli kare var; önce onu kurtar.");
-            if (behind) return L("Evler eşit kurulur: önce bu rengin diğer karelerine kur.");
+            if (state.IsMortgaged(squareIndex)) return L("İpotekli: bina kurmak için önce kurtar.");
 
             PlayerState player = state.FindPlayer(playerId);
-            if (player != null && player.Money < square.BuildingCost) return F($"Ev için {square.BuildingCost} gerekli, paran yetmiyor.");
+            if (player == null) return null;
+            bool myTurn = state.CurrentPlayer.Id == playerId &&
+                          (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd);
+            if (!myTurn || player.Position != squareIndex || state.BuiltThisVisit == GameState.NotArrived)
+                return L("Ev ya da otel, kendi sıranda bu şehre gelince kurulur.");
 
-            bool rightTime = state.CurrentPlayer.Id == playerId &&
-                             (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd);
-            return rightTime ? null : L("Ev, kendi sıranda zar atmadan önce ya da sırayı bitirmeden önce kurulur.");
+            if (GameRules.NextIsHotel(state, squareIndex) && state.BuiltThisVisit > 0)
+                return L("Otel, dört evli şehre bir sonraki gelişinde kurulur.");
+            if (state.Round <= 1 && level >= GameRules.FirstRoundHouseLimit)
+                return F($"İlk turda her şehre tek ev; sonraki turlarda {GameRules.MaxHouses} eve kadar.");
+
+            if (player.Money < square.BuildingCost)
+            {
+                return GameRules.NextIsHotel(state, squareIndex)
+                    ? F($"Otel için {square.BuildingCost} gerekli, paran yetmiyor.")
+                    : F($"Ev için {square.BuildingCost} gerekli, paran yetmiyor.");
+            }
+
+            return null;
         }
     }
 }

@@ -66,6 +66,12 @@ namespace Lazpoly.Presentation.Game
         private UiView _howToWindow;
         private Text _timer;
         private GameObject _howToLayer;
+        private UiView _cityWindow;
+        private GameObject _cityLayer;
+        private UiView _buildWindow;
+        private GameObject _buildLayer;
+        private int _buildCount = 1;
+        private int _buildCardDismissed;
 
         private const int NoSquare = -1;
         private const float BannerSeconds = 1.8f;
@@ -82,6 +88,12 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>The first-game hint on screen, or null.</summary>
         public Tip? ShownTip => _tip;
+
+        /// <summary>Whether the city card (buy or move on) is open for the person here.</summary>
+        public bool CityCardOpen => _cityLayer != null && _cityLayer.activeSelf;
+
+        /// <summary>Whether the building card (how many houses, or the hotel) is open for the person here.</summary>
+        public bool BuildCardOpen => _buildLayer != null && _buildLayer.activeSelf;
 
         /// <summary>Hint memory; tests swap in one that is not kept in PlayerPrefs.</summary>
         public TipMemory TipMemory
@@ -107,19 +119,19 @@ namespace Lazpoly.Presentation.Game
 
             RectTransform side = UiRoot.Rect(_canvas.transform, "Side", Vector2.zero, new Vector2(0f, 1f),
                 new Vector2(Margin, Margin), new Vector2(Margin + SideWidth, -Margin));
-            UiRoot.Background(side, UiTheme.Panel);
+            UiRoot.Panel(side);
             UiBuilder sideBuilder = UiRoot.ScrollPanel(side);
             SideContent = sideBuilder.Container;
             _side = new UiView(sideBuilder, RenderSide);
 
             RectTransform log = UiRoot.Rect(_canvas.transform, "Log", new Vector2(1f, 0f), Vector2.one,
                 new Vector2(-Margin - SideWidth, Margin + 182f), new Vector2(-Margin, -Margin));
-            UiRoot.Background(log, UiTheme.Panel);
+            UiRoot.Panel(log);
             _log = new UiView(UiRoot.ScrollPanel(log), RenderLog);
 
             RectTransform menu = UiRoot.Rect(_canvas.transform, "Menu", new Vector2(1f, 0f), new Vector2(1f, 0f),
                 new Vector2(-Margin - SideWidth, Margin), new Vector2(-Margin, Margin + 166f));
-            UiRoot.Background(menu, UiTheme.Panel);
+            UiRoot.Background(menu, UiTheme.Panel, shadow: true);
             UiBuilder.AddColumnLayout(menu.gameObject, 12, UiTheme.Spacing);
             _menu = new UiView(new UiBuilder(menu), RenderMenu);
 
@@ -128,7 +140,7 @@ namespace Lazpoly.Presentation.Game
             RectTransform card = UiRoot.Rect(_canvas.transform, "Square Card", new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, Vector2.zero);
             card.pivot = new Vector2(0f, 1f);
             card.sizeDelta = new Vector2(CardWidth, 0f);
-            UiRoot.Background(card, UiTheme.Panel);
+            UiRoot.Background(card, UiTheme.Panel, shadow: true);
             var cardGroup = card.gameObject.AddComponent<CanvasGroup>();
             cardGroup.blocksRaycasts = false;
             cardGroup.interactable = false;
@@ -171,10 +183,14 @@ namespace Lazpoly.Presentation.Game
             _endWindow = new UiView(UiRoot.Modal(_canvas.transform, "Game End", 560f, out _endLayer), RenderEnd);
             _howToWindow = new UiView(UiRoot.Modal(_canvas.transform, "How To Play", HowToPlayPanel.Width, out _howToLayer),
                 ui => HowToPlayPanel.Render(ui, _controller.Session.Board, _controller.Session.Rules, () => _howToLayer.SetActive(false)));
+            _cityWindow = new UiView(UiRoot.Modal(_canvas.transform, "City Card", CardWidth + 40f, out _cityLayer), RenderCityCard);
+            _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", CardWidth + 40f, out _buildLayer), RenderBuildCard);
             _howToLayer.SetActive(false);
             _tradeLayer.SetActive(false);
             _settingsLayer.SetActive(false);
             _endLayer.SetActive(false);
+            _cityLayer.SetActive(false);
+            _buildLayer.SetActive(false);
         }
 
         /// <summary>The drawn "Sokak Haberi" card, shown in the middle for a few seconds. It never takes the mouse.</summary>
@@ -201,7 +217,7 @@ namespace Lazpoly.Presentation.Game
             tip.pivot = new Vector2(0.5f, 0f);
             tip.anchoredPosition = new Vector2(0f, Margin);
             tip.sizeDelta = new Vector2(560f, 0f);
-            UiRoot.Background(tip, new Color(0.10f, 0.16f, 0.22f, 0.96f));
+            UiRoot.Background(tip, new Color(0.10f, 0.16f, 0.22f, 0.96f), shadow: true);
             UiBuilder.AddColumnLayout(tip.gameObject, 14, 8f);
             tip.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             _tipPanel = tip.gameObject;
@@ -341,6 +357,11 @@ namespace Lazpoly.Presentation.Game
             UpdateTimer(state);
 
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
+            bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
+            SetLayer(_cityLayer, _cityWindow, cityOpen, revision);
+            bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
+            if (buildOpen && !_buildLayer.activeSelf) _buildCount = 1;
+            SetLayer(_buildLayer, _buildWindow, buildOpen, HashCode.Combine(revision, _buildCount));
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
             SetLayer(_howToLayer, _howToWindow, _howToLayer.activeSelf, 0);
             bool ended = !_endDismissed && (_controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver && !_controller.IsBusy));
@@ -534,7 +555,7 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder card = ui.Card(current ? new Color(0.24f, 0.25f, 0.31f) : UiTheme.Card, 10);
                 UiBuilder row = card.Row(10f);
                 Color color = player.IsBankrupt ? UiTheme.Muted : _controller.ColorOf(player.Id);
-                row.Swatch(color, 20f);
+                row.Swatch(color, 20f, round: true);
                 Text name = row.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
                 name.font = current ? UiTheme.BoldFont : UiTheme.Font;
                 Text money = row.Label(player.IsBankrupt ? L("iflas") : string.Empty, color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
@@ -607,7 +628,7 @@ namespace Lazpoly.Presentation.Game
         {
             PlayerState player = state.CurrentPlayer;
             UiBuilder turn = ui.Row(10f, expand: false);
-            turn.Swatch(_controller.ColorOf(player.Id), 20f);
+            turn.Swatch(_controller.ColorOf(player.Id), 22f, round: true);
             UiBuilder.Fix(turn.Label(_controller.Session.CanControl(player.Id) ? F($"Sıra sende, {player.Name}") : F($"{player.Name} oynuyor"), UiTextStyle.Heading), -1f).flexibleWidth = 1f;
 
             if (!_controller.Session.CanControl(player.Id))
@@ -645,25 +666,168 @@ namespace Lazpoly.Presentation.Game
 
             if (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd)
             {
-                ui.Button(L("Takas Teklif Et"), () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
+                UiBuilder extras = ui.Row();
+                if (AffordableBuildings(state, player) > 0 && _buildCardDismissed == BuildVisitKey(state))
+                    extras.Button(L("Bina Kartı"), ReopenBuildCard, height: UiTheme.SmallButtonHeight);
+                extras.Button(L("Takas Teklif Et"), () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
             }
         }
 
+        /// <summary>The decision itself is on the city card in the middle; the column only says so.</summary>
         private void RenderBuyDecision(UiBuilder ui, PlayerState player)
         {
+            SquareDefinition square = _controller.Session.Board[player.Position];
+            ui.Label(F($"{L(square.Name)} sahipsiz: şehir kartında satın al ya da devam et."), UiTextStyle.Small);
+        }
+
+        /// <summary>True while the game waits in <paramref name="phase"/> on a person (not the computer) sitting at this screen.</summary>
+        private bool WaitsOnPersonHere(GameState state, GamePhase phase)
+        {
+            if (state == null || state.Phase != phase || _controller.IsBusy || _controller.EndReason.HasValue) return false;
+            int id = state.CurrentPlayer.Id;
+            return _controller.Session.CanControl(id) && !_controller.Session.IsAiPlaying(id);
+        }
+
+        /// <summary>
+        /// The building card opens by itself once per arrival, when the person here stands on their own
+        /// town and can afford at least one building there. "Not now" closes it for this visit; the
+        /// property list can open it again.
+        /// </summary>
+        private bool OffersBuildCard(GameState state)
+        {
+            bool waiting = WaitsOnPersonHere(state, GamePhase.TurnEnd) || WaitsOnPersonHere(state, GamePhase.WaitingForRoll);
+            if (!waiting) return false;
+            PlayerState player = state.CurrentPlayer;
+            if (AffordableBuildings(state, player) == 0) return false;
+            return _buildCardDismissed != BuildVisitKey(state);
+        }
+
+        private static int BuildVisitKey(GameState state) => HashCode.Combine(state.TurnNumber, state.CurrentPlayer.Position);
+
+        /// <summary>How many buildings the player may add on their square now, money included.</summary>
+        private int AffordableBuildings(GameState state, PlayerState player)
+        {
+            BoardDefinition board = _controller.Session.Board;
+            int allowed = GameRules.BuildableNow(board, state, player, player.Position);
+            if (allowed == 0) return 0;
+            int cost = board[player.Position].BuildingCost;
+            return Math.Min(allowed, cost > 0 ? player.Money / cost : 0);
+        }
+
+        /// <summary>Opens the building card for the current visit again, after "not now".</summary>
+        public void ReopenBuildCard()
+        {
+            _buildCardDismissed = 0;
+            _buildCount = 1;
+        }
+
+        /// <summary>The city's card: its details, and at the bottom "buy" or "move on".</summary>
+        private void RenderCityCard(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            PlayerState player = state.CurrentPlayer;
             int squareIndex = player.Position;
             SquareDefinition square = _controller.Session.Board[squareIndex];
-            UiBuilder card = ui.Card();
-            UiBuilder title = card.Row();
-            UiBuilder.Fix(title.Swatch(_controller.GroupColorOf(squareIndex), 16f), 16f, 16f);
-            title.Label(square.Name, UiTextStyle.Heading);
-            card.Label(F($"Fiyat {square.Price}, kira {square.BaseRent}"));
+            RenderCityDetails(ui, squareIndex);
 
             var buy = new BuyPropertyCommand(player.Id);
-            ui.Button(F($"Satın Al ({square.Price})"), () => _controller.Submit(buy), _controller.IsAllowed(buy), UiButtonStyle.Primary, 52f);
-            if (player.Money < square.Price) ui.Label(L("Paran yetmiyor: ipotek ya da bina satışıyla para bulabilirsin."), UiTextStyle.Small, UiTheme.Warning);
-            ui.Button(_controller.Session.Rules.AuctionsEnabled ? L("Alma, açık artırmaya çıkar") : L("Alma"),
-                () => _controller.Submit(new DeclinePurchaseCommand(player.Id)));
+            bool affordable = player.Money >= square.Price;
+            ui.Label(affordable ? F($"Paran: {player.Money}, alırsan kalan: {player.Money - square.Price}") : F($"Paran: {player.Money}"), UiTextStyle.Small, UiTheme.Muted);
+            if (!affordable) ui.Label(L("Paran yetmiyor: ipotek ya da bina satışıyla para bulabilirsin."), UiTextStyle.Small, UiTheme.Warning);
+            if (_controller.Session.Rules.AuctionsEnabled) ui.Label(L("Devam edersen şehir açık artırmaya çıkar."), UiTextStyle.Small, UiTheme.Muted);
+
+            UiBuilder row = ui.Row();
+            row.Button(F($"Satın Al ({square.Price})"), () => _controller.Submit(buy), _controller.IsAllowed(buy), UiButtonStyle.Primary, 52f);
+            row.Button(L("Devam Et"), () => _controller.Submit(new DeclinePurchaseCommand(player.Id)), height: 52f);
+        }
+
+        /// <summary>Name, colour, price, rent table and owner of a city, as on the hover card.</summary>
+        private void RenderCityDetails(UiBuilder ui, int squareIndex)
+        {
+            IGameSession session = _controller.Session;
+            SquareInfo info = SquareInfo.Describe(session.Board, session.Rules, session.State, squareIndex, _controller.GroupNameOf(squareIndex));
+
+            UiBuilder title = ui.Row(10f, expand: false);
+            title.Swatch(_controller.GroupColorOf(squareIndex), 26f);
+            UiBuilder.Fix(title.Label(info.Title, UiTextStyle.Heading), -1f).flexibleWidth = 1f;
+            ui.Label(info.Kind, UiTextStyle.Small);
+
+            UiBuilder table = ui.Card(UiTheme.Field, 10);
+            foreach (SquareInfoRow row in info.Rows)
+            {
+                UiBuilder line = table.Row();
+                Color color = row.Current ? UiTheme.Accent : UiTheme.Text;
+                Text label = line.Label(row.Label, UiTextStyle.Small, color);
+                Text value = line.Label(row.Value, UiTextStyle.Small, color, TextAnchor.MiddleRight);
+                if (row.Current)
+                {
+                    label.font = UiTheme.BoldFont;
+                    value.font = UiTheme.BoldFont;
+                }
+            }
+
+            foreach (string note in info.Notes) ui.Label(note, UiTextStyle.Small);
+        }
+
+        /// <summary>
+        /// The building card: how many houses to add (or the hotel), what they cost and what money is
+        /// left afterwards. Building sends one command per house; the host accepts each in turn.
+        /// </summary>
+        private void RenderBuildCard(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            PlayerState player = state.CurrentPlayer;
+            int squareIndex = player.Position;
+            SquareDefinition square = _controller.Session.Board[squareIndex];
+            int level = state.GetBuildingLevel(squareIndex);
+            bool hotel = GameRules.NextIsHotel(state, squareIndex);
+            int most = AffordableBuildings(state, player);
+            int count = Mathf.Clamp(_buildCount, 1, Mathf.Max(1, most));
+            int cost = count * square.BuildingCost;
+
+            UiBuilder title = ui.Row(10f, expand: false);
+            title.Swatch(_controller.GroupColorOf(squareIndex), 26f);
+            UiBuilder.Fix(title.Label(hotel ? F($"{L(square.Name)}: otel kur") : F($"{L(square.Name)}: ev kur"), UiTextStyle.Heading), -1f).flexibleWidth = 1f;
+            ui.Label(F($"Şu an: {EventDescriber.LevelText(level)}, kira {GameRules.CalculateRent(_controller.Session.Board, _controller.Session.Rules, state, squareIndex)}"), UiTextStyle.Small);
+
+            if (!hotel)
+            {
+                UiBuilder pick = ui.Row();
+                UiBuilder.Fix(pick.Label(L("Kaç ev?")), width: 110f);
+                UiBuilder.Fix(pick.Button("-", () => _buildCount = count - 1, count > 1), width: 52f);
+                pick.Label(count.ToString(), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
+                UiBuilder.Fix(pick.Button("+", () => _buildCount = count + 1, count < most), width: 52f);
+                ui.Label(state.Round <= 1
+                    ? L("İlk turda her şehre tek ev kurulur; ikinci turdan sonra dörde kadar.")
+                    : F($"Bu gelişte en çok {most} ev kurabilirsin."), UiTextStyle.Small, UiTheme.Muted);
+            }
+
+            UiBuilder sums = ui.Card(UiTheme.Field, 10);
+            Line(sums, hotel ? L("Otel") : F($"{count} ev"), F($"{cost}"));
+            Line(sums, L("Paran"), player.Money.ToString());
+            Line(sums, L("Kalan para"), (player.Money - cost).ToString(), true);
+            Line(sums, L("Yeni kira"), square.DevelopedRents[Mathf.Min(level + count, square.DevelopedRents.Count) - 1].ToString());
+
+            UiBuilder row = ui.Row();
+            row.Button(hotel ? F($"Otel Kur ({cost})") : F($"{count} Ev Kur ({cost})"), () =>
+            {
+                for (int i = 0; i < count; i++) _controller.Submit(new BuildCommand(player.Id, squareIndex));
+                _buildCardDismissed = BuildVisitKey(state);
+            }, most > 0, UiButtonStyle.Primary, 52f);
+            row.Button(L("Şimdi Değil"), () => _buildCardDismissed = BuildVisitKey(state), height: 52f);
+        }
+
+        private static void Line(UiBuilder card, string label, string value, bool strong = false)
+        {
+            UiBuilder line = card.Row();
+            Color color = strong ? UiTheme.Accent : UiTheme.Text;
+            Text left = line.Label(label, UiTextStyle.Small, color);
+            Text right = line.Label(value, UiTextStyle.Small, color, TextAnchor.MiddleRight);
+            if (strong)
+            {
+                left.font = UiTheme.BoldFont;
+                right.font = UiTheme.BoldFont;
+            }
         }
 
         /// <summary>A ride from the travel square: the player picks the destination by clicking a square on the board.</summary>
@@ -726,7 +890,7 @@ namespace Lazpoly.Presentation.Game
 
         private void RenderLog(UiBuilder ui)
         {
-            ui.Label(L("Olaylar"), UiTextStyle.Heading);
+            ui.Title(UiIcon.List, L("Olaylar"));
             var lines = _controller.Log;
             var tones = _controller.LogTones;
             for (int i = lines.Count - 1; i >= 0; i--)
@@ -759,18 +923,18 @@ namespace Lazpoly.Presentation.Game
         private void RenderMenu(UiBuilder ui)
         {
             UiBuilder row = ui.Row();
-            row.Button(L("Ayarlar"), () =>
+            row.IconButton(UiIcon.Sliders, L("Ayarlar"), () =>
             {
                 _settingsLayer.SetActive(true);
                 _settingsWindow.Invalidate();
             });
-            row.Button(L("Nasıl Oynanır"), () =>
+            row.IconButton(UiIcon.Book, L("Nasıl Oynanır"), () =>
             {
                 _howToLayer.SetActive(true);
                 _howToWindow.Invalidate();
             });
-            ui.Button(L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
-            ui.Button(L("Oyundan Çık"), _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
+            ui.IconButton(UiIcon.Home, L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
+            ui.IconButton(UiIcon.Door, L("Oyundan Çık"), _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
         }
 
         private void RenderTrade(UiBuilder ui)

@@ -18,7 +18,7 @@ namespace Lazpoly.Presentation.Menu
 
         public static void Render(UiBuilder ui, BoardDefinition board, RulesConfig rules, Action close)
         {
-            ui.Label(L("Nasıl Oynanır"), UiTextStyle.Heading);
+            ui.Title(UiIcon.Book, L("Nasıl Oynanır"));
             UiBuilder list = ui.Scroll(TextHeight);
             foreach (KeyValuePair<string, string> section in HowToPlay.Sections(board, rules))
             {

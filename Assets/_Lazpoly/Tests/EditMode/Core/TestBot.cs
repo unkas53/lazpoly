@@ -87,7 +87,7 @@ namespace Lazpoly.Core.Tests
             int theirs = -1;
             for (int square = 0; square < engine.Board.Count; square++)
             {
-                if (GameRules.GroupHasBuildings(engine.Board, state, square)) continue;
+                if (GameRules.HasBuildings(state, square)) continue;
                 if (mine < 0 && state.GetOwner(square) == me) mine = square;
                 if (theirs < 0 && state.GetOwner(square) == partner) theirs = square;
             }

@@ -53,6 +53,16 @@ namespace Lazpoly.Core.State
         /// <summary>Money waiting in the pot for the next player who lands on the pot square.</summary>
         public int Pot { get; internal set; }
 
+        /// <summary>Value of <see cref="BuiltThisVisit"/> while the current player has not moved this turn.</summary>
+        public const int NotArrived = -1;
+
+        /// <summary>
+        /// Buildings the current player added since they arrived on their square this turn, or
+        /// <see cref="NotArrived"/> before they move. Building needs an arrival, and a hotel may only
+        /// go up on a visit that started with four houses already standing, so it needs zero here.
+        /// </summary>
+        public int BuiltThisVisit { get; internal set; } = NotArrived;
+
         /// <summary>The two rolls to choose from (die1, die2, die1, die2); null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingDiceChoice"/>.</summary>
         public int[] DiceOptions { get; internal set; }
 
@@ -154,8 +164,10 @@ namespace Lazpoly.Core.State
                 WinnerId = snapshot.WinnerId,
                 Round = snapshot.Round,
                 Pot = snapshot.Pot,
+                BuiltThisVisit = snapshot.BuiltThisVisit,
             };
 
+            if (snapshot.BuiltThisVisit < NotArrived) throw new ArgumentException("Snapshot build count is out of range.", nameof(snapshot));
             if (snapshot.Round < 1 || snapshot.Pot < 0) throw new ArgumentException("Snapshot round or pot is out of range.", nameof(snapshot));
             if (snapshot.DiceOptions != null)
             {
@@ -319,6 +331,7 @@ namespace Lazpoly.Core.State
             Mix(WinnerId);
             Mix(Round);
             Mix(Pot);
+            Mix(BuiltThisVisit);
             Mix(DiceOptions == null ? 0 : 1);
             if (DiceOptions != null)
             {

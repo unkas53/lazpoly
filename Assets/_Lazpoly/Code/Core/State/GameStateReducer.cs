@@ -26,6 +26,7 @@ namespace Lazpoly.Core.State
                     state.LastDie2 = 0;
                     state.ConsecutiveDoubles = 0;
                     state.DiceOptions = null;
+                    state.BuiltThisVisit = GameState.NotArrived;
                     break;
                 }
 
@@ -61,6 +62,7 @@ namespace Lazpoly.Core.State
 
                 case PlayerMovedEvent e:
                     RequirePlayer(state, e.PlayerId).Position = e.ToSquare;
+                    state.BuiltThisVisit = 0;
                     break;
 
                 case MoneyChangedEvent e:
@@ -86,6 +88,7 @@ namespace Lazpoly.Core.State
 
                 case BuildingLevelChangedEvent e:
                     RequireSquare(state, e.SquareIndex);
+                    if (e.Level > state.GetBuildingLevel(e.SquareIndex)) state.BuiltThisVisit = Math.Max(0, state.BuiltThisVisit) + 1;
                     state.SetBuildingLevel(e.SquareIndex, e.Level);
                     break;
 

@@ -70,25 +70,14 @@ namespace Lazpoly.Presentation.Texts
                        F($"Bu oyun {rules.RoundLimit} tur sürecek. Sonunda parası, mülkleri ve binaları en değerli olan kazanır."))
                    ?? Offer(TipId.FirstRoll, myTurn && state.Phase == GamePhase.WaitingForRoll,
                        L("Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır."))
-                   ?? Offer(TipId.CanBuild, myTurn && (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd) && OwnsBuildableGroup(board, state, playerId),
-                       L("Bir rengin bütün kareleri sende! Artık \"Mülklerin\" listesindeki \"Ev +\" düğmesiyle ev kurabilirsin. Kira çok artar; evleri karelere eşit dağıtmalısın."))
+                   ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
+                       F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: ilk turda bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
                    ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasMortgageable(board, state, playerId),
                        L("Paran azaldı. Sıkışırsan mülklerini ipotek edip bankadan para alabilirsin; sonra faiziyle geri alırsın."))
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
                        F($"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır."))
                    ?? Offer(TipId.Trade, myTurn && state.Phase == GamePhase.WaitingForRoll && state.Round >= 3,
-                       L("Eksik rengini başkası mı tutuyor? \"Takas Teklif Et\" ile para ya da mülk karşılığında iste."));
-        }
-
-        private static bool OwnsBuildableGroup(BoardDefinition board, GameState state, int playerId)
-        {
-            for (int square = 0; square < board.Count; square++)
-            {
-                if (board[square].IsDevelopable && state.GetOwner(square) == playerId &&
-                    GameRules.OwnsWholeGroup(board, state, playerId, board[square].GroupId)) return true;
-            }
-
-            return false;
+                       L("Bir rengin tamamı sende olunca boş kirası katlanır. Eksik kareyi \"Takas Teklif Et\" ile para ya da mülk karşılığında iste."));
         }
 
         private static bool HasMortgageable(BoardDefinition board, GameState state, int playerId)
