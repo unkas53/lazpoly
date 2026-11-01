@@ -406,10 +406,10 @@ namespace Lazpoly.Presentation.Game
 
         private static ulong NewSeed() => unchecked((ulong)DateTime.UtcNow.Ticks);
 
-        /// <summary>Keeps the single local save slot in step with the game; a finished game leaves no save.</summary>
+        /// <summary>Keeps the single local save slot in step with the game; a finished game leaves no save. The -perf table is nobody's game, so it never touches the slot.</summary>
         private void SaveLocalGame()
         {
-            if (_localGame == null) return;
+            if (_localGame == null || PerfRun.Requested) return;
             try
             {
                 if (_session.State.Phase == GamePhase.GameOver) SaveGameStore.Delete();
