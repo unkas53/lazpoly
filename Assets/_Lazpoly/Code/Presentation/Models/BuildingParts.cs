@@ -23,6 +23,9 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
+        /// <summary>Where the mansion's chimney ends, in its unit model space; smoke starts here.</summary>
+        public static readonly Vector3 ChimneyTop = new Vector3(0.3f, 1.1f, 0.2f);
+
         public static GameObject Mansion(string name, Transform parent)
         {
             GameObject root = Root(name, parent);

@@ -43,9 +43,10 @@ namespace Lazpoly.Presentation.Menu
             RoomDressing.LightScene(quality);
 
             int squares = board.Layout.SquareCount;
+            var crowd = new PawnCrowd(PawnCount);
             for (int seat = 0; seat < PawnCount; seat++)
             {
-                PawnView.Create(transform, board, seat, PawnCount, PlayerPalette.ForSeat(seat)).PlaceOn(PawnSquares[seat] % squares);
+                PawnView.Create(transform, board, seat, PlayerPalette.ForSeat(seat), crowd, seat).PlaceOn(PawnSquares[seat] % squares);
             }
 
             _center = board.transform.position;

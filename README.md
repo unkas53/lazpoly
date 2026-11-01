@@ -407,6 +407,23 @@ Cila planının üçüncü adımı. Kural değişmez; her ekran aynı dili konu�
   `ShownSquare` sırası: sabitlenmiş kare, tahtada gösterilen kare, paneldeki kutucuk).
 - İflas eden oyuncunun soluk görünmesi ve listenin sonuna inmesi 10a-3'te yapılmıştı.
 
+## Faz 10b-1: tahta görseli
+
+10b'nin (görsel ve hız) ilk adımı; plandaki "Görsel cila" bölümünün kare, piyon ve bina maddeleri. Blender
+modeli yok; koddan üretilen parçalar iyileştirildi.
+
+- **Kare yüzeyleri:** renk grubu şeridi daha geniş ve kabarık (`BoardView.BandOffset/BandDepth`); her karenin adı
+  ve fiyatı koyu bir plaka üzerinde açık yazıyla (uzaktan okunurluk). Özel karelerde küçük işaret: çay bardağı
+  (Çay Molası), minibüs (Otogar), dürbün (Seyir Terası), katlanmış gazete (Sokak Haberi) — `SquareIcons`.
+- **Piyonlar:** aynı karede duran piyonlar yuvalara oturur (`PawnSlots`: 4 oyuncuya kadar 2x2, sonrası 3x3) ve
+  `PawnCrowd` aynı yuvayı iki piyona vermez; gelen en düşük boş yuvayı alır, giden yuvasını bırakır. Sıradaki
+  oyuncunun piyonunun altında rengiyle nefes alan bir halka (`TurnMarker`); yürüyen piyon her sıçrayışta ayrıldığı
+  yerde yarım saniyede küçülen bir iz bırakır (`PawnTrail`, 6 disk havuzdan).
+- **Binalar:** evler kareye göre küçültülüp aralandı (`HouseStep/HouseSize`), konak biraz büyüdü; otelin bacasından
+  ince duman çıkar (`ChimneySmoke`, 4 puf havuzdan, yalnızca görünen konaklarda çalışır; adadaki konakta da);
+  sahip bayrağının kumaşı hafifçe dalgalanır (`FlagWave`, yalnızca dikili bayraklarda).
+- Testler: `PawnSlotsTests` (yuva aralığı, kalabalık kare, bayrak salınımı), `ModelTests` (küre ve işaretler).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

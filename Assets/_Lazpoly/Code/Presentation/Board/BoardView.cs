@@ -35,6 +35,16 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color BoatColor = new Color(0.95f, 0.93f, 0.86f);
         private static readonly Color PropertyBodyColor = new Color(0.96f, 0.94f, 0.88f);
         private static readonly Color TitleColor = new Color(0.95f, 0.86f, 0.55f);
+        private static readonly Color PlaqueColor = new Color(0.17f, 0.15f, 0.14f);
+        private static readonly Color LabelColor = new Color(0.97f, 0.94f, 0.87f);
+
+        /// <summary>Where the group band's centre sits, outward from the square's centre, in tile widths.</summary>
+        public const float BandOffset = 0.35f;
+        public const float BandDepth = 0.28f;
+
+        /// <summary>Where the name plaque's centre sits, outward from the square's centre, in tile widths.</summary>
+        public const float PlaqueOffset = 0.04f;
+        public const float PlaqueDepth = 0.32f;
 
         private GameObject[] _ownerMarkers;
         private GameObject[] _pennants;
@@ -402,20 +412,29 @@ namespace Lazpoly.Presentation.Tabletop
 
                 if (property)
                 {
-                    // The group colour runs as a band along the tile's outer edge.
+                    // The group colour runs as a raised band along the tile's outer edge.
                     Vector3 outward = Outward(center);
                     GameObject band = ModelParts.Create("Group band", transform,
-                        MeshFactory.RoundedBox(new Vector3(tile * 0.96f, 0.04f, tile * 0.24f), 0.015f, 2), TileColor(square, data));
-                    band.transform.localPosition = center + outward * (tile * 0.35f) + Vector3.up * (TileHeight + 0.01f);
+                        MeshFactory.RoundedBox(new Vector3(tile * 0.96f, 0.07f, tile * BandDepth), 0.03f, 3), TileColor(square, data));
+                    band.transform.localPosition = center + outward * (tile * BandOffset) + Vector3.up * (TileHeight + 0.025f);
                     band.transform.localRotation = Quaternion.LookRotation(outward);
+                }
+                else
+                {
+                    CreateIcon(square.Type, center, tile);
                 }
 
                 string caption = square.Type == SquareType.Property ? F($"{L(square.Name)}\n{square.Price}")
                     : square.Type == SquareType.Tax ? F($"{L(square.Name)}\n-{square.TaxAmount}")
                     : square.Type == SquareType.Travel ? F($"{L(square.Name)}\nbilet {square.Fee}")
                     : square.Name;
-                // Name and price sit towards the outer edge; pawns stand on the inner half (PawnSpot).
-                CreateLabel(caption, center + Outward(center) * (tile * 0.07f) + Vector3.up * (TileHeight + 0.01f), tile);
+                // Name and price sit on a dark plaque towards the outer edge; pawns stand on the inner half (PawnSpot).
+                Vector3 plaqueCenter = center + Outward(center) * (tile * PlaqueOffset);
+                GameObject plaque = ModelParts.Create("Plaque", transform,
+                    MeshFactory.RoundedBox(new Vector3(tile * 0.86f, 0.03f, tile * PlaqueDepth), 0.012f, 2), PlaqueColor, 0.15f);
+                plaque.transform.localPosition = plaqueCenter + Vector3.up * (TileHeight + 0.012f);
+                plaque.transform.localRotation = Quaternion.LookRotation(Outward(center));
+                CreateLabel(caption, plaqueCenter + Vector3.up * (TileHeight + 0.03f), tile);
 
                 if (square.Type == SquareType.Property)
                 {
@@ -429,6 +448,7 @@ namespace Lazpoly.Presentation.Tabletop
                     flag.SetActive(false);
                     _ownerMarkers[i] = flag;
                     _pennants[i] = flag.transform.Find(BuildingParts.PennantName).gameObject;
+                    _pennants[i].AddComponent<FlagWave>().Rest(_pennants[i].transform.localRotation, i * 0.9f);
 
                     // Owner frame: a rim in the owner's colour just around the tile, seen from any angle.
                     GameObject frame = ModelParts.Create("Owner frame", transform,
@@ -483,6 +503,7 @@ namespace Lazpoly.Presentation.Tabletop
             mansion.transform.localPosition = ground + new Vector3(0.3f * radius, 0f, 0.3f * radius);
             mansion.transform.localRotation = Quaternion.Euler(0f, -30f, 0f);
             mansion.transform.localScale = Vector3.one * (house * 1.3f);
+            ChimneySmoke.Attach(mansion, BuildingParts.ChimneyTop);
 
             GameObject lighthouse = ModelParts.Create("Lighthouse", root, PawnShapes.Lighthouse(), Color.white, 0.3f);
             lighthouse.transform.localPosition = ground + new Vector3(0.62f * radius, 0f, -0.5f * radius);
@@ -515,6 +536,12 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Middle of the building row on a square: its inner half, on the tile's top.</summary>
         private Vector3 BuildingRowCenter(Vector3 center) => center - Outward(center) * (_tile * 0.36f) + Vector3.up * TileHeight;
 
+        /// <summary>Distance between neighbouring houses in a row, in tile widths; four fit with clear gaps.</summary>
+        public const float HouseStep = 0.215f;
+
+        /// <summary>A house's width (and depth and height), in tile widths.</summary>
+        public const float HouseSize = 0.13f;
+
         // Four houses in a row along the tile's inner edge plus one hotel, all hidden until built.
         private GameObject[] CreateBuildings(Vector3 center)
         {
@@ -526,11 +553,13 @@ namespace Lazpoly.Presentation.Tabletop
 
             for (int i = 0; i < houses; i++)
             {
-                float offset = (i - (houses - 1) / 2f) * _tile * 0.2f;
-                pieces[i] = CreatePiece(BuildingParts.House("House", transform), rowCenter + side * offset, new Vector3(_tile * 0.15f, _tile * 0.16f, _tile * 0.15f), inward);
+                float offset = (i - (houses - 1) / 2f) * _tile * HouseStep;
+                pieces[i] = CreatePiece(BuildingParts.House("House", transform), rowCenter + side * offset, Vector3.one * (_tile * HouseSize), inward);
             }
 
-            pieces[houses] = CreatePiece(BuildingParts.Mansion("Mansion", transform), rowCenter, new Vector3(_tile * 0.42f, _tile * 0.26f, _tile * 0.24f), inward);
+            GameObject mansion = BuildingParts.Mansion("Mansion", transform);
+            ChimneySmoke.Attach(mansion, BuildingParts.ChimneyTop);
+            pieces[houses] = CreatePiece(mansion, rowCenter, new Vector3(_tile * 0.46f, _tile * 0.30f, _tile * 0.26f), inward);
             return pieces;
         }
 
@@ -583,6 +612,19 @@ namespace Lazpoly.Presentation.Tabletop
             return mesh;
         }
 
+        /// <summary>The sign of a special square, standing on the tile's outer edge where properties have their band.</summary>
+        private void CreateIcon(SquareType type, Vector3 center, float tile)
+        {
+            Mesh mesh = SquareIcons.For(type);
+            if (mesh == null) return;
+            Vector3 outward = Outward(center);
+            GameObject icon = ModelParts.Create($"Sign {type}", transform, mesh, SquareIcons.ColorFor(type), 0.3f);
+            icon.transform.localPosition = center + outward * (tile * BandOffset) + Vector3.up * TileHeight;
+            // The sign's front (+Z) faces the player looking at the square from outside the board.
+            icon.transform.localRotation = Quaternion.LookRotation(outward);
+            icon.transform.localScale = Vector3.one * (tile * 0.22f);
+        }
+
         private void CreateLabel(string text, Vector3 localPosition, float tile)
         {
             var label = new GameObject("Label");
@@ -598,7 +640,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.fontSize = 128;
             mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = tile * 0.0115f;
-            mesh.color = new Color(0.12f, 0.10f, 0.08f);
+            mesh.color = LabelColor;
             mesh.font = UiTheme.BoldFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
         }

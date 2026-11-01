@@ -19,7 +19,9 @@ namespace Lazpoly.Presentation.Pawns
         public const float MaxWalkSeconds = 2f;
 
         private BoardView _board;
-        private Vector3 _offset;
+        private PawnCrowd _crowd;
+        private int _playerId;
+        private int _slot;
         private int _square;
 
         /// <summary>Animation speed multiplier from the settings (1 = normal).</summary>
@@ -28,21 +30,38 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>Raised each time the pawn lands on a square while walking; the scene plays a step sound.</summary>
         public event Action<int> Stepped;
 
-        public static PawnView Create(Transform parent, BoardView board, int seatIndex, int seatCount, Color color)
+        /// <summary>Raised with the spot the pawn leaves at the start of every hop; the scene leaves a trail there.</summary>
+        public event Action<Vector3> Departed;
+
+        /// <summary>The square the pawn stands on (or is walking from).</summary>
+        public int Square => _square;
+
+        /// <param name="crowd">Shared by every pawn on the board, so two never take the same slot of a square.</param>
+        /// <param name="playerId">The pawn's key in <paramref name="crowd"/>.</param>
+        public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId)
         {
+            if (crowd == null) throw new ArgumentNullException(nameof(crowd));
             GameObject body = ModelParts.Create($"Pawn {seatIndex + 1} {PawnShapes.NameOf(seatIndex)}", parent, PawnShapes.For(seatIndex), color, 0.55f);
 
             var pawn = body.AddComponent<PawnView>();
             pawn._board = board;
-            pawn._offset = SeatOffset(seatIndex, seatCount, board.Layout.Spacing);
+            pawn._crowd = crowd;
+            pawn._playerId = playerId;
             pawn.PlaceOn(0);
             return pawn;
         }
 
         public void PlaceOn(int square)
         {
+            transform.position = Reserve(square);
             _square = square;
-            transform.position = Target(square);
+        }
+
+        /// <summary>Takes a slot on <paramref name="square"/> and says where the pawn stands there.</summary>
+        private Vector3 Reserve(int square)
+        {
+            _slot = _crowd.Place(_playerId, square);
+            return Target(square);
         }
 
         /// <summary>Walks square by square from the current square to <paramref name="destination"/>, forward or back.</summary>
@@ -55,7 +74,8 @@ namespace Lazpoly.Presentation.Pawns
             {
                 int next = (_square + (backward ? count - 1 : 1)) % count;
                 Vector3 from = transform.position;
-                Vector3 to = Target(next);
+                Departed?.Invoke(from);
+                Vector3 to = Reserve(next);
                 for (float t = 0f; t < 1f; t += Time.deltaTime * speed / StepSeconds)
                 {
                     Vector3 position = Vector3.Lerp(from, to, t);
@@ -66,7 +86,8 @@ namespace Lazpoly.Presentation.Pawns
                     yield return null;
                 }
 
-                PlaceOn(next);
+                transform.position = to;
+                _square = next;
                 Stepped?.Invoke(next);
                 // A short squash on landing, back to shape before the next hop.
                 for (float t = 0f; t < 1f; t += Time.deltaTime * speed / SquashSeconds)
@@ -85,7 +106,8 @@ namespace Lazpoly.Presentation.Pawns
             const float seconds = 0.8f;
             float speed = Mathf.Max(Speed, 0.1f);
             Vector3 from = transform.position;
-            Vector3 to = Target(destination);
+            Departed?.Invoke(from);
+            Vector3 to = Reserve(destination);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / seconds)
             {
                 Vector3 position = Vector3.Lerp(from, to, Ease.OutCubic(t));
@@ -95,7 +117,8 @@ namespace Lazpoly.Presentation.Pawns
                 yield return null;
             }
 
-            PlaceOn(destination);
+            transform.position = to;
+            _square = destination;
             SetStretch(1f);
             Stepped?.Invoke(destination);
         }
@@ -120,6 +143,7 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>Hides a bankrupt player's pawn at once (used when the board is rebuilt from the state).</summary>
         public void SetEliminated()
         {
+            _crowd.Remove(_playerId);
             gameObject.SetActive(false);
         }
 
@@ -155,17 +179,6 @@ namespace Lazpoly.Presentation.Pawns
             transform.localScale = new Vector3(width, height, width);
         }
 
-        private Vector3 Target(int square) => _board.PawnSpot(square) + _offset;
-
-        // Spreads up to 8 pawns on a small grid inside the tile so they never overlap.
-        private static Vector3 SeatOffset(int seatIndex, int seatCount, float spacing)
-        {
-            int columns = seatCount <= 4 ? 2 : 3;
-            int row = seatIndex / columns;
-            int column = seatIndex % columns;
-            int rows = (seatCount + columns - 1) / columns;
-            float step = spacing * 0.18f;
-            return new Vector3((column - (columns - 1) / 2f) * step, 0f, (row - (rows - 1) / 2f) * step);
-        }
+        private Vector3 Target(int square) => _board.PawnSpot(square) + PawnSlots.Offset(_slot, _crowd.Capacity, _board.Layout.Spacing);
     }
 }

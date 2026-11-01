@@ -198,6 +198,19 @@ namespace Lazpoly.Presentation.Models
         public static Mesh Cone(int segments = 24) =>
             Lathe("cone", new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 1f) }, segments);
 
+        /// <summary>A ball of radius 1 centred on the origin.</summary>
+        public static Mesh Sphere(int segments = 12)
+        {
+            var profile = new List<Vector2>();
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = Mathf.PI * i / segments;
+                profile.Add(new Vector2(Mathf.Sin(angle), -Mathf.Cos(angle)));
+            }
+
+            return Lathe($"sphere:{segments}", profile, segments * 2);
+        }
+
         /// <summary>A flat disc at y = 0 with radius 1 and the given thickness.</summary>
         public static Mesh Disc(float thickness, int segments = 48) =>
             Lathe($"disc:{thickness:F3}", new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, thickness), new Vector2(0f, thickness) }, segments);

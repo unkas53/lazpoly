@@ -56,6 +56,27 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void SpheresAndSignsFaceOutwardAndStandOnTheTable()
+        {
+            Mesh sphere = MeshFactory.Sphere();
+            AssertFacesOutward(sphere, Vector3.zero);
+            Assert.That(sphere.bounds.extents.magnitude, Is.EqualTo(Mathf.Sqrt(3f)).Within(0.05f));
+
+            foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Lookout, Lazpoly.Core.Board.SquareType.Card })
+            {
+                Mesh sign = SquareIcons.For(type);
+                Assert.IsNotNull(sign, $"{type} has no sign.");
+                Assert.Greater(sign.triangles.Length, 0);
+                Assert.That(sign.bounds.min.y, Is.EqualTo(0f).Within(0.02f), $"{type}'s sign floats or sinks.");
+                Assert.LessOrEqual(sign.bounds.size.x, 1.05f, $"{type}'s sign is too wide for a square.");
+                Assert.LessOrEqual(sign.bounds.size.z, 1.05f, $"{type}'s sign is too deep for a square.");
+            }
+
+            Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Property));
+            Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Start));
+        }
+
+        [Test]
         public void TheFlagsPennantFliesAwayFromThePole()
         {
             var root = new GameObject("Flag Test");

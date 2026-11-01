@@ -51,6 +51,8 @@ namespace Lazpoly.Presentation.Game
 
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
+        private PawnCrowd _crowd;
+        private TurnMarker _turnMarker;
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
         private readonly List<LogEntry> _log = new List<LogEntry>();
         private readonly Dictionary<int, int> _shownMoney = new Dictionary<int, int>();
@@ -358,14 +360,18 @@ namespace Lazpoly.Presentation.Game
             RoomDressing.CreateRoom(transform, _board.HalfExtent);
             _dice = DiceView.Create(transform, new Vector3(0f, 0.04f, -1.2f));
             _dice.Speed = Settings.AnimationSpeed;
+            _crowd = new PawnCrowd(state.Players.Count);
+            _turnMarker = TurnMarker.Create(transform);
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
                 Color color = PlayerPalette.ForSeat(i);
                 _playerColors[player.Id] = color;
-                PawnView pawn = PawnView.Create(transform, _board, i, state.Players.Count, color);
+                PawnView pawn = PawnView.Create(transform, _board, i, color, _crowd, player.Id);
                 pawn.Speed = Settings.AnimationSpeed;
                 pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
+                PawnTrail trail = PawnTrail.Create(transform, color);
+                pawn.Departed += trail.Leave;
                 _pawns[player.Id] = pawn;
             }
 
@@ -386,6 +392,7 @@ namespace Lazpoly.Presentation.Game
                 if (player.IsBankrupt) pawn.SetEliminated();
             }
 
+            MarkTurn(state.CurrentPlayer.Id);
             _shownPot = state.Pot;
             _board.SetPot(state.Pot);
             for (int i = 0; i < state.SquareCount; i++)
@@ -592,9 +599,17 @@ namespace Lazpoly.Presentation.Game
         /// </summary>
         private IEnumerator ShowTurnStart(int playerId)
         {
+            MarkTurn(playerId);
             if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) yield break;
             if (!_session.CanControl(playerId) || _session.IsAiPlaying(playerId)) AudioPlayer.Play(SoundCue.TurnPass);
             yield return pawn.Bob();
+        }
+
+        /// <summary>Moves the ring under the pawn whose turn it is.</summary>
+        private void MarkTurn(int playerId)
+        {
+            if (_turnMarker == null) return;
+            _turnMarker.Follow(_pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null, ColorOf(playerId));
         }
 
         private void ShowRoll(DiceRolledEvent rolled)
