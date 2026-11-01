@@ -70,3 +70,15 @@ Steamworks > Store Presence > Graphical Assets bölümüne yüklenecek dosyalar:
 | logo_1024.png / logo_256.png | kare | Uygulama simgesi (Unity Player Settings > Icon) ve Steam istemci simgesi |
 
 Vitrin ekran görüntüleri (en az 5 adet, 1920×1080) oyunun kendisinden alınır; henüz yok.
+
+## 6. İçerik beyanı (yapay zekâ)
+
+Steamworks mağaza başvurusundaki içerik anketi, yapay zekâyla üretilmiş içeriğin beyan edilmesini ister. Bu oyunda
+beyan edilecek içerik:
+
+| İçerik | Nerede | Not |
+|---|---|---|
+| Kamp çadırı modeli (sahipli şehir işareti) | `Tools/Art/Models/CampTent`, oyunda `camp_tent.txt` | Proje sahibi bir yapay zekâ aracıyla üretti; ayrıntı `KAYNAK.md` |
+
+Başvurudan önce üretim aracının kullanım koşullarının ticari kullanıma izin verdiği kontrol edilir ve aracın adı
+`KAYNAK.md` dosyasına yazılır. Listeye yeni üretilmiş içerik eklendikçe bu tablo güncellenir.
