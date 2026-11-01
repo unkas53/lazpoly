@@ -15,7 +15,7 @@ namespace Lazpoly.Presentation.Tests
             SquareDefinition.Property("Lale Sokağı", 60, 4, 0),
         });
 
-        private static GameState State() => GameState.CreateInitial(Board, new RulesConfig(1000, 100, 6, 3, 2, 10, 50),
+        private static GameState State() => GameState.CreateInitial(Board, new RulesConfig(1000, 100, 6, 3, 2, 50),
             new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
 
         [Test]
@@ -47,8 +47,7 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.AreEqual("Lale Sokağı: 2 ev", EventDescriber.Describe(new BuildingLevelChangedEvent(1, 2), state, Board));
             Assert.AreEqual("Lale Sokağı: otel", EventDescriber.Describe(new BuildingLevelChangedEvent(1, 5), state, Board));
-            Assert.AreEqual("Lale Sokağı ipotek edildi", EventDescriber.Describe(new MortgageChangedEvent(1, true), state, Board));
-            Assert.AreEqual("Lale Sokağı ipotekten kurtarıldı", EventDescriber.Describe(new MortgageChangedEvent(1, false), state, Board));
+            Assert.AreEqual("Ayşe: +30 (mülk satışı)", EventDescriber.Describe(new MoneyChangedEvent(1, 30, MoneyReason.PropertySale), state, Board));
             Assert.AreEqual("Lale Sokağı açık artırmada", EventDescriber.Describe(new AuctionStartedEvent(1), state, Board));
             Assert.AreEqual("Can teklif: 70", EventDescriber.Describe(new BidPlacedEvent(2, 70), state, Board));
             Assert.AreEqual("Lale Sokağı → Can (70)", EventDescriber.Describe(new AuctionEndedEvent(1, 2, 70), state, Board));

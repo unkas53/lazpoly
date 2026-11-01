@@ -53,7 +53,8 @@ namespace Lazpoly.Core.Board
         public IReadOnlyList<int> DevelopedRents => _developedRents;
 
         /// <summary>What the bank lends against the property: half its price.</summary>
-        public int MortgageValue => Price / 2;
+        /// <summary>What the bank pays when the owner sells the property back: half its price.</summary>
+        public int SaleValue => Price / 2;
 
         public static SquareDefinition Start(string name) => new SquareDefinition(name, SquareType.Start, 0, 0, 0, 0, 0, null);
 

@@ -9,7 +9,7 @@ using static Lazpoly.Core.Tests.TestData;
 
 namespace Lazpoly.Core.Tests
 {
-    /// <summary>Phase 4 rules: buildings, mortgages, auctions, trades and debts.</summary>
+    /// <summary>Phase 4 rules: buildings, property sales, auctions, trades and debts.</summary>
     public class EconomyTests
     {
         // 0 Start, 1 A1 and 2 A2 (group 1, buildings cost 50), 3 Rest, 4 Solo (no group), 5 Rest.
@@ -62,8 +62,8 @@ namespace Lazpoly.Core.Tests
             Assert.Throws<System.ArgumentException>(() => With(SquareDefinition.Property("X", 60, 10, 1, 50, new[] { 50, 150 })));
             Assert.Throws<System.ArgumentException>(() => With(SquareDefinition.Property("X", 60, 10, 1, 50, new[] { 50, 40, 400, 550, 700 })));
             Assert.Throws<System.ArgumentException>(() => With(SquareDefinition.Property("X", 60, 10, 0, 50, new[] { 50, 150, 400, 550, 700 })));
-            Assert.Throws<System.ArgumentOutOfRangeException>(() => new Rules.RulesConfig(1000, 0, 6, 3, 2, 101, 50));
-            Assert.Throws<System.ArgumentOutOfRangeException>(() => new Rules.RulesConfig(1000, 0, 6, 3, 2, 10, -1));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => new Rules.RulesConfig(1000, 0, 6, 3, 2, 101));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => new Rules.RulesConfig(1000, 0, 6, 3, 2, -1));
         }
 
         /// <summary>Puts a player on a square without a roll, the way a move event would.</summary>
@@ -145,7 +145,7 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void SellingIsPerTownAndMortgagesExcludeOnlyThatTownsBuildings()
+        public void SellingBuildingsIsPerTown()
         {
             var engine = NewGame(money: 5000);
             Give(engine, A1, Alice);
@@ -153,17 +153,12 @@ namespace Lazpoly.Core.Tests
             Stand(engine, Alice, A1);
             Accept(engine, new BuildCommand(Alice, A1));
 
-            Accept(engine, new MortgageCommand(Alice, A2));
-            Assert.AreEqual(RejectionReason.CannotMortgage, Reason(engine, new MortgageCommand(Alice, A1)), "A town with a house cannot be mortgaged.");
             Assert.AreEqual(RejectionReason.CannotSell, Reason(engine, new SellBuildingCommand(Alice, A2)));
 
             int before = Money(engine, Alice);
             Accept(engine, new SellBuildingCommand(Alice, A1));
             Assert.AreEqual(before + 25, Money(engine, Alice), "Buildings sell back at half price.");
             Assert.AreEqual(0, engine.State.GetBuildingLevel(A1));
-
-            Accept(engine, new MortgageCommand(Alice, A1));
-            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)), "A mortgaged town takes no houses.");
         }
 
         [Test]
@@ -181,23 +176,41 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(RejectionReason.InvalidSquare, Reason(engine, new BuildCommand(Alice, 99)));
         }
 
-        // ---- Mortgages ----
+        // ---- Property sales ----
 
         [Test]
-        public void MortgagePaysHalfStopsRentAndCostsInterestToRedeem()
+        public void SellingAPropertyReturnsItToTheBankForHalfThePrice()
         {
             var engine = NewGame();
             Give(engine, A1, Alice);
+            Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new SellPropertyCommand(Bob, A1)));
+            Assert.AreEqual(RejectionReason.NotOwner, Reason(engine, new SellPropertyCommand(Alice, A2)));
+            Assert.AreEqual(RejectionReason.InvalidSquare, Reason(engine, new SellPropertyCommand(Alice, 3)));
 
-            Accept(engine, new MortgageCommand(Alice, A1));
-            Assert.IsTrue(engine.State.IsMortgaged(A1));
-            Assert.AreEqual(1030, Money(engine, Alice));
-            Assert.AreEqual(0, engine.CalculateRent(A1));
-            Assert.AreEqual(RejectionReason.CannotMortgage, Reason(engine, new MortgageCommand(Alice, A1)));
+            Accept(engine, new SellPropertyCommand(Alice, A1));
 
-            Accept(engine, new RedeemCommand(Alice, A1));
-            Assert.IsFalse(engine.State.IsMortgaged(A1));
-            Assert.AreEqual(1030 - 33, Money(engine, Alice), "Redeeming costs the value plus 10%.");
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
+            Assert.AreEqual(1030, Money(engine, Alice), "The bank pays half the price.");
+            Assert.AreEqual(RejectionReason.NotOwner, Reason(engine, new SellPropertyCommand(Alice, A1)));
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "Selling does not use up the turn.");
+        }
+
+        [Test]
+        public void SellingABuiltTownPaysForItsBuildingsToo()
+        {
+            var engine = NewGame(money: 5000);
+            Give(engine, A1, Alice);
+            Stand(engine, Alice, A1);
+            Accept(engine, new BuildCommand(Alice, A1));
+            Assert.AreEqual(30 + 25, GameRules.PropertySaleProceeds(engine.Board, engine.Rules, engine.State, A1));
+
+            int before = Money(engine, Alice);
+            CommandResult result = Accept(engine, new SellPropertyCommand(Alice, A1));
+
+            Assert.AreEqual(before + 55, Money(engine, Alice), "Half the price plus the buildings' sellback value.");
+            Assert.AreEqual(0, engine.State.GetBuildingLevel(A1));
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
+            Assert.IsTrue(result.Events.Any(e => e is BuildingLevelChangedEvent b && b.Level == 0), "The buildings come down before the town changes hands.");
         }
 
         // ---- Auctions ----
@@ -251,7 +264,6 @@ namespace Lazpoly.Core.Tests
             var engine = NewGame(players: 3);
             Give(engine, A1, Alice);
             Give(engine, Solo, Bob);
-            Accept(engine, new MortgageCommand(Alice, A1));
 
             var offer = new TradeOffer(Alice, Bob, 50, 0, new[] { A1 }, new[] { Solo });
             Accept(engine, new ProposeTradeCommand(offer));
@@ -264,8 +276,7 @@ namespace Lazpoly.Core.Tests
 
             Assert.AreEqual(Bob, engine.State.GetOwner(A1));
             Assert.AreEqual(Alice, engine.State.GetOwner(Solo));
-            Assert.IsTrue(engine.State.IsMortgaged(A1), "A mortgage travels with the property.");
-            Assert.AreEqual(1030 - 50, Money(engine, Alice));
+            Assert.AreEqual(1000 - 50, Money(engine, Alice));
             Assert.AreEqual(1050, Money(engine, Bob));
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
             Assert.IsNull(engine.State.PendingTrade);
@@ -314,7 +325,7 @@ namespace Lazpoly.Core.Tests
         // ---- Debts and bankruptcy ----
 
         [Test]
-        public void DebtBlocksTheTurnUntilPaidAfterMortgaging()
+        public void DebtBlocksTheTurnUntilPaidAfterSellingAProperty()
         {
             // Alice starts on square 5 and rolls 1+1 to land on Bob's A1 (one house: rent 50). She holds 40 and Solo.
             var engine = NewGame(money: 1000, dice: new[] { 1, 1 });
@@ -334,10 +345,11 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new RollDiceCommand(Alice)));
             Assert.AreEqual(RejectionReason.InsufficientFunds, Reason(engine, new PayDebtCommand(Alice)));
 
-            Accept(engine, new MortgageCommand(Alice, Solo)); // +50
+            Accept(engine, new SellPropertyCommand(Alice, Solo)); // +50
             Accept(engine, new PayDebtCommand(Alice));
 
             Assert.AreEqual(40, Money(engine, Alice));
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(Solo));
             Assert.AreEqual(1050, Money(engine, Bob));
             Assert.IsNull(engine.State.Debt);
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "Alice rolled a double and rolls again.");
@@ -379,17 +391,15 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void MortgagesStayWhenAPlayerTakesOverAProperty()
+        public void TheCreditorTakesOverTheBankruptPlayersProperties()
         {
             GameEngine engine = AliceOwesCem();
             Give(engine, A1, Alice);
-            GameStateReducer.Apply(engine.State, new MortgageChangedEvent(A1, true));
 
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new DeclareBankruptcyCommand(Alice));
 
             Assert.AreEqual(Cem, engine.State.GetOwner(A1));
-            Assert.IsTrue(engine.State.IsMortgaged(A1));
         }
 
         private static void AssertSnapshotRoundTrip(GameEngine engine)
@@ -417,7 +427,6 @@ namespace Lazpoly.Core.Tests
 
             var trade = NewGame();
             Give(trade, A1, Alice);
-            Accept(trade, new MortgageCommand(Alice, A1));
             Accept(trade, new ProposeTradeCommand(new TradeOffer(Alice, Bob, 5, 0, new[] { A1 }, null)));
             AssertSnapshotRoundTrip(trade);
 

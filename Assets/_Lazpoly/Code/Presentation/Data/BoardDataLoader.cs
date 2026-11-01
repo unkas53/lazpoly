@@ -33,7 +33,7 @@ namespace Lazpoly.Presentation.Data
             }
 
             var rules = new RulesConfig(file.startingMoney, file.passStartBonus, file.diceSides,
-                file.maxConsecutiveDoubles, file.fullGroupRentMultiplier, file.mortgageInterestPercent, file.buildingSellbackPercent);
+                file.maxConsecutiveDoubles, file.fullGroupRentMultiplier, file.buildingSellbackPercent);
 
             var groupColors = new Dictionary<int, Color>();
             var groupNames = new Dictionary<int, string>();

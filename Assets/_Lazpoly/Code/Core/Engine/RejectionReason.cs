@@ -23,14 +23,11 @@ namespace Lazpoly.Core.Engine
         /// <summary>The square belongs to someone else.</summary>
         NotOwner = 10,
 
-        /// <summary>Building needs the whole group, unmortgaged, and even building across it.</summary>
+        /// <summary>No arrival on this own town this visit, the lap or hotel limit reached, or the town is not developable.</summary>
         CannotBuild = 11,
 
-        /// <summary>Nothing to sell, or selling would break even building.</summary>
+        /// <summary>Nothing to sell.</summary>
         CannotSell = 12,
-
-        /// <summary>Already mortgaged, not mortgaged, or the group still has buildings.</summary>
-        CannotMortgage = 13,
 
         /// <summary>Bid too low, above the bidder's money, or the bidder already passed or leads.</summary>
         InvalidBid = 14,

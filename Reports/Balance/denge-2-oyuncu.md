@@ -5,23 +5,23 @@
 ## Oyun süresi
 
 - Biten oyun: 1000, takılan: 0, tur sınırıyla biten: 0
-- Tur: ortalama 16.05, ortanca 13, %10 7, %90 29, en uzun 81
-- İlk 5 turda borca düşülen oyun: 13.1 %
-- İlk iflas: ortalama 16.05. tur
-- Oyun başına: 1.69 kart, 1 otogar yolculuğu, 296.69 kumbaradan ödenen para
+- Tur: ortalama 16.27, ortanca 14, %10 7, %90 29, en uzun 60
+- İlk 5 turda borca düşülen oyun: 13.0 %
+- İlk iflas: ortalama 16.27. tur
+- Oyun başına: 1.73 kart, 1.03 otogar yolculuğu, 295.46 kumbaradan ödenen para
 
 ## Kazananlar
 
 | Sıra | Kazanma |
 |---|---|
-| 1. oyuncu | 51.8 % |
-| 2. oyuncu | 48.2 % |
+| 1. oyuncu | 52.5 % |
+| 2. oyuncu | 47.5 % |
 
 | Zorluk | Oturduğu koltuk | Kazanma | Koltuk başına |
 |---|---|---|---|
-| Easy | 667 | 310 | 46.5 % |
-| Normal | 667 | 325 | 48.7 % |
-| Hard | 666 | 365 | 54.8 % |
+| Easy | 667 | 332 | 49.8 % |
+| Normal | 667 | 345 | 51.7 % |
+| Hard | 666 | 323 | 48.5 % |
 
 ## Renk grupları
 
@@ -29,40 +29,40 @@ Kira geliri ve yatırımın geri dönüşü (oyun başına kira / grubun toplam 
 
 | Grup | Fiyat | Oyun başına kira | Geri dönüş | Tamamlanan oyun | Ortalama tamamlanma turu |
 |---|---|---|---|---|---|
-| Sokaklar | 120 | 145.17 | 1.21 | 53.0 % | 13.3 |
-| Liman | 240 | 177.16 | 0.74 | 59.8 % | 12.38 |
-| Meydanlar | 440 | 292.57 | 0.66 | 51.5 % | 16.75 |
-| Kale | 380 | 167.58 | 0.44 | 63.0 % | 11.19 |
-| Sahil | 460 | 142 | 0.31 | 58.6 % | 12.37 |
-| Plazalar | 540 | 126.57 | 0.23 | 56.9 % | 13.06 |
-| Köşkler | 580 | 123.06 | 0.21 | 53.1 % | 13.45 |
-| Konaklar | 680 | 147.76 | 0.22 | 58.2 % | 13.02 |
+| Sokaklar | 120 | 150.92 | 1.26 | 36.0 % | 12.1 |
+| Liman | 240 | 174.2 | 0.73 | 41.1 % | 10.85 |
+| Meydanlar | 440 | 295.34 | 0.67 | 24.0 % | 13.98 |
+| Kale | 380 | 168.79 | 0.44 | 47.3 % | 9.33 |
+| Sahil | 460 | 139.67 | 0.3 | 41.4 % | 10.44 |
+| Plazalar | 540 | 132.78 | 0.25 | 41.2 % | 11.22 |
+| Köşkler | 580 | 112.48 | 0.19 | 37.9 % | 11.39 |
+| Konaklar | 680 | 147.96 | 0.22 | 39.3 % | 11.02 |
 
 ## Kareler
 
 | # | Kare | Gelinme payı | Satın alınma (oyun başına) | Oyun başına kira |
 |---|---|---|---|---|
-| 0 | Başlangıç | 3.6 % | - | - |
-| 1 | Lale Sokağı | 3.6 % | 0.7 | 58.82 |
-| 2 | Gül Sokağı | 3.7 % | 0.71 | 86.35 |
+| 0 | Başlangıç | 3.5 % | - | - |
+| 1 | Lale Sokağı | 3.6 % | 0.8 | 58.03 |
+| 2 | Gül Sokağı | 3.8 % | 0.8 | 92.88 |
 | 3 | Emlak Vergisi | 3.5 % | - | - |
-| 4 | Liman Caddesi | 4.2 % | 0.75 | 94.4 |
-| 5 | Fener Caddesi | 4.2 % | 0.76 | 82.76 |
-| 6 | Çay Molası | 5.5 % | - | - |
-| 7 | Çarşı Meydanı | 4.4 % | 0.81 | 108.3 |
-| 8 | Han Meydanı | 4.3 % | 0.78 | 101.18 |
-| 9 | Saat Kulesi | 4.6 % | 0.79 | 83.08 |
-| 10 | Kale Yolu | 4.6 % | 0.79 | 92.85 |
-| 11 | Sur Yolu | 4.3 % | 0.77 | 74.73 |
-| 12 | Sokak Haberi | 4.3 % | - | - |
-| 13 | Sahil Bulvarı | 4.3 % | 0.75 | 75.46 |
-| 14 | Martı Bulvarı | 4.4 % | 0.75 | 66.54 |
-| 15 | Lüks Vergisi | 4.2 % | - | - |
-| 16 | Kule Plaza | 4.4 % | 0.75 | 70.76 |
-| 17 | Cam Plaza | 4.3 % | 0.74 | 55.81 |
-| 18 | Otogar | 4.0 % | - | - |
-| 19 | Tepe Köşkü | 4.0 % | 0.73 | 57.51 |
-| 20 | Bahçe Köşkü | 3.8 % | 0.7 | 65.54 |
-| 21 | Saray Konağı | 3.8 % | 0.72 | 64.07 |
-| 22 | Yalı Konağı | 4.3 % | 0.77 | 83.69 |
-| 23 | Seyir Terası | 3.8 % | - | - |
+| 4 | Liman Caddesi | 4.2 % | 0.86 | 92.9 |
+| 5 | Fener Caddesi | 4.1 % | 0.84 | 81.3 |
+| 6 | Çay Molası | 5.4 % | - | - |
+| 7 | Çarşı Meydanı | 4.4 % | 0.88 | 108.75 |
+| 8 | Han Meydanı | 4.4 % | 0.86 | 95.81 |
+| 9 | Saat Kulesi | 4.7 % | 0.87 | 90.77 |
+| 10 | Kale Yolu | 4.6 % | 0.87 | 92.43 |
+| 11 | Sur Yolu | 4.3 % | 0.83 | 76.36 |
+| 12 | Sokak Haberi | 4.4 % | - | - |
+| 13 | Sahil Bulvarı | 4.3 % | 0.79 | 75.4 |
+| 14 | Martı Bulvarı | 4.4 % | 0.82 | 64.27 |
+| 15 | Lüks Vergisi | 4.1 % | - | - |
+| 16 | Kule Plaza | 4.4 % | 0.81 | 69.5 |
+| 17 | Cam Plaza | 4.3 % | 0.79 | 63.28 |
+| 18 | Otogar | 3.9 % | - | - |
+| 19 | Tepe Köşkü | 4.0 % | 0.77 | 56.81 |
+| 20 | Bahçe Köşkü | 3.9 % | 0.72 | 55.67 |
+| 21 | Saray Konağı | 3.9 % | 0.74 | 62.65 |
+| 22 | Yalı Konağı | 4.3 % | 0.8 | 85.32 |
+| 23 | Seyir Terası | 3.7 % | - | - |

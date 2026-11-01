@@ -163,7 +163,7 @@ namespace Lazpoly.Presentation.Game
                 int index = square;
                 bool chosen = selected.Contains(square);
                 bool locked = GameRules.HasBuildings(state, square);
-                string label = board[square].Name + (state.IsMortgaged(square) ? L(" (ipotekli)") : "") + (locked ? L(" (binalı)") : "");
+                string label = board[square].Name + (locked ? L(" (binalı)") : "");
 
                 UiBuilder row = list.Row(8f, expand: false);
                 row.Swatch(_controller.GroupColorOf(square), 16f);

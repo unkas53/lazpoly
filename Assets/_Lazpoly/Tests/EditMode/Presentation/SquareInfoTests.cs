@@ -23,7 +23,7 @@ namespace Lazpoly.Presentation.Tests
             SquareDefinition.Rest("Park"),
         });
 
-        private static readonly RulesConfig Rules = new RulesConfig(1000, 200, 6, 3, 2, 10, 50);
+        private static readonly RulesConfig Rules = new RulesConfig(1000, 200, 6, 3, 2, 50);
 
         private static GameState State() =>
             GameState.CreateInitial(Board, Rules, new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
@@ -66,14 +66,11 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void MortgagedPropertyHasNoCurrentRent()
+        public void ShowsWhatTheBankPaysForTheSquare()
         {
-            GameState state = State();
-            GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(1, GameState.NoOwner, 2));
-            GameStateReducer.Apply(state, new MortgageChangedEvent(1, true));
-            SquareInfo info = SquareInfo.Describe(Board, Rules, state, 1, null);
-            Assert.IsFalse(info.Rows.Any(row => row.Current));
-            CollectionAssert.Contains(info.Notes, "Sahibi Can (ipotekli, kira alınmaz).");
+            SquareInfo info = SquareInfo.Describe(Board, Rules, State(), 1, null);
+            SquareInfoRow sale = info.Rows.Single(row => row.Label == "Satış değeri");
+            Assert.AreEqual((Board[1].Price / 2).ToString(), sale.Value);
         }
 
         [Test]

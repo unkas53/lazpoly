@@ -29,7 +29,7 @@ namespace Lazpoly.App.Tests
             SquareDefinition.Property("Solo", 150, 15, 0),
         });
 
-        private static readonly RulesConfig Rules = new RulesConfig(800, 100, 6, 3, 2, 10, 50);
+        private static readonly RulesConfig Rules = new RulesConfig(800, 100, 6, 3, 2, 50);
         private static readonly ulong Checksum = BoardChecksum.Compute(Board, Rules);
 
         private static PlayerSeat[] Seats(int count)
@@ -199,7 +199,7 @@ namespace Lazpoly.App.Tests
             {
                 w.WriteInt(s.Owners[i]);
                 w.WriteInt(s.BuildingLevels[i]);
-                w.WriteBool(s.Mortgaged[i]);
+                w.WriteBool(false); // mortgage flag of the old layout
             }
 
             w.WriteBool(false); // auction

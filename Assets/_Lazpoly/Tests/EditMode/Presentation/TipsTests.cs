@@ -26,7 +26,7 @@ namespace Lazpoly.Presentation.Tests
             SquareDefinition.Card("Sokak Haberi"),
         }, new[] { CardDefinition.Collect("Piyango", 50) });
 
-        private static readonly RulesConfig Rules = new RulesConfig(1000, 200, 6, 3, 2, 10, 50);
+        private static readonly RulesConfig Rules = new RulesConfig(1000, 200, 6, 3, 2, 50);
 
         private static GameState State() =>
             GameState.CreateInitial(Board, Rules, new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });

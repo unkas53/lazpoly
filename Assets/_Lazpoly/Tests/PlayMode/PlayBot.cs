@@ -48,8 +48,8 @@ namespace Lazpoly.PlayTests
 
                     for (int square = 0; square < board.Count; square++)
                     {
-                        var mortgage = new MortgageCommand(me, square);
-                        if (Legal(mortgage)) return mortgage;
+                        var sale = new SellPropertyCommand(me, square);
+                        if (Legal(sale)) return sale;
                     }
 
                     return new DeclareBankruptcyCommand(me);

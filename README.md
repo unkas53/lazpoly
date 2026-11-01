@@ -298,6 +298,24 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   raporları yenilendi: 2 oyuncuda ortalama 16, 4'te 19.5, 6'da 24 tur; Kolay/Orta/Zor kazanma payı 4 oyuncuda
   %14 / %29 / %32.
 
+## Faz 9: ipotek yerine mülk satışı
+
+- **İpotek kalktı:** `MortgageCommand`, `RedeemCommand`, `MortgageChangedEvent`, `IsMortgaged` ve
+  `mortgageInterestPercent` tamamen silindi; mülk ya sahibindedir ya bankada.
+- **Mülk satışı:** oyuncu kendi sırasında (zar öncesi, sıra sonu, satın alma/borç/otogar kararlarında) bir
+  mülkünü bankaya satar (`SellPropertyCommand`): banka fiyatın yarısını (`SquareDefinition.SaleValue`) ve
+  üstündeki binaların geri satış değerini tek ödemede verir (`GameRules.PropertySaleProceeds`); binalar iner,
+  şehir yeniden sahipsiz kalır ve üstüne gelen alabilir. Olay sırası: bina seviyesi 0 → sahip bankaya → para
+  (`MoneyReason.PropertySale`). İflasta artık ipotek temizliği yok, mülkler alacaklıya olduğu gibi geçer.
+- **Arayüz:** "Mülklerin" listesinde **Sat +tutar** düğmesi; kare kartında "İpotek değeri" yerine
+  "Satış değeri"; borç kartı, ipuçları ve "Nasıl Oynanır" satış kuralına göre; takas listesinde ve tahtada
+  ipotek karartması yok. Satış sesi bina satışıyla aynı.
+- **Yapay zekâ:** borçta önce binaları, sonra en ucuz mülkünü satar; ev için mülk satmaz (yarı fiyat
+  kayıptır), Zor seviyenin "ev için ipotek" davranışı kaldırıldı.
+- **Sürümler:** anlık görüntü 5 (ipotek baytı yok), kayıt formatı 5, protokol 6. Eski kayıtlar açılır:
+  ipotekli şehir sahipli olarak gelir.
+- **Denge:** 1000'er oyunluk raporlar yenilendi; 2 oyuncuda ortalama 16, 4'te 18.5, 6'da 21.5 tur, takılan oyun yok.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

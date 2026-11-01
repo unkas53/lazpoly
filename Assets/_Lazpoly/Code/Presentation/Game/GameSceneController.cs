@@ -339,7 +339,6 @@ namespace Lazpoly.Presentation.Game
                 int owner = state.GetOwner(i);
                 _board.SetOwner(i, owner == GameState.NoOwner ? (Color?)null : ColorOf(owner));
                 _board.SetBuildingLevel(i, state.GetBuildingLevel(i));
-                _board.SetMortgaged(i, state.IsMortgaged(i));
             }
         }
 
@@ -502,9 +501,6 @@ namespace Lazpoly.Presentation.Game
                         break;
                     case BuildingLevelChangedEvent building:
                         _board.SetBuildingLevel(building.SquareIndex, building.Level, animate: true);
-                        break;
-                    case MortgageChangedEvent mortgage:
-                        _board.SetMortgaged(mortgage.SquareIndex, mortgage.IsMortgaged);
                         break;
                     case GameEndedEvent _:
                         Confetti.Burst(transform, _board.transform.position + Vector3.up * 0.5f, _board.SurfaceY + 0.01f,

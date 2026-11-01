@@ -25,7 +25,7 @@ namespace Lazpoly.App.Tests
             SquareDefinition.Property("Solo", 150, 15, 0),
         });
 
-        private static readonly RulesConfig Rules = new RulesConfig(1000, 0, 6, 3, 2, 10, 50);
+        private static readonly RulesConfig Rules = new RulesConfig(1000, 0, 6, 3, 2, 50);
 
         private GameState _state;
         private AchievementTracker _tracker;

@@ -97,7 +97,7 @@ namespace Lazpoly.App.Tests
 
         /// <summary>
         /// A legal next command for whoever must act: buys most squares it can afford, auctions the rest with
-        /// small bids, rejects trades, and pays debts by mortgaging or goes bankrupt.
+        /// small bids, rejects trades, and pays debts by selling a property or goes bankrupt.
         /// </summary>
         public GameCommand NextCommand()
         {
@@ -118,7 +118,7 @@ namespace Lazpoly.App.Tests
                     if (Legal(new PayDebtCommand(me))) return new PayDebtCommand(me);
                     for (int square = 0; square < Board.Count; square++)
                     {
-                        if (Legal(new MortgageCommand(me, square))) return new MortgageCommand(me, square);
+                        if (Legal(new SellPropertyCommand(me, square))) return new SellPropertyCommand(me, square);
                     }
 
                     return new DeclareBankruptcyCommand(me);
@@ -165,7 +165,7 @@ namespace Lazpoly.App.Tests
             SquareDefinition.Tax("Küçük vergi", 50),
         });
 
-        public static RulesConfig Rules() => new RulesConfig(800, 100, 6, 3, 2, 10, 50);
+        public static RulesConfig Rules() => new RulesConfig(800, 100, 6, 3, 2, 50);
     }
 
     /// <summary>Wraps a client's transport so a test can lose chosen incoming messages.</summary>

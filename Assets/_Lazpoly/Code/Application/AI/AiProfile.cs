@@ -10,19 +10,19 @@ namespace Lazpoly.App.AI
     {
         private static readonly AiProfile EasyProfile = new AiProfile(AiDifficulty.Easy,
             cashReservePercent: 3, buildReserveMultiplier: 3, bidPercent: 80, groupBidBonusPercent: 0, blockBidBonusPercent: 0,
-            proposesTrades: false, tradeOfferPercent: 0, tradeAcceptMarginPercent: 0, mistakePercent: 25, mortgagesToBuild: false);
+            proposesTrades: false, tradeOfferPercent: 0, tradeAcceptMarginPercent: 0, mistakePercent: 25);
 
         private static readonly AiProfile NormalProfile = new AiProfile(AiDifficulty.Normal,
             cashReservePercent: 8, buildReserveMultiplier: 1, bidPercent: 100, groupBidBonusPercent: 50, blockBidBonusPercent: 0,
-            proposesTrades: true, tradeOfferPercent: 150, tradeAcceptMarginPercent: 10, mistakePercent: 5, mortgagesToBuild: false);
+            proposesTrades: true, tradeOfferPercent: 150, tradeAcceptMarginPercent: 10, mistakePercent: 5);
 
         private static readonly AiProfile HardProfile = new AiProfile(AiDifficulty.Hard,
             cashReservePercent: 8, buildReserveMultiplier: 1, bidPercent: 110, groupBidBonusPercent: 80, blockBidBonusPercent: 30,
-            proposesTrades: true, tradeOfferPercent: 150, tradeAcceptMarginPercent: 15, mistakePercent: 0, mortgagesToBuild: true);
+            proposesTrades: true, tradeOfferPercent: 150, tradeAcceptMarginPercent: 15, mistakePercent: 0);
 
         private AiProfile(AiDifficulty difficulty, int cashReservePercent, int buildReserveMultiplier, int bidPercent,
             int groupBidBonusPercent, int blockBidBonusPercent, bool proposesTrades, int tradeOfferPercent,
-            int tradeAcceptMarginPercent, int mistakePercent, bool mortgagesToBuild)
+            int tradeAcceptMarginPercent, int mistakePercent)
         {
             Difficulty = difficulty;
             CashReservePercent = cashReservePercent;
@@ -34,7 +34,6 @@ namespace Lazpoly.App.AI
             TradeOfferPercent = tradeOfferPercent;
             TradeAcceptMarginPercent = tradeAcceptMarginPercent;
             MistakePercent = mistakePercent;
-            MortgagesToBuild = mortgagesToBuild;
         }
 
         public AiDifficulty Difficulty { get; }
@@ -65,9 +64,6 @@ namespace Lazpoly.App.AI
 
         /// <summary>Chance of skipping a good purchase or bid. Mistakes are always legal moves.</summary>
         public int MistakePercent { get; }
-
-        /// <summary>Whether the AI mortgages lone properties to pay for houses on a complete group.</summary>
-        public bool MortgagesToBuild { get; }
 
         public int CashReserve(int startingMoney) => startingMoney * CashReservePercent / 100;
 

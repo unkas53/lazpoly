@@ -61,7 +61,7 @@ namespace Lazpoly.Presentation.Tests
             foreach (System.Type expected in new[]
                      {
                          typeof(BuildingLevelChangedEvent), typeof(AuctionEndedEvent), typeof(BidPlacedEvent), typeof(TradeResolvedEvent),
-                         typeof(MortgageChangedEvent), typeof(DebtIncurredEvent), typeof(PlayerBankruptedEvent),
+                         typeof(DebtIncurredEvent), typeof(PlayerBankruptedEvent),
                          typeof(CardDrawnEvent), typeof(PotChangedEvent), typeof(DiceOptionsEvent),
                      })
             {
@@ -144,7 +144,6 @@ namespace Lazpoly.Presentation.Tests
             for (int square = 0; square < state.SquareCount; square++)
             {
                 if (state.GetBuildingLevel(square) == 0) continue;
-                Assert.IsFalse(state.IsMortgaged(square), $"Seed {seed}: square {square} has houses and a mortgage.");
                 Assert.AreNotEqual(GameState.NoOwner, state.GetOwner(square), $"Seed {seed}: houses on unowned square {square}.");
                 Assert.That(state.GetBuildingLevel(square), Is.LessThanOrEqualTo(SquareDefinition.MaxBuildingLevel), $"Seed {seed}: square {square} is overbuilt.");
             }

@@ -24,7 +24,7 @@ namespace Lazpoly.Presentation.Texts
 
     /// <summary>
     /// What the square card shows: price, the whole rent table with the rent that applies now marked,
-    /// building cost, mortgage value, owner and how much of the group each player holds.
+    /// building cost, sale value, owner and how much of the group each player holds.
     /// </summary>
     public sealed class SquareInfo
     {
@@ -110,9 +110,8 @@ namespace Lazpoly.Presentation.Texts
 
             int owner = state.GetOwner(squareIndex);
             int level = state.GetBuildingLevel(squareIndex);
-            bool mortgaged = state.IsMortgaged(squareIndex);
             bool wholeGroup = owner != GameState.NoOwner && GameRules.OwnsWholeGroup(board, state, owner, square.GroupId);
-            bool live = owner != GameState.NoOwner && !mortgaged;
+            bool live = owner != GameState.NoOwner;
 
             info.Rows.Add(new SquareInfoRow(L("Fiyat"), square.Price.ToString()));
             info.Rows.Add(new SquareInfoRow(L("Kira"), square.BaseRent.ToString(), live && level == 0 && !wholeGroup));
@@ -129,10 +128,10 @@ namespace Lazpoly.Presentation.Texts
                 info.Rows.Add(new SquareInfoRow(L("Ev maliyeti"), square.BuildingCost.ToString()));
             }
 
-            info.Rows.Add(new SquareInfoRow(L("İpotek değeri"), square.MortgageValue.ToString()));
+            info.Rows.Add(new SquareInfoRow(L("Satış değeri"), square.SaleValue.ToString()));
 
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
-            info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : mortgaged ? F($"Sahibi {ownerName} (ipotekli, kira alınmaz).") : F($"Sahibi {ownerName}."));
+            info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
             info.Notes.Add(GroupNote(board, state, square.GroupId));
             if (square.IsDevelopable) info.Notes.Add(L("Sahibi şehre yeniden gelince ev kurar: başlangıçtan geçene kadar bir, sonra dörde kadar; dört evden sonra otel."));
             return info;

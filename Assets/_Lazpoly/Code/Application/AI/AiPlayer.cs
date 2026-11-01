@@ -168,29 +168,11 @@ namespace Lazpoly.App.AI
             return good ? accept : (GameCommand)reject;
         }
 
-        /// <summary>
-        /// Spends spare money between rolls: buys back mortgages, then builds on the town it stands on.
-        /// A player that <see cref="AiProfile.MortgagesToBuild"/> builds first and mortgages other
-        /// properties to pay for houses.
-        /// </summary>
+        /// <summary>Spends spare money between rolls on the town the player stands on.</summary>
         private GameCommand Manage(View view)
         {
             int spare = view.Me.Money - view.Reserve * Profile.BuildReserveMultiplier;
-            if (Profile.MortgagesToBuild) return Build(view, spare) ?? MortgageForHouse(view, spare) ?? Redeem(view);
-            return Redeem(view) ?? Build(view, spare);
-        }
-
-        private GameCommand Redeem(View view)
-        {
-            // While a house is waiting for money, buying back a mortgage would only undo the mortgage that pays for it.
-            if (Profile.MortgagesToBuild && WantedHouseCost(view) > 0) return null;
-            foreach (int square in view.OwnSquaresByValue())
-            {
-                var redeem = new RedeemCommand(PlayerId, square);
-                if (view.Legal(redeem) && view.Me.Money - view.Rules.RedeemCost(view.Board[square].MortgageValue) >= view.Reserve * 2) return redeem;
-            }
-
-            return null;
+            return Build(view, spare);
         }
 
         /// <summary>
@@ -203,33 +185,6 @@ namespace Lazpoly.App.AI
             var build = new BuildCommand(PlayerId, square);
             if (!view.Legal(build) || spare - view.Board[square].BuildingCost < 0) return null;
             return view.MakesMistake() ? null : build;
-        }
-
-        /// <summary>The cost of the next house the rules allow here but the spare money does not cover, or 0.</summary>
-        private int WantedHouseCost(View view)
-        {
-            int square = view.Me.Position;
-            RejectionReason reason = GameRules.Validate(view.Board, view.Rules, view.State, new BuildCommand(PlayerId, square));
-            return reason == RejectionReason.None || reason == RejectionReason.InsufficientFunds ? view.Board[square].BuildingCost : 0;
-        }
-
-        /// <summary>Mortgages the cheapest other property when that pays for the next house on this town.</summary>
-        private GameCommand MortgageForHouse(View view, int spare)
-        {
-            int cost = WantedHouseCost(view);
-            if (cost == 0) return null;
-
-            IReadOnlyList<int> squares = view.OwnSquaresByValue();
-            for (int i = squares.Count - 1; i >= 0; i--)
-            {
-                int square = squares[i];
-                if (square == view.Me.Position) continue;
-                SquareDefinition definition = view.Board[square];
-                var mortgage = new MortgageCommand(PlayerId, square);
-                if (spare + definition.MortgageValue >= cost && view.Legal(mortgage)) return mortgage;
-            }
-
-            return null;
         }
 
         /// <summary>Rounds after which offers grow each round, so a table where nobody sells never plays on forever.</summary>
@@ -264,7 +219,7 @@ namespace Lazpoly.App.AI
             return null;
         }
 
-        /// <summary>Pays when it can; otherwise sells houses, then mortgages the least valuable property, then gives up.</summary>
+        /// <summary>Pays when it can; otherwise sells houses, then the least valuable property, then gives up.</summary>
         private GameCommand RaiseMoney(View view)
         {
             var pay = new PayDebtCommand(PlayerId);
@@ -282,8 +237,8 @@ namespace Lazpoly.App.AI
             IReadOnlyList<int> squares = view.OwnSquaresByValue();
             for (int i = squares.Count - 1; i >= 0; i--)
             {
-                var mortgage = new MortgageCommand(PlayerId, squares[i]);
-                if (view.Legal(mortgage)) return mortgage;
+                var sale = new SellPropertyCommand(PlayerId, squares[i]);
+                if (view.Legal(sale)) return sale;
             }
 
             return new DeclareBankruptcyCommand(PlayerId);
@@ -408,13 +363,7 @@ namespace Lazpoly.App.AI
                 return squares;
             }
 
-            private int Worth(int square)
-            {
-                SquareDefinition definition = Board[square];
-                int value = definition.Price;
-                if (State.IsMortgaged(square)) value -= Rules.RedeemCost(definition.MortgageValue);
-                return Math.Max(value, 0);
-            }
+            private int Worth(int square) => Board[square].Price;
 
             private bool CompletesGroupWith(int square, int playerId, IReadOnlyList<int> bundle)
             {

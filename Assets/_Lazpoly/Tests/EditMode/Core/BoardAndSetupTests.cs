@@ -61,11 +61,11 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void RulesRejectInvalidValues()
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(0, 200, 6, 3, 2, 10, 50));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, -1, 6, 3, 2, 10, 50));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, 200, 1, 3, 2, 10, 50));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, 200, 6, 0, 2, 10, 50));
-            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, 200, 6, 3, 0, 10, 50));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(0, 200, 6, 3, 2, 50));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, -1, 6, 3, 2, 50));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, 200, 1, 3, 2, 50));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, 200, 6, 0, 2, 50));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new RulesConfig(1000, 200, 6, 3, 0, 50));
         }
 
         [Test]

@@ -36,7 +36,6 @@ namespace Lazpoly.Core.State
         public List<PlayerEntry> Players = new List<PlayerEntry>();
         public int[] Owners = Array.Empty<int>();
         public int[] BuildingLevels = Array.Empty<int>();
-        public bool[] Mortgaged = Array.Empty<bool>();
         public AuctionState Auction;
         public TradeOffer PendingTrade;
         public GamePhase TradeReturnPhase;
@@ -61,7 +60,6 @@ namespace Lazpoly.Core.State
                 DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],
-                Mortgaged = new bool[state.SquareCount],
                 Auction = state.Auction?.Copy(),
                 PendingTrade = state.PendingTrade,
                 TradeReturnPhase = state.TradeReturnPhase,
@@ -86,7 +84,6 @@ namespace Lazpoly.Core.State
             {
                 snapshot.Owners[i] = state.GetOwner(i);
                 snapshot.BuildingLevels[i] = state.GetBuildingLevel(i);
-                snapshot.Mortgaged[i] = state.IsMortgaged(i);
             }
             return snapshot;
         }

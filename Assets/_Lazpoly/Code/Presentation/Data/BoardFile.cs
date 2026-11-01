@@ -13,7 +13,6 @@ namespace Lazpoly.Presentation.Data
         public int diceSides;
         public int maxConsecutiveDoubles;
         public int fullGroupRentMultiplier;
-        public int mortgageInterestPercent;
         public int buildingSellbackPercent;
         public GroupEntry[] groups;
         public SquareEntry[] squares;

@@ -55,7 +55,7 @@ namespace Lazpoly.Presentation.Texts
 
             // Decisions first: they explain the buttons the player is looking at.
             return Offer(TipId.Debt, myTurn && state.Phase == GamePhase.AwaitingDebtPayment,
-                       L("Borcunu ödeyecek kadar paran yok. Bina satarak ya da mülk ipotek ederek para bul; bulamazsan iflas edersin."))
+                       L("Borcunu ödeyecek kadar paran yok. Bina ya da mülk satarak para bul; bulamazsan iflas edersin."))
                    ?? Offer(TipId.Travel, myTurn && state.Phase == GamePhase.AwaitingTravelDecision,
                        F($"Otogardasın. Tahtada bir kareye tıkla ve {board[me.Position].Fee} ödeyerek oraya git. İstemezsen \"Burada kal\"."))
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,
@@ -72,19 +72,19 @@ namespace Lazpoly.Presentation.Texts
                        L("Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır."))
                    ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
                        F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
-                   ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasMortgageable(board, state, playerId),
-                       L("Paran azaldı. Sıkışırsan mülklerini ipotek edip bankadan para alabilirsin; sonra faiziyle geri alırsın."))
+                   ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasSellable(board, state, playerId),
+                       L("Paran azaldı. Sıkışırsan bir mülkünü bankaya satabilirsin; banka fiyatın yarısını öder ve şehir yeniden boşa çıkar."))
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
                        F($"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır."))
                    ?? Offer(TipId.Trade, myTurn && state.Phase == GamePhase.WaitingForRoll && state.Round >= 3,
                        L("Bir rengin tamamı sende olunca boş kirası katlanır. Eksik kareyi \"Takas Teklif Et\" ile para ya da mülk karşılığında iste."));
         }
 
-        private static bool HasMortgageable(BoardDefinition board, GameState state, int playerId)
+        private static bool HasSellable(BoardDefinition board, GameState state, int playerId)
         {
             for (int square = 0; square < board.Count; square++)
             {
-                if (state.GetOwner(square) == playerId && !state.IsMortgaged(square)) return true;
+                if (state.GetOwner(square) == playerId) return true;
             }
 
             return false;

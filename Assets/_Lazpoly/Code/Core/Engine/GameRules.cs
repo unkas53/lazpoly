@@ -53,14 +53,10 @@ namespace Lazpoly.Core.Engine
                             GamePhase.AwaitingDebtPayment, GamePhase.AwaitingTravelDecision)
                         .Then(() => CanSell(board, state, player, c.SquareIndex));
 
-                case MortgageCommand c:
+                case SellPropertyCommand c:
                     return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd, GamePhase.AwaitingBuyDecision,
                             GamePhase.AwaitingDebtPayment, GamePhase.AwaitingTravelDecision)
-                        .Then(() => CanMortgage(board, state, player, c.SquareIndex));
-
-                case RedeemCommand c:
-                    return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd)
-                        .Then(() => CanRedeem(board, rules, state, player, c.SquareIndex));
+                        .Then(() => RequireOwnProperty(board, state, player, c.SquareIndex));
 
                 case PlaceBidCommand c:
                 {
@@ -131,7 +127,7 @@ namespace Lazpoly.Core.Engine
             if (square.Type != SquareType.Property) return 0;
 
             int ownerId = state.GetOwner(squareIndex);
-            if (ownerId == GameState.NoOwner || state.IsMortgaged(squareIndex)) return 0;
+            if (ownerId == GameState.NoOwner) return 0;
 
             int level = state.GetBuildingLevel(squareIndex);
             if (level > 0) return square.DevelopedRents[level - 1];
@@ -165,12 +161,12 @@ namespace Lazpoly.Core.Engine
             }
         }
 
-        /// <summary>Whether the square carries houses or a hotel; such a town cannot be mortgaged or traded.</summary>
+        /// <summary>Whether the square carries houses or a hotel; such a town cannot be traded.</summary>
         public static bool HasBuildings(GameState state, int squareIndex) => state.GetBuildingLevel(squareIndex) > 0;
 
         /// <summary>
         /// What a player is worth when a round-limited game is scored: money, plus each property at
-        /// its price (half while mortgaged) and each building level at its cost.
+        /// its price and each building level at its cost.
         /// </summary>
         public static int NetWorth(BoardDefinition board, GameState state, int playerId)
         {
@@ -181,7 +177,7 @@ namespace Lazpoly.Core.Engine
             for (int i = 0; i < board.Count; i++)
             {
                 if (state.GetOwner(i) != playerId) continue;
-                total += state.IsMortgaged(i) ? board[i].MortgageValue : board[i].Price;
+                total += board[i].Price;
                 total += state.GetBuildingLevel(i) * board[i].BuildingCost;
             }
 
@@ -216,7 +212,7 @@ namespace Lazpoly.Core.Engine
             return new[] { dice[option * 2], dice[option * 2 + 1] };
         }
 
-        /// <summary>Money a player could hold after selling every building and mortgaging every property.</summary>
+        /// <summary>Money a player could hold after selling every property with its buildings back to the bank.</summary>
         public static int MaxRaisableMoney(BoardDefinition board, RulesConfig rules, GameState state, int playerId)
         {
             PlayerState player = state.FindPlayer(playerId);
@@ -226,12 +222,15 @@ namespace Lazpoly.Core.Engine
             for (int i = 0; i < board.Count; i++)
             {
                 if (state.GetOwner(i) != playerId) continue;
-                total += state.GetBuildingLevel(i) * rules.SellbackValue(board[i].BuildingCost);
-                if (!state.IsMortgaged(i)) total += board[i].MortgageValue;
+                total += PropertySaleProceeds(board, rules, state, i);
             }
 
             return total;
         }
+
+        /// <summary>What the bank pays for a property sold back with everything on it: half its price plus each building at its sell-back value.</summary>
+        public static int PropertySaleProceeds(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex) =>
+            board[squareIndex].SaleValue + state.GetBuildingLevel(squareIndex) * rules.SellbackValue(board[squareIndex].BuildingCost);
 
         /// <summary>Houses a square may carry; the level above is the hotel.</summary>
         public const int MaxHouses = SquareDefinition.MaxBuildingLevel - 1;
@@ -241,7 +240,7 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>
         /// Building happens where the player arrived this turn: you own the town, you are on it, and
-        /// it is not mortgaged. Before their first pass of the start square a player builds one house per
+        /// Before their first pass of the start square a player builds one house per
         /// town, afterwards up to four; the hotel needs a later visit to a town that already has its
         /// four houses. Colour groups play no part.
         /// </summary>
@@ -256,14 +255,14 @@ namespace Lazpoly.Core.Engine
         /// <summary>
         /// How many buildings the player may still add to this square on the current visit, money
         /// aside: the houses up to the player's lap limit, or one (the hotel) on a four-house town they
-        /// arrived at. Zero when they do not own it, have not arrived on it this turn, or it is mortgaged.
+        /// arrived at. Zero when they do not own it or have not arrived on it this turn.
         /// </summary>
         public static int BuildableNow(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
         {
             if (player == null || squareIndex < 0 || squareIndex >= board.Count) return 0;
             SquareDefinition square = board[squareIndex];
             if (square.Type != SquareType.Property || !square.IsDevelopable) return 0;
-            if (state.GetOwner(squareIndex) != player.Id || player.Position != squareIndex || state.IsMortgaged(squareIndex)) return 0;
+            if (state.GetOwner(squareIndex) != player.Id || player.Position != squareIndex) return 0;
             if (state.BuiltThisVisit == GameState.NotArrived || state.CurrentPlayer.Id != player.Id) return 0;
 
             int level = state.GetBuildingLevel(squareIndex);
@@ -283,23 +282,6 @@ namespace Lazpoly.Core.Engine
             return state.GetBuildingLevel(squareIndex) == 0 ? RejectionReason.CannotSell : RejectionReason.None;
         }
 
-        private static RejectionReason CanMortgage(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
-        {
-            RejectionReason owned = RequireOwnProperty(board, state, player, squareIndex);
-            if (owned != RejectionReason.None) return owned;
-            if (state.IsMortgaged(squareIndex) || HasBuildings(state, squareIndex)) return RejectionReason.CannotMortgage;
-            return RejectionReason.None;
-        }
-
-        private static RejectionReason CanRedeem(BoardDefinition board, RulesConfig rules, GameState state, PlayerState player, int squareIndex)
-        {
-            RejectionReason owned = RequireOwnProperty(board, state, player, squareIndex);
-            if (owned != RejectionReason.None) return owned;
-            if (!state.IsMortgaged(squareIndex)) return RejectionReason.CannotMortgage;
-            return player.Money >= rules.RedeemCost(board[squareIndex].MortgageValue)
-                ? RejectionReason.None
-                : RejectionReason.InsufficientFunds;
-        }
 
         private static RejectionReason CanTakePartInAuction(GameState state, PlayerState player)
         {

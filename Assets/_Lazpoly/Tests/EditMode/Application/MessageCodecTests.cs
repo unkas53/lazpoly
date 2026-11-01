@@ -30,7 +30,6 @@ namespace Lazpoly.App.Tests
             };
             GameStateSnapshot busy = SampleSnapshot();
             busy.BuildingLevels[1] = 3;
-            busy.Mortgaged[4] = true;
             busy.Auction = new AuctionState(7, 40, 2, new[] { 1 });
             busy.PendingTrade = new TradeOffer(1, 2, 10, 20, new[] { 1 }, new[] { 2, 4 });
             busy.TradeReturnPhase = GamePhase.TurnEnd;
@@ -51,8 +50,7 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new EndTurnCommand(4) };
             yield return new CommandMessage { Command = new BuildCommand(1, 5) };
             yield return new CommandMessage { Command = new SellBuildingCommand(1, 5) };
-            yield return new CommandMessage { Command = new MortgageCommand(2, 7) };
-            yield return new CommandMessage { Command = new RedeemCommand(2, 7) };
+            yield return new CommandMessage { Command = new SellPropertyCommand(2, 7) };
             yield return new CommandMessage { Command = new PlaceBidCommand(3, 140) };
             yield return new CommandMessage { Command = new PassBidCommand(3) };
             yield return new CommandMessage { Command = new ProposeTradeCommand(new TradeOffer(1, 2, 30, 0, new[] { 1, 2 }, new[] { 4 })) };
@@ -76,7 +74,6 @@ namespace Lazpoly.App.Tests
                 new PhaseChangedEvent(GamePhase.TurnEnd),
                 new GameEndedEvent(1),
                 new BuildingLevelChangedEvent(4, 5),
-                new MortgageChangedEvent(7, true),
                 new AuctionStartedEvent(4),
                 new BidPlacedEvent(2, 60),
                 new BidPassedEvent(1),

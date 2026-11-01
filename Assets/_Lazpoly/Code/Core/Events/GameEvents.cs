@@ -17,8 +17,8 @@ namespace Lazpoly.Core.Events
         Bankruptcy = 4,
         Building = 5,
         BuildingSale = 6,
-        Mortgage = 7,
-        Redeem = 8,
+        /// <summary>A property (and its buildings) sold back to the bank.</summary>
+        PropertySale = 7,
         Auction = 9,
         Trade = 10,
 
@@ -243,18 +243,6 @@ namespace Lazpoly.Core.Events
 
         public int SquareIndex { get; }
         public int Level { get; }
-    }
-
-    public sealed class MortgageChangedEvent : GameEvent
-    {
-        public MortgageChangedEvent(int squareIndex, bool isMortgaged)
-        {
-            SquareIndex = squareIndex;
-            IsMortgaged = isMortgaged;
-        }
-
-        public int SquareIndex { get; }
-        public bool IsMortgaged { get; }
     }
 
     public sealed class AuctionStartedEvent : GameEvent

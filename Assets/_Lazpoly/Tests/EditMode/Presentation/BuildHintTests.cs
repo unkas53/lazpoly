@@ -21,7 +21,7 @@ namespace Lazpoly.Presentation.Tests
 
         private static GameState State(int money = 1000)
         {
-            GameState state = GameState.CreateInitial(Board, new RulesConfig(money, 100, 6, 3, 2, 10, 50),
+            GameState state = GameState.CreateInitial(Board, new RulesConfig(money, 100, 6, 3, 2, 50),
                 new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
             return state;
         }
@@ -41,16 +41,6 @@ namespace Lazpoly.Presentation.Tests
             GameState state = State();
             Own(state, 1, 1);
             Assert.AreEqual("Ev ya da otel, kendi sıranda bu şehre gelince kurulur.", BuildHint.For(Board, state, 1, 1));
-        }
-
-        [Test]
-        public void AsksToRedeemAMortgagedTownFirst()
-        {
-            GameState state = State();
-            Own(state, 1, 1);
-            Arrive(state, 1, 1);
-            GameStateReducer.Apply(state, new MortgageChangedEvent(1, true));
-            Assert.AreEqual("İpotekli: bina kurmak için önce kurtar.", BuildHint.For(Board, state, 1, 1));
         }
 
         [Test]

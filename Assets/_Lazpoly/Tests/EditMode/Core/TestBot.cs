@@ -8,7 +8,7 @@ namespace Lazpoly.Core.Tests
 {
     /// <summary>
     /// Picks a random but legal command for whoever must act, touching every rule: buying,
-    /// auctions, building, mortgages, trades and debts. Test-only; the real AI comes in Phase 5.
+    /// auctions, building, property sales, trades and debts. Test-only; the real AI comes in Phase 5.
     /// </summary>
     internal static class TestBot
     {
@@ -41,7 +41,7 @@ namespace Lazpoly.Core.Tests
                 case GamePhase.AwaitingDebtPayment:
                     if (Legal(engine, new PayDebtCommand(me))) return new PayDebtCommand(me);
                     GameCommand raise = FirstLegal(engine, square => new SellBuildingCommand(me, square))
-                                        ?? FirstLegal(engine, square => new MortgageCommand(me, square));
+                                        ?? FirstLegal(engine, square => new SellPropertyCommand(me, square));
                     return raise ?? new DeclareBankruptcyCommand(me);
 
                 case GamePhase.AwaitingTravelDecision:
@@ -60,8 +60,7 @@ namespace Lazpoly.Core.Tests
                     int roll = dice.NextInt(0, 20);
                     GameCommand extra = null;
                     if (roll < 6) extra = FirstLegal(engine, square => new BuildCommand(me, square));
-                    else if (roll < 8) extra = FirstLegal(engine, square => new RedeemCommand(me, square));
-                    else if (roll < 9) extra = FirstLegal(engine, square => new MortgageCommand(me, square));
+                    else if (roll < 8) extra = FirstLegal(engine, square => new SellPropertyCommand(me, square));
                     else if (roll < 10) extra = FirstLegal(engine, square => new SellBuildingCommand(me, square));
                     else if (roll < 11) extra = ProposeSwap(engine, me);
                     if (extra != null) return extra;

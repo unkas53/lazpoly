@@ -15,7 +15,6 @@ namespace Lazpoly.Presentation.Audio
         MoneyOut,
         Build,
         Sell,
-        Mortgage,
         Bid,
         Gavel,
         UiClick,
@@ -61,7 +60,7 @@ namespace Lazpoly.Presentation.Audio
                 case MoneyReason.PropertyPurchase: return SoundCue.Buy;
                 case MoneyReason.Building: return SoundCue.Build;
                 case MoneyReason.BuildingSale: return SoundCue.Sell;
-                case MoneyReason.Mortgage: return SoundCue.Mortgage;
+                case MoneyReason.PropertySale: return SoundCue.Sell;
                 case MoneyReason.PassedStart:
                 case MoneyReason.Pot:
                     return SoundCue.MoneyIn;
@@ -69,7 +68,6 @@ namespace Lazpoly.Presentation.Audio
                     return e.Delta > 0 ? SoundCue.MoneyIn : SoundCue.MoneyOut;
                 case MoneyReason.Travel:
                     return SoundCue.MoneyOut;
-                case MoneyReason.Redeem:
                 case MoneyReason.Tax:
                 case MoneyReason.Rent:
                     return e.Delta < 0 ? SoundCue.MoneyOut : SoundCue.None;

@@ -90,12 +90,10 @@ namespace Lazpoly.Core.Tests
                 if (state.GetOwner(square) == GameState.NoOwner)
                 {
                     Assert.AreEqual(0, level, $"{where}: unowned square {square} has buildings.");
-                    Assert.IsFalse(state.IsMortgaged(square), $"{where}: unowned square {square} is mortgaged.");
                 }
 
                 if (level > 0)
                 {
-                    Assert.IsFalse(state.IsMortgaged(square), $"{where}: square {square} has buildings and a mortgage.");
                     Assert.That(level, Is.LessThanOrEqualTo(SquareDefinition.MaxBuildingLevel), $"{where}: square {square} is overbuilt.");
                 }
             }
@@ -116,7 +114,7 @@ namespace Lazpoly.Core.Tests
         {
             // Low starting money and pass bonus so that bankruptcies and game endings happen often.
             var rules = new RulesConfig(startingMoney: 400, passStartBonus: 50, diceSides: 6,
-                maxConsecutiveDoubles: 3, fullGroupRentMultiplier: 2, mortgageInterestPercent: 10, buildingSellbackPercent: 50);
+                maxConsecutiveDoubles: 3, fullGroupRentMultiplier: 2, buildingSellbackPercent: 50);
             int finished = 0;
 
             for (ulong seed = 1; seed <= 200; seed++)
@@ -132,7 +130,7 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void SimulatedGamesUseEveryEconomyRule()
         {
-            var rules = new RulesConfig(400, 50, 6, 3, 2, 10, 50);
+            var rules = new RulesConfig(400, 50, 6, 3, 2, 50);
             var seen = new System.Collections.Generic.HashSet<System.Type>();
             for (ulong seed = 1; seed <= 60; seed++)
             {
@@ -141,7 +139,7 @@ namespace Lazpoly.Core.Tests
 
             foreach (System.Type expected in new[]
                      {
-                         typeof(BuildingLevelChangedEvent), typeof(MortgageChangedEvent), typeof(AuctionEndedEvent),
+                         typeof(BuildingLevelChangedEvent), typeof(AuctionEndedEvent),
                          typeof(BidPlacedEvent), typeof(TradeResolvedEvent), typeof(DebtIncurredEvent), typeof(DebtClearedEvent),
                          typeof(PlayerBankruptedEvent),
                      })
@@ -164,7 +162,7 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void ReplayingTheEventsRebuildsTheHostState()
         {
-            RulesConfig rules = new RulesConfig(400, 50, 6, 3, 2, 10, 50);
+            RulesConfig rules = new RulesConfig(400, 50, 6, 3, 2, 50);
             for (ulong seed = 1; seed <= 20; seed++)
             {
                 SimulationResult host = Play(seed, 4, rules);

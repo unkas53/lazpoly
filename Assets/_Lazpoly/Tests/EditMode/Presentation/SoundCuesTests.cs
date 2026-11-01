@@ -49,8 +49,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(SoundCue.MoneyOut, SoundCues.For(new MoneyChangedEvent(1, -100, MoneyReason.Tax)));
             Assert.AreEqual(SoundCue.Build, SoundCues.For(new MoneyChangedEvent(1, -50, MoneyReason.Building)));
             Assert.AreEqual(SoundCue.Sell, SoundCues.For(new MoneyChangedEvent(1, 25, MoneyReason.BuildingSale)));
-            Assert.AreEqual(SoundCue.Mortgage, SoundCues.For(new MoneyChangedEvent(1, 30, MoneyReason.Mortgage)));
-            Assert.AreEqual(SoundCue.MoneyOut, SoundCues.For(new MoneyChangedEvent(1, -33, MoneyReason.Redeem)));
+            Assert.AreEqual(SoundCue.Sell, SoundCues.For(new MoneyChangedEvent(1, 30, MoneyReason.PropertySale)));
         }
 
         [Test]

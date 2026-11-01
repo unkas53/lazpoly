@@ -57,15 +57,10 @@ namespace Lazpoly.Core.Commands
         public SellBuildingCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
     }
 
-    public sealed class MortgageCommand : SquareCommand
+    /// <summary>Sells a property back to the bank for half its price, its buildings at their sell-back value; it becomes unowned.</summary>
+    public sealed class SellPropertyCommand : SquareCommand
     {
-        public MortgageCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
-    }
-
-    /// <summary>Pays off a mortgage with interest.</summary>
-    public sealed class RedeemCommand : SquareCommand
-    {
-        public RedeemCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+        public SellPropertyCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
     }
 
     public sealed class PlaceBidCommand : GameCommand

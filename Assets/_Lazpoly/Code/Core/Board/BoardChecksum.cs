@@ -41,7 +41,6 @@ namespace Lazpoly.Core.Board
             Mix(rules.DiceSides);
             Mix(rules.MaxConsecutiveDoubles);
             Mix(rules.FullGroupRentMultiplier);
-            Mix(rules.MortgageInterestPercent);
             Mix(rules.BuildingSellbackPercent);
 
             Mix(board.Count);

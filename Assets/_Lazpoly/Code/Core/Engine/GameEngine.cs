@@ -95,13 +95,12 @@ namespace Lazpoly.Core.Engine
                     Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) - 1));
                     Emit(new MoneyChangedEvent(player.Id, Rules.SellbackValue(Board[c.SquareIndex].BuildingCost), MoneyReason.BuildingSale));
                     break;
-                case MortgageCommand c:
-                    Emit(new MortgageChangedEvent(c.SquareIndex, true));
-                    Emit(new MoneyChangedEvent(player.Id, Board[c.SquareIndex].MortgageValue, MoneyReason.Mortgage));
-                    break;
-                case RedeemCommand c:
-                    Emit(new MoneyChangedEvent(player.Id, -Rules.RedeemCost(Board[c.SquareIndex].MortgageValue), MoneyReason.Redeem));
-                    Emit(new MortgageChangedEvent(c.SquareIndex, false));
+                case SellPropertyCommand c:
+                    // Buildings come down first, then the town goes back to the bank; one payment covers all of it.
+                    int proceeds = GameRules.PropertySaleProceeds(Board, Rules, State, c.SquareIndex);
+                    if (State.GetBuildingLevel(c.SquareIndex) > 0) Emit(new BuildingLevelChangedEvent(c.SquareIndex, 0));
+                    Emit(new PropertyOwnerChangedEvent(c.SquareIndex, player.Id, GameState.NoOwner));
+                    Emit(new MoneyChangedEvent(player.Id, proceeds, MoneyReason.PropertySale));
                     break;
                 case PlaceBidCommand c:
                     Emit(new BidPlacedEvent(player.Id, c.Amount));
@@ -232,7 +231,7 @@ namespace Lazpoly.Core.Engine
                     int ownerId = State.GetOwner(player.Position);
                     if (ownerId == GameState.NoOwner)
                     {
-                        // Offered even when the player is short: they may mortgage to afford it, or decline into an auction.
+                        // Offered even when the player is short: they may sell something to afford it, or decline into an auction.
                         Emit(new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
                         return true;
                     }
@@ -444,8 +443,7 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>
         /// The player leaves the game. Buildings go back to the bank for their sell-back value, then
-        /// all money and properties pass to the creditor; a bank creditor takes the properties back
-        /// free of mortgages.
+        /// all money and properties pass to the creditor; a bank creditor takes the properties back.
         /// </summary>
         private void GoBankrupt(PlayerState player, int creditorId)
         {
@@ -467,12 +465,11 @@ namespace Lazpoly.Core.Engine
                 Credit(creditorId, remaining, MoneyReason.Bankruptcy);
             }
 
-            // Properties go to a player creditor; owed to the bank or the pot, they return to the bank unmortgaged.
+            // Properties go to a player creditor; owed to the bank or the pot, they return to the bank.
             int heir = GameState.IsPlayerId(creditorId) ? creditorId : GameState.NoOwner;
             for (int square = 0; square < Board.Count; square++)
             {
                 if (State.GetOwner(square) != player.Id) continue;
-                if (heir == GameState.NoOwner && State.IsMortgaged(square)) Emit(new MortgageChangedEvent(square, false));
                 Emit(new PropertyOwnerChangedEvent(square, player.Id, heir));
             }
 

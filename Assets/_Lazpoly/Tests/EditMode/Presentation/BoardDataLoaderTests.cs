@@ -50,7 +50,7 @@ namespace Lazpoly.Presentation.Tests
         {
             const string json = @"{
                 ""startingMoney"": 1000, ""passStartBonus"": 100, ""diceSides"": 6, ""maxConsecutiveDoubles"": 3,
-                ""fullGroupRentMultiplier"": 2, ""mortgageInterestPercent"": 10, ""buildingSellbackPercent"": 50,
+                ""fullGroupRentMultiplier"": 2, ""buildingSellbackPercent"": 50,
                 ""squares"": [
                     { ""type"": ""start"", ""name"": ""S"" },
                     { ""type"": ""card"", ""name"": ""Haber"" },
@@ -82,7 +82,6 @@ namespace Lazpoly.Presentation.Tests
         {
             BoardData data = BoardDataLoader.LoadFromResources();
 
-            Assert.AreEqual(10, data.Rules.MortgageInterestPercent);
             Assert.AreEqual(50, data.Rules.BuildingSellbackPercent);
             for (int i = 0; i < data.Board.Count; i++)
             {
@@ -99,7 +98,7 @@ namespace Lazpoly.Presentation.Tests
             const string json = @"{
                 ""startingMoney"": 500, ""passStartBonus"": 50, ""diceSides"": 6,
                 ""maxConsecutiveDoubles"": 3, ""fullGroupRentMultiplier"": 2,
-                ""mortgageInterestPercent"": 15, ""buildingSellbackPercent"": 40,
+                ""buildingSellbackPercent"": 40,
                 ""groups"": [ { ""id"": 1, ""name"": ""G"", ""color"": ""#FF0000"" } ],
                 ""squares"": [
                     { ""type"": ""start"", ""name"": ""S"" },
@@ -111,7 +110,6 @@ namespace Lazpoly.Presentation.Tests
 
             BoardData data = BoardDataLoader.Parse(json);
 
-            Assert.AreEqual(15, data.Rules.MortgageInterestPercent);
             Assert.AreEqual(40, data.Rules.BuildingSellbackPercent);
             Assert.AreEqual(50, data.Board[1].BuildingCost);
             CollectionAssert.AreEqual(new[] { 25, 75, 200, 275, 350 }, data.Board[1].DevelopedRents);

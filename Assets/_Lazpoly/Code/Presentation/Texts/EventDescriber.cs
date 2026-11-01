@@ -54,8 +54,6 @@ namespace Lazpoly.Presentation.Texts
                         : F($"Oyun bitti! Kazanan: {NameOf(state, e.WinnerId)}");
                 case BuildingLevelChangedEvent e:
                     return $"{L(board[e.SquareIndex].Name)}: {LevelText(e.Level)}";
-                case MortgageChangedEvent e:
-                    return e.IsMortgaged ? F($"{L(board[e.SquareIndex].Name)} ipotek edildi") : F($"{L(board[e.SquareIndex].Name)} ipotekten kurtarıldı");
                 case AuctionStartedEvent e:
                     return F($"{L(board[e.SquareIndex].Name)} açık artırmada");
                 case BidPlacedEvent e:
@@ -104,8 +102,7 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Bankruptcy: return L("iflas");
                 case MoneyReason.Building: return L("inşaat");
                 case MoneyReason.BuildingSale: return L("bina satışı");
-                case MoneyReason.Mortgage: return L("ipotek");
-                case MoneyReason.Redeem: return L("ipotek ödemesi");
+                case MoneyReason.PropertySale: return L("mülk satışı");
                 case MoneyReason.Auction: return L("açık artırma");
                 case MoneyReason.Trade: return L("takas");
                 case MoneyReason.Card: return L("Sokak Haberi");

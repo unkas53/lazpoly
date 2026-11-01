@@ -21,14 +21,12 @@ namespace Lazpoly.Core.State
         private readonly List<PlayerState> _players;
         private readonly int[] _owners;
         private readonly int[] _buildingLevels;
-        private readonly bool[] _mortgaged;
 
         private GameState(List<PlayerState> players, int squareCount)
         {
             _players = players;
             _owners = new int[squareCount];
             _buildingLevels = new int[squareCount];
-            _mortgaged = new bool[squareCount];
             for (int i = 0; i < _owners.Length; i++) _owners[i] = NoOwner;
             WinnerId = NoWinner;
         }
@@ -192,23 +190,21 @@ namespace Lazpoly.Core.State
                 state.SetOwner(i, owner);
             }
 
-            if (snapshot.BuildingLevels == null || snapshot.BuildingLevels.Length != snapshot.Owners.Length ||
-                snapshot.Mortgaged == null || snapshot.Mortgaged.Length != snapshot.Owners.Length)
+            if (snapshot.BuildingLevels == null || snapshot.BuildingLevels.Length != snapshot.Owners.Length)
             {
-                throw new ArgumentException("Snapshot building or mortgage data does not match the board.", nameof(snapshot));
+                throw new ArgumentException("Snapshot building data does not match the board.", nameof(snapshot));
             }
 
             for (int i = 0; i < snapshot.Owners.Length; i++)
             {
                 int level = snapshot.BuildingLevels[i];
                 bool unowned = snapshot.Owners[i] == NoOwner;
-                if (level < 0 || level > SquareDefinition.MaxBuildingLevel || (unowned && (level != 0 || snapshot.Mortgaged[i])))
+                if (level < 0 || level > SquareDefinition.MaxBuildingLevel || (unowned && level != 0))
                 {
-                    throw new ArgumentException($"Square {i} has impossible building or mortgage data.", nameof(snapshot));
+                    throw new ArgumentException($"Square {i} has impossible building data.", nameof(snapshot));
                 }
 
                 state.SetBuildingLevel(i, level);
-                state.SetMortgaged(i, snapshot.Mortgaged[i]);
             }
 
             if (snapshot.Auction != null)
@@ -269,10 +265,6 @@ namespace Lazpoly.Core.State
         public int GetBuildingLevel(int squareIndex) => _buildingLevels[squareIndex];
 
         internal void SetBuildingLevel(int squareIndex, int level) => _buildingLevels[squareIndex] = level;
-
-        public bool IsMortgaged(int squareIndex) => _mortgaged[squareIndex];
-
-        internal void SetMortgaged(int squareIndex, bool mortgaged) => _mortgaged[squareIndex] = mortgaged;
 
         public PlayerState FindPlayer(int playerId)
         {
@@ -356,7 +348,6 @@ namespace Lazpoly.Core.State
             }
 
             foreach (int level in _buildingLevels) Mix(level);
-            foreach (bool mortgaged in _mortgaged) Mix(mortgaged ? 1 : 0);
 
             Mix(Auction == null ? 0 : 1);
             if (Auction != null)

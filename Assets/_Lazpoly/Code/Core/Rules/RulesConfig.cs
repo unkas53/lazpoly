@@ -17,7 +17,6 @@ namespace Lazpoly.Core.Rules
             int diceSides,
             int maxConsecutiveDoubles,
             int fullGroupRentMultiplier,
-            int mortgageInterestPercent,
             int buildingSellbackPercent,
             bool auctionsEnabled = true,
             int roundLimit = 0)
@@ -27,7 +26,6 @@ namespace Lazpoly.Core.Rules
             if (diceSides < 2) throw new ArgumentOutOfRangeException(nameof(diceSides));
             if (maxConsecutiveDoubles < 1) throw new ArgumentOutOfRangeException(nameof(maxConsecutiveDoubles));
             if (fullGroupRentMultiplier < 1) throw new ArgumentOutOfRangeException(nameof(fullGroupRentMultiplier));
-            if (mortgageInterestPercent < 0 || mortgageInterestPercent > 100) throw new ArgumentOutOfRangeException(nameof(mortgageInterestPercent));
             if (buildingSellbackPercent < 0 || buildingSellbackPercent > 100) throw new ArgumentOutOfRangeException(nameof(buildingSellbackPercent));
             if (roundLimit < 0) throw new ArgumentOutOfRangeException(nameof(roundLimit));
 
@@ -36,7 +34,6 @@ namespace Lazpoly.Core.Rules
             DiceSides = diceSides;
             MaxConsecutiveDoubles = maxConsecutiveDoubles;
             FullGroupRentMultiplier = fullGroupRentMultiplier;
-            MortgageInterestPercent = mortgageInterestPercent;
             BuildingSellbackPercent = buildingSellbackPercent;
             AuctionsEnabled = auctionsEnabled;
             RoundLimit = roundLimit;
@@ -55,9 +52,6 @@ namespace Lazpoly.Core.Rules
 
         /// <summary>Rent multiplier when the owner holds every property of the group.</summary>
         public int FullGroupRentMultiplier { get; }
-
-        /// <summary>Interest added to the mortgage value when a property is redeemed, in percent.</summary>
-        public int MortgageInterestPercent { get; }
 
         /// <summary>Share of the building cost the bank pays back when a building is sold, in percent.</summary>
         public int BuildingSellbackPercent { get; }
@@ -79,12 +73,9 @@ namespace Lazpoly.Core.Rules
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             return new RulesConfig(table.StartingMoney > 0 ? table.StartingMoney : StartingMoney, PassStartBonus, DiceSides,
-                MaxConsecutiveDoubles, FullGroupRentMultiplier, MortgageInterestPercent, BuildingSellbackPercent,
+                MaxConsecutiveDoubles, FullGroupRentMultiplier, BuildingSellbackPercent,
                 table.AuctionsEnabled, table.RoundLimit);
         }
-
-        /// <summary>What it costs to lift the mortgage on a property worth <paramref name="mortgageValue"/>.</summary>
-        public int RedeemCost(int mortgageValue) => mortgageValue + (mortgageValue * MortgageInterestPercent + 99) / 100;
 
         /// <summary>What the bank pays for one building level that cost <paramref name="buildingCost"/>.</summary>
         public int SellbackValue(int buildingCost) => buildingCost * BuildingSellbackPercent / 100;

@@ -535,7 +535,7 @@ namespace Lazpoly.Presentation.Game
             if (state.LastDie1 != 0) header.Label(F($"Son zar: {state.LastDie1} + {state.LastDie2}"), UiTextStyle.Small, UiTheme.Accent, TextAnchor.MiddleRight);
         }
 
-        /// <summary>The property list of the person on turn here, with its build, sell and mortgage buttons.</summary>
+        /// <summary>The property list of the person on turn here, with its build and sell buttons.</summary>
         private void RenderOwnProperties(UiBuilder ui, GameState state)
         {
             if (state.Phase == GamePhase.GameOver || _controller.IsBusy) return;
@@ -580,7 +580,7 @@ namespace Lazpoly.Presentation.Game
             ShowMoney(label, money);
         }
 
-        /// <summary>One small square per property the player owns, in board order (so groups sit together); dim = mortgaged.</summary>
+        /// <summary>One small square per property the player owns, in board order (so groups sit together).</summary>
         private void RenderOwnedSquares(UiBuilder card, GameState state, int playerId)
         {
             UiBuilder row = null;
@@ -589,7 +589,6 @@ namespace Lazpoly.Presentation.Game
                 if (state.GetOwner(square) != playerId) continue;
                 row ??= card.Row(3f, expand: false);
                 Color color = _controller.GroupColorOf(square);
-                if (state.IsMortgaged(square)) color = Color.Lerp(color, Color.black, 0.65f);
                 row.Swatch(color, 13f);
             }
         }
@@ -733,7 +732,7 @@ namespace Lazpoly.Presentation.Game
             var buy = new BuyPropertyCommand(player.Id);
             bool affordable = player.Money >= square.Price;
             ui.Label(affordable ? F($"Paran: {player.Money}, alırsan kalan: {player.Money - square.Price}") : F($"Paran: {player.Money}"), UiTextStyle.Small, UiTheme.Muted);
-            if (!affordable) ui.Label(L("Paran yetmiyor: ipotek ya da bina satışıyla para bulabilirsin."), UiTextStyle.Small, UiTheme.Warning);
+            if (!affordable) ui.Label(L("Paran yetmiyor: bina ya da mülk satışıyla para bulabilirsin."), UiTextStyle.Small, UiTheme.Warning);
             if (_controller.Session.Rules.AuctionsEnabled) ui.Label(L("Devam edersen şehir açık artırmaya çıkar."), UiTextStyle.Small, UiTheme.Muted);
 
             UiBuilder row = ui.Row();
@@ -881,7 +880,7 @@ namespace Lazpoly.Presentation.Game
             UiBuilder card = ui.Card(new Color(0.30f, 0.16f, 0.16f));
             card.Label(F($"Borç: {debt.Amount} → {creditor}"), UiTextStyle.Heading);
             card.Label(EventDescriber.ReasonText(debt.Reason), UiTextStyle.Small);
-            card.Label(L("Bina sat ya da ipotek ederek para bul, sonra öde."), UiTextStyle.Small);
+            card.Label(L("Bina ya da mülk satarak para bul, sonra öde."), UiTextStyle.Small);
 
             var pay = new PayDebtCommand(player.Id);
             ui.Button(F($"Borcu Öde ({debt.Amount})"), () => _controller.Submit(pay), _controller.IsAllowed(pay), UiButtonStyle.Primary, 52f);

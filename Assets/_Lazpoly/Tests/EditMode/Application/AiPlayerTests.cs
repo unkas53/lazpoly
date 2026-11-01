@@ -33,7 +33,7 @@ namespace Lazpoly.App.Tests
         });
 
         // Starting money 1000: reserves are Easy 30, Normal 80, Hard 80.
-        private static readonly RulesConfig Rules = new RulesConfig(1000, 0, 6, 3, 2, 10, 50);
+        private static readonly RulesConfig Rules = new RulesConfig(1000, 0, 6, 3, 2, 50);
 
         /// <summary>Always draws the highest value, so the AI never makes its deliberate mistakes.</summary>
         private sealed class NoMistakes : IRandomSource
@@ -146,7 +146,7 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void SellsHousesBeforeMortgagingAndGivesUpLast()
+        public void SellsHousesThenPropertiesAndGivesUpLast()
         {
             GameState state = NewState();
             Own(state, A1, Me);
@@ -161,11 +161,11 @@ namespace Lazpoly.App.Tests
             Assert.AreEqual(A2, sell.SquareIndex, "Sells evenly, from the tallest building.");
 
             Apply(state, new BuildingLevelChangedEvent(A1, 0), new BuildingLevelChangedEvent(A2, 0));
-            var mortgage = Decide(state, Me, AiDifficulty.Normal) as MortgageCommand;
-            Assert.IsNotNull(mortgage);
-            Assert.AreEqual(A2, mortgage.SquareIndex, "Mortgages the cheapest property first (ties: the later square).");
+            var sale = Decide(state, Me, AiDifficulty.Normal) as SellPropertyCommand;
+            Assert.IsNotNull(sale);
+            Assert.AreEqual(A2, sale.SquareIndex, "Sells the cheapest property first (ties: the later square).");
 
-            foreach (int square in new[] { A1, A2, Solo }) Apply(state, new MortgageChangedEvent(square, true));
+            foreach (int square in new[] { A1, A2, Solo }) Apply(state, new PropertyOwnerChangedEvent(square, Me, GameState.NoOwner));
             Assert.IsInstanceOf<DeclareBankruptcyCommand>(Decide(state, Me, AiDifficulty.Normal));
         }
 
@@ -182,18 +182,6 @@ namespace Lazpoly.App.Tests
 
             SetMoney(state, Me, 120);
             Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Easy), "Easy keeps three reserves before building.");
-        }
-
-        [Test]
-        public void RedeemsMortgagesWhenRich()
-        {
-            GameState state = NewState();
-            Own(state, Solo, Me);
-            Apply(state, new MortgageChangedEvent(Solo, true));
-
-            var redeem = Decide(state, Me, AiDifficulty.Normal) as RedeemCommand;
-            Assert.IsNotNull(redeem);
-            Assert.AreEqual(Solo, redeem.SquareIndex);
         }
 
         [Test]
@@ -229,7 +217,7 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void HardMortgagesALonePropertyToPayForAHouse()
+        public void NobodySellsAPropertyToPayForAHouse()
         {
             GameState state = NewState();
             Own(state, A1, Me);
@@ -239,12 +227,7 @@ namespace Lazpoly.App.Tests
             SetMoney(state, Me, 100);
 
             Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Normal), "Normal waits until it can pay from its spare money.");
-            var mortgage = Decide(state, Me, AiDifficulty.Hard) as MortgageCommand;
-            Assert.IsNotNull(mortgage, "Hard should raise the money for a house.");
-            Assert.AreNotEqual(A1, mortgage.SquareIndex, "Never the town it is building on.");
-
-            Apply(state, new MortgageChangedEvent(mortgage.SquareIndex, true), new MoneyChangedEvent(Me, Board[mortgage.SquareIndex].MortgageValue, MoneyReason.Mortgage));
-            Assert.IsInstanceOf<BuildCommand>(Decide(state, Me, AiDifficulty.Hard), "The mortgage pays for a house, it is not bought back at once.");
+            Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Hard), "Selling at half price to build never pays off.");
         }
 
         [Test]

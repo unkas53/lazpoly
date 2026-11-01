@@ -4,7 +4,6 @@
     "diceSides": 6,
     "maxConsecutiveDoubles": 3,
     "fullGroupRentMultiplier": 2,
-    "mortgageInterestPercent": 10,
     "buildingSellbackPercent": 50,
     "groups": [
         { "id": 1, "name": "Sokaklar", "color": "#8D6E63" },

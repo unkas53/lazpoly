@@ -87,7 +87,7 @@ namespace Lazpoly.Core.Tests
 
         public static RulesConfig TestRules(int startingMoney = 1000, int passStartBonus = 200) =>
             new RulesConfig(startingMoney, passStartBonus, diceSides: 6, maxConsecutiveDoubles: 3,
-                fullGroupRentMultiplier: 2, mortgageInterestPercent: 10, buildingSellbackPercent: 50);
+                fullGroupRentMultiplier: 2, buildingSellbackPercent: 50);
 
         public static PlayerSeat[] TestSeats(int count = 2)
         {

@@ -96,10 +96,6 @@ namespace Lazpoly.Core.State
                     state.SetBuildingLevel(e.SquareIndex, e.Level);
                     break;
 
-                case MortgageChangedEvent e:
-                    RequireSquare(state, e.SquareIndex);
-                    state.SetMortgaged(e.SquareIndex, e.IsMortgaged);
-                    break;
 
                 case AuctionStartedEvent e:
                     RequireSquare(state, e.SquareIndex);

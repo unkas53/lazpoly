@@ -5,25 +5,25 @@
 ## Oyun süresi
 
 - Biten oyun: 1000, takılan: 0, tur sınırıyla biten: 0
-- Tur: ortalama 19.47, ortanca 17, %10 11, %90 30, en uzun 69
-- İlk 5 turda borca düşülen oyun: 37.7 %
-- İlk iflas: ortalama 8.16. tur
-- Oyun başına: 3.13 kart, 2.06 otogar yolculuğu, 644 kumbaradan ödenen para
+- Tur: ortalama 18.51, ortanca 17, %10 11, %90 28, en uzun 51
+- İlk 5 turda borca düşülen oyun: 37.3 %
+- İlk iflas: ortalama 8.28. tur
+- Oyun başına: 3.02 kart, 2.21 otogar yolculuğu, 594.48 kumbaradan ödenen para
 
 ## Kazananlar
 
 | Sıra | Kazanma |
 |---|---|
-| 1. oyuncu | 29.8 % |
-| 2. oyuncu | 26.0 % |
-| 3. oyuncu | 24.5 % |
-| 4. oyuncu | 19.7 % |
+| 1. oyuncu | 31.7 % |
+| 2. oyuncu | 26.3 % |
+| 3. oyuncu | 23.6 % |
+| 4. oyuncu | 18.4 % |
 
 | Zorluk | Oturduğu koltuk | Kazanma | Koltuk başına |
 |---|---|---|---|
-| Easy | 1334 | 184 | 13.8 % |
-| Normal | 1333 | 387 | 29.0 % |
-| Hard | 1333 | 429 | 32.2 % |
+| Easy | 1334 | 206 | 15.4 % |
+| Normal | 1333 | 394 | 29.6 % |
+| Hard | 1333 | 400 | 30.0 % |
 
 ## Renk grupları
 
@@ -31,40 +31,40 @@ Kira geliri ve yatırımın geri dönüşü (oyun başına kira / grubun toplam 
 
 | Grup | Fiyat | Oyun başına kira | Geri dönüş | Tamamlanan oyun | Ortalama tamamlanma turu |
 |---|---|---|---|---|---|
-| Sokaklar | 120 | 363.24 | 3.03 | 85.4 % | 11.26 |
-| Liman | 240 | 528.32 | 2.2 | 92.5 % | 10.18 |
-| Meydanlar | 440 | 1000.33 | 2.27 | 88.8 % | 15.22 |
-| Kale | 380 | 628.38 | 1.65 | 90.9 % | 10.52 |
-| Sahil | 460 | 621.41 | 1.35 | 90.4 % | 10.53 |
-| Plazalar | 540 | 579.08 | 1.07 | 90.3 % | 11.56 |
-| Köşkler | 580 | 523.75 | 0.9 | 89.4 % | 11.35 |
-| Konaklar | 680 | 525.47 | 0.77 | 92.2 % | 11.21 |
+| Sokaklar | 120 | 368.03 | 3.07 | 47.9 % | 9.99 |
+| Liman | 240 | 497.26 | 2.07 | 58.6 % | 9.03 |
+| Meydanlar | 440 | 989.68 | 2.25 | 27.7 % | 13.36 |
+| Kale | 380 | 618.03 | 1.63 | 62.0 % | 8.98 |
+| Sahil | 460 | 591.92 | 1.29 | 59.8 % | 9.32 |
+| Plazalar | 540 | 555.19 | 1.03 | 59.2 % | 10.21 |
+| Köşkler | 580 | 455.36 | 0.79 | 58.9 % | 10.36 |
+| Konaklar | 680 | 454.56 | 0.67 | 60.7 % | 9.76 |
 
 ## Kareler
 
 | # | Kare | Gelinme payı | Satın alınma (oyun başına) | Oyun başına kira |
 |---|---|---|---|---|
 | 0 | Başlangıç | 3.6 % | - | - |
-| 1 | Lale Sokağı | 3.4 % | 0.92 | 160.44 |
-| 2 | Gül Sokağı | 3.5 % | 0.93 | 202.8 |
+| 1 | Lale Sokağı | 3.4 % | 1.16 | 163.5 |
+| 2 | Gül Sokağı | 3.5 % | 1.21 | 204.53 |
 | 3 | Emlak Vergisi | 3.4 % | - | - |
-| 4 | Liman Caddesi | 4.2 % | 0.97 | 285.09 |
-| 5 | Fener Caddesi | 4.2 % | 0.97 | 243.23 |
-| 6 | Çay Molası | 5.5 % | - | - |
-| 7 | Çarşı Meydanı | 4.5 % | 0.98 | 339.51 |
-| 8 | Han Meydanı | 4.4 % | 0.96 | 300.47 |
-| 9 | Saat Kulesi | 4.6 % | 0.96 | 360.35 |
-| 10 | Kale Yolu | 4.5 % | 0.97 | 337.74 |
-| 11 | Sur Yolu | 4.4 % | 0.95 | 290.64 |
-| 12 | Sokak Haberi | 4.4 % | - | - |
-| 13 | Sahil Bulvarı | 4.4 % | 0.96 | 324.92 |
-| 14 | Martı Bulvarı | 4.4 % | 0.96 | 296.49 |
-| 15 | Lüks Vergisi | 4.3 % | - | - |
-| 16 | Kule Plaza | 4.3 % | 0.96 | 299.28 |
-| 17 | Cam Plaza | 4.1 % | 0.95 | 279.8 |
+| 4 | Liman Caddesi | 4.3 % | 1.3 | 275.32 |
+| 5 | Fener Caddesi | 4.1 % | 1.28 | 221.93 |
+| 6 | Çay Molası | 5.4 % | - | - |
+| 7 | Çarşı Meydanı | 4.5 % | 1.31 | 320.91 |
+| 8 | Han Meydanı | 4.5 % | 1.27 | 308.57 |
+| 9 | Saat Kulesi | 4.7 % | 1.28 | 360.21 |
+| 10 | Kale Yolu | 4.5 % | 1.28 | 325.49 |
+| 11 | Sur Yolu | 4.4 % | 1.31 | 292.53 |
+| 12 | Sokak Haberi | 4.3 % | - | - |
+| 13 | Sahil Bulvarı | 4.4 % | 1.27 | 317.73 |
+| 14 | Martı Bulvarı | 4.4 % | 1.25 | 274.19 |
+| 15 | Lüks Vergisi | 4.2 % | - | - |
+| 16 | Kule Plaza | 4.4 % | 1.24 | 280.7 |
+| 17 | Cam Plaza | 4.2 % | 1.2 | 274.49 |
 | 18 | Otogar | 4.1 % | - | - |
-| 19 | Tepe Köşkü | 4.0 % | 0.96 | 248.36 |
-| 20 | Bahçe Köşkü | 4.0 % | 0.95 | 275.39 |
-| 21 | Saray Konağı | 3.9 % | 0.95 | 228.09 |
-| 22 | Yalı Konağı | 4.4 % | 0.98 | 297.39 |
+| 19 | Tepe Köşkü | 4.0 % | 1.22 | 227.56 |
+| 20 | Bahçe Köşkü | 4.0 % | 1.21 | 227.8 |
+| 21 | Saray Konağı | 3.9 % | 1.19 | 206.74 |
+| 22 | Yalı Konağı | 4.4 % | 1.25 | 247.82 |
 | 23 | Seyir Terası | 3.5 % | - | - |

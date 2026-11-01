@@ -20,7 +20,6 @@ namespace Lazpoly.Presentation.Texts
 
             int level = state.GetBuildingLevel(squareIndex);
             if (level >= SquareDefinition.MaxBuildingLevel) return L("En yüksek seviyede (otel).");
-            if (state.IsMortgaged(squareIndex)) return L("İpotekli: bina kurmak için önce kurtar.");
 
             PlayerState player = state.FindPlayer(playerId);
             if (player == null) return null;

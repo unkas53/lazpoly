@@ -8,7 +8,7 @@ using Lazpoly.Presentation.UI;
 using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
-    /// <summary>A player's properties, each with the build, sell, mortgage and redeem actions the rules allow now.</summary>
+    /// <summary>A player's properties, each with the build and sell actions the rules allow now.</summary>
     public static class PropertyPanel
     {
         public static void Render(UiBuilder ui, GameSceneController controller, GameState state, int playerId)
@@ -28,7 +28,7 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder.Fix(title.Swatch(controller.GroupColorOf(square), 16f), 16f, 16f);
                 title.Label(L(definition.Name));
 
-                string status = state.IsMortgaged(square) ? L("ipotekli") : EventDescriber.LevelText(state.GetBuildingLevel(square));
+                string status = EventDescriber.LevelText(state.GetBuildingLevel(square));
                 int rent = GameRules.CalculateRent(board, controller.Session.Rules, state, square);
                 card.Label(F($"{status}, kira {rent}"), UiTextStyle.Small);
 
@@ -40,8 +40,8 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder actions = card.Row(6f);
                 Offer(actions, controller, build, GameRules.NextIsHotel(state, square) ? F($"Otel +{definition.BuildingCost}") : F($"Ev +{definition.BuildingCost}"));
                 Offer(actions, controller, new SellBuildingCommand(playerId, square), L("Ev Sat"));
-                Offer(actions, controller, new MortgageCommand(playerId, square), F($"İpotek +{definition.MortgageValue}"));
-                Offer(actions, controller, new RedeemCommand(playerId, square), F($"Kurtar -{controller.Session.Rules.RedeemCost(definition.MortgageValue)}"));
+                int proceeds = GameRules.PropertySaleProceeds(board, controller.Session.Rules, state, square);
+                Offer(actions, controller, new SellPropertyCommand(playerId, square), F($"Sat +{proceeds}"));
             }
 
             if (!any) ui.Label(L("Henüz mülkün yok."), UiTextStyle.Small);

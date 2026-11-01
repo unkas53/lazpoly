@@ -165,11 +165,9 @@ namespace Lazpoly.Core.Tests
 
             // Going bankrupt to the pot: the money goes into the pot, the properties back to the bank.
             GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(P3, GameState.NoOwner, Alice));
-            GameStateReducer.Apply(engine.State, new MortgageChangedEvent(P3, true));
             Accept(engine, new DeclareBankruptcyCommand(Alice));
             Assert.AreEqual(100, engine.State.Pot);
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(P3));
-            Assert.IsFalse(engine.State.IsMortgaged(P3));
             Assert.AreEqual(GamePhase.GameOver, engine.State.Phase);
             Assert.AreEqual(Bob, engine.State.WinnerId);
         }

@@ -41,7 +41,6 @@ namespace Lazpoly.Presentation.Tabletop
         private Vector3[] _flagScale;
         private int[] _levels;
         private Color?[] _ownerColors;
-        private bool[] _mortgaged;
         private GameObject[][] _buildings;
         private Vector3[][] _buildingRest;
         private GameObject[] _ownerFrames;
@@ -137,14 +136,6 @@ namespace Lazpoly.Presentation.Tabletop
             if (flag != null) flag.localScale = size;
         }
 
-        /// <summary>A mortgaged property shows its owner marker dimmed.</summary>
-        public void SetMortgaged(int squareIndex, bool mortgaged)
-        {
-            if (_ownerMarkers[squareIndex] == null) return;
-            _mortgaged[squareIndex] = mortgaged;
-            RefreshOwnerMarker(squareIndex);
-        }
-
         /// <summary>
         /// Shows 1-4 small houses, or one hotel at the top level. With <paramref name="animate"/>, pieces
         /// that appear drop onto the tile and bounce; pieces that go are removed at once.
@@ -232,9 +223,8 @@ namespace Lazpoly.Presentation.Tabletop
             frame.SetActive(color.HasValue);
             if (_buildings[squareIndex] != null) PaintBuildings(squareIndex);
             if (!color.HasValue) return;
-            Color shown = _mortgaged[squareIndex] ? Color.Lerp(color.Value, Color.black, 0.65f) : color.Value;
-            Paint(_pennants[squareIndex], shown);
-            Paint(frame, shown);
+            Paint(_pennants[squareIndex], color.Value);
+            Paint(frame, color.Value);
         }
 
         private void Build(BoardData data)
@@ -266,7 +256,6 @@ namespace Lazpoly.Presentation.Tabletop
             _flagScale = new Vector3[board.Count];
             _levels = new int[board.Count];
             _ownerColors = new Color?[board.Count];
-            _mortgaged = new bool[board.Count];
             _buildings = new GameObject[board.Count][];
             _buildingRest = new Vector3[board.Count][];
             _ownerFrames = new GameObject[board.Count];

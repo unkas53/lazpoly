@@ -13,12 +13,12 @@ namespace Lazpoly.Net.Messages
     /// </summary>
     public static class MessageCodec
     {
-        public const int ProtocolVersion = 5;
+        public const int ProtocolVersion = 6;
 
         private enum CommandTag : byte
         {
             Roll = 1, Buy = 2, Decline = 3, EndTurn = 4,
-            Build = 5, SellBuilding = 6, Mortgage = 7, Redeem = 8,
+            Build = 5, SellBuilding = 6, SellProperty = 7,
             Bid = 9, PassBid = 10,
             ProposeTrade = 11, AcceptTrade = 12, RejectTrade = 13, CancelTrade = 14,
             PayDebt = 15, Bankruptcy = 16,
@@ -29,7 +29,7 @@ namespace Lazpoly.Net.Messages
         {
             TurnStarted = 1, DiceRolled = 2, PlayerMoved = 3, MoneyChanged = 4,
             OwnerChanged = 5, Bankrupted = 6, PhaseChanged = 7, GameEnded = 8,
-            BuildingLevel = 9, Mortgage = 10, AuctionStarted = 11, BidPlaced = 12, BidPassed = 13, AuctionEnded = 14,
+            BuildingLevel = 9, AuctionStarted = 11, BidPlaced = 12, BidPassed = 13, AuctionEnded = 14,
             TradeProposed = 15, TradeResolved = 16, DebtIncurred = 17, DebtCleared = 18,
             PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22, TimedOut = 23,
         }
@@ -137,8 +137,7 @@ namespace Lazpoly.Net.Messages
                 case EndTurnCommand _: w.WriteByte((byte)CommandTag.EndTurn); break;
                 case BuildCommand _: w.WriteByte((byte)CommandTag.Build); break;
                 case SellBuildingCommand _: w.WriteByte((byte)CommandTag.SellBuilding); break;
-                case MortgageCommand _: w.WriteByte((byte)CommandTag.Mortgage); break;
-                case RedeemCommand _: w.WriteByte((byte)CommandTag.Redeem); break;
+                case SellPropertyCommand _: w.WriteByte((byte)CommandTag.SellProperty); break;
                 case PlaceBidCommand _: w.WriteByte((byte)CommandTag.Bid); break;
                 case PassBidCommand _: w.WriteByte((byte)CommandTag.PassBid); break;
                 case ProposeTradeCommand c:
@@ -208,8 +207,7 @@ namespace Lazpoly.Net.Messages
                 case CommandTag.EndTurn: return new EndTurnCommand(playerId);
                 case CommandTag.Build: return new BuildCommand(playerId, r.ReadInt());
                 case CommandTag.SellBuilding: return new SellBuildingCommand(playerId, r.ReadInt());
-                case CommandTag.Mortgage: return new MortgageCommand(playerId, r.ReadInt());
-                case CommandTag.Redeem: return new RedeemCommand(playerId, r.ReadInt());
+                case CommandTag.SellProperty: return new SellPropertyCommand(playerId, r.ReadInt());
                 case CommandTag.Bid: return new PlaceBidCommand(playerId, r.ReadInt());
                 case CommandTag.PassBid: return new PassBidCommand(playerId);
                 case CommandTag.ProposeTrade:
@@ -260,9 +258,6 @@ namespace Lazpoly.Net.Messages
                     break;
                 case BuildingLevelChangedEvent e:
                     w.WriteByte((byte)EventTag.BuildingLevel); w.WriteInt(e.SquareIndex); w.WriteInt(e.Level);
-                    break;
-                case MortgageChangedEvent e:
-                    w.WriteByte((byte)EventTag.Mortgage); w.WriteInt(e.SquareIndex); w.WriteBool(e.IsMortgaged);
                     break;
                 case AuctionStartedEvent e:
                     w.WriteByte((byte)EventTag.AuctionStarted); w.WriteInt(e.SquareIndex);
@@ -324,7 +319,6 @@ namespace Lazpoly.Net.Messages
                 case EventTag.PhaseChanged: return new PhaseChangedEvent(ReadEnum<GamePhase>(r));
                 case EventTag.GameEnded: return new GameEndedEvent(r.ReadInt(), ReadEnum<GameEndReason>(r));
                 case EventTag.BuildingLevel: return new BuildingLevelChangedEvent(r.ReadInt(), r.ReadInt());
-                case EventTag.Mortgage: return new MortgageChangedEvent(r.ReadInt(), r.ReadBool());
                 case EventTag.AuctionStarted: return new AuctionStartedEvent(r.ReadInt());
                 case EventTag.BidPlaced: return new BidPlacedEvent(r.ReadInt(), r.ReadInt());
                 case EventTag.BidPassed: return new BidPassedEvent(r.ReadInt());
@@ -380,7 +374,6 @@ namespace Lazpoly.Net.Messages
             {
                 w.WriteInt(s.Owners[i]);
                 w.WriteInt(s.BuildingLevels[i]);
-                w.WriteBool(s.Mortgaged[i]);
             }
 
             w.WriteBool(s.Auction != null);
@@ -411,7 +404,10 @@ namespace Lazpoly.Net.Messages
         }
 
         /// <summary>The snapshot layout written today (Faz 8: adds the buildings-this-visit count).</summary>
-        public const int SnapshotVersion = 4;
+        public const int SnapshotVersion = 5;
+
+        /// <summary>Layout 4 counted laps but still carried mortgage flags.</summary>
+        public const int LapSnapshotVersion = 4;
 
         /// <summary>Layout 3 knew the building visit but not the players' laps.</summary>
         public const int VisitSnapshotVersion = 3;
@@ -464,7 +460,7 @@ namespace Lazpoly.Net.Messages
                     Position = r.ReadInt(),
                     IsBankrupt = r.ReadBool(),
                     HasLookout = !legacy && r.ReadBool(),
-                    Laps = version >= SnapshotVersion ? r.ReadInt() : -1,
+                    Laps = version >= LapSnapshotVersion ? r.ReadInt() : -1,
                 });
             }
 
@@ -475,12 +471,12 @@ namespace Lazpoly.Net.Messages
             int squares = r.ReadCount();
             s.Owners = new int[squares];
             s.BuildingLevels = new int[squares];
-            s.Mortgaged = new bool[squares];
             for (int i = 0; i < squares; i++)
             {
                 s.Owners[i] = r.ReadInt();
                 s.BuildingLevels[i] = r.ReadInt();
-                s.Mortgaged[i] = r.ReadBool();
+                // Layouts before 5 carried a mortgage flag; a mortgaged town simply comes back as owned.
+                if (version < SnapshotVersion) r.ReadBool();
             }
 
             if (r.ReadBool())

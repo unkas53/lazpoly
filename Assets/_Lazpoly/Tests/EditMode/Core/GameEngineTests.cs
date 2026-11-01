@@ -224,7 +224,7 @@ namespace Lazpoly.Core.Tests
                 SquareDefinition.Property("Pricey", 50, 500, 0),
                 SquareDefinition.Rest("Rest"),
             });
-            var rules = new RulesConfig(100, 0, 6, 3, 2, 10, 50);
+            var rules = new RulesConfig(100, 0, 6, 3, 2, 50);
             // Alice 1+1 buys Pricey, rolls again 1+2. Bob 1+1 lands on Pricey and cannot pay.
             var engine = NewGame(new ScriptedDice(1, 1, 1, 2, 1, 1), rules: rules, board: board);
 
@@ -260,7 +260,7 @@ namespace Lazpoly.Core.Tests
                 SquareDefinition.Property("Cheap", 40, 10, 0),
                 SquareDefinition.Rest("Rest 3"),
             });
-            var rules = new RulesConfig(100, 0, 6, 3, 2, 10, 50);
+            var rules = new RulesConfig(100, 0, 6, 3, 2, 50);
             var engine = NewGame(new ScriptedDice(1, 1, 1, 2, 1, 3, 1, 2, 2, 4, 1, 3), players: 3, rules: rules, board: board);
 
             Accept(engine, new RollDiceCommand(Alice));      // 1+1 -> Pricey
@@ -297,18 +297,16 @@ namespace Lazpoly.Core.Tests
                 SquareDefinition.Tax("Ruin", 500),
                 SquareDefinition.Rest("Rest"),
             });
-            var rules = new RulesConfig(100, 0, 6, 3, 2, 10, 50);
+            var rules = new RulesConfig(100, 0, 6, 3, 2, 50);
             // Alice 1+1 buys Cheap, then 1+1 again onto Ruin.
             var engine = NewGame(new ScriptedDice(1, 1, 1, 1), players: 3, rules: rules, board: board);
 
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new BuyPropertyCommand(Alice));
-            Accept(engine, new MortgageCommand(Alice, 2));
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new DeclareBankruptcyCommand(Alice));
 
             Assert.IsTrue(P(engine, Alice).IsBankrupt);
-            Assert.IsFalse(engine.State.IsMortgaged(2), "The bank takes properties back free of mortgages.");
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(2));
             Assert.AreEqual(Bob, engine.State.CurrentPlayer.Id);
             Assert.AreEqual(100, P(engine, Bob).Money, "Money paid to the bank goes to nobody.");
