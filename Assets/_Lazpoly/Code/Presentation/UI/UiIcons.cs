@@ -26,6 +26,8 @@ namespace Lazpoly.Presentation.UI
         Flag,
         /// <summary>A bookmark: the saved game.</summary>
         Bookmark,
+        /// <summary>Two bars: the game is held still.</summary>
+        Pause,
     }
 
     /// <summary>Draws a <see cref="UiIcon"/> as a square of shapes inside a layout.</summary>
@@ -114,6 +116,11 @@ namespace Lazpoly.Presentation.UI
                 case UiIcon.Bookmark:
                     Shape(root, 0.26f, 0.06f, 0.48f, 0.88f, color);
                     Shape(root, 0.26f, 0.06f, 0.48f, 0.36f, dark).transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                    break;
+
+                case UiIcon.Pause:
+                    Shape(root, 0.16f, 0.08f, 0.26f, 0.84f, color);
+                    Shape(root, 0.58f, 0.08f, 0.26f, 0.84f, color);
                     break;
             }
         }

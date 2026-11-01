@@ -21,9 +21,10 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
-    /// The game screen's interface: players and actions on the left, the event log and menu buttons
-    /// on the right, and windows for trading, settings and the end of the game. It offers only
+    /// The game screen's interface: players and actions on the left, the event log and menu button
+    /// on the right, and windows for trading, settings, pausing and the end of the game. It offers only
     /// actions <see cref="GameSceneController.IsAllowed"/> approves; the host still validates them.
+    /// Keyboard shortcuts (<see cref="Hotkeys"/>) press the same buttons.
     /// </summary>
     public sealed class GameHud : MonoBehaviour
     {
@@ -43,6 +44,8 @@ namespace Lazpoly.Presentation.Game
         private GameObject _tradeLayer;
         private GameObject _settingsLayer;
         private GameObject _endLayer;
+        private UiView _pauseWindow;
+        private GameObject _pauseLayer;
         private bool _endDismissed;
         private UiView _squareCard;
         private GameObject _squareCardPanel;
@@ -82,6 +85,8 @@ namespace Lazpoly.Presentation.Game
         private const float BannerSeconds = 1.8f;
         private const float RollSeconds = 1.5f;
         private const float CardWidth = 440f;
+        /// <summary>The menu strip under the log: one row of buttons with the panel's padding.</summary>
+        private const float MenuHeight = UiTheme.ButtonHeight + 24f;
 
         /// <summary>Screen pixels each side column covers, margins included; the camera keeps the board clear of them.</summary>
         public float ReservedSidePixels => (SideWidth + 2f * Margin) * (_canvas != null ? _canvas.scaleFactor : 1f);
@@ -100,6 +105,9 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Whether the building card (how many houses, or the hotel) is open for the person here.</summary>
         public bool BuildCardOpen => _buildLayer != null && _buildLayer.activeSelf;
+
+        /// <summary>Whether the pause menu is open.</summary>
+        public bool PauseOpen => _pauseLayer != null && _pauseLayer.activeSelf;
 
         /// <summary>Hint memory; tests swap in one that is not kept in PlayerPrefs.</summary>
         public TipMemory TipMemory
@@ -131,12 +139,12 @@ namespace Lazpoly.Presentation.Game
             _side = new UiView(sideBuilder, RenderSide);
 
             RectTransform log = UiRoot.Rect(_canvas.transform, "Log", new Vector2(1f, 0f), Vector2.one,
-                new Vector2(-Margin - SideWidth, Margin + 182f), new Vector2(-Margin, -Margin));
+                new Vector2(-Margin - SideWidth, 2f * Margin + MenuHeight), new Vector2(-Margin, -Margin));
             UiRoot.Panel(log);
             _log = new UiView(UiRoot.ScrollPanel(log), RenderLog);
 
             RectTransform menu = UiRoot.Rect(_canvas.transform, "Menu", new Vector2(1f, 0f), new Vector2(1f, 0f),
-                new Vector2(-Margin - SideWidth, Margin), new Vector2(-Margin, Margin + 166f));
+                new Vector2(-Margin - SideWidth, Margin), new Vector2(-Margin, Margin + MenuHeight));
             UiRoot.Background(menu, UiTheme.Panel, shadow: true);
             UiBuilder.AddColumnLayout(menu.gameObject, 12, UiTheme.Spacing);
             _menu = new UiView(new UiBuilder(menu), RenderMenu);
@@ -184,6 +192,8 @@ namespace Lazpoly.Presentation.Game
             timerRect.offsetMax = Vector2.zero;
             _timer.raycastTarget = false;
 
+            // The pause menu comes first, so settings and help opened from it draw on top of it.
+            _pauseWindow = new UiView(UiRoot.Modal(_canvas.transform, "Pause", 520f, out _pauseLayer), RenderPause);
             _tradeWindow = new UiView(UiRoot.Modal(_canvas.transform, "Trade", 760f, out _tradeLayer), RenderTrade);
             _settingsWindow = new UiView(UiRoot.Modal(_canvas.transform, "Settings", 520f, out _settingsLayer),
                 ui => _settings.Render(ui, () => _settingsLayer.SetActive(false)));
@@ -192,6 +202,7 @@ namespace Lazpoly.Presentation.Game
                 ui => HowToPlayPanel.Render(ui, _controller.Session.Board, _controller.Session.Rules, () => _howToLayer.SetActive(false)));
             _cityWindow = new UiView(UiRoot.Modal(_canvas.transform, "City Card", CardWidth + 40f, out _cityLayer), RenderCityCard);
             _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", CardWidth + 40f, out _buildLayer), RenderBuildCard);
+            _pauseLayer.SetActive(false);
             _howToLayer.SetActive(false);
             _tradeLayer.SetActive(false);
             _settingsLayer.SetActive(false);
@@ -387,6 +398,7 @@ namespace Lazpoly.Presentation.Game
         {
             if (_controller?.Session == null || _side == null) return;
             GameState state = _controller.Session.State;
+            ReadHotkeys(state);
             int revision = _controller.Revision;
 
             bool tradeOpen = state != null && !_controller.EndReason.HasValue && _trade.KeepOpen(state);
@@ -410,6 +422,7 @@ namespace Lazpoly.Presentation.Game
             bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
             if (buildOpen && !_buildLayer.activeSelf) _buildCount = 1;
             SetLayer(_buildLayer, _buildWindow, buildOpen, HashCode.Combine(revision, _buildCount));
+            SetLayer(_pauseLayer, _pauseWindow, _pauseLayer.activeSelf, HashCode.Combine(revision, _controller.EndReason));
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
             SetLayer(_howToLayer, _howToWindow, _howToLayer.activeSelf, 0);
             bool ended = !_endDismissed && (_controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver && !_controller.IsBusy));
@@ -687,7 +700,7 @@ namespace Lazpoly.Presentation.Game
             switch (state.Phase)
             {
                 case GamePhase.WaitingForRoll:
-                    ui.Button(L("Zar At"), () => _controller.Submit(new RollDiceCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
+                    ui.Button(L("Zar At (Boşluk)"), () => _controller.Submit(new RollDiceCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
                     break;
 
                 case GamePhase.AwaitingBuyDecision:
@@ -695,7 +708,7 @@ namespace Lazpoly.Presentation.Game
                     break;
 
                 case GamePhase.TurnEnd:
-                    ui.Button(L("Sırayı Bitir"), () => _controller.Submit(new EndTurnCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
+                    ui.Button(L("Sırayı Bitir (Boşluk)"), () => _controller.Submit(new EndTurnCommand(player.Id)), style: UiButtonStyle.Primary, height: 52f);
                     break;
 
                 case GamePhase.AwaitingDebtPayment:
@@ -711,14 +724,20 @@ namespace Lazpoly.Presentation.Game
                     break;
             }
 
-            if (state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd)
+            if (OffersExtras(state))
             {
                 UiBuilder extras = ui.Row();
-                if (AffordableBuildings(state, player) > 0 && _buildCardDismissed == BuildVisitKey(state))
-                    extras.Button(L("Bina Kartı"), ReopenBuildCard, height: UiTheme.SmallButtonHeight);
-                extras.Button(L("Takas Teklif Et"), () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
+                if (CanReopenBuildCard(state)) extras.Button(L("Bina Kartı (B)"), ReopenBuildCard, height: UiTheme.SmallButtonHeight);
+                extras.Button(L("Takas Teklif Et (T)"), () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
             }
         }
+
+        /// <summary>The row of side actions (building card, trade) shows while the turn is at a free moment.</summary>
+        private static bool OffersExtras(GameState state) => state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd;
+
+        /// <summary>The building card was put away for this visit but could still be used.</summary>
+        private bool CanReopenBuildCard(GameState state) =>
+            AffordableBuildings(state, state.CurrentPlayer) > 0 && _buildCardDismissed == BuildVisitKey(state);
 
         /// <summary>The decision itself is on the city card in the middle; the column only says so.</summary>
         private void RenderBuyDecision(UiBuilder ui, PlayerState player)
@@ -1002,21 +1021,175 @@ namespace Lazpoly.Presentation.Game
             return count;
         }
 
+        /// <summary>The strip under the log: the pause menu and help. Settings and leaving live in the pause menu.</summary>
         private void RenderMenu(UiBuilder ui)
         {
             UiBuilder row = ui.Row();
-            row.IconButton(UiIcon.Sliders, L("Ayarlar"), () =>
-            {
-                _settingsLayer.SetActive(true);
-                _settingsWindow.Invalidate();
-            });
-            row.IconButton(UiIcon.Book, L("Nasıl Oynanır"), () =>
-            {
-                _howToLayer.SetActive(true);
-                _howToWindow.Invalidate();
-            });
+            row.IconButton(UiIcon.Pause, L("Menü (Esc)"), OpenPause);
+            row.IconButton(UiIcon.Book, L("Nasıl Oynanır (H)"), OpenHowToPlay);
+        }
+
+        private void OpenPause()
+        {
+            _pauseLayer.SetActive(true);
+            _pauseWindow.Invalidate();
+            _controller.SetPaused(true);
+        }
+
+        private void ClosePause()
+        {
+            _pauseLayer.SetActive(false);
+            _controller.SetPaused(false);
+        }
+
+        private void OpenSettings()
+        {
+            _settingsLayer.SetActive(true);
+            _settingsWindow.Invalidate();
+        }
+
+        private void OpenHowToPlay()
+        {
+            _howToLayer.SetActive(true);
+            _howToWindow.Invalidate();
+        }
+
+        /// <summary>
+        /// The pause menu: carry on, settings, help, the shortcut list and the way out. A local game
+        /// stands still behind it and is saved on leaving; an online game goes on, so it says so.
+        /// </summary>
+        private void RenderPause(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            bool over = _controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver);
+            bool online = _controller.IsOnline;
+            ui.Title(UiIcon.Pause, online || over ? L("Menü") : L("Oyun duraklatıldı"));
+            if (online && !over) ui.Label(L("Çevrim içi oyun arkada sürer; hamle süresi işlemeye devam eder."), UiTextStyle.Small, UiTheme.Muted);
+
+            ui.Button(L("Devam Et (Esc)"), ClosePause, style: UiButtonStyle.Primary, height: 52f);
+            UiBuilder row = ui.Row();
+            row.IconButton(UiIcon.Sliders, L("Ayarlar"), OpenSettings);
+            row.IconButton(UiIcon.Book, L("Nasıl Oynanır (H)"), OpenHowToPlay);
             ui.IconButton(UiIcon.Home, L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
-            ui.IconButton(UiIcon.Door, L("Oyundan Çık"), _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
+
+            UiBuilder keys = ui.Card(UiTheme.Field, 10);
+            keys.Label(L("Klavye"), UiTextStyle.Small, UiTheme.Muted);
+            Line(keys, L("Boşluk / Enter"), L("zar at, sırayı bitir"));
+            Line(keys, "B", L("bina kartı"));
+            Line(keys, "T", L("takas teklif et"));
+            Line(keys, "H", L("nasıl oynanır"));
+            Line(keys, "Home", L("görünümü sıfırla"));
+            Line(keys, "Esc", L("menü, pencereyi kapat"));
+
+            ui.Space(4f);
+            if (over)
+            {
+                ui.IconButton(UiIcon.Door, L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
+            }
+            else if (!online)
+            {
+                ui.Label(L("Oyun kaydedilir; ana menüdeki Kayıtlı Oyuna Devam Et düğmesiyle sürdürebilirsin."), UiTextStyle.Small, UiTheme.Muted);
+                ui.IconButton(UiIcon.Door, L("Kaydet ve Çık"), _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
+            }
+            else
+            {
+                ui.Label(_controller.IsHost ? L("Odayı kapatırsın; oyun herkes için biter.") : L("Odadan çıkarsın; yerine bilgisayar oynar."),
+                    UiTextStyle.Small, UiTheme.Muted);
+                ui.IconButton(UiIcon.Door, L("Oyundan Ayrıl"), _controller.LeaveToMainMenu, style: UiButtonStyle.Danger);
+            }
+        }
+
+        /// <summary>Turns the keys pressed this frame into the actions their buttons would take.</summary>
+        private void ReadHotkeys(GameState state)
+        {
+            if (!Input.anyKeyDown) return;
+            foreach (KeyCode key in Hotkeys.Keys)
+            {
+                if (Input.GetKeyDown(key) && PressKey(key)) return;
+            }
+        }
+
+        /// <summary>Acts on one key as the keyboard would; tests press keys through it. True when the key did something.</summary>
+        public bool PressKey(KeyCode key)
+        {
+            GameState state = _controller.Session?.State;
+            HotkeyAction action = Hotkeys.Resolve(key, CurrentHotkeyContext(state));
+            if (action == HotkeyAction.None) return false;
+            AudioPlayer.Play(SoundCue.UiClick);
+            Perform(action, state);
+            return true;
+        }
+
+        private HotkeyContext CurrentHotkeyContext(GameState state)
+        {
+            bool acting = state != null && WaitsOnPersonHere(state, state.Phase);
+            return new HotkeyContext
+            {
+                Typing = IsTyping(),
+                PauseOpen = _pauseLayer.activeSelf,
+                ClosableOpen = _settingsLayer.activeSelf || _howToLayer.activeSelf || _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
+                BlockingOpen = _cityLayer.activeSelf,
+                Acting = acting,
+                Phase = state?.Phase ?? GamePhase.GameOver,
+                CanBuild = acting && OffersExtras(state) && CanReopenBuildCard(state),
+                CanTrade = acting && OffersExtras(state),
+            };
+        }
+
+        /// <summary>True while a text field (a trade amount, say) has the keyboard.</summary>
+        private static bool IsTyping()
+        {
+            GameObject selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            if (selected == null) return false;
+            var field = selected.GetComponent<InputField>();
+            return field != null && field.isFocused;
+        }
+
+        private void Perform(HotkeyAction action, GameState state)
+        {
+            switch (action)
+            {
+                case HotkeyAction.Roll:
+                    Submit(new RollDiceCommand(state.CurrentPlayer.Id));
+                    break;
+                case HotkeyAction.EndTurn:
+                    Submit(new EndTurnCommand(state.CurrentPlayer.Id));
+                    break;
+                case HotkeyAction.BuildCard:
+                    ReopenBuildCard();
+                    break;
+                case HotkeyAction.Trade:
+                    _trade.Open(state.CurrentPlayer.Id);
+                    break;
+                case HotkeyAction.HowToPlay:
+                    OpenHowToPlay();
+                    break;
+                case HotkeyAction.PauseMenu:
+                    OpenPause();
+                    break;
+                case HotkeyAction.Close:
+                    CloseTopWindow(state);
+                    break;
+            }
+
+            _side.Invalidate();
+        }
+
+        /// <summary>A shortcut sends only what its button would: the same command, only when the rules allow it now.</summary>
+        private void Submit(GameCommand command)
+        {
+            if (_controller.IsAllowed(command)) _controller.Submit(command);
+        }
+
+        /// <summary>Esc closes whatever is on top, in the order the windows stack.</summary>
+        private void CloseTopWindow(GameState state)
+        {
+            if (_settingsLayer.activeSelf) _settingsLayer.SetActive(false);
+            else if (_howToLayer.activeSelf) _howToLayer.SetActive(false);
+            else if (_pauseLayer.activeSelf) ClosePause();
+            else if (_tradeLayer.activeSelf) _trade.Close();
+            else if (_buildLayer.activeSelf && state != null) _buildCardDismissed = BuildVisitKey(state);
+            else if (_endLayer.activeSelf) _endDismissed = true;
         }
 
         private void RenderTrade(UiBuilder ui)

@@ -339,6 +339,28 @@ bakmadan da anlaşılır kılar.
   oyunda aynı koltuklarla **Yeniden Oyna** (`GameSceneController.RestartLocalGame`).
 - **Hız ayarı:** zaten vardı ("Hızlı animasyonlar"); yeni animasyonların hepsi aynı çarpanı kullanır.
 
+## Faz 10a-2: duraklatma menüsü ve klavye kısayolları
+
+Cila planının ikinci adımı. Kural değişmez; oyun klavyeden de oynanır ve bir menüden çıkılır.
+
+- **Duraklatma menüsü (Esc):** sağ alttaki eski dört düğme yerine tek bir **Menü (Esc)** şeridi var; log paneli
+  kazanılan yeri alır. Menü: **Devam Et (Esc)**, Ayarlar, Nasıl Oynanır (H), Görünümü Sıfırla (Home), kısayol listesi
+  ve çıkış. Yerel oyunda menü açıkken bilgisayar hamle yapmaz ve sıradaki olay gösterilmez (`GameSceneController.Paused`,
+  `SetPaused`); çıkış **Kaydet ve Çık**'tır ve oyun eskisi gibi tek kayıt yuvasına yazılır. Çevrim içi oyun
+  duraklatılamaz; menü bunu söyler, çıkış **Oyundan Ayrıl**'dır (misafir için yerine bilgisayar oynar, ev sahibi için
+  oda kapanır). Oyun bittiyse çıkış **Ana Menü** olur.
+- **Kısayollar (`Game/Hotkeys.cs`):** Boşluk/Enter zar atar ya da sırayı bitirir, B bina kartını yeniden açar, T takas
+  teklif eder, H nasıl oynanır, Esc önce üstteki pencereyi kapatır (ayarlar, yardım, menü, takas, bina kartı, bitiş
+  penceresi) yoksa menüyü açar. Şehir kartı Esc ile kapanmaz; satın alma ve borç kararları tuşla verilmez. Bir tuş
+  yalnızca o an ekranda olan düğmenin yaptığını yapar: `Hotkeys.Resolve` ekrandaki duruma (`HotkeyContext`) bakar,
+  komut yine `IsAllowed` süzgecinden geçer ve ev sahibi doğrular. Bir metin alanı odaktayken (takas tutarı) tuşlar
+  komut değildir.
+- **Tuş ipuçları:** düğmeler kısayolunu söyler: "Zar At (Boşluk)", "Sırayı Bitir (Boşluk)", "Bina Kartı (B)",
+  "Takas Teklif Et (T)", "Nasıl Oynanır (H)", "Menü (Esc)".
+- **Testler:** `HotkeysTests` (EditMode) tuş-durum eşlemesini, `InterfaceTests.KeysOpenThePauseMenuAndPlayTheTurn`
+  (PlayMode) menünün açılıp oyunu durdurmasını, yardımın açılıp kapanmasını ve Boşluk'un zar atmasını `GameHud.PressKey`
+  üzerinden dener.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

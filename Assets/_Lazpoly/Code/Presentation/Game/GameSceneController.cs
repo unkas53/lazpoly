@@ -110,6 +110,18 @@ namespace Lazpoly.Presentation.Game
         /// <summary>True while events are still being animated; the HUD waits before offering actions.</summary>
         public bool IsBusy => _playing || _pendingEvents.Count > 0;
 
+        /// <summary>
+        /// True while the pause menu holds a local game still: the computer does not move and the
+        /// next event waits to be shown. An online game cannot be paused; the host's clock keeps running.
+        /// </summary>
+        public bool Paused { get; private set; }
+
+        /// <summary>Whether this is the machine running an online game; leaving ends the game for everyone.</summary>
+        public bool IsHost => _host != null;
+
+        /// <summary>Holds or releases a local game; see <see cref="Paused"/>. Online it does nothing.</summary>
+        public void SetPaused(bool paused) => Paused = paused && !_isOnline;
+
         private GameSettings Settings => _settings?.Current ?? GameSettings.Default;
 
         /// <summary>
@@ -192,7 +204,7 @@ namespace Lazpoly.Presentation.Game
             if (_session == null) return;
             _session.Tick();
 
-            if (_board == null || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
+            if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
             if (_session.StepAi()) _nextAiMoveTime = Time.time + Settings.AiMoveDelaySeconds;
         }
 
@@ -497,6 +509,7 @@ namespace Lazpoly.Presentation.Game
             _playing = true;
             while (_pendingEvents.Count > 0)
             {
+                while (Paused) yield return null;
                 GameEvent gameEvent = _pendingEvents.Dequeue();
                 string line = EventDescriber.Describe(gameEvent, _session.State, _session.Board);
                 if (line != null) AddLog(line, EventDescriber.ToneOf(gameEvent));

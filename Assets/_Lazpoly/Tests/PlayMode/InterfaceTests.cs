@@ -125,6 +125,52 @@ namespace Lazpoly.PlayTests
             Assert.IsTrue(shown, $"The card for '{name}' is not on screen.");
         }
 
+        [UnityTest]
+        public IEnumerator KeysOpenThePauseMenuAndPlayTheTurn()
+        {
+            LocalGameSetup.SetSeats(LocalGameSetup.DefaultSeats(2));
+            SceneManager.LoadScene("Game");
+            yield return null;
+            yield return null;
+
+            var controller = Object.FindAnyObjectByType<GameSceneController>();
+            var hud = controller.GetComponent<GameHud>();
+            while (controller.IsBusy) yield return null;
+            Assert.AreEqual(GamePhase.WaitingForRoll, controller.Session.State.Phase);
+
+            // Esc opens the menu and holds the game; the menu offers the way out and a second Esc closes it.
+            Assert.IsTrue(hud.PressKey(KeyCode.Escape));
+            yield return null;
+            Assert.IsTrue(hud.PauseOpen);
+            Assert.IsTrue(controller.Paused);
+            AssertMouseReaches("Devam Et");
+            Assert.IsNotNull(Find(hud.transform, "Kaydet ve Çık"));
+            Assert.IsFalse(hud.PressKey(KeyCode.Space), "Nothing rolls while the menu is open.");
+            Assert.IsTrue(hud.PressKey(KeyCode.Escape));
+            yield return null;
+            Assert.IsFalse(hud.PauseOpen);
+            Assert.IsFalse(controller.Paused);
+
+            // H opens help wherever the turn stands; Esc closes it again. Neither moves the game on.
+            int turn = controller.Session.State.TurnNumber;
+            Assert.IsTrue(hud.PressKey(KeyCode.H));
+            yield return null;
+            Assert.IsNotNull(Find(hud.transform, "İpuçlarını Yeniden Göster"), "The help window did not open.");
+            Assert.IsFalse(hud.PressKey(KeyCode.Space), "Nothing rolls while a window is open.");
+            Assert.IsTrue(hud.PressKey(KeyCode.Escape));
+            yield return null;
+            Assert.IsNull(Find(hud.transform, "İpuçlarını Yeniden Göster"), "The help window did not close.");
+            Assert.AreEqual(GamePhase.WaitingForRoll, controller.Session.State.Phase);
+            Assert.AreEqual(turn, controller.Session.State.TurnNumber);
+
+            // Space rolls for the person on turn, exactly as the button would.
+            Assert.IsTrue(hud.PressKey(KeyCode.Space));
+            Assert.IsNull(controller.LastRejection);
+            Assert.AreNotEqual(GamePhase.WaitingForRoll, controller.Session.State.Phase);
+            Assert.IsTrue(controller.IsBusy, "The roll is being shown.");
+            Assert.IsFalse(hud.PressKey(KeyCode.Space), "Nothing is offered while the board animates.");
+        }
+
         /// <summary>
         /// A real mouse click goes to whatever the event system hits first at the pointer, so nothing
         /// (an invisible panel, a closed window) may lie on top of the button.
