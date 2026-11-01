@@ -6,6 +6,8 @@ using Lazpoly.App.Lobby;
 using Lazpoly.App.Presence;
 using Lazpoly.App.Save;
 using Lazpoly.App.Session;
+using Lazpoly.App.AI;
+using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
@@ -39,6 +41,13 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Pause after a card is drawn so it can be read before it acts.</summary>
         public const float CardReadSeconds = 1.6f;
+
+        /// <summary>Pause after the dice settle, so the result is read before the pawn moves.</summary>
+        public const float RollReadSeconds = 0.55f;
+
+        /// <summary>A payment of this much or more flies as several coins.</summary>
+        private const int CoinStep = 120;
+        private const int MaxCoins = 4;
 
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
@@ -119,6 +128,18 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Real time the shown card was drawn, so the HUD can fade it.</summary>
         public float ShownCardTime { get; private set; }
+
+        /// <summary>The last roll shown on the table (0 before the first), and real time it settled, for the HUD's result popup.</summary>
+        public int ShownDie1 { get; private set; }
+        public int ShownDie2 { get; private set; }
+        public float ShownRollTime { get; private set; } = float.NegativeInfinity;
+
+        /// <summary>Whether the shown roll was the third double in a row, which forfeits the move.</summary>
+        public bool ShownRollForfeited { get; private set; }
+
+        /// <summary>Who paid last and why, so the matching gain can be shown as coins flying from them.</summary>
+        private int _lastPayer = -1;
+        private MoneyReason _lastPaymentReason;
 
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
 
@@ -235,6 +256,30 @@ namespace Lazpoly.Presentation.Game
             }
 
             SceneManager.LoadScene("MainMenu");
+        }
+
+        /// <summary>
+        /// Starts a fresh local game with the same seats and computer players (the end screen's
+        /// "play again"). Online games cannot be restarted from here.
+        /// </summary>
+        public bool CanRestart => _localGame != null && _session?.State != null;
+
+        public void RestartLocalGame()
+        {
+            if (!CanRestart) return;
+            GameState state = _session.State;
+            SavedGame save = _localGame.Save(_data.Checksum);
+            var seats = new List<PlayerSeat>();
+            var ai = new Dictionary<int, AiDifficulty>();
+            foreach (PlayerState player in state.Players)
+            {
+                seats.Add(new PlayerSeat(player.Id, player.Name));
+                if (save.AiPlayers.TryGetValue(player.Id, out SavedAiPlayer computer)) ai[player.Id] = computer.Difficulty;
+            }
+
+            SaveGameStore.Delete();
+            LocalGameSetup.SetSeats(seats, ai);
+            SceneManager.LoadScene("Game");
         }
 
         private IGameSession CreateSession(OnlineLaunch online)
@@ -459,19 +504,26 @@ namespace Lazpoly.Presentation.Game
                 AudioPlayer.Play(SoundCues.For(gameEvent));
                 switch (gameEvent)
                 {
+                    case TurnStartedEvent turn:
+                        yield return ShowTurnStart(turn.PlayerId);
+                        break;
                     case DiceRolledEvent rolled:
                         AudioPlayer.Play(SoundCue.DiceShake);
                         yield return _dice.Roll(rolled.Die1, rolled.Die2);
                         AudioPlayer.Play(SoundCue.DiceLand);
+                        ShowRoll(rolled);
+                        yield return new WaitForSeconds(RollReadSeconds / Speed);
                         break;
                     case PlayerMovedEvent moved:
                         PawnView pawn = _pawns[moved.PlayerId];
                         if (moved.Kind == MoveKind.Jump) yield return pawn.JumpTo(moved.ToSquare);
                         else yield return pawn.WalkTo(moved.ToSquare, backward: moved.Kind == MoveKind.Back);
+                        if (moved.PassedStart) _board.PulseTile(0);
                         break;
                     case PotChangedEvent pot:
                         _shownPot += pot.Delta;
                         _board.SetPot(_shownPot);
+                        _board.NudgePot(pot.Delta > 0);
                         Revision++;
                         break;
                     case CardDrawnEvent card:
@@ -483,24 +535,28 @@ namespace Lazpoly.Presentation.Game
                         yield return new WaitForSeconds(CardReadSeconds / Mathf.Max(Settings.AnimationSpeed, 0.1f));
                         break;
                     case MoneyChangedEvent money:
+                        yield return ShowPayment(money);
                         _shownMoney[money.PlayerId] = ShownMoneyOf(money.PlayerId) + money.Delta;
                         Revision++;
                         ShowMoney(money);
                         break;
                     case PropertyOwnerChangedEvent owner:
-                        _board.SetOwner(owner.SquareIndex,
-                            owner.NewOwnerId == GameState.NoOwner ? (Color?)null : ColorOf(owner.NewOwnerId));
-                        if (owner.NewOwnerId != GameState.NoOwner)
+                        if (owner.NewOwnerId == GameState.NoOwner)
                         {
-                            _board.PulseOwner(owner.SquareIndex);
-                            _board.RaiseFlag(owner.SquareIndex);
+                            _board.ClearOwner(owner.SquareIndex, animate: true);
+                            break;
                         }
+
+                        _board.SetOwner(owner.SquareIndex, ColorOf(owner.NewOwnerId));
+                        _board.PulseOwner(owner.SquareIndex);
+                        _board.RaiseFlag(owner.SquareIndex);
                         break;
                     case PlayerBankruptedEvent bankrupt:
                         yield return _pawns[bankrupt.PlayerId].Topple();
                         break;
                     case BuildingLevelChangedEvent building:
                         _board.SetBuildingLevel(building.SquareIndex, building.Level, animate: true);
+                        if (building.Level >= SquareDefinition.MaxBuildingLevel) AudioPlayer.Play(SoundCue.Hotel);
                         break;
                     case GameEndedEvent _:
                         Confetti.Burst(transform, _board.transform.position + Vector3.up * 0.5f, _board.SurfaceY + 0.01f,
@@ -515,6 +571,72 @@ namespace Lazpoly.Presentation.Game
             _board.SetPot(_shownPot);
             Revision++;
             _playing = false;
+        }
+
+        private float Speed => Mathf.Max(Settings.AnimationSpeed, 0.1f);
+
+        /// <summary>
+        /// A new turn: the camera glances at the pawn, which hops once; a soft note when the turn goes
+        /// to someone not at this screen (the HUD plays the "your turn" chord for people here).
+        /// </summary>
+        private IEnumerator ShowTurnStart(int playerId)
+        {
+            if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) yield break;
+            if (!_session.CanControl(playerId) || _session.IsAiPlaying(playerId)) AudioPlayer.Play(SoundCue.TurnPass);
+            CameraRig?.Glance(pawn.transform.position, 1.4f / Speed);
+            yield return pawn.Bob();
+        }
+
+        private void ShowRoll(DiceRolledEvent rolled)
+        {
+            ShownDie1 = rolled.Die1;
+            ShownDie2 = rolled.Die2;
+            ShownRollTime = Time.unscaledTime;
+            // The engine ends the turn straight after a third double; the move is forfeited.
+            ShownRollForfeited = rolled.Die1 == rolled.Die2 && _pendingEvents.Count > 0 &&
+                                 _pendingEvents.Peek() is PhaseChangedEvent next && next.Phase == GamePhase.TurnEnd;
+            Revision++;
+        }
+
+        /// <summary>
+        /// Money seen moving: rent flies from the payer's pawn to the owner's, taxes and fines to the
+        /// pot. The gain side waits for the coins to land before its number changes.
+        /// </summary>
+        private IEnumerator ShowPayment(MoneyChangedEvent money)
+        {
+            if (money.Delta < 0)
+            {
+                _lastPayer = money.PlayerId;
+                _lastPaymentReason = money.Reason;
+                bool toPot = _session.Board.HasPot && (money.Reason == MoneyReason.Tax || money.Reason == MoneyReason.Card);
+                if (toPot && _pawns.TryGetValue(money.PlayerId, out PawnView payer) && payer.gameObject.activeInHierarchy)
+                {
+                    FlyCoins(payer.transform.position, _board.transform.position + Vector3.up * 0.2f, -money.Delta);
+                }
+
+                yield break;
+            }
+
+            bool rent = money.Reason == MoneyReason.Rent && _lastPayer >= 0 && _lastPaymentReason == MoneyReason.Rent && _lastPayer != money.PlayerId;
+            if (!rent || !_pawns.TryGetValue(_lastPayer, out PawnView from) || !_pawns.TryGetValue(money.PlayerId, out PawnView to)) yield break;
+            if (!from.gameObject.activeInHierarchy || !to.gameObject.activeInHierarchy) yield break;
+            _lastPayer = -1;
+            float seconds = FlyCoins(from.transform.position, to.transform.position, money.Delta);
+            yield return new WaitForSeconds(seconds);
+        }
+
+        /// <summary>Starts one coin per <see cref="CoinStep"/> of the amount (at least one, at most four) and says how long they fly.</summary>
+        private float FlyCoins(Vector3 from, Vector3 to, int amount)
+        {
+            int coins = Mathf.Clamp(amount / CoinStep + 1, 1, MaxCoins);
+            float total = 0f;
+            for (int i = 0; i < coins; i++)
+            {
+                CoinFlight coin = CoinFlight.Spawn(transform, from + Vector3.up * 0.3f, to + Vector3.up * 0.3f, Speed, i * 0.08f);
+                total = Mathf.Max(total, coin.TotalSeconds);
+            }
+
+            return total;
         }
 
         /// <summary>"+200" or "-60" rising over the player's pawn.</summary>

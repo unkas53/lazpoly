@@ -316,6 +316,30 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   ipotekli şehir sahipli olarak gelir.
 - **Denge:** 1000'er oyunluk raporlar yenilendi; 2 oyuncuda ortalama 16, 4'te 18.5, 6'da 21.5 tur, takılan oyun yok.
 
+## Faz 10a-1: hissiyat (cila)
+
+Cila planı: https://claude.ai/artifact/53ynSWjq5NCCCj3gSZceTf. Bu PR kural değiştirmez; her hamlenin sonucunu ekranda
+bakmadan da anlaşılır kılar.
+
+- **Sıra geçişi:** `TurnStartedEvent` oynatılırken kamera yeni oyuncunun piyonuna kısa bir bakış atar
+  (`BoardCameraRig.Glance`: oyuncunun yakınlaştırma ve dönüşünü bozmaz), piyon yerinde bir kez zıplar
+  (`PawnView.Bob`); sıra bu ekranda olmayan birine ya da bilgisayara geçince kısık bir nota (`turn_pass`), bu
+  ekrandaki kişiye geçince eskisi gibi "sıra sende" akoru. Bekleme metni adı söyler: "Ayşe düşünüyor (bilgisayar)...".
+- **Zar sonucu:** zarlar durunca üstte büyük rakamla "3 + 4 = 7" (`GameHud.BuildRollPopup`), çiftte "Çift! Sıra bitince
+  yeniden atarsın", üçüncü çiftte "hamle yanar, sıra geçer" (`GameSceneController.ShownRollForfeited`, sıradaki olayın
+  `TurnEnd` olmasından anlaşılır). Piyon, sonuç okunsun diye `RollReadSeconds` (0,55 sn) bekleyip yürür.
+- **Piyon hareketi:** bir yürüyüş en çok 2 saniye sürer, uzun hamlelerde adımlar hızlanır (`PawnView.MaxWalkSeconds`).
+  Başlangıçtan geçince başlangıç karesi kabarır ve ikramiyenin kendi sesi çalar (`pass_start`).
+- **Para akışı:** kira ödenince ödeyenin piyonundan alanın piyonuna jetonlar uçar (`Effects/CoinFlight`, 120 başına bir
+  jeton, en çok dört); alan tarafın parası jetonlar inince değişir. Vergi ve kart cezaları kumbaraya uçar, kumbara yazısı
+  sallanır; kumbara boşalınca kabarır (`BoardView.NudgePot`).
+- **Binalar ve bayrak:** ilk bina gelince bayrak katlanarak iner (`BoardView.Lower`), satılan ya da iflasla giden binalar
+  küçülerek kaybolur (`Shrink`), mülk bankaya satılınca bayrak önce iner sonra kalkar (`ClearOwner`). Otel kurulunca ayrı
+  ses (`hotel`), mülk satışının kendi sesi (`property_sale`); Faz 9'dan kalan `mortgage.wav` silindi.
+- **Oyun sonu:** bitiş penceresinde bütün oyuncuların sıralaması (para, mülk sayısı, değer; iflas edenler sonda) ve yerel
+  oyunda aynı koltuklarla **Yeniden Oyna** (`GameSceneController.RestartLocalGame`).
+- **Hız ayarı:** zaten vardı ("Hızlı animasyonlar"); yeni animasyonların hepsi aynı çarpanı kullanır.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

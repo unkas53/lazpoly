@@ -24,6 +24,10 @@ namespace Lazpoly.Presentation.Audio
         Win,
         Bankrupt,
         Trade,
+        PassStart,
+        PropertySale,
+        Hotel,
+        TurnPass,
     }
 
     /// <summary>Which sound goes with which game event, and where each clip lives. No engine calls, so it is tested directly.</summary>
@@ -35,7 +39,7 @@ namespace Lazpoly.Presentation.Audio
         /// The sound played when an event is shown, or <see cref="SoundCue.None"/>. One action that
         /// sends several events sounds once: a purchase plays on its payment, not on the owner change,
         /// and rent plays on the payer's side only. Dice, steps and the turn banner are timed by
-        /// their animations instead.
+        /// their animations instead; the hotel and the quiet turn-pass note are played by the scene too.
         /// </summary>
         public static SoundCue For(GameEvent gameEvent)
         {
@@ -60,10 +64,9 @@ namespace Lazpoly.Presentation.Audio
                 case MoneyReason.PropertyPurchase: return SoundCue.Buy;
                 case MoneyReason.Building: return SoundCue.Build;
                 case MoneyReason.BuildingSale: return SoundCue.Sell;
-                case MoneyReason.PropertySale: return SoundCue.Sell;
-                case MoneyReason.PassedStart:
-                case MoneyReason.Pot:
-                    return SoundCue.MoneyIn;
+                case MoneyReason.PropertySale: return SoundCue.PropertySale;
+                case MoneyReason.PassedStart: return SoundCue.PassStart;
+                case MoneyReason.Pot: return SoundCue.MoneyIn;
                 case MoneyReason.Card:
                     return e.Delta > 0 ? SoundCue.MoneyIn : SoundCue.MoneyOut;
                 case MoneyReason.Travel:
@@ -128,6 +131,7 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.UiClick: return 0.4f;
                 case SoundCue.UiOpen: return 0.4f;
                 case SoundCue.Bid: return 0.6f;
+                case SoundCue.TurnPass: return 0.45f;
                 default: return 0.75f;
             }
         }

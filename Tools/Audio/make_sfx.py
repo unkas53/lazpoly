@@ -122,7 +122,7 @@ def recipes():
     yield "money_out", place(0.7, (0.0, mallet(494, 0.16) * 0.8), (0.09, mallet(370, 0.2) * 0.7))
     yield "build", place(0.7, (0.0, mix(thud(110, 0.06), wood_tok(380) * 0.6)), (0.18, mix(thud(95, 0.07), wood_tok(340) * 0.7)))
     yield "sell", place(0.5, (0.0, wood_tok(300) * 0.8), (0.1, mallet(440, 0.12) * 0.5))
-    yield "mortgage", place(0.7, (0.0, wood_tok(240)), (0.12, mallet(294, 0.18) * 0.5))
+    yield "property_sale", place(0.9, (0.0, wood_tok(260)), (0.1, mallet(440, 0.14) * 0.5), (0.2, mallet(349, 0.16) * 0.5), (0.3, mallet(262, 0.22) * 0.5))
     yield "bid", wood_tok(440) * 0.6
     yield "gavel", place(1.0, (0.0, mix(thud(90, 0.09), wood_tok(300))), (0.02, mallet(392, 0.25) * 0.3))
     yield "ui_click", wood_tok(420, 0.018) * 0.5
@@ -132,10 +132,16 @@ def recipes():
     yield "win", place(2.0, *chord([392, 494, 587, 784, 988], 0.12, 1.4, 0.42))
     yield "bankrupt", place(1.6, *chord([294, 247, 196, 147], 0.18, 1.0, 0.3, SOFT))
     yield "trade", place(0.8, (0.0, mallet(523, 0.15) * 0.6), (0.1, wood_tok(360) * 0.5), (0.18, mallet(659, 0.18) * 0.6))
+    # Passing start: brighter and longer than an ordinary gain, a small fanfare for the lap bonus.
+    yield "pass_start", place(1.1, (0.0, mallet(523, 0.18) * 0.7), (0.09, mallet(659, 0.2) * 0.7), (0.18, mallet(784, 0.22) * 0.7), (0.3, mallet(1047, 0.4) * 0.6))
+    # A hotel going up: the building knocks and then a warm chord, bigger than a house.
+    yield "hotel", place(1.2, (0.0, mix(thud(100, 0.07), wood_tok(360) * 0.6)), (0.16, mix(thud(90, 0.08), wood_tok(320) * 0.7)), *[(0.3 + s, sig) for s, sig in chord([392, 494, 587], 0.08, 0.8, 0.3)])
+    # The turn passes to someone else at the table: one soft note, under the "your turn" chord.
+    yield "turn_pass", mallet(440, 0.2) * 0.6
 
 
 # Small, frequent sounds sit well under the big moments already in the files, not only in the game's mix.
-QUIET = {"pawn_step": 0.35, "ui_click": 0.3, "ui_open": 0.3, "bid": 0.45, "dice_shake": 0.5, "dice_land": 0.55}
+QUIET = {"pawn_step": 0.35, "ui_click": 0.3, "ui_open": 0.3, "bid": 0.45, "dice_shake": 0.5, "dice_land": 0.55, "turn_pass": 0.4}
 PEAK = 0.7
 
 

@@ -47,6 +47,7 @@ namespace Lazpoly.Presentation.Tabletop
         private GameObject[] _tiles;
         private Color[] _tileColors;
         private readonly Dictionary<Collider, int> _squareOfCollider = new Dictionary<Collider, int>();
+        private readonly HashSet<Transform> _animating = new HashSet<Transform>();
         private HashSet<int> _highlighted;
         private float _tile;
         private TextMesh _pot;
@@ -102,6 +103,55 @@ namespace Lazpoly.Presentation.Tabletop
             if (_pot != null) _pot.text = F($"Çay kumbarası\n{amount}");
         }
 
+        /// <summary>The pot's label rocks when money drops in and swells when it is paid out.</summary>
+        public void NudgePot(bool paidIn)
+        {
+            if (_pot != null && _animating.Add(_pot.transform)) StartCoroutine(Nudge(_pot.transform, paidIn));
+        }
+
+        private IEnumerator Nudge(Transform label, bool rock)
+        {
+            const float seconds = 0.45f;
+            Quaternion rest = label.localRotation;
+            Vector3 size = label.localScale;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                if (label == null) yield break;
+                float fade = 1f - t;
+                if (rock) label.localRotation = rest * Quaternion.Euler(0f, 0f, Mathf.Sin(t * Mathf.PI * 4f) * 7f * fade);
+                else label.localScale = size * (1f + 0.25f * Ease.Bump(t));
+                yield return null;
+            }
+
+            if (label == null) yield break;
+            label.localRotation = rest;
+            label.localScale = size;
+            _animating.Remove(label);
+        }
+
+        /// <summary>A short swell of a tile, for the start square when a pawn passes it.</summary>
+        public void PulseTile(int squareIndex)
+        {
+            GameObject tile = _tiles[squareIndex];
+            if (tile != null && _animating.Add(tile.transform)) StartCoroutine(Swell(tile.transform));
+        }
+
+        private IEnumerator Swell(Transform tile)
+        {
+            const float seconds = 0.5f;
+            Vector3 size = tile.localScale;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                if (tile == null) yield break;
+                tile.localScale = new Vector3(size.x * (1f + 0.06f * Ease.Bump(t)), size.y * (1f + 0.5f * Ease.Bump(t)), size.z * (1f + 0.06f * Ease.Bump(t)));
+                yield return null;
+            }
+
+            if (tile == null) yield break;
+            tile.localScale = size;
+            _animating.Remove(tile);
+        }
+
         /// <summary>
         /// Shows who owns a square: a flag in their colour where the buildings will stand, until the
         /// first building takes its place; the buildings themselves wear the owner's colour.
@@ -114,6 +164,39 @@ namespace Lazpoly.Presentation.Tabletop
 
             _ownerColors[squareIndex] = ownerColor;
             RefreshOwnerMarker(squareIndex);
+        }
+
+        /// <summary>
+        /// Takes a square back from its owner. With <paramref name="animate"/>, the flag shrinks into
+        /// the tile first (a sale); without, the marker simply goes.
+        /// </summary>
+        public void ClearOwner(int squareIndex, bool animate)
+        {
+            GameObject flag = _ownerMarkers[squareIndex];
+            if (flag == null) return;
+            if (animate && flag.activeInHierarchy && _animating.Add(flag.transform))
+            {
+                StartCoroutine(Lower(flag.transform, _flagScale[squareIndex], () => SetOwner(squareIndex, null)));
+                return;
+            }
+
+            SetOwner(squareIndex, null);
+        }
+
+        private IEnumerator Lower(Transform flag, Vector3 size, System.Action then)
+        {
+            const float seconds = 0.35f;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                if (flag == null) yield break;
+                flag.localScale = new Vector3(size.x, size.y * Mathf.Max(0.02f, 1f - Ease.InCubic(t)), size.z);
+                yield return null;
+            }
+
+            if (flag == null) yield break;
+            _animating.Remove(flag);
+            then?.Invoke();
+            flag.localScale = size;
         }
 
         /// <summary>Raises the owner's flag on a square that was just bought: it grows up from the tile and settles.</summary>
@@ -138,7 +221,8 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Shows 1-4 small houses, or one hotel at the top level. With <paramref name="animate"/>, pieces
-        /// that appear drop onto the tile and bounce; pieces that go are removed at once.
+        /// that appear drop onto the tile and bounce, pieces that go shrink away, and the flag folds
+        /// down when the first building takes its place.
         /// </summary>
         public void SetBuildingLevel(int squareIndex, int level, bool animate = false)
         {
@@ -151,14 +235,56 @@ namespace Lazpoly.Presentation.Tabletop
             for (int i = 0; i < pieces.Length; i++)
             {
                 bool shown = i == pieces.Length - 1 ? hotel : !hotel && i < level;
+                Transform piece = pieces[i].transform;
                 bool appears = shown && !pieces[i].activeSelf;
+                bool goes = !shown && pieces[i].activeSelf;
+                if (goes && animate && _animating.Add(piece))
+                {
+                    StartCoroutine(Shrink(piece, squareIndex, i));
+                    continue;
+                }
+
                 pieces[i].SetActive(shown);
-                pieces[i].transform.localPosition = _buildingRest[squareIndex][i];
-                if (appears && animate) StartCoroutine(Drop(pieces[i].transform, _buildingRest[squareIndex][i]));
+                piece.localPosition = _buildingRest[squareIndex][i];
+                if (appears && animate) StartCoroutine(Drop(piece, _buildingRest[squareIndex][i]));
             }
 
             // The flag gives way to the first building and returns when the last one is sold.
-            if (_ownerMarkers[squareIndex] != null) RefreshOwnerMarker(squareIndex);
+            GameObject flag = _ownerMarkers[squareIndex];
+            if (flag == null) return;
+            bool flagWasUp = flag.activeSelf;
+            RefreshOwnerMarker(squareIndex);
+            if (animate && flagWasUp && !flag.activeSelf && _animating.Add(flag.transform))
+            {
+                flag.SetActive(true);
+                StartCoroutine(Lower(flag.transform, _flagScale[squareIndex], () => RefreshOwnerMarker(squareIndex)));
+            }
+        }
+
+        /// <summary>Whether piece <paramref name="index"/> of a square belongs on the table at its current level.</summary>
+        private bool PieceShown(int squareIndex, int index)
+        {
+            int level = _levels[squareIndex];
+            bool hotel = level >= SquareDefinition.MaxBuildingLevel;
+            return index == _buildings[squareIndex].Length - 1 ? hotel : !hotel && index < level;
+        }
+
+        private IEnumerator Shrink(Transform piece, int squareIndex, int index)
+        {
+            const float seconds = 0.3f;
+            Vector3 size = piece.localScale;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                if (piece == null) yield break;
+                piece.localScale = size * Mathf.Max(0.01f, 1f - Ease.InCubic(t));
+                yield return null;
+            }
+
+            if (piece == null) yield break;
+            piece.localScale = size;
+            piece.localPosition = _buildingRest[squareIndex][index];
+            _animating.Remove(piece);
+            piece.gameObject.SetActive(PieceShown(squareIndex, index));
         }
 
         /// <summary>Walls in the owner's colour, roofs a darker shade of it; the builder's own colours while unowned.</summary>

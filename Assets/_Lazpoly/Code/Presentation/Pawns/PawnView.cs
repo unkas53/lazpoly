@@ -15,6 +15,9 @@ namespace Lazpoly.Presentation.Pawns
         private const float SquashSeconds = 0.07f;
         private const float ToppleSeconds = 0.55f;
 
+        /// <summary>A walk never takes longer than this at normal speed; long moves hop faster instead.</summary>
+        public const float MaxWalkSeconds = 2f;
+
         private BoardView _board;
         private Vector3 _offset;
         private int _square;
@@ -46,7 +49,8 @@ namespace Lazpoly.Presentation.Pawns
         public IEnumerator WalkTo(int destination, bool backward = false)
         {
             int count = _board.Layout.SquareCount;
-            float speed = Mathf.Max(Speed, 0.1f);
+            int steps = backward ? (_square - destination + count) % count : (destination - _square + count) % count;
+            float speed = Mathf.Max(Speed, 0.1f) * Mathf.Max(1f, steps * (StepSeconds + SquashSeconds) / MaxWalkSeconds);
             while (_square != destination)
             {
                 int next = (_square + (backward ? count - 1 : 1)) % count;
@@ -94,6 +98,23 @@ namespace Lazpoly.Presentation.Pawns
             PlaceOn(destination);
             SetStretch(1f);
             Stepped?.Invoke(destination);
+        }
+
+        /// <summary>A small hop in place, to say "this one is on turn".</summary>
+        public IEnumerator Bob()
+        {
+            if (!gameObject.activeSelf) yield break;
+            float speed = Mathf.Max(Speed, 0.1f);
+            Vector3 rest = Target(_square);
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / 0.32f)
+            {
+                transform.position = rest + Vector3.up * (Mathf.Sin(t * Mathf.PI) * HopHeight * 0.6f);
+                SetStretch(1f + 0.1f * Ease.Bump(t));
+                yield return null;
+            }
+
+            transform.position = rest;
+            SetStretch(1f);
         }
 
         /// <summary>Hides a bankrupt player's pawn at once (used when the board is rebuilt from the state).</summary>

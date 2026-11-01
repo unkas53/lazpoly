@@ -57,6 +57,11 @@ namespace Lazpoly.Presentation.Game
         private Text _cardTitle;
         private Text _cardText;
         private CanvasGroup _cardGroup;
+        private RectTransform _cardRect;
+        private Text _rollText;
+        private Text _rollNote;
+        private CanvasGroup _rollGroup;
+        private RectTransform _rollRect;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
         private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
         private TipMemory _tipMemory;
@@ -75,6 +80,7 @@ namespace Lazpoly.Presentation.Game
 
         private const int NoSquare = -1;
         private const float BannerSeconds = 1.8f;
+        private const float RollSeconds = 1.5f;
         private const float CardWidth = 440f;
 
         /// <summary>Screen pixels each side column covers, margins included; the camera keeps the board clear of them.</summary>
@@ -165,6 +171,7 @@ namespace Lazpoly.Presentation.Game
             _banner.fontSize = 34;
 
             BuildCardPopup();
+            BuildRollPopup();
             BuildTipPanel();
 
             RectTransform timer = UiRoot.Rect(_canvas.transform, "Move Timer", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
@@ -203,11 +210,50 @@ namespace Lazpoly.Presentation.Game
             _cardGroup.blocksRaycasts = false;
             _cardGroup.interactable = false;
             _cardGroup.alpha = 0f;
+            _cardRect = card;
             UiBuilder.AddColumnLayout(card.gameObject, 18, 8f);
             var builder = new UiBuilder(card);
             _cardTitle = builder.Label(L("SOKAK HABERİ"), UiTextStyle.Heading, new Color(0.55f, 0.28f, 0.08f), TextAnchor.MiddleCenter);
             _cardText = builder.Label("", UiTextStyle.Body, new Color(0.15f, 0.12f, 0.10f), TextAnchor.MiddleCenter);
             _cardText.fontSize = 22;
+        }
+
+        /// <summary>The dice result in big figures under the banner, with a note for doubles. It never takes the mouse.</summary>
+        private void BuildRollPopup()
+        {
+            RectTransform roll = UiRoot.Rect(_canvas.transform, "Roll Popup", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(-200f, -262f), new Vector2(200f, -160f));
+            UiRoot.Background(roll, new Color(0.08f, 0.09f, 0.12f, 0.88f), shadow: true);
+            _rollGroup = roll.gameObject.AddComponent<CanvasGroup>();
+            _rollGroup.blocksRaycasts = false;
+            _rollGroup.interactable = false;
+            _rollGroup.alpha = 0f;
+            _rollRect = roll;
+            UiBuilder.AddColumnLayout(roll.gameObject, 10, 2f);
+            var builder = new UiBuilder(roll);
+            _rollText = builder.Label("", UiTextStyle.Title, UiTheme.Text, TextAnchor.MiddleCenter);
+            _rollText.fontSize = 40;
+            _rollNote = builder.Label("", UiTextStyle.Small, UiTheme.Accent, TextAnchor.MiddleCenter);
+        }
+
+        private void UpdateRollPopup()
+        {
+            float age = Time.unscaledTime - _controller.ShownRollTime;
+            float visible = RollSeconds + GameSceneController.RollReadSeconds;
+            if (_controller.ShownDie1 == 0 || age > visible)
+            {
+                _rollGroup.alpha = 0f;
+                return;
+            }
+
+            int die1 = _controller.ShownDie1, die2 = _controller.ShownDie2;
+            _rollText.text = $"{die1} + {die2} = {die1 + die2}";
+            _rollNote.text = die1 != die2 ? string.Empty
+                : _controller.ShownRollForfeited ? L("Üçüncü çift: hamle yanar, sıra geçer.")
+                : L("Çift! Sıra bitince yeniden atarsın.");
+            _rollNote.color = _controller.ShownRollForfeited ? UiTheme.Warning : UiTheme.Accent;
+            _rollGroup.alpha = Mathf.Clamp01(age / 0.12f) * Mathf.Clamp01((visible - age) / 0.35f);
+            _rollRect.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.25f)));
         }
 
         /// <summary>A hint box at the bottom centre, between the side columns.</summary>
@@ -334,6 +380,7 @@ namespace Lazpoly.Presentation.Game
             _cardTitle.text = player == null ? L("SOKAK HABERİ") : F($"SOKAK HABERİ · {player}");
             _cardText.text = L(EventDescriber.CardText(_controller.Session.Board, card));
             _cardGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
+            _cardRect.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.3f)));
         }
 
         private void LateUpdate()
@@ -353,6 +400,7 @@ namespace Lazpoly.Presentation.Game
             UpdateSquareCard(state, revision);
             UpdateBanner(state);
             UpdateCardPopup();
+            UpdateRollPopup();
             UpdateTip(state);
             UpdateTimer(state);
 
@@ -632,7 +680,7 @@ namespace Lazpoly.Presentation.Game
 
             if (!_controller.Session.CanControl(player.Id))
             {
-                ui.Label(_controller.Session.IsAiPlaying(player.Id) ? L("Bilgisayar düşünüyor...") : L("Sıra onda, hamlesi bekleniyor."), UiTextStyle.Small);
+                ui.Label(_controller.Session.IsAiPlaying(player.Id) ? F($"{player.Name} düşünüyor (bilgisayar)...") : F($"{player.Name} oynuyor, hamlesi bekleniyor."), UiTextStyle.Small);
                 return;
             }
 
@@ -899,24 +947,59 @@ namespace Lazpoly.Presentation.Game
             }
         }
 
-        /// <summary>Each solvent player's worth (money, properties and buildings), richest first.</summary>
-        private void RenderWorthTable(UiBuilder ui, GameState state)
+        /// <summary>
+        /// The final standings: solvent players by worth (money, properties and buildings), richest
+        /// first, then the bankrupt ones. Each row shows money, properties and total worth.
+        /// </summary>
+        private void RenderStandings(UiBuilder ui, GameState state)
         {
-            var players = new List<PlayerState>();
-            foreach (PlayerState player in state.Players)
+            BoardDefinition board = _controller.Session.Board;
+            var players = new List<PlayerState>(state.Players);
+            players.Sort((a, b) =>
             {
-                if (!player.IsBankrupt) players.Add(player);
+                if (a.IsBankrupt != b.IsBankrupt) return a.IsBankrupt ? 1 : -1;
+                return GameRules.NetWorth(board, state, b.Id).CompareTo(GameRules.NetWorth(board, state, a.Id));
+            });
+
+            UiBuilder table = ui.Card(UiTheme.Field, 10);
+            UiBuilder head = table.Row();
+            UiBuilder.Fix(head.Label("", UiTextStyle.Small, UiTheme.Muted), width: 30f);
+            head.Label(L("Oyuncu"), UiTextStyle.Small, UiTheme.Muted);
+            UiBuilder.Fix(head.Label(L("Para"), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleRight), width: 80f);
+            UiBuilder.Fix(head.Label(L("Mülk"), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleRight), width: 60f);
+            UiBuilder.Fix(head.Label(L("Değer"), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleRight), width: 90f);
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerState player = players[i];
+                bool winner = player.Id == state.WinnerId;
+                Color color = player.IsBankrupt ? UiTheme.Muted : UiTheme.Text;
+                UiBuilder row = table.Row();
+                UiBuilder.Fix(row.Label($"{i + 1}.", color: color), width: 30f);
+                row.Swatch(player.IsBankrupt ? UiTheme.Muted : _controller.ColorOf(player.Id), 16f, round: true);
+                Text name = row.Label(player.Name, color: color);
+                if (winner) name.font = UiTheme.BoldFont;
+                if (player.IsBankrupt)
+                {
+                    UiBuilder.Fix(row.Label(L("iflas"), color: color, alignment: TextAnchor.MiddleRight), width: 230f);
+                    continue;
+                }
+
+                UiBuilder.Fix(row.Label(player.Money.ToString(), color: color, alignment: TextAnchor.MiddleRight), width: 80f);
+                UiBuilder.Fix(row.Label(OwnedCount(state, player.Id).ToString(), color: color, alignment: TextAnchor.MiddleRight), width: 60f);
+                UiBuilder.Fix(row.Label(GameRules.NetWorth(board, state, player.Id).ToString(), color: UiTheme.Accent, alignment: TextAnchor.MiddleRight), width: 90f);
+            }
+        }
+
+        private static int OwnedCount(GameState state, int playerId)
+        {
+            int count = 0;
+            for (int square = 0; square < state.SquareCount; square++)
+            {
+                if (state.GetOwner(square) == playerId) count++;
             }
 
-            BoardDefinition board = _controller.Session.Board;
-            players.Sort((a, b) => GameRules.NetWorth(board, state, b.Id).CompareTo(GameRules.NetWorth(board, state, a.Id)));
-            foreach (PlayerState player in players)
-            {
-                UiBuilder row = ui.Row();
-                row.Swatch(_controller.ColorOf(player.Id), 16f);
-                row.Label(player.Name);
-                row.Label(F($"{GameRules.NetWorth(board, state, player.Id)} değer"), color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
-            }
+            return count;
         }
 
         private void RenderMenu(UiBuilder ui)
@@ -958,12 +1041,13 @@ namespace Lazpoly.Presentation.Game
                 bool byLimit = _controller.Session.Rules.RoundLimit > 0 && state.ActivePlayerCount() > 1;
                 ui.Label(byLimit ? F($"Tur sınırı doldu ({state.Round} tur): en zengin oyuncu kazandı.") : F($"{state.Round} turda bitti."),
                     UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
-                if (byLimit) RenderWorthTable(ui, state);
+                RenderStandings(ui, state);
             }
 
             ui.Space(8f);
             UiBuilder row = ui.Row();
             row.Button(L("Tahtaya Bak"), () => _endDismissed = true);
+            if (_controller.CanRestart) row.Button(L("Yeniden Oyna"), _controller.RestartLocalGame);
             row.Button(L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
         }
     }

@@ -30,8 +30,6 @@
   "Bilgisayar": "Computer",
   "Kazanan: {0}": "Winner: {0}",
   "{0} oynuyor": "{0} is playing",
-  "Bilgisayar düşünüyor...": "The computer is thinking...",
-  "Sıra onda, hamlesi bekleniyor.": "It is their turn; waiting for their move.",
   "Zar At": "Roll Dice",
   "Sırayı Bitir": "End Turn",
   "Takas Teklif Et": "Propose Trade",
@@ -49,7 +47,6 @@
   "Borcu Öde ({0})": "Pay Debt ({0})",
   "İflas Et": "Declare Bankruptcy",
   "Olaylar": "Events",
-  "{0} değer": "worth {0}",
   "Ayarlar": "Settings",
   "Nasıl Oynanır": "How to Play",
   "Görünümü Sıfırla (Home)": "Reset View (Home)",
@@ -377,5 +374,12 @@
   "Paran azaldı. Sıkışırsan bir mülkünü bankaya satabilirsin; banka fiyatın yarısını öder ve şehir yeniden boşa çıkar.": "You are running low. If you get stuck, sell a property to the bank; it pays half the price and the town becomes free again.",
   "mülk satışı": "property sale",
   "Satış değeri": "Sale value",
-  "Parası yetmeyen mülkünü bankaya satar: banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{0} değerine geri satılır. Borcunu ödeyemeyen iflas eder.": "If you are short, sell a property to the bank: it pays half the price and the town becomes unowned again. Buildings sell back for {0}% of their cost. Whoever cannot pay a debt goes bankrupt."
+  "Parası yetmeyen mülkünü bankaya satar: banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{0} değerine geri satılır. Borcunu ödeyemeyen iflas eder.": "If you are short, sell a property to the bank: it pays half the price and the town becomes unowned again. Buildings sell back for {0}% of their cost. Whoever cannot pay a debt goes bankrupt.",
+  "Üçüncü çift: hamle yanar, sıra geçer.": "Third double: the move is forfeited and the turn passes.",
+  "Çift! Sıra bitince yeniden atarsın.": "Doubles! You roll again after this turn.",
+  "{0} düşünüyor (bilgisayar)...": "{0} is thinking (computer)...",
+  "{0} oynuyor, hamlesi bekleniyor.": "{0} is playing; waiting for their move.",
+  "Oyuncu": "Player",
+  "Değer": "Worth",
+  "Yeniden Oyna": "Play Again"
 }

@@ -45,11 +45,14 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void EconomyActionsHaveTheirOwnSounds()
         {
-            Assert.AreEqual(SoundCue.MoneyIn, SoundCues.For(new MoneyChangedEvent(1, 200, MoneyReason.PassedStart)));
+            Assert.AreEqual(SoundCue.PassStart, SoundCues.For(new MoneyChangedEvent(1, 150, MoneyReason.PassedStart)));
+            Assert.AreEqual(SoundCue.MoneyIn, SoundCues.For(new MoneyChangedEvent(1, 200, MoneyReason.Pot)));
             Assert.AreEqual(SoundCue.MoneyOut, SoundCues.For(new MoneyChangedEvent(1, -100, MoneyReason.Tax)));
             Assert.AreEqual(SoundCue.Build, SoundCues.For(new MoneyChangedEvent(1, -50, MoneyReason.Building)));
             Assert.AreEqual(SoundCue.Sell, SoundCues.For(new MoneyChangedEvent(1, 25, MoneyReason.BuildingSale)));
-            Assert.AreEqual(SoundCue.Sell, SoundCues.For(new MoneyChangedEvent(1, 30, MoneyReason.PropertySale)));
+            Assert.AreEqual(SoundCue.PropertySale, SoundCues.For(new MoneyChangedEvent(1, 30, MoneyReason.PropertySale)));
+            Assert.AreEqual("property_sale", SoundCues.FileName(SoundCue.PropertySale));
+            Assert.AreEqual("turn_pass", SoundCues.FileName(SoundCue.TurnPass));
         }
 
         [Test]
