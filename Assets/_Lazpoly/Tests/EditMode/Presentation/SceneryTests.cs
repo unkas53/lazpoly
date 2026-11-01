@@ -30,8 +30,13 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(0.02f, BoardView.FitCharacterSize(0.02f, 1.2f, 1.5f), "a label that fits keeps its size");
             Assert.That(BoardView.FitCharacterSize(0.02f, 2f, 1.5f), Is.EqualTo(0.015f).Within(1e-6f), "a long label shrinks to the plaque");
             Assert.AreEqual(0.02f, BoardView.FitCharacterSize(0.02f, 0f, 1.5f), "an unmeasured label is left alone");
-            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f + 0.01f, "the plaque stops at the group band");
+            Assert.That(BoardView.FitCharacterSize(0.02f, new Vector2(1f, 0.6f), new Vector2(1.5f, 0.4f)), Is.EqualTo(0.02f * 0.4f / 0.6f).Within(1e-6f),
+                "two tall lines shrink to the plaque's depth");
+            Assert.That(BoardView.FitCharacterSize(0.02f, new Vector2(2f, 0.6f), new Vector2(1.5f, 0.4f)), Is.EqualTo(0.02f * 0.4f / 0.6f).Within(1e-6f),
+                "the tighter of the two limits wins");
+            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f + 0.025f, "the plaque may tuck a sliver under the raised band, no more");
             Assert.Less(BoardView.PlaqueDepth / 2f - BoardView.PlaqueOffset, 0.12f, "the plaque reaches into the pawns' half of the tile");
+            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset, "the plaque runs past the band's centre");
         }
 
         [Test]

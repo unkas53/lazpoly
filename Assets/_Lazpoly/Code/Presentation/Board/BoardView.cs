@@ -44,12 +44,13 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BandDepth = 0.28f;
 
         /// <summary>Where the name plaque's centre sits, outward from the square's centre, in tile widths: clear of the pawns' half, short of the band.</summary>
-        public const float PlaqueOffset = 0.07f;
-        public const float PlaqueDepth = 0.28f;
+        public const float PlaqueOffset = 0.08f;
+        public const float PlaqueDepth = 0.30f;
         public const float PlaqueWidth = 0.86f;
 
-        /// <summary>How much of the plaque's width a label may use before its letters shrink.</summary>
+        /// <summary>How much of the plaque's width and depth a label may use before its letters shrink.</summary>
         public const float LabelFill = 0.92f;
+        public const float LabelDepthFill = 0.88f;
 
         private OwnerMarker[] _ownerMarkers;
         private Vector3[] _flagScale;
@@ -655,6 +656,10 @@ namespace Lazpoly.Presentation.Tabletop
         public static float FitCharacterSize(float characterSize, float width, float maxWidth) =>
             width > maxWidth && width > 0f ? characterSize * maxWidth / width : characterSize;
 
+        /// <summary>The character size that keeps a label inside its plaque both along the line and across it (two lines of name and price).</summary>
+        public static float FitCharacterSize(float characterSize, Vector2 size, Vector2 maxSize) =>
+            Mathf.Min(FitCharacterSize(characterSize, size.x, maxSize.x), FitCharacterSize(characterSize, size.y, maxSize.y));
+
         private void CreateLabel(string text, Vector3 localPosition, float tile, Vector3 outward)
         {
             var label = new GameObject("Label");
@@ -675,10 +680,11 @@ namespace Lazpoly.Presentation.Tabletop
             var renderer = label.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = mesh.font.material;
 
-            // Long names ("Liman Caddesi") shrink to the plaque instead of running off it.
+            // Long names ("Liman Caddesi") and the two lines of name and price shrink to the plaque instead of running off it.
             Vector3 size = renderer.bounds.size;
-            float width = Mathf.Abs(outward.x) > Mathf.Abs(outward.z) ? size.z : size.x;
-            mesh.characterSize = FitCharacterSize(mesh.characterSize, width, tile * PlaqueWidth * LabelFill);
+            bool side = Mathf.Abs(outward.x) > Mathf.Abs(outward.z);
+            var extent = new Vector2(side ? size.z : size.x, side ? size.x : size.z);
+            mesh.characterSize = FitCharacterSize(mesh.characterSize, extent, new Vector2(tile * PlaqueWidth * LabelFill, tile * PlaqueDepth * LabelDepthFill));
         }
 
         private static Color TileColor(SquareDefinition square, BoardData data)
