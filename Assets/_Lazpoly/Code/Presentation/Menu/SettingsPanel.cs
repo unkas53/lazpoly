@@ -19,6 +19,7 @@ namespace Lazpoly.Presentation.Menu
         private static readonly string[] AiSpeedNames = { "Yavaş", "Normal", "Hızlı" };
         private static readonly string[] QualityNames = { "Düşük", "Orta", "Yüksek" };
         private static readonly string[] LanguageNames = { "Otomatik", "Türkçe", "English" };
+        private static readonly string[] UiScaleNames = { "Küçük", "Normal", "Büyük" };
 
         /// <summary>The groups scroll inside the window, so the window fits a small screen.</summary>
         private const float BodyHeight = 400f;
@@ -92,6 +93,15 @@ namespace Lazpoly.Presentation.Menu
                 var quality = (GraphicsQuality)i;
                 qualities.Button(L(QualityNames[i]), () => Change(_settings.Current.WithQuality(quality)),
                     style: current.Quality == quality ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Label(L("Arayüz boyutu"));
+            UiBuilder sizes = ui.Row();
+            for (int i = 0; i < UiScaleNames.Length; i++)
+            {
+                var scale = (UiScale)i;
+                sizes.Button(L(UiScaleNames[i]), () => Change(_settings.Current.WithUiScale(scale)),
+                    style: current.UiScale == scale ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
             ui.Toggle(L("Tam ekran"), current.Fullscreen, on => Change(_settings.Current.WithFullscreen(on)));

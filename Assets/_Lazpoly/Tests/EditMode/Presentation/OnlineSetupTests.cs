@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Lazpoly.App.Lobby;
+using Lazpoly.Core.Rules;
 using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Setup;
@@ -21,6 +22,16 @@ namespace Lazpoly.Presentation.Tests
             public IReadOnlyList<LobbyMember> Members => MemberList;
             public bool IsGameStarted { get; set; }
             public int StartCalls { get; private set; }
+            public ulong RoomId { get; set; } = 7654321;
+            public TableRules Table { get; set; } = TableRules.Default;
+            public bool? ReadySet { get; private set; }
+            public void SetTable(TableRules table) => Table = table;
+            public void SetReady(bool ready)
+            {
+                ReadySet = ready;
+                int index = MemberList.FindIndex(m => m.Id == LocalId);
+                if (index >= 0) MemberList[index] = new LobbyMember(LocalId, MemberList[index].Name, ready);
+            }
 
             public event Action Changed { add { } remove { } }
             public event Action<LobbyError> Failed { add { } remove { } }
@@ -43,6 +54,7 @@ namespace Lazpoly.Presentation.Tests
         public void Clear()
         {
             OnlineGameSetup.Take();
+            TableSetup.Chosen = TableRules.Default;
         }
 
         [Test]
@@ -115,6 +127,65 @@ namespace Lazpoly.Presentation.Tests
 
             panel.InviteFriend(panel.Friends[0]);
             CollectionAssert.AreEqual(new[] { 42UL }, lobby.Invited);
+            panel.Dispose();
+        }
+
+        [Test]
+        public void TheOwnerStartsOnlyWhenEveryoneIsReady()
+        {
+            var lobby = new FakeLobby { LocalId = 1 };
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(1), () => { });
+
+            Assert.AreEqual(1, panel.ReadyCount(), "The owner counts as ready by hosting.");
+            Assert.IsFalse(panel.CanStart, "A guest has not said they are ready.");
+
+            lobby.MemberList[1] = new LobbyMember(2, "Ben", isReady: true);
+            Assert.IsTrue(panel.CanStart);
+
+            lobby.MemberList.Clear();
+            lobby.MemberList.Add(new LobbyMember(1, "Ev"));
+            Assert.IsFalse(panel.CanStart, "Two players are the least a game takes.");
+            panel.Dispose();
+        }
+
+        [Test]
+        public void AGuestMarksThemselvesReadyThroughTheService()
+        {
+            var lobby = new FakeLobby { LocalId = 2 };
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(2), () => { });
+            int before = panel.ViewKey;
+
+            lobby.SetReady(true);
+
+            Assert.AreEqual(true, lobby.ReadySet);
+            Assert.AreNotEqual(before, panel.ViewKey, "The room view must redraw when someone becomes ready.");
+            Assert.IsFalse(panel.CanStart, "Only the owner starts.");
+            panel.Dispose();
+        }
+
+        [Test]
+        public void TheOwnerSharesTheChosenTableRulesWithTheRoom()
+        {
+            var lobby = new FakeLobby { LocalId = 1 };
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(1), () => { });
+            TableSetup.Chosen = TableRules.Default.WithRoundLimit(25).WithAuctions(false);
+
+            panel.Update();
+
+            Assert.IsTrue(lobby.Table.SameAs(TableSetup.Chosen));
+            TableSetup.Chosen = TableRules.Default;
+            panel.Dispose();
+        }
+
+        [Test]
+        public void AGuestNeverOverwritesTheOwnersRules()
+        {
+            var lobby = new FakeLobby { LocalId = 2, Table = TableRules.Default.WithStartingMoney(2000) };
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(2), () => { });
+
+            panel.Update();
+
+            Assert.AreEqual(2000, lobby.Table.StartingMoney);
             panel.Dispose();
         }
 

@@ -64,8 +64,7 @@ namespace Lazpoly.Presentation.Game
             PlayerState me = state.FindPlayer(_fromId);
             PlayerState partner = state.FindPlayer(_toId);
 
-            ui.Label(L("Takas teklifi"), UiTextStyle.Heading);
-            ui.Label(L("Önce kiminle takas edeceğini seç, sonra iki taraftan mülklere tıklayıp para yaz."), UiTextStyle.Small, UiTheme.Muted);
+            ui.CardHeader(L("Takas teklifi"), L("Önce kiminle takas edeceğini seç, sonra iki taraftan mülklere tıklayıp para yaz."));
 
             UiBuilder partners = ui.Row();
             foreach (PlayerState player in state.Players)
@@ -95,9 +94,7 @@ namespace Lazpoly.Presentation.Game
             TradeOffer offer = BuildOffer();
             ui.Label(F($"Özet: {Describe(offer.GiveSquares, offer.GiveMoney)} veriyorsun, karşılığında {Describe(offer.TakeSquares, offer.TakeMoney)} alıyorsun."), UiTextStyle.Small);
 
-            UiBuilder buttons = ui.Row();
-            buttons.Button(L("Vazgeç"), Close);
-            buttons.Button(L("Teklifi Gönder"), () =>
+            ui.Actions(L("Vazgeç"), Close, L("Teklifi Gönder"), () =>
             {
                 TradeOffer current = BuildOffer();
                 var command = new ProposeTradeCommand(current);
@@ -110,8 +107,8 @@ namespace Lazpoly.Presentation.Game
                 {
                     _problem = Problem(state, current);
                 }
-            }, style: UiButtonStyle.Primary);
-            if (_problem != null) ui.Label(_problem, UiTextStyle.Small, UiTheme.Warning);
+            });
+            if (_problem != null) ui.Notice(_problem);
             _problem = null;
         }
 
@@ -130,24 +127,30 @@ namespace Lazpoly.Presentation.Game
             TradeOffer offer = state.PendingTrade;
             string from = state.FindPlayer(offer.FromPlayerId)?.Name;
             string to = state.FindPlayer(offer.ToPlayerId)?.Name;
-            ui.Label(L("Takas teklifi"), UiTextStyle.Heading);
+            ui.CardHeader(L("Takas teklifi"), $"{from} → {to}");
             UiBuilder card = ui.Card();
-            card.Label($"{from} → {to}", color: UiTheme.Accent);
             card.Label(F($"{from} verir: {Describe(offer.GiveSquares, offer.GiveMoney)}"));
             card.Label(F($"{from} ister: {Describe(offer.TakeSquares, offer.TakeMoney)}"));
 
+            // The answer, with "no" on the left and "yes" on the right like every card; the sender may only withdraw.
+            var accept = new AcceptTradeCommand(offer.ToPlayerId);
+            var reject = new RejectTradeCommand(offer.ToPlayerId);
+            var cancel = new CancelTradeCommand(offer.FromPlayerId);
             bool answered = false;
-            answered |= Offer(ui, new AcceptTradeCommand(offer.ToPlayerId), F($"{to}: Kabul Et"), UiButtonStyle.Primary);
-            answered |= Offer(ui, new RejectTradeCommand(offer.ToPlayerId), F($"{to}: Reddet"), UiButtonStyle.Danger);
-            answered |= Offer(ui, new CancelTradeCommand(offer.FromPlayerId), F($"{from}: Teklifi Geri Çek"), UiButtonStyle.Secondary);
-            if (!answered) ui.Label(F($"{to} oyuncusunun cevabı bekleniyor."), UiTextStyle.Small);
-        }
+            if (_controller.IsAllowed(accept) || _controller.IsAllowed(reject))
+            {
+                answered = true;
+                ui.Actions(F($"{to}: Reddet"), () => _controller.Submit(reject), F($"{to}: Kabul Et"), () => _controller.Submit(accept),
+                    _controller.IsAllowed(accept), UiButtonStyle.Danger);
+            }
 
-        private bool Offer(UiBuilder ui, GameCommand command, string label, UiButtonStyle style)
-        {
-            if (!_controller.IsAllowed(command)) return false;
-            ui.Button(label, () => _controller.Submit(command), style: style);
-            return true;
+            if (_controller.IsAllowed(cancel))
+            {
+                answered = true;
+                ui.Button(F($"{from}: Teklifi Geri Çek"), () => _controller.Submit(cancel), height: UiTheme.SmallButtonHeight);
+            }
+
+            if (!answered) ui.Label(F($"{to} oyuncusunun cevabı bekleniyor."), UiTextStyle.Small);
         }
 
         /// <summary>Every tradable square of one side as a button that is lit while it is part of the offer.</summary>

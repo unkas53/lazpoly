@@ -11,12 +11,12 @@ using Lazpoly.Infra.Settings;
 using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Data;
+using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 using static Lazpoly.Presentation.Texts.Lang;
@@ -54,6 +54,7 @@ namespace Lazpoly.Presentation.Menu
         private GameObject _howToLayer;
         private LobbyPanel _lobbyPanel;
         private SavedGame _savedGame;
+        private bool _brokenSave;
         private SettingsPanel _settings;
         private SettingsService _settingsService;
         private ILobbyService _lobby;
@@ -84,7 +85,7 @@ namespace Lazpoly.Presentation.Menu
             GameServices.Registry?.TryGet(out _lobby);
             GameServices.Registry?.TryGet(out transport);
             GameServices.Registry?.TryGet(out _presence);
-            _lobbyPanel = new LobbyPanel(_lobby, transport, () => SceneManager.LoadScene("Game"));
+            _lobbyPanel = new LobbyPanel(_lobby, transport, () => SceneFader.Load("Game"), OpenTableRules, _boardMoney);
             _settings = new SettingsPanel();
         }
 
@@ -94,7 +95,11 @@ namespace Lazpoly.Presentation.Menu
             _lobbyPanel?.Dispose();
         }
 
-        private static void OnSettingsChanged(GameSettings settings) => Lang.Apply(settings.Language);
+        private static void OnSettingsChanged(GameSettings settings)
+        {
+            Lang.Apply(settings.Language);
+            UiRoot.ApplyScale(settings.UiScaleFactor);
+        }
 
         private void Update()
         {
@@ -120,6 +125,15 @@ namespace Lazpoly.Presentation.Menu
             UiRoot.Panel(main);
             _mainView = new UiView(UiRoot.ScrollPanel(main, 28), RenderMain);
 
+            // The build's version in the corner, so a bug report or a friend's "which one do you have?" has an answer.
+            RectTransform version = UiRoot.Rect(canvas.transform, "Version", Vector2.one, Vector2.one, new Vector2(-260f, -40f), new Vector2(-16f, -12f));
+            Text versionLabel = new UiBuilder(version).Label(F($"Sürüm {Application.version}"), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleRight);
+            var versionRect = (RectTransform)versionLabel.transform;
+            versionRect.anchorMin = Vector2.zero;
+            versionRect.anchorMax = Vector2.one;
+            versionRect.offsetMin = Vector2.zero;
+            versionRect.offsetMax = Vector2.zero;
+
             RectTransform footer = UiRoot.Rect(canvas.transform, "Footer", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-600f, 40f), new Vector2(600f, 96f));
             _footerView = new UiView(new UiBuilder(footer), RenderFooter);
             var row = footer.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -141,8 +155,8 @@ namespace Lazpoly.Presentation.Menu
         private void LateUpdate()
         {
             if (_mainView == null) return;
-            _titleView.Refresh(_savedGame != null ? 1 : 0);
-            int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty);
+            _titleView.Refresh(0);
+            int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty, _savedGame != null, _brokenSave);
             _mainView.Refresh(HashCode.Combine(_mode, modeKey, TableKey()));
             _footerView.Refresh(0);
             if (_settingsLayer.activeSelf) _settingsView.Refresh(0);
@@ -178,6 +192,17 @@ namespace Lazpoly.Presentation.Menu
             if (_savedGame != null)
             {
                 ui.IconButton(UiIcon.Bookmark, L("Kayıtlı Oyuna Devam Et"), ResumeSavedGame, style: UiButtonStyle.Primary, height: 60f);
+                ui.Label(SaveSummary(_savedGame, SaveGameStore.SavedAt), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
+                ui.Space(10f);
+            }
+            else if (_brokenSave)
+            {
+                ui.Notice(L("Kayıtlı oyun okunamadı; dosya bozulmuş ya da eski bir sürümden kalmış olabilir. Silip yeni bir oyun kurabilirsin."),
+                    L("Kaydı Sil"), () =>
+                    {
+                        SaveGameStore.Delete();
+                        _brokenSave = false;
+                    });
                 ui.Space(10f);
             }
 
@@ -335,6 +360,16 @@ namespace Lazpoly.Presentation.Menu
 
         private void CloseSettings() => _settingsLayer.SetActive(false);
 
+        /// <summary>"Tur 12 · 4 oyuncu · 01.11.2026 18:30": what the save holds, so the player knows which game it is.</summary>
+        public static string SaveSummary(SavedGame save, DateTime? savedAt)
+        {
+            int players = 0;
+            foreach (GameStateSnapshot.PlayerEntry player in save.Snapshot.Players) players += player.IsBankrupt ? 0 : 1;
+            string when = savedAt.HasValue ? savedAt.Value.ToString("dd.MM.yyyy HH:mm") : "";
+            string line = F($"Tur {save.Snapshot.Round} · {players} oyuncu");
+            return when.Length > 0 ? $"{line} · {when}" : line;
+        }
+
         private void StartLocalGame()
         {
             var seats = new PlayerSeat[_playerCount];
@@ -347,7 +382,7 @@ namespace Lazpoly.Presentation.Menu
             }
 
             LocalGameSetup.SetSeats(seats, ai);
-            SceneManager.LoadScene("Game");
+            SceneFader.Load("Game");
         }
 
         private void StartSingleGame()
@@ -362,21 +397,27 @@ namespace Lazpoly.Presentation.Menu
             }
 
             LocalGameSetup.SetSeats(seats, ai);
-            SceneManager.LoadScene("Game");
+            SceneFader.Load("Game");
         }
 
         /// <summary>Offers the save only if it was made with the board data this build ships.</summary>
         private void FindSavedGame()
         {
-            if (!SaveGameStore.TryRead(out SavedGame save)) return;
+            if (!SaveGameStore.TryRead(out SavedGame save))
+            {
+                _brokenSave = SaveGameStore.Exists;
+                return;
+            }
+
             BoardData data = BoardDataLoader.LoadFromResources();
             if (save.BoardChecksum == data.Checksum) _savedGame = save;
+            else _brokenSave = true; // Made with other board data: this build cannot continue it.
         }
 
         private void ResumeSavedGame()
         {
             LocalGameSetup.SetResume(_savedGame);
-            SceneManager.LoadScene("Game");
+            SceneFader.Load("Game");
         }
     }
 }

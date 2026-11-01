@@ -26,6 +26,12 @@ namespace Lazpoly.Presentation.Setup
             File.Move(temporary, path);
         }
 
+        /// <summary>Whether a save file is there at all, readable or not.</summary>
+        public static bool Exists => File.Exists(FilePath);
+
+        /// <summary>When the save was last written (local time), or null when there is none.</summary>
+        public static DateTime? SavedAt => Exists ? File.GetLastWriteTime(FilePath) : (DateTime?)null;
+
         /// <summary>Reads the save; false when there is none or it cannot be read (the reason is logged).</summary>
         public static bool TryRead(out SavedGame save)
         {

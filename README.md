@@ -361,6 +361,38 @@ Cila planının ikinci adımı. Kural değişmez; oyun klavyeden de oynanır ve 
   (PlayMode) menünün açılıp oyunu durdurmasını, yardımın açılıp kapanmasını ve Boşluk'un zar atmasını `GameHud.PressKey`
   üzerinden dener.
 
+## Faz 10a-3: arayüz tutarlılığı ve okunurluk
+
+Cila planının üçüncü adımı. Kural değişmez; her ekran aynı dili konuşur ve küçük ya da çok büyük ekranlarda da sığar.
+
+- **Kartlar tek düzende:** şehir, bina, borç, açık artırma ve takas kartları aynı başlığı (`UiBuilder.CardHeader`: renk
+  kutusu, başlık, alt satır, ince çizgi) ve aynı düğme sırasını kullanır (`UiBuilder.Actions`: vazgeç solda, asıl eylem
+  sağda, 52 piksel). Bütün pencere başlıklarının altında aynı çizgi var (`Title`). Karar pencereleri aynı genişlikte
+  (`UiLayout.WindowWidth` 520), takas geniş (760).
+- **Arayüz boyutu ayarı:** Ayarlar > Görüntü > Arayüz boyutu: Küçük / Normal / Büyük (`GameSettings.UiScale`,
+  çarpanlar 0,88 / 1 / 1,18). Canvas ölçekleyicisi referans çözünürlüğü bu çarpana böler (`UiRoot.ApplyScale`), açık
+  ekranlar anında yeniden ölçeklenir; paneller de büyüdüğü için metin kesilmez.
+- **Çözünürlük:** arayüz 1920x1080 referans pikseliyle çizilir ve ekranla yarı genişlik yarı yükseklik ölçeklenir
+  (`UiLayout.CanvasScale`). `UiLayoutTests` 1280x720, 1920x1080, 1920x1200, 2560x1080 ve 3840x2160'ta üç arayüz
+  boyutunda tahtaya en az %45 genişlik kaldığını ve en geniş/en uzun pencerenin kenar payıyla sığdığını hesaplar
+  (en kötü durum: 1920x1200 Büyük, %46,6).
+- **Ekran geçişleri:** menü, lobi ve oyun arasında kısa karartma (`Effects/SceneFader.Load`: 0,18 sn kararır, sahne
+  yüklenir, 0,28 sn açılır; bu sürede tıklama almaz). Bütün `SceneManager.LoadScene` çağrıları buradan geçer.
+- **Ana menü:** sağ üstte sürüm (`Application.version`); kayıtlı oyun düğmesinin altında "Tur 12 · 4 oyuncu ·
+  01.11.2026 18:30" (`MainMenuController.SaveSummary`, tarih dosyanın yazılma zamanı). Okunamayan ya da başka tahta
+  verisiyle yazılmış kayıt için uyarı ve **Kaydı Sil** düğmesi (`SaveGameStore.Exists`, `SavedAt`).
+- **Lobi:** her üyenin yanında hazır/bekliyor işareti (ev sahibi her zaman hazır), misafirde **Hazırım** düğmesi, ev
+  sahibinde "Herkes hazır" ya da "2/3 hazır" durumu; **Çevrim İçi Oyunu Başlat** yalnızca en az iki kişi ve herkes
+  hazırken açılır. Ev sahibinin masa kuralları odaya yazılır ve herkes aynı özeti görür (`ILobbyService.Table`,
+  `SetTable`; Steam'de lobi verisi `lazpoly_table`, hazır bilgisi üye verisi `lazpoly_ready`). Oda kodu (Steam lobi
+  kimliği) **Kopyala** ile panoya; ana ekranda "Oda koduyla katıl" alanı.
+- **Uyarılar tek tip:** `UiBuilder.Notice` (uyarı simgeli kart, ne olduğu ve ne yapılacağı, isteğe bağlı düğme). Steam
+  kapalı, oda kurulamadı, oda dolu, koda katılınamadı, kayıt bozuk, komut reddedildi, takas gönderilemedi ve çevrim içi
+  oyunun durma nedenleri (`EndReasonText`: artık "ne yapmalı" cümlesiyle) hep bu kartla gösterilir.
+- **Sol panel:** iflas eden oyuncular listenin sonuna iner. İpucu kutusu zaten alt ortada, olay kaydını kapatmaz.
+- **Ertelenen:** olay kaydının sıra sıra gruplanması ve adların renklenmesi, mülk kutucuğunda şehir adı ipucu, para
+  değişiminde kart parlaması (10a-4'e kaldı).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

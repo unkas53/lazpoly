@@ -23,8 +23,8 @@ using Lazpoly.Presentation.Pawns;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.Texts;
+using Lazpoly.Presentation.UI;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
@@ -267,7 +267,7 @@ namespace Lazpoly.Presentation.Game
                 lobby.Leave();
             }
 
-            SceneManager.LoadScene("MainMenu");
+            SceneFader.Load("MainMenu");
         }
 
         /// <summary>
@@ -291,7 +291,7 @@ namespace Lazpoly.Presentation.Game
 
             SaveGameStore.Delete();
             LocalGameSetup.SetSeats(seats, ai);
-            SceneManager.LoadScene("Game");
+            SceneFader.Load("Game");
         }
 
         private IGameSession CreateSession(OnlineLaunch online)
@@ -455,6 +455,7 @@ namespace Lazpoly.Presentation.Game
             if (_dice != null) _dice.Speed = settings.AnimationSpeed;
             RoomDressing.ApplyQuality(settings.Quality);
             Lang.Apply(settings.Language);
+            UiRoot.ApplyScale(settings.UiScaleFactor);
         }
 
         private void OnCommandRejected(RejectionReason reason)
@@ -496,11 +497,11 @@ namespace Lazpoly.Presentation.Game
         {
             switch (reason)
             {
-                case SessionEndReason.HostLeft: return L("Ev sahibi oyundan ayrıldı.");
-                case SessionEndReason.NotInThisGame: return L("Bu oyunda yerin yok.");
-                case SessionEndReason.VersionMismatch: return L("Oyun sürümün ev sahibininkiyle aynı değil.");
-                case SessionEndReason.BoardMismatch: return L("Tahta verin ev sahibininkiyle aynı değil.");
-                default: return L("Oyun sona erdi.");
+                case SessionEndReason.HostLeft: return L("Ev sahibi oyundan ayrıldı; oyun burada bitti. Ana menüden yeni bir oda kurabilir ya da arkadaşının odasına katılabilirsin.");
+                case SessionEndReason.NotInThisGame: return L("Bu oyunda yerin yok: oyun sen gelmeden başlamış. Ana menüye dönüp ev sahibinden yeni bir oda kurmasını iste.");
+                case SessionEndReason.VersionMismatch: return L("Oyun sürümün ev sahibininkiyle aynı değil. İkiniz de Steam'den son güncellemeyi alıp yeniden deneyin.");
+                case SessionEndReason.BoardMismatch: return L("Tahta verin ev sahibininkiyle aynı değil. Oyunu Steam'de doğrulayıp (yerel dosyaları doğrula) yeniden dene.");
+                default: return L("Oyun sona erdi. Ana menüye dönebilirsin.");
             }
         }
 

@@ -1,20 +1,25 @@
 using System;
 using System.Collections.Generic;
+using Lazpoly.Core.Rules;
 
 namespace Lazpoly.App.Lobby
 {
     public readonly struct LobbyMember
     {
-        public LobbyMember(ulong id, string name)
+        public LobbyMember(ulong id, string name, bool isReady = false)
         {
             Id = id;
             Name = name ?? string.Empty;
+            IsReady = isReady;
         }
 
         /// <summary>Network peer id (the Steam id in production).</summary>
         public ulong Id { get; }
 
         public string Name { get; }
+
+        /// <summary>The member has pressed "ready"; the owner counts as ready by hosting.</summary>
+        public bool IsReady { get; }
     }
 
     /// <summary>A platform friend as the lobby menu shows them.</summary>
@@ -77,6 +82,18 @@ namespace Lazpoly.App.Lobby
 
         /// <summary>True once the owner has started the game; members who (re)join go straight to it.</summary>
         bool IsGameStarted { get; }
+
+        /// <summary>The room's id as a code a friend can type to join; 0 when not in a room.</summary>
+        ulong RoomId { get; }
+
+        /// <summary>The house rules the owner has chosen for the game, as every member sees them.</summary>
+        TableRules Table { get; }
+
+        /// <summary>Owner only: shares the house rules with the room.</summary>
+        void SetTable(TableRules table);
+
+        /// <summary>Marks this member ready (or not) for everyone to see.</summary>
+        void SetReady(bool ready);
 
         /// <summary>Raised when status, members or the started flag change.</summary>
         event Action Changed;

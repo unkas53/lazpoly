@@ -264,14 +264,66 @@ namespace Lazpoly.Presentation.UI
             return new UiBuilder((RectTransform)element.transform, Changed);
         }
 
-        /// <summary>A heading with an icon before it, for the top of a window or a group.</summary>
+        /// <summary>A heading with an icon before it and a thin rule under it, for the top of a window or a panel.</summary>
         public Text Title(UiIcon icon, string text, Color? color = null)
         {
             UiBuilder row = Row(10f, expand: false);
             row.Icon(icon, 28f, color ?? UiTheme.Accent);
             Text label = row.Label(text, UiTextStyle.Heading);
             Fix(label, -1f).flexibleWidth = 1f;
+            Rule();
             return label;
+        }
+
+        /// <summary>
+        /// The top of a card that asks for a decision: a colour swatch (a property's group) or
+        /// nothing, the title, a line under it and the same rule every window has, so the city,
+        /// building, debt, auction and trade cards all open the same way.
+        /// </summary>
+        public Text CardHeader(string title, string subtitle = null, Color? swatch = null)
+        {
+            UiBuilder row = Row(10f, expand: false);
+            if (swatch.HasValue) row.Swatch(swatch.Value, 26f);
+            Text label = row.Label(title, UiTextStyle.Heading);
+            Fix(label, -1f).flexibleWidth = 1f;
+            if (!string.IsNullOrEmpty(subtitle)) Label(subtitle, UiTextStyle.Small);
+            Rule();
+            return label;
+        }
+
+        /// <summary>A thin accent line across the container.</summary>
+        public void Rule()
+        {
+            GameObject element = NewChild("Rule");
+            Image line = UiRoot.Background((RectTransform)element.transform, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, 0.55f), rounded: false);
+            line.raycastTarget = false;
+            Fix(element, height: 2f);
+        }
+
+        /// <summary>
+        /// The buttons at the foot of a card, always in the same order: the way out on the left,
+        /// the action on the right. Pass a null <paramref name="cancelLabel"/> for a card with one button.
+        /// </summary>
+        public Button Actions(string cancelLabel, Action cancel, string primaryLabel, Action primary, bool primaryEnabled = true,
+            UiButtonStyle cancelStyle = UiButtonStyle.Secondary)
+        {
+            UiBuilder row = Row();
+            if (cancelLabel != null) row.Button(cancelLabel, cancel, style: cancelStyle, height: UiLayout.CardButtonHeight);
+            return row.Button(primaryLabel, primary, primaryEnabled, UiButtonStyle.Primary, UiLayout.CardButtonHeight);
+        }
+
+        /// <summary>
+        /// A warning in a tinted card: what went wrong and, in the same sentence or the next, what
+        /// to do about it. An optional button does that thing.
+        /// </summary>
+        public UiBuilder Notice(string text, string actionLabel = null, Action action = null)
+        {
+            UiBuilder card = Card(new Color(0.34f, 0.19f, 0.16f), 12);
+            UiBuilder row = card.Row(10f, expand: false);
+            row.Icon(UiIcon.Warning, 24f, UiTheme.Warning);
+            Fix(row.Label(text, UiTextStyle.Small, UiTheme.Text), -1f).flexibleWidth = 1f;
+            if (actionLabel != null) Fix(card.Button(actionLabel, action, height: UiTheme.SmallButtonHeight), width: 180f);
+            return card;
         }
 
         /// <summary>A fixed-height list that scrolls.</summary>

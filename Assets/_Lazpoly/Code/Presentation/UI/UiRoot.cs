@@ -1,3 +1,5 @@
+using Lazpoly.Infra;
+using Lazpoly.Infra.Settings;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -7,8 +9,24 @@ namespace Lazpoly.Presentation.UI
     /// <summary>Creates canvases and the fixed panels that <see cref="UiBuilder"/> fills.</summary>
     public static class UiRoot
     {
+        private static float _scale = 1f;
+
+        /// <summary>The interface size in force (see <see cref="GameSettings.UiScaleFactor"/>); new canvases take it, open ones follow <see cref="ApplyScale"/>.</summary>
+        public static float Scale => _scale;
+
+        /// <summary>Redraws every open canvas at a new interface size, and remembers it for the next one.</summary>
+        public static void ApplyScale(float scale)
+        {
+            _scale = Mathf.Clamp(scale, 0.5f, 2f);
+            foreach (CanvasScaler scaler in Object.FindObjectsByType<CanvasScaler>(FindObjectsSortMode.None))
+            {
+                if (scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize) scaler.referenceResolution = UiTheme.ReferenceResolution / _scale;
+            }
+        }
+
         public static Canvas CreateCanvas(Transform parent, string name, int sortingOrder)
         {
+            if (GameServices.Registry != null && GameServices.Registry.TryGet(out SettingsService settings)) _scale = settings.Current.UiScaleFactor;
             var root = new GameObject(name, typeof(RectTransform));
             root.transform.SetParent(parent, false);
             var canvas = root.AddComponent<Canvas>();
@@ -18,7 +36,7 @@ namespace Lazpoly.Presentation.UI
 
             var scaler = root.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = UiTheme.ReferenceResolution;
+            scaler.referenceResolution = UiTheme.ReferenceResolution / _scale;
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
 

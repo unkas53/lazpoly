@@ -59,10 +59,16 @@ namespace Lazpoly.PlayTests
 
             AssertMouseReaches("Oyunu Başlat");
             Assert.IsTrue(Press(null, "Oyunu Başlat"), "No start button.");
-            yield return null;
-            yield return null;
 
-            var controller = Object.FindAnyObjectByType<GameSceneController>();
+            // The scene changes behind a short fade, so the table appears a few frames later.
+            GameSceneController controller = null;
+            float pressed = Time.realtimeSinceStartup;
+            while (controller == null && Time.realtimeSinceStartup - pressed < 5f)
+            {
+                yield return null;
+                controller = Object.FindAnyObjectByType<GameSceneController>();
+            }
+
             Assert.IsNotNull(controller, "The game did not start.");
             Assert.AreEqual(4, controller.Session.State.Players.Count);
             Assert.IsTrue(controller.Session.CanControl(1));

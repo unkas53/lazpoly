@@ -14,6 +14,8 @@ namespace Lazpoly.Platform.Steam
     public sealed class SteamLobbyService : ILobbyService, IGameService
     {
         private const string StartedKey = "lazpoly_started";
+        private const string TableKey = "lazpoly_table";
+        private const string ReadyKey = "lazpoly_ready";
         private const uint ChatEnterSuccess = (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess;
         private const uint ChatEnterFull = (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseFull;
         private const uint MemberGone = (uint)(EChatMemberStateChange.k_EChatMemberStateChangeLeft |
@@ -32,6 +34,7 @@ namespace Lazpoly.Platform.Steam
         private Callback<GameLobbyJoinRequested_t> _joinRequested;
         private CSteamID _lobby = CSteamID.Nil;
         private ulong _joiningLobby;
+        private string _sentTable;
 
         public SteamLobbyService(SteamService steam)
         {
@@ -45,6 +48,8 @@ namespace Lazpoly.Platform.Steam
         public bool IsOwner => InLobby && OwnerId == LocalId;
         public IReadOnlyList<LobbyMember> Members => _members;
         public bool IsGameStarted => InLobby && SteamMatchmaking.GetLobbyData(_lobby, StartedKey) == "1";
+        public ulong RoomId => InLobby ? _lobby.m_SteamID : 0UL;
+        public TableRules Table => InLobby ? ParseTable(SteamMatchmaking.GetLobbyData(_lobby, TableKey)) : TableRules.Default;
 
         public event Action Changed;
         public event Action<LobbyError> Failed;
@@ -158,6 +163,32 @@ namespace Lazpoly.Platform.Steam
             if (IsOwner) SteamMatchmaking.SetLobbyData(_lobby, StartedKey, "1");
         }
 
+        public void SetTable(TableRules table)
+        {
+            string text = FormatTable(table ?? TableRules.Default);
+            // The menu asks every frame until the room agrees; one message per change is enough.
+            if (!IsOwner || text == _sentTable) return;
+            _sentTable = text;
+            SteamMatchmaking.SetLobbyData(_lobby, TableKey, text);
+        }
+
+        public void SetReady(bool ready)
+        {
+            if (InLobby) SteamMatchmaking.SetLobbyMemberData(_lobby, ReadyKey, ready ? "1" : "0");
+        }
+
+        /// <summary>"money,auctions,rounds" as lobby data; anything unreadable means the default rules.</summary>
+        public static string FormatTable(TableRules table) => $"{table.StartingMoney},{(table.AuctionsEnabled ? 1 : 0)},{table.RoundLimit}";
+
+        public static TableRules ParseTable(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return TableRules.Default;
+            string[] parts = text.Split(',');
+            if (parts.Length != 3 || !int.TryParse(parts[0], out int money) || !int.TryParse(parts[1], out int auctions) || !int.TryParse(parts[2], out int rounds))
+                return TableRules.Default;
+            return new TableRules(money, auctions != 0, rounds);
+        }
+
         public void Leave()
         {
             if (Status == LobbyStatus.Idle) return;
@@ -165,6 +196,7 @@ namespace Lazpoly.Platform.Steam
 
             _lobby = CSteamID.Nil;
             _joiningLobby = 0;
+            _sentTable = null;
             _members.Clear();
             _memberIds.Clear();
             SetStatus(LobbyStatus.Idle);
@@ -236,7 +268,8 @@ namespace Lazpoly.Platform.Steam
             {
                 CSteamID member = SteamMatchmaking.GetLobbyMemberByIndex(_lobby, i);
                 if (!_memberIds.Add(member.m_SteamID)) continue;
-                _members.Add(new LobbyMember(member.m_SteamID, SteamFriends.GetFriendPersonaName(member)));
+                bool ready = member == SteamMatchmaking.GetLobbyOwner(_lobby) || SteamMatchmaking.GetLobbyMemberData(_lobby, member, ReadyKey) == "1";
+                _members.Add(new LobbyMember(member.m_SteamID, SteamFriends.GetFriendPersonaName(member), ready));
             }
         }
 

@@ -28,6 +28,8 @@ namespace Lazpoly.Presentation.UI
         Bookmark,
         /// <summary>Two bars: the game is held still.</summary>
         Pause,
+        /// <summary>An exclamation mark: something needs attention.</summary>
+        Warning,
     }
 
     /// <summary>Draws a <see cref="UiIcon"/> as a square of shapes inside a layout.</summary>
@@ -121,6 +123,11 @@ namespace Lazpoly.Presentation.UI
                 case UiIcon.Pause:
                     Shape(root, 0.16f, 0.08f, 0.26f, 0.84f, color);
                     Shape(root, 0.58f, 0.08f, 0.26f, 0.84f, color);
+                    break;
+
+                case UiIcon.Warning:
+                    Shape(root, 0.38f, 0.34f, 0.24f, 0.6f, color);
+                    Shape(root, 0.38f, 0.06f, 0.24f, 0.2f, color, round: true);
                     break;
             }
         }

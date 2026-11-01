@@ -31,7 +31,7 @@ namespace Lazpoly.Infra.Tests
             var storage = new MemoryStorage();
             GameSettings chosen = GameSettings.Default.WithMasterVolume(0.25f).WithEffectsVolume(0.5f).WithMusicVolume(0f)
                 .WithFullscreen(false).WithVSync(false).WithAiSpeed(AiSpeed.Fast).WithFastAnimations(true)
-                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900).WithLanguage(Language.English);
+                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900).WithLanguage(Language.English).WithUiScale(UiScale.Large);
 
             SettingsSerializer.Write(storage, chosen);
 
@@ -50,6 +50,7 @@ namespace Lazpoly.Infra.Tests
             storage.Values["lazpoly.settings.width"] = 20;
             storage.Values["lazpoly.settings.height"] = 2000;
             storage.Values["lazpoly.settings.language"] = 9;
+            storage.Values["lazpoly.settings.uiScale"] = 5;
 
             GameSettings read = SettingsSerializer.Read(storage);
 
@@ -58,6 +59,15 @@ namespace Lazpoly.Infra.Tests
             Assert.AreEqual(GraphicsQuality.High, read.Quality);
             Assert.IsFalse(read.HasScreenSize, "A silly size means the screen stays as it is.");
             Assert.AreEqual(Language.Auto, read.Language);
+            Assert.AreEqual(UiScale.Normal, read.UiScale);
+        }
+
+        [Test]
+        public void InterfaceSizesStepUpAroundTheReference()
+        {
+            Assert.AreEqual(1f, GameSettings.Default.UiScaleFactor);
+            Assert.Less(GameSettings.Default.WithUiScale(UiScale.Small).UiScaleFactor, 1f);
+            Assert.Greater(GameSettings.Default.WithUiScale(UiScale.Large).UiScaleFactor, 1f);
         }
 
         [Test]
