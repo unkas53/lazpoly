@@ -321,9 +321,8 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
 Cila planı: https://claude.ai/artifact/53ynSWjq5NCCCj3gSZceTf. Bu PR kural değiştirmez; her hamlenin sonucunu ekranda
 bakmadan da anlaşılır kılar.
 
-- **Sıra geçişi:** `TurnStartedEvent` oynatılırken kamera yeni oyuncunun piyonuna kısa bir bakış atar
-  (`BoardCameraRig.Glance`: oyuncunun yakınlaştırma ve dönüşünü bozmaz), piyon yerinde bir kez zıplar
-  (`PawnView.Bob`); sıra bu ekranda olmayan birine ya da bilgisayara geçince kısık bir nota (`turn_pass`), bu
+- **Sıra geçişi:** `TurnStartedEvent` oynatılırken yeni oyuncunun piyonu yerinde bir kez zıplar
+  (`PawnView.Bob`); kamera oyuncunun bıraktığı yerde kalır. Sıra bu ekranda olmayan birine ya da bilgisayara geçince kısık bir nota (`turn_pass`), bu
   ekrandaki kişiye geçince eskisi gibi "sıra sende" akoru. Bekleme metni adı söyler: "Ayşe düşünüyor (bilgisayar)...".
 - **Zar sonucu:** zarlar durunca üstte büyük rakamla "3 + 4 = 7" (`GameHud.BuildRollPopup`), çiftte "Çift! Sıra bitince
   yeniden atarsın", üçüncü çiftte "hamle yanar, sıra geçer" (`GameSceneController.ShownRollForfeited`, sıradaki olayın

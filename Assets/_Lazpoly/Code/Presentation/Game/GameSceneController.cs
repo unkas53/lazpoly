@@ -576,14 +576,13 @@ namespace Lazpoly.Presentation.Game
         private float Speed => Mathf.Max(Settings.AnimationSpeed, 0.1f);
 
         /// <summary>
-        /// A new turn: the camera glances at the pawn, which hops once; a soft note when the turn goes
-        /// to someone not at this screen (the HUD plays the "your turn" chord for people here).
+        /// A new turn: the pawn hops once; a soft note when the turn goes to someone not at this screen
+        /// (the HUD plays the "your turn" chord for people here). The camera stays where the player put it.
         /// </summary>
         private IEnumerator ShowTurnStart(int playerId)
         {
             if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) yield break;
             if (!_session.CanControl(playerId) || _session.IsAiPlaying(playerId)) AudioPlayer.Play(SoundCue.TurnPass);
-            CameraRig?.Glance(pawn.transform.position, 1.4f / Speed);
             yield return pawn.Bob();
         }
 

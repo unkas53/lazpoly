@@ -15,7 +15,6 @@ namespace Lazpoly.Presentation.Tabletop
         private const float WheelStep = 0.1f;
         private const float DegreesPerMouseUnit = 5f;
         private const float Smoothing = 12f;
-        private const float GlanceAmount = 0.28f;
 
         private Vector3 _boardCenter;
         private Vector3 _aim;
@@ -24,9 +23,6 @@ namespace Lazpoly.Presentation.Tabletop
         private bool _hasBase;
         private float _yaw;
         private float _zoom = 1f;
-        private Vector3 _glancePoint;
-        private float _glanceUntil;
-        private float _glanceSeconds;
 
         public float Yaw => _yaw;
         public float Zoom => _zoom;
@@ -50,27 +46,6 @@ namespace Lazpoly.Presentation.Tabletop
         {
             _yaw = 0f;
             _zoom = 1f;
-        }
-
-        /// <summary>
-        /// Pans a little towards <paramref name="worldPoint"/> and back over <paramref name="seconds"/>,
-        /// a glance at the pawn whose turn begins. The player's own zoom and turn are kept.
-        /// </summary>
-        public void Glance(Vector3 worldPoint, float seconds = 1.4f)
-        {
-            _glancePoint = worldPoint;
-            _glanceSeconds = Mathf.Max(seconds, 0.1f);
-            _glanceUntil = Time.unscaledTime + _glanceSeconds;
-        }
-
-        private Vector3 GlanceOffset()
-        {
-            float left = _glanceUntil - Time.unscaledTime;
-            if (left <= 0f) return Vector3.zero;
-            float t = 1f - left / _glanceSeconds;
-            Vector3 towards = _glancePoint - _aim;
-            towards.y = 0f;
-            return towards * (GlanceAmount * Mathf.Sin(t * Mathf.PI));
         }
 
         /// <summary>Camera position for a view turned by <paramref name="yaw"/> degrees and scaled by <paramref name="zoom"/>.</summary>
@@ -103,7 +78,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         private void Apply(bool snap)
         {
-            Vector3 position = Place(_boardCenter, _aim + GlanceOffset(), _offset, _yaw, _zoom);
+            Vector3 position = Place(_boardCenter, _aim, _offset, _yaw, _zoom);
             Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0f);
             float blend = snap ? 1f : 1f - Mathf.Exp(-Smoothing * Time.unscaledDeltaTime);
             transform.position = Vector3.Lerp(transform.position, position, blend);
