@@ -43,7 +43,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("50", ValueOf(info, "Kira, 1 ev"));
             Assert.AreEqual("700", ValueOf(info, "Kira, otel"));
             Assert.AreEqual("50", ValueOf(info, "Ev maliyeti"));
-            Assert.AreEqual("30", ValueOf(info, "İpotek değeri"));
+            Assert.AreEqual("30", ValueOf(info, "Satış değeri"), "The bank pays half the price.");
             Assert.IsFalse(info.Rows.Any(row => row.Current));
             CollectionAssert.Contains(info.Notes, "Bu renk: 2 kare; sahipsiz 2.");
         }
@@ -65,13 +65,6 @@ namespace Lazpoly.Presentation.Tests
             CollectionAssert.Contains(built.Notes, "Bu renk: 2 kare; Ayşe 2.");
         }
 
-        [Test]
-        public void ShowsWhatTheBankPaysForTheSquare()
-        {
-            SquareInfo info = SquareInfo.Describe(Board, Rules, State(), 1, null);
-            SquareInfoRow sale = info.Rows.Single(row => row.Label == "Satış değeri");
-            Assert.AreEqual((Board[1].Price / 2).ToString(), sale.Value);
-        }
 
         [Test]
         public void OtherSquaresExplainThemselves()
