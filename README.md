@@ -426,7 +426,7 @@ modeli yok; koddan üretilen parçalar iyileştirildi.
 
 Düzeltme (kare adları PR'ı): yan sıralardaki kare adları artık plakayla birlikte kenar boyunca döner (harflerin üstü
 tahtanın ortasına bakar, `BoardView.LabelRotation`), uzun adlar plakaya sığacak kadar küçülür (`FitCharacterSize`),
-plaka piyon yarısından uzaklaştı (`PlaqueOffset` 0,08, `PlaqueDepth` 0,30); ad ve fiyat satırları plakanın derinliğine de sığdırılır.
+plaka piyon yarısından uzaklaştı ve kenarı şeridin altına girer (`PlaqueOffset` 0,09, `PlaqueDepth` 0,32), iki satırlı adlar küçülmeden sığar; yalnızca uzun adlar daralır.
 
 ## Faz 10b-2: deniz, gün ışığı, kamera, zarlar
 

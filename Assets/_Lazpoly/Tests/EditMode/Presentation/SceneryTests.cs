@@ -34,7 +34,7 @@ namespace Lazpoly.Presentation.Tests
                 "two tall lines shrink to the plaque's depth");
             Assert.That(BoardView.FitCharacterSize(0.02f, new Vector2(2f, 0.6f), new Vector2(1.5f, 0.4f)), Is.EqualTo(0.02f * 0.4f / 0.6f).Within(1e-6f),
                 "the tighter of the two limits wins");
-            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f + 0.025f, "the plaque may tuck a sliver under the raised band, no more");
+            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f + 0.045f, "the plaque may tuck under the raised band's edge, no further");
             Assert.Less(BoardView.PlaqueDepth / 2f - BoardView.PlaqueOffset, 0.12f, "the plaque reaches into the pawns' half of the tile");
             Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset, "the plaque runs past the band's centre");
         }

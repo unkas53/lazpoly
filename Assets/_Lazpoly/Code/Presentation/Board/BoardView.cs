@@ -44,13 +44,13 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BandDepth = 0.28f;
 
         /// <summary>Where the name plaque's centre sits, outward from the square's centre, in tile widths: clear of the pawns' half, short of the band.</summary>
-        public const float PlaqueOffset = 0.08f;
-        public const float PlaqueDepth = 0.30f;
+        public const float PlaqueOffset = 0.09f;
+        public const float PlaqueDepth = 0.32f;
         public const float PlaqueWidth = 0.86f;
 
         /// <summary>How much of the plaque's width and depth a label may use before its letters shrink.</summary>
         public const float LabelFill = 0.92f;
-        public const float LabelDepthFill = 0.88f;
+        public const float LabelDepthFill = 0.95f;
 
         private OwnerMarker[] _ownerMarkers;
         private Vector3[] _flagScale;
