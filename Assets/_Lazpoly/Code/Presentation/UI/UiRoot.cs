@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lazpoly.Infra;
 using Lazpoly.Infra.Settings;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace Lazpoly.Presentation.UI
     public static class UiRoot
     {
         private static float _scale = 1f;
+        private static readonly List<CanvasScaler> _scalers = new List<CanvasScaler>();
 
         /// <summary>The interface size in force (see <see cref="GameSettings.UiScaleFactor"/>); new canvases take it, open ones follow <see cref="ApplyScale"/>.</summary>
         public static float Scale => _scale;
@@ -18,10 +20,8 @@ namespace Lazpoly.Presentation.UI
         public static void ApplyScale(float scale)
         {
             _scale = Mathf.Clamp(scale, 0.5f, 2f);
-            foreach (CanvasScaler scaler in Object.FindObjectsByType<CanvasScaler>(FindObjectsSortMode.None))
-            {
-                if (scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize) scaler.referenceResolution = UiTheme.ReferenceResolution / _scale;
-            }
+            _scalers.RemoveAll(scaler => scaler == null); // Canvases of scenes that have gone.
+            foreach (CanvasScaler scaler in _scalers) scaler.referenceResolution = UiTheme.ReferenceResolution / _scale;
         }
 
         public static Canvas CreateCanvas(Transform parent, string name, int sortingOrder)
@@ -37,6 +37,7 @@ namespace Lazpoly.Presentation.UI
             var scaler = root.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = UiTheme.ReferenceResolution / _scale;
+            _scalers.Add(scaler);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
 
