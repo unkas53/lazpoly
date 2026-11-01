@@ -43,9 +43,13 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BandOffset = 0.35f;
         public const float BandDepth = 0.28f;
 
-        /// <summary>Where the name plaque's centre sits, outward from the square's centre, in tile widths.</summary>
-        public const float PlaqueOffset = 0.04f;
-        public const float PlaqueDepth = 0.32f;
+        /// <summary>Where the name plaque's centre sits, outward from the square's centre, in tile widths: clear of the pawns' half, short of the band.</summary>
+        public const float PlaqueOffset = 0.07f;
+        public const float PlaqueDepth = 0.28f;
+        public const float PlaqueWidth = 0.86f;
+
+        /// <summary>How much of the plaque's width a label may use before its letters shrink.</summary>
+        public const float LabelFill = 0.92f;
 
         private OwnerMarker[] _ownerMarkers;
         private Vector3[] _flagScale;
@@ -439,10 +443,10 @@ namespace Lazpoly.Presentation.Tabletop
                 // Name and price sit on a dark plaque towards the outer edge; pawns stand on the inner half (PawnSpot).
                 Vector3 plaqueCenter = center + Outward(center) * (tile * PlaqueOffset);
                 GameObject plaque = ModelParts.Create("Plaque", transform,
-                    MeshFactory.RoundedBox(new Vector3(tile * 0.86f, 0.03f, tile * PlaqueDepth), 0.012f, 2), PlaqueColor, 0.15f);
+                    MeshFactory.RoundedBox(new Vector3(tile * PlaqueWidth, 0.03f, tile * PlaqueDepth), 0.012f, 2), PlaqueColor, 0.15f);
                 plaque.transform.localPosition = plaqueCenter + Vector3.up * (TileHeight + 0.012f);
                 plaque.transform.localRotation = Quaternion.LookRotation(Outward(center));
-                CreateLabel(caption, plaqueCenter + Vector3.up * (TileHeight + 0.03f), tile);
+                CreateLabel(caption, plaqueCenter + Vector3.up * (TileHeight + 0.03f), tile, Outward(center));
 
                 if (square.Type == SquareType.Property)
                 {
@@ -636,12 +640,27 @@ namespace Lazpoly.Presentation.Tabletop
             icon.transform.localScale = Vector3.one * (tile * 0.22f);
         }
 
-        private void CreateLabel(string text, Vector3 localPosition, float tile)
+        /// <summary>
+        /// How a square's label lies: flat on the tile, and on the side columns turned to run along the
+        /// edge with the tops of its letters towards the middle of the board, so it fits its plaque. The
+        /// near and far rows read the way the camera looks.
+        /// </summary>
+        public static Quaternion LabelRotation(Vector3 outward)
+        {
+            Quaternion flat = Quaternion.Euler(90f, 0f, 0f);
+            return Mathf.Abs(outward.x) > Mathf.Abs(outward.z) ? Quaternion.LookRotation(-outward) * flat : flat;
+        }
+
+        /// <summary>The character size that keeps a label of <paramref name="width"/> within <paramref name="maxWidth"/>.</summary>
+        public static float FitCharacterSize(float characterSize, float width, float maxWidth) =>
+            width > maxWidth && width > 0f ? characterSize * maxWidth / width : characterSize;
+
+        private void CreateLabel(string text, Vector3 localPosition, float tile, Vector3 outward)
         {
             var label = new GameObject("Label");
             label.transform.SetParent(transform, false);
             label.transform.localPosition = localPosition;
-            label.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            label.transform.localRotation = LabelRotation(outward);
 
             var mesh = label.AddComponent<TextMesh>();
             mesh.text = text;
@@ -653,7 +672,13 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.characterSize = tile * 0.0115f;
             mesh.color = LabelColor;
             mesh.font = UiTheme.BoldFont;
-            label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
+            var renderer = label.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = mesh.font.material;
+
+            // Long names ("Liman Caddesi") shrink to the plaque instead of running off it.
+            Vector3 size = renderer.bounds.size;
+            float width = Mathf.Abs(outward.x) > Mathf.Abs(outward.z) ? size.z : size.x;
+            mesh.characterSize = FitCharacterSize(mesh.characterSize, width, tile * PlaqueWidth * LabelFill);
         }
 
         private static Color TileColor(SquareDefinition square, BoardData data)

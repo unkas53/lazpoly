@@ -8,6 +8,33 @@ namespace Lazpoly.Presentation.Tests
     public class SceneryTests
     {
         [Test]
+        public void SideColumnLabelsRunAlongTheEdgeAndLongNamesShrinkToThePlaque()
+        {
+            // Near and far rows: flat text whose letters stand up towards +Z, as the camera reads it.
+            foreach (Vector3 outward in new[] { Vector3.back, Vector3.forward })
+            {
+                Quaternion rotation = BoardView.LabelRotation(outward);
+                Assert.That(Vector3.Distance(rotation * Vector3.up, Vector3.forward), Is.LessThan(1e-4f), $"{outward}: letters do not stand towards +Z");
+                Assert.That(Vector3.Distance(rotation * Vector3.back, Vector3.up), Is.LessThan(1e-4f), "the text does not face up");
+            }
+
+            // Side columns: the text runs along Z and the tops of the letters point at the middle of the board.
+            foreach (Vector3 outward in new[] { Vector3.left, Vector3.right })
+            {
+                Quaternion rotation = BoardView.LabelRotation(outward);
+                Assert.That(Vector3.Distance(rotation * Vector3.up, -outward), Is.LessThan(1e-4f), $"{outward}: letters do not point inward");
+                Assert.That(Mathf.Abs((rotation * Vector3.right).z), Is.EqualTo(1f).Within(1e-4f), "the line does not run along the edge");
+                Assert.That(Vector3.Distance(rotation * Vector3.back, Vector3.up), Is.LessThan(1e-4f), "the text does not face up");
+            }
+
+            Assert.AreEqual(0.02f, BoardView.FitCharacterSize(0.02f, 1.2f, 1.5f), "a label that fits keeps its size");
+            Assert.That(BoardView.FitCharacterSize(0.02f, 2f, 1.5f), Is.EqualTo(0.015f).Within(1e-6f), "a long label shrinks to the plaque");
+            Assert.AreEqual(0.02f, BoardView.FitCharacterSize(0.02f, 0f, 1.5f), "an unmeasured label is left alone");
+            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f + 0.01f, "the plaque stops at the group band");
+            Assert.Less(BoardView.PlaqueDepth / 2f - BoardView.PlaqueOffset, 0.12f, "the plaque reaches into the pawns' half of the tile");
+        }
+
+        [Test]
         public void TheDayRunsFromNoonToDuskOverTheGame()
         {
             Assert.AreEqual(0f, DayCycle.Progress(1, 25, gameOver: false));

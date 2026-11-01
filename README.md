@@ -424,6 +424,10 @@ modeli yok; koddan üretilen parçalar iyileştirildi.
   sahip bayrağının kumaşı hafifçe dalgalanır (`FlagWave`, yalnızca dikili bayraklarda).
 - Testler: `PawnSlotsTests` (yuva aralığı, kalabalık kare, bayrak salınımı), `ModelTests` (küre ve işaretler).
 
+Düzeltme (kare adları PR'ı): yan sıralardaki kare adları artık plakayla birlikte kenar boyunca döner (harflerin üstü
+tahtanın ortasına bakar, `BoardView.LabelRotation`), uzun adlar plakaya sığacak kadar küçülür (`FitCharacterSize`),
+plaka piyon yarısından uzaklaşıp şerit önünde biter (`PlaqueOffset` 0,07, `PlaqueDepth` 0,28).
+
 ## Faz 10b-2: deniz, gün ışığı, kamera, zarlar
 
 Plandaki "Görsel cila" bölümünün kalan sahne maddeleri.
