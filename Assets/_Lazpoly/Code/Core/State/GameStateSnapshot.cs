@@ -17,6 +17,7 @@ namespace Lazpoly.Core.State
             public int Position;
             public bool IsBankrupt;
             public bool HasLookout;
+            public int Laps;
         }
 
         public GamePhase Phase;
@@ -77,6 +78,7 @@ namespace Lazpoly.Core.State
                     Position = player.Position,
                     IsBankrupt = player.IsBankrupt,
                     HasLookout = player.HasLookout,
+                    Laps = player.Laps,
                 });
             }
 

@@ -156,6 +156,7 @@ namespace Lazpoly.App.Tests
             Assert.AreEqual(5, start.Sequence);
             Assert.AreEqual("Çağrı Öztürk", start.Snapshot.Players[1].Name);
             Assert.AreEqual(0, start.Snapshot.BuiltThisVisit, "After a move the visit's building count travels along.");
+            Assert.AreEqual(0, start.Snapshot.Players[0].Laps);
             Assert.AreEqual(SampleSnapshot().Restore().ComputeHash(), start.Snapshot.Restore().ComputeHash());
 
             var command = (CommandMessage)MessageCodec.Decode(MessageCodec.Encode(new CommandMessage { Command = new BuyPropertyCommand(6) }));

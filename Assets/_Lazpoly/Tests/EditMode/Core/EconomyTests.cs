@@ -67,8 +67,8 @@ namespace Lazpoly.Core.Tests
         }
 
         /// <summary>Puts a player on a square without a roll, the way a move event would.</summary>
-        private static void Stand(GameEngine engine, int playerId, int square) =>
-            GameStateReducer.Apply(engine.State, new PlayerMovedEvent(playerId, engine.State.FindPlayer(playerId).Position, square, false));
+        private static void Stand(GameEngine engine, int playerId, int square, bool passedStart = false) =>
+            GameStateReducer.Apply(engine.State, new PlayerMovedEvent(playerId, engine.State.FindPlayer(playerId).Position, square, passedStart));
 
         /// <summary>Advances the round counter: every seat takes a turn and play returns to the first.</summary>
         private static void NextRound(GameEngine engine)
@@ -99,20 +99,24 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void FirstRoundAllowsOneHouseLaterRoundsFour()
+        public void OneHouseUntilTheFirstLapThenFour()
         {
             var engine = NewGame(money: 5000);
             Give(engine, A1, Alice);
             Stand(engine, Alice, A1);
 
             Accept(engine, new BuildCommand(Alice, A1));
-            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)), "One house in the first round.");
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1)), "One house before passing start.");
 
             NextRound(engine);
             Assert.AreEqual(2, engine.State.Round);
             Assert.AreEqual(GameState.NotArrived, engine.State.BuiltThisVisit);
             Assert.AreEqual(0, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1), "Standing still is not a visit.");
             Stand(engine, Alice, A1);
+            Assert.AreEqual(0, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1), "Rounds do not matter; passing start does.");
+
+            Stand(engine, Alice, A1, passedStart: true);
+            Assert.AreEqual(1, engine.State.FindPlayer(Alice).Laps);
             Assert.AreEqual(3, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1));
             for (int i = 0; i < 3; i++) Accept(engine, new BuildCommand(Alice, A1));
             Assert.AreEqual(4, engine.State.GetBuildingLevel(A1));
@@ -124,8 +128,7 @@ namespace Lazpoly.Core.Tests
         {
             var engine = NewGame(money: 5000);
             Give(engine, A1, Alice);
-            NextRound(engine);
-            Stand(engine, Alice, A1);
+            Stand(engine, Alice, A1, passedStart: true);
             for (int i = 0; i < 4; i++) Accept(engine, new BuildCommand(Alice, A1));
             Assert.IsTrue(GameRules.NextIsHotel(engine.State, A1));
             Assert.AreEqual(0, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1));

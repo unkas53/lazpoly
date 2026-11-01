@@ -270,10 +270,11 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
 ## Faz 8: şehir kartları, bayraklar, yeni ev kuralı ve arayüz cilası
 
 - **Ev ve otel kuralı değişti:** renk grubu şartı yok. Bina, sahibinin **o sırada geldiği** kendi şehrine
-  kurulur (`GameRules.BuildableNow`): 1. turda her şehre tek ev, 2. turdan sonra dörde kadar; otel, dört evli
-  şehre **bir sonraki gelişte** kurulur. `GameState.BuiltThisVisit` o gelişte kurulan bina sayısını tutar
-  (sıra başında `NotArrived`, piyon hareket edince 0); anlık görüntü sürümü 3, kayıt formatı 3, protokol 4
-  (eski kayıtlar açılır, bina sayacı "gelmedi" sayılır). Evler eşit kurulmaz, tek tek satılır; binalı şehir
+  kurulur (`GameRules.BuildableNow`): oyuncu başlangıçtan ilk kez geçene kadar her şehrine tek ev, geçtikten
+  sonra dörde kadar (`PlayerState.Laps`, başlangıçtan geçişte artar); otel, dört evli şehre **bir sonraki
+  gelişte** kurulur. `GameState.BuiltThisVisit` o gelişte kurulan bina sayısını tutar (sıra başında
+  `NotArrived`, piyon hareket edince 0); anlık görüntü sürümü 4, kayıt formatı 4, protokol 5 (eski kayıtlar
+  açılır: bina sayacı "gelmedi", tur sayısı biten tur başına bir geçiş sayılır). Evler eşit kurulmaz, tek tek satılır; binalı şehir
   ipotek edilemez ve takas edilemez (yalnızca o şehir, rengin diğer kareleri değil). Renk grubunun tamamı yine
   boş kirayı katlar. Yapay zekâ üzerinde durduğu şehre kurar, parası yetmezse başka bir mülkünü ipotek eder.
 - **Şehir kartı:** sahipsiz bir şehre gelince ortada kart açılır: renk, fiyat, kira tablosu, ipotek değeri,
@@ -283,8 +284,9 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   paran, kalan para ve yeni kira; dört evli şehre dönüşte "Otel Kur". **Şimdi Değil** o geliş için kapatır,
   sol sütundaki **Bina Kartı** düğmesi yeniden açar; "Mülklerin" listesindeki Ev +/Otel + düğmeleri de duruyor.
   Kart her ev için ayrı `BuildCommand` gönderir; host her birini sırayla doğrular.
-- **Bayrak:** satın alınan şehrin dış köşesine sahibin renginde flamalı bir bayrak dikilir
-  (`BuildingParts.Flag`); satın alınınca yerden yükselir (`BoardView.RaiseFlag`), ipotekte kararır.
+- **Bayrak ve renkli binalar:** satın alınan şehirde binaların yerine sahibin renginde flamalı bir bayrak
+  dikilir (`BuildingParts.Flag`); satın alınınca yerden yükselir (`BoardView.RaiseFlag`), ipotekte kararır,
+  ilk bina gelince kalkar (son bina satılınca döner). Evler ve konak sahibinin renginde, çatılar koyu tonu.
 - **Arayüz cilası:** çalışma anında çizilen ikonlar (`UiIcons`: zar, insanlar, ağ, kitap, sürgüler, kapı,
   liste, ev, bayrak, yer imi), ikonlu düğmeler ve tıklanabilir mod kartları (`UiBuilder.IconButton`,
   `Tile`, `Title`), düğme ve kartlarda gölge, üstüne gelince hafif büyüme (`UiHover`), panellerde üst

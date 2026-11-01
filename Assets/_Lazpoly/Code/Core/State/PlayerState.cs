@@ -19,6 +19,9 @@ namespace Lazpoly.Core.State
 
         public bool IsBankrupt { get; internal set; }
 
+        /// <summary>How many times the player has passed the start square. Until the first pass, each town takes a single house.</summary>
+        public int Laps { get; internal set; }
+
         /// <summary>The player's next roll is a choice of two (from a lookout square or card).</summary>
         public bool HasLookout { get; internal set; }
     }

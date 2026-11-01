@@ -71,7 +71,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.FirstRoll, myTurn && state.Phase == GamePhase.WaitingForRoll,
                        L("Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır."))
                    ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
-                       F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: ilk turda bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
+                       F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
                    ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasMortgageable(board, state, playerId),
                        L("Paran azaldı. Sıkışırsan mülklerini ipotek edip bankadan para alabilirsin; sonra faiziyle geri alırsın."))
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,

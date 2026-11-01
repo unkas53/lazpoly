@@ -29,17 +29,10 @@ namespace Lazpoly.Presentation.Tests
         private static void Own(GameState state, int square, int owner) =>
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(square, GameState.NoOwner, owner));
 
-        private static void Arrive(GameState state, int player, int square)
+        private static void Arrive(GameState state, int player, int square, bool passedStart = false)
         {
-            GameStateReducer.Apply(state, new PlayerMovedEvent(player, state.FindPlayer(player).Position, square, false));
+            GameStateReducer.Apply(state, new PlayerMovedEvent(player, state.FindPlayer(player).Position, square, passedStart));
             GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.TurnEnd));
-        }
-
-        private static void SecondRound(GameState state)
-        {
-            GameStateReducer.Apply(state, new TurnStartedEvent(2));
-            GameStateReducer.Apply(state, new TurnStartedEvent(1));
-            GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.WaitingForRoll));
         }
 
         [Test]
@@ -61,16 +54,15 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ExplainsTheFirstRoundLimitAndTheHotelVisit()
+        public void ExplainsTheFirstLapLimitAndTheHotelVisit()
         {
             GameState state = State();
             Own(state, 1, 1);
             Arrive(state, 1, 1);
             GameStateReducer.Apply(state, new BuildingLevelChangedEvent(1, 1));
-            StringAssert.StartsWith("İlk turda her şehre tek ev", BuildHint.For(Board, state, 1, 1));
+            StringAssert.StartsWith("Başlangıçtan geçene kadar her şehre tek ev", BuildHint.For(Board, state, 1, 1));
 
-            SecondRound(state);
-            Arrive(state, 1, 1);
+            Arrive(state, 1, 1, passedStart: true);
             for (int level = 2; level <= 4; level++) GameStateReducer.Apply(state, new BuildingLevelChangedEvent(1, level));
             Assert.AreEqual("Otel, dört evli şehre bir sonraki gelişinde kurulur.", BuildHint.For(Board, state, 1, 1));
 

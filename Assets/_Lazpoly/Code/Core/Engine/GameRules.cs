@@ -236,13 +236,14 @@ namespace Lazpoly.Core.Engine
         /// <summary>Houses a square may carry; the level above is the hotel.</summary>
         public const int MaxHouses = SquareDefinition.MaxBuildingLevel - 1;
 
-        /// <summary>In the first round every town takes a single house; from the second round up to four.</summary>
-        public const int FirstRoundHouseLimit = 1;
+        /// <summary>Until a player has passed the start square, each of their towns takes a single house; afterwards up to four.</summary>
+        public const int FirstLapHouseLimit = 1;
 
         /// <summary>
         /// Building happens where the player arrived this turn: you own the town, you are on it, and
-        /// it is not mortgaged. The first round allows one house, later rounds up to four; the hotel
-        /// needs a later visit to a town that already has its four houses. Colour groups play no part.
+        /// it is not mortgaged. Before their first pass of the start square a player builds one house per
+        /// town, afterwards up to four; the hotel needs a later visit to a town that already has its
+        /// four houses. Colour groups play no part.
         /// </summary>
         private static RejectionReason CanBuild(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
         {
@@ -254,7 +255,7 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>
         /// How many buildings the player may still add to this square on the current visit, money
-        /// aside: the houses up to this round's limit, or one (the hotel) on a four-house town they
+        /// aside: the houses up to the player's lap limit, or one (the hotel) on a four-house town they
         /// arrived at. Zero when they do not own it, have not arrived on it this turn, or it is mortgaged.
         /// </summary>
         public static int BuildableNow(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
@@ -268,7 +269,7 @@ namespace Lazpoly.Core.Engine
             int level = state.GetBuildingLevel(squareIndex);
             if (level >= SquareDefinition.MaxBuildingLevel) return 0;
             if (level == MaxHouses) return state.BuiltThisVisit == 0 ? 1 : 0;
-            int limit = state.Round <= 1 ? FirstRoundHouseLimit : MaxHouses;
+            int limit = player.Laps == 0 ? FirstLapHouseLimit : MaxHouses;
             return Math.Max(0, limit - level);
         }
 

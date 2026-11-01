@@ -13,7 +13,7 @@ namespace Lazpoly.Net.Messages
     /// </summary>
     public static class MessageCodec
     {
-        public const int ProtocolVersion = 4;
+        public const int ProtocolVersion = 5;
 
         private enum CommandTag : byte
         {
@@ -372,6 +372,7 @@ namespace Lazpoly.Net.Messages
                 w.WriteInt(p.Position);
                 w.WriteBool(p.IsBankrupt);
                 w.WriteBool(p.HasLookout);
+                w.WriteInt(p.Laps);
             }
 
             w.WriteInt(s.Owners.Length);
@@ -410,7 +411,10 @@ namespace Lazpoly.Net.Messages
         }
 
         /// <summary>The snapshot layout written today (Faz 8: adds the buildings-this-visit count).</summary>
-        public const int SnapshotVersion = 3;
+        public const int SnapshotVersion = 4;
+
+        /// <summary>Layout 3 knew the building visit but not the players' laps.</summary>
+        public const int VisitSnapshotVersion = 3;
 
         /// <summary>The Faz 7c layout: round, pot, dice options and lookouts, no build count.</summary>
         public const int TableSnapshotVersion = 2;
@@ -445,7 +449,7 @@ namespace Lazpoly.Net.Messages
             {
                 s.Round = r.ReadInt();
                 s.Pot = r.ReadInt();
-                s.BuiltThisVisit = version >= SnapshotVersion ? r.ReadInt() : GameState.NotArrived;
+                s.BuiltThisVisit = version >= VisitSnapshotVersion ? r.ReadInt() : GameState.NotArrived;
                 if (r.ReadBool()) s.DiceOptions = new[] { r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt() };
             }
 
@@ -460,10 +464,13 @@ namespace Lazpoly.Net.Messages
                     Position = r.ReadInt(),
                     IsBankrupt = r.ReadBool(),
                     HasLookout = !legacy && r.ReadBool(),
+                    Laps = version >= SnapshotVersion ? r.ReadInt() : -1,
                 });
             }
 
             if (legacy) s.Round = players > 0 ? s.TurnNumber / players + 1 : 1;
+            // Older layouts did not count laps; a player has gone round about once per completed round.
+            foreach (GameStateSnapshot.PlayerEntry p in s.Players) if (p.Laps < 0) p.Laps = Math.Max(0, s.Round - 1);
 
             int squares = r.ReadCount();
             s.Owners = new int[squares];

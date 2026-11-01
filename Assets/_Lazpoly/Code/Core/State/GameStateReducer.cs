@@ -61,9 +61,13 @@ namespace Lazpoly.Core.State
                     break;
 
                 case PlayerMovedEvent e:
-                    RequirePlayer(state, e.PlayerId).Position = e.ToSquare;
+                {
+                    PlayerState mover = RequirePlayer(state, e.PlayerId);
+                    mover.Position = e.ToSquare;
+                    if (e.PassedStart) mover.Laps++;
                     state.BuiltThisVisit = 0;
                     break;
+                }
 
                 case MoneyChangedEvent e:
                     RequirePlayer(state, e.PlayerId).Money += e.Delta;

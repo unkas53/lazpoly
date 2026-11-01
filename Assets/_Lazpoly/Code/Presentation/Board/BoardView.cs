@@ -39,6 +39,7 @@ namespace Lazpoly.Presentation.Tabletop
         private GameObject[] _ownerMarkers;
         private GameObject[] _pennants;
         private Vector3[] _flagScale;
+        private int[] _levels;
         private Color?[] _ownerColors;
         private bool[] _mortgaged;
         private GameObject[][] _buildings;
@@ -102,7 +103,11 @@ namespace Lazpoly.Presentation.Tabletop
             if (_pot != null) _pot.text = F($"Çay kumbarası\n{amount}");
         }
 
-        /// <summary>Shows who owns a square with a flag in their colour; pass null to show it as unowned.</summary>
+        /// <summary>
+        /// Shows who owns a square: a flag in their colour where the buildings will stand, until the
+        /// first building takes its place; the buildings themselves wear the owner's colour.
+        /// Pass null to show it as unowned.
+        /// </summary>
         public void SetOwner(int squareIndex, Color? ownerColor)
         {
             GameObject marker = _ownerMarkers[squareIndex];
@@ -150,6 +155,8 @@ namespace Lazpoly.Presentation.Tabletop
             if (pieces == null) return;
 
             bool hotel = level >= SquareDefinition.MaxBuildingLevel;
+            _levels[squareIndex] = level;
+            PaintBuildings(squareIndex);
             for (int i = 0; i < pieces.Length; i++)
             {
                 bool shown = i == pieces.Length - 1 ? hotel : !hotel && i < level;
@@ -157,6 +164,27 @@ namespace Lazpoly.Presentation.Tabletop
                 pieces[i].SetActive(shown);
                 pieces[i].transform.localPosition = _buildingRest[squareIndex][i];
                 if (appears && animate) StartCoroutine(Drop(pieces[i].transform, _buildingRest[squareIndex][i]));
+            }
+
+            // The flag gives way to the first building and returns when the last one is sold.
+            if (_ownerMarkers[squareIndex] != null) RefreshOwnerMarker(squareIndex);
+        }
+
+        /// <summary>Walls in the owner's colour, roofs a darker shade of it; the builder's own colours while unowned.</summary>
+        private void PaintBuildings(int squareIndex)
+        {
+            GameObject[] pieces = _buildings[squareIndex];
+            Color? owner = _ownerColors[squareIndex];
+            foreach (GameObject piece in pieces)
+            {
+                foreach (Renderer part in piece.GetComponentsInChildren<Renderer>(true))
+                {
+                    bool roof = part.name == "Roof" || part.name == "Chimney";
+                    Color color = owner.HasValue
+                        ? (roof ? Color.Lerp(owner.Value, Color.black, 0.4f) : owner.Value)
+                        : (roof ? BuildingParts.Tile : part.name == "Ground floor" ? BuildingParts.Whitewash : BuildingParts.Timber);
+                    ModelParts.Paint(part.gameObject, color, 0.2f);
+                }
             }
         }
 
@@ -200,8 +228,9 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject marker = _ownerMarkers[squareIndex];
             Color? color = _ownerColors[squareIndex];
             GameObject frame = _ownerFrames[squareIndex];
-            marker.SetActive(color.HasValue);
+            marker.SetActive(color.HasValue && _levels[squareIndex] == 0);
             frame.SetActive(color.HasValue);
+            if (_buildings[squareIndex] != null) PaintBuildings(squareIndex);
             if (!color.HasValue) return;
             Color shown = _mortgaged[squareIndex] ? Color.Lerp(color.Value, Color.black, 0.65f) : color.Value;
             Paint(_pennants[squareIndex], shown);
@@ -235,6 +264,7 @@ namespace Lazpoly.Presentation.Tabletop
             _ownerMarkers = new GameObject[board.Count];
             _pennants = new GameObject[board.Count];
             _flagScale = new Vector3[board.Count];
+            _levels = new int[board.Count];
             _ownerColors = new Color?[board.Count];
             _mortgaged = new bool[board.Count];
             _buildings = new GameObject[board.Count][];
@@ -274,12 +304,11 @@ namespace Lazpoly.Presentation.Tabletop
 
                 if (square.Type == SquareType.Property)
                 {
-                    // Owner flag: planted on the band at the tile's outer corner, pennant flying along the edge.
+                    // Owner flag: planted where the buildings will stand (the tile's inner half), pennant flying along the edge.
                     Vector3 outward = Outward(center);
-                    Vector3 along = Vector3.Cross(Vector3.up, outward);
                     GameObject flag = BuildingParts.Flag("Owner flag", transform);
-                    flag.transform.localPosition = center + outward * (tile * 0.36f) + along * (tile * 0.38f) + Vector3.up * (TileHeight + 0.02f);
-                    flag.transform.localRotation = Quaternion.LookRotation(-outward); // Its +X, the pennant, flies back along the band.
+                    flag.transform.localPosition = BuildingRowCenter(center);
+                    flag.transform.localRotation = Quaternion.LookRotation(-outward); // Its +X, the pennant, flies along the row.
                     _flagScale[i] = new Vector3(tile * 0.5f, tile * 0.62f, tile * 0.5f);
                     flag.transform.localScale = _flagScale[i];
                     flag.SetActive(false);
@@ -368,6 +397,9 @@ namespace Lazpoly.Presentation.Tabletop
                 ? new Vector3(0f, 0f, Mathf.Sign(center.z))
                 : new Vector3(Mathf.Sign(center.x), 0f, 0f);
 
+        /// <summary>Middle of the building row on a square: its inner half, on the tile's top.</summary>
+        private Vector3 BuildingRowCenter(Vector3 center) => center - Outward(center) * (_tile * 0.36f) + Vector3.up * TileHeight;
+
         // Four houses in a row along the tile's inner edge plus one hotel, all hidden until built.
         private GameObject[] CreateBuildings(Vector3 center)
         {
@@ -375,7 +407,7 @@ namespace Lazpoly.Presentation.Tabletop
             var pieces = new GameObject[houses + 1];
             Vector3 inward = -Outward(center);
             Vector3 side = Vector3.Cross(Vector3.up, inward);
-            Vector3 rowCenter = center + inward * (_tile * 0.36f) + Vector3.up * TileHeight;
+            Vector3 rowCenter = BuildingRowCenter(center);
 
             for (int i = 0; i < houses; i++)
             {

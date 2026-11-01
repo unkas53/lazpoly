@@ -797,8 +797,8 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder.Fix(pick.Button("-", () => _buildCount = count - 1, count > 1), width: 52f);
                 pick.Label(count.ToString(), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
                 UiBuilder.Fix(pick.Button("+", () => _buildCount = count + 1, count < most), width: 52f);
-                ui.Label(state.Round <= 1
-                    ? L("İlk turda her şehre tek ev kurulur; ikinci turdan sonra dörde kadar.")
+                ui.Label(player.Laps == 0
+                    ? L("Başlangıçtan geçene kadar her şehre tek ev kurulur; sonra dörde kadar.")
                     : F($"Bu gelişte en çok {most} ev kurabilirsin."), UiTextStyle.Small, UiTheme.Muted);
             }
 

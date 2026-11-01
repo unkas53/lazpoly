@@ -31,8 +31,8 @@ namespace Lazpoly.Presentation.Texts
 
             if (GameRules.NextIsHotel(state, squareIndex) && state.BuiltThisVisit > 0)
                 return L("Otel, dört evli şehre bir sonraki gelişinde kurulur.");
-            if (state.Round <= 1 && level >= GameRules.FirstRoundHouseLimit)
-                return F($"İlk turda her şehre tek ev; sonraki turlarda {GameRules.MaxHouses} eve kadar.");
+            if (player.Laps == 0 && level >= GameRules.FirstLapHouseLimit)
+                return F($"Başlangıçtan geçene kadar her şehre tek ev; sonra {GameRules.MaxHouses} eve kadar.");
 
             if (player.Money < square.BuildingCost)
             {
