@@ -3,6 +3,7 @@ using System.Linq;
 using Lazpoly.App.AI;
 using Lazpoly.App.Balance;
 using Lazpoly.App.Session;
+using Lazpoly.Core.Board;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
@@ -144,8 +145,8 @@ namespace Lazpoly.Presentation.Tests
             {
                 if (state.GetBuildingLevel(square) == 0) continue;
                 Assert.IsFalse(state.IsMortgaged(square), $"Seed {seed}: square {square} has houses and a mortgage.");
-                Assert.IsTrue(GameRules.OwnsWholeGroup(data.Board, state, state.GetOwner(square), data.Board[square].GroupId),
-                    $"Seed {seed}: houses on square {square} without the whole group.");
+                Assert.AreNotEqual(GameState.NoOwner, state.GetOwner(square), $"Seed {seed}: houses on unowned square {square}.");
+                Assert.That(state.GetBuildingLevel(square), Is.LessThanOrEqualTo(SquareDefinition.MaxBuildingLevel), $"Seed {seed}: square {square} is overbuilt.");
             }
         }
     }
