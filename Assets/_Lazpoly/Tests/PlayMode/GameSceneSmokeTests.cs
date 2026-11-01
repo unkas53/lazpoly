@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using Lazpoly.App.AI;
@@ -133,7 +134,7 @@ namespace Lazpoly.PlayTests
             controller = Object.FindAnyObjectByType<GameSceneController>();
             Assert.That(controller.Session.State.TurnNumber, Is.GreaterThanOrEqualTo(savedTurn), "The saved game did not resume.");
             Assert.IsTrue(controller.Session.IsAiPlaying(3));
-            CollectionAssert.Contains(controller.Log, "Kayıtlı oyun yüklendi.");
+            Assert.IsTrue(controller.Log.Any(entry => entry.Text == "Kayıtlı oyun yüklendi."), "The log does not say the save was loaded.");
         }
     }
 }

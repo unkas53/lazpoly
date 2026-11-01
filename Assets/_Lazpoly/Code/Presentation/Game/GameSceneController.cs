@@ -36,7 +36,7 @@ namespace Lazpoly.Presentation.Game
     /// </summary>
     public sealed class GameSceneController : MonoBehaviour
     {
-        private const int MaxLogLines = 10;
+        private const int MaxLogLines = 40;
         private const float CameraPitch = 55f;
 
         /// <summary>Pause after a card is drawn so it can be read before it acts.</summary>
@@ -52,8 +52,7 @@ namespace Lazpoly.Presentation.Game
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
-        private readonly List<string> _log = new List<string>();
-        private readonly List<LogTone> _logTones = new List<LogTone>();
+        private readonly List<LogEntry> _log = new List<LogEntry>();
         private readonly Dictionary<int, int> _shownMoney = new Dictionary<int, int>();
         private int _shownPot;
 
@@ -89,10 +88,8 @@ namespace Lazpoly.Presentation.Game
             : float.PositiveInfinity;
 
         private float _lastProgressTime;
-        public IReadOnlyList<string> Log => _log;
-
-        /// <summary>The colour of each <see cref="Log"/> line, same order.</summary>
-        public IReadOnlyList<LogTone> LogTones => _logTones;
+        /// <summary>The last <see cref="MaxLogLines"/> lines of the event log, oldest first.</summary>
+        public IReadOnlyList<LogEntry> Log => _log;
         public string LastRejection { get; private set; }
 
         /// <summary>Zoom and turn of the board view; the HUD's reset button uses it.</summary>
@@ -373,7 +370,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             SyncViewsToState();
-            AddLog(F($"Sıra: {state.CurrentPlayer.Name}"));
+            AddLog(F($"Sıra: {state.CurrentPlayer.Name}"), LogTone.Neutral, state.CurrentPlayer.Id, turnStart: true);
             ShowPresence();
         }
 
@@ -513,7 +510,7 @@ namespace Lazpoly.Presentation.Game
                 while (Paused) yield return null;
                 GameEvent gameEvent = _pendingEvents.Dequeue();
                 string line = EventDescriber.Describe(gameEvent, _session.State, _session.Board);
-                if (line != null) AddLog(line, EventDescriber.ToneOf(gameEvent));
+                if (line != null) AddLog(line, EventDescriber.ToneOf(gameEvent), EventDescriber.ActorOf(gameEvent), gameEvent is TurnStartedEvent);
 
                 AudioPlayer.Play(SoundCues.For(gameEvent));
                 switch (gameEvent)
@@ -661,14 +658,11 @@ namespace Lazpoly.Presentation.Game
             FloatingText.Spawn(transform, pawn.transform.position + Vector3.up * 0.65f, text, color);
         }
 
-        private void AddLog(string line, LogTone tone = LogTone.Neutral)
+        private void AddLog(string line, LogTone tone = LogTone.Neutral, int playerId = GameState.NoOwner, bool turnStart = false)
         {
             Revision++;
-            _log.Add(line);
-            _logTones.Add(tone);
-            if (_log.Count <= MaxLogLines) return;
-            _log.RemoveAt(0);
-            _logTones.RemoveAt(0);
+            _log.Add(new LogEntry(line, tone, playerId, turnStart));
+            if (_log.Count > MaxLogLines) _log.RemoveAt(0);
         }
 
         private void SetUpCamera()

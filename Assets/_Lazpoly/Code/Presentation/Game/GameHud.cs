@@ -67,6 +67,11 @@ namespace Lazpoly.Presentation.Game
         private RectTransform _rollRect;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
         private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
+        private readonly Dictionary<int, Image> _playerCards = new Dictionary<int, Image>();
+        private readonly Dictionary<int, Color> _playerCardColors = new Dictionary<int, Color>();
+        private readonly Dictionary<int, float> _moneyFlash = new Dictionary<int, float>();
+        private readonly Dictionary<int, int> _moneyFlashSign = new Dictionary<int, int>();
+        private int _panelHoverSquare = NoSquare;
         private TipMemory _tipMemory;
         private UiView _tipView;
         private GameObject _tipPanel;
@@ -95,8 +100,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The content of the left column, for tests.</summary>
         public RectTransform SideContent { get; private set; }
 
-        /// <summary>The square whose card is showing (pinned by a click, else under the pointer), or -1.</summary>
-        public int ShownSquare => _pinnedSquare != NoSquare ? _pinnedSquare : _hoveredSquare;
+        /// <summary>The square whose card is showing: pinned by a click, else under the pointer on the board, else the swatch pointed at in the side panel; or -1.</summary>
+        public int ShownSquare => _pinnedSquare != NoSquare ? _pinnedSquare : _hoveredSquare != NoSquare ? _hoveredSquare : _panelHoverSquare;
 
         /// <summary>The first-game hint on screen, or null.</summary>
         public Tip? ShownTip => _tip;
@@ -439,7 +444,21 @@ namespace Lazpoly.Presentation.Game
                 money.SetTarget(_controller.ShownMoneyOf(pair.Key));
                 money.Step(Time.unscaledDeltaTime);
                 ShowMoney(pair.Value, money);
+                FlashCard(pair.Key, money.Direction);
             }
+        }
+
+        /// <summary>The player's card glows green or red while their money counts, then fades back over half a second.</summary>
+        private void FlashCard(int playerId, int direction)
+        {
+            if (!_playerCards.TryGetValue(playerId, out Image card) || card == null) return;
+            _moneyFlash.TryGetValue(playerId, out float flash);
+            flash = direction != 0 ? 1f : Mathf.MoveTowards(flash, 0f, Time.unscaledDeltaTime * 2f);
+            _moneyFlash[playerId] = flash;
+            if (direction != 0) _moneyFlashSign[playerId] = direction; // Which way it went, kept for the fade.
+            _moneyFlashSign.TryGetValue(playerId, out int sign);
+            Color tint = sign < 0 ? UiTheme.Warning : UiTheme.Gain;
+            card.color = Color.Lerp(_playerCardColors[playerId], tint, flash * 0.35f);
         }
 
         private static void ShowMoney(Text label, RollingNumber money)
@@ -610,6 +629,7 @@ namespace Lazpoly.Presentation.Game
         private void RenderPlayers(UiBuilder ui, GameState state)
         {
             _moneyLabels.Clear();
+            _playerCards.Clear();
 
             // Players in seat order, the bankrupt ones sunk to the bottom so the live game stays on top.
             var players = new List<PlayerState>(state.Players);
@@ -617,7 +637,10 @@ namespace Lazpoly.Presentation.Game
             foreach (PlayerState player in players)
             {
                 bool current = player.Id == state.CurrentPlayer.Id && state.Phase != GamePhase.GameOver;
-                UiBuilder card = ui.Card(current ? new Color(0.24f, 0.25f, 0.31f) : UiTheme.Card, 10);
+                Color cardColor = current ? new Color(0.24f, 0.25f, 0.31f) : UiTheme.Card;
+                UiBuilder card = ui.Card(cardColor, 10);
+                _playerCards[player.Id] = card.Container.GetComponent<Image>();
+                _playerCardColors[player.Id] = cardColor;
                 UiBuilder row = card.Row(10f);
                 Color color = player.IsBankrupt ? UiTheme.Muted : _controller.ColorOf(player.Id);
                 row.Swatch(color, 20f, round: true);
@@ -652,10 +675,18 @@ namespace Lazpoly.Presentation.Game
             for (int square = 0; square < state.SquareCount; square++)
             {
                 if (state.GetOwner(square) != playerId) continue;
-                row ??= card.Row(3f, expand: false);
-                Color color = _controller.GroupColorOf(square);
-                row.Swatch(color, 13f);
+                row ??= card.Row(4f, expand: false);
+                Image swatch = row.Swatch(_controller.GroupColorOf(square), 16f);
+                // Pointing at the swatch opens the square's card, so the name and rent are a glance away.
+                swatch.raycastTarget = true;
+                swatch.gameObject.AddComponent<SquareHoverTarget>().Bind(square, OnPanelSquareHovered);
             }
+        }
+
+        private void OnPanelSquareHovered(int square, bool over)
+        {
+            if (over) _panelHoverSquare = square;
+            else if (_panelHoverSquare == square) _panelHoverSquare = NoSquare;
         }
 
         private string PlayerTag(PlayerState player)
@@ -951,15 +982,34 @@ namespace Lazpoly.Presentation.Game
                 F($"Borcu Öde ({debt.Amount})"), () => _controller.Submit(pay), _controller.IsAllowed(pay), UiButtonStyle.Danger);
         }
 
+        /// <summary>
+        /// The event log, newest at the top so nothing needs scrolling to see what just happened. Each
+        /// turn's lines sit under a heading in the player's colour; a dot in the actor's colour marks
+        /// whose line each one is.
+        /// </summary>
         private void RenderLog(UiBuilder ui)
         {
             ui.Title(UiIcon.List, L("Olaylar"));
-            var lines = _controller.Log;
-            var tones = _controller.LogTones;
-            for (int i = lines.Count - 1; i >= 0; i--)
+            IReadOnlyList<LogEntry> entries = _controller.Log;
+            for (int i = entries.Count - 1; i >= 0; i--)
             {
-                Color color = tones[i] == LogTone.Gain ? UiTheme.Gain : tones[i] == LogTone.Loss ? UiTheme.Warning : i == lines.Count - 1 ? UiTheme.Text : UiTheme.Muted;
-                ui.Label(lines[i], UiTextStyle.Small, color);
+                LogEntry entry = entries[i];
+                bool newest = i == entries.Count - 1;
+                if (entry.IsTurnStart)
+                {
+                    if (!newest) ui.Space(4f);
+                    UiBuilder heading = ui.Row(8f, expand: false);
+                    heading.Swatch(_controller.ColorOf(entry.PlayerId), 12f, round: true);
+                    Text title = heading.Label(entry.Text, UiTextStyle.Small, _controller.ColorOf(entry.PlayerId));
+                    title.font = UiTheme.BoldFont;
+                    continue;
+                }
+
+                Color color = entry.Tone == LogTone.Gain ? UiTheme.Gain : entry.Tone == LogTone.Loss ? UiTheme.Warning : newest ? UiTheme.Text : UiTheme.Muted;
+                UiBuilder line = ui.Row(8f, expand: false);
+                Color dot = entry.PlayerId == GameState.NoOwner ? Color.clear : _controller.ColorOf(entry.PlayerId);
+                line.Swatch(dot, 8f, round: true).raycastTarget = false;
+                UiBuilder.Fix(line.Label(entry.Text, UiTextStyle.Small, color), -1f).flexibleWidth = 1f;
             }
         }
 

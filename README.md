@@ -393,6 +393,20 @@ Cila planının üçüncü adımı. Kural değişmez; her ekran aynı dili konu�
 - **Ertelenen:** olay kaydının sıra sıra gruplanması ve adların renklenmesi, mülk kutucuğunda şehir adı ipucu, para
   değişiminde kart parlaması (10a-4'e kaldı).
 
+## Faz 10a-4: sol panel ve olay kaydı
+
+10a'nın son küçük adımı; plandaki "Sol panel" ve "Olay kaydı" maddeleri.
+
+- **Olay kaydı:** satırlar artık `LogEntry` (metin, ton, kimin satırı, sıra başlığı mı). Her sıranın satırları o
+  oyuncunun renginde bir "Sıra: Ayşe" başlığının altında toplanır; her satırın önünde satırın ait olduğu oyuncunun
+  renginde küçük bir nokta (`EventDescriber.ActorOf`: hareket eden, ödeyen, yeni sahip, kazanan). Kayıt 10 yerine
+  40 satır tutar; en yeni üstte, panel kaydırılabilir. `Log` artık `IReadOnlyList<LogEntry>`.
+- **Para parlaması:** bir oyuncunun parası sayarken kartı kazançta yeşile, kayıpta kırmızıya hafifçe parlar ve yarım
+  saniyede söner (`GameHud.FlashCard`).
+- **Mülk ipucu:** sol paneldeki mülk kutucuklarının üstüne gelince o şehrin kartı açılır (`SquareHoverTarget`;
+  `ShownSquare` sırası: sabitlenmiş kare, tahtada gösterilen kare, paneldeki kutucuk).
+- İflas eden oyuncunun soluk görünmesi ve listenin sonuna inmesi 10a-3'te yapılmıştı.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

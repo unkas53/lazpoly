@@ -13,6 +13,27 @@ namespace Lazpoly.Presentation.Texts
         Loss,
     }
 
+    /// <summary>One line of the event log: its text, its colour, whose line it is and whether it opens a turn.</summary>
+    public readonly struct LogEntry
+    {
+        public LogEntry(string text, LogTone tone, int playerId, bool isTurnStart)
+        {
+            Text = text;
+            Tone = tone;
+            PlayerId = playerId;
+            IsTurnStart = isTurnStart;
+        }
+
+        public string Text { get; }
+        public LogTone Tone { get; }
+
+        /// <summary>The player the line is about, or <see cref="GameState.NoOwner"/> when it is about no one in particular.</summary>
+        public int PlayerId { get; }
+
+        /// <summary>True for the heading that groups the lines of one turn.</summary>
+        public bool IsTurnStart { get; }
+    }
+
     /// <summary>Turns game events into the Turkish lines shown in the game log.</summary>
     public static class EventDescriber
     {
@@ -24,6 +45,30 @@ namespace Lazpoly.Presentation.Texts
                 case PlayerBankruptedEvent _: return LogTone.Loss;
                 case DebtIncurredEvent _: return LogTone.Loss;
                 default: return LogTone.Neutral;
+            }
+        }
+
+        /// <summary>The player an event's log line is about (the mover, the payer, the new owner...), or <see cref="GameState.NoOwner"/>.</summary>
+        public static int ActorOf(GameEvent gameEvent)
+        {
+            switch (gameEvent)
+            {
+                case TurnStartedEvent e: return e.PlayerId;
+                case DiceRolledEvent e: return e.PlayerId;
+                case PlayerMovedEvent e: return e.PlayerId;
+                case MoneyChangedEvent e: return e.PlayerId;
+                case PropertyOwnerChangedEvent e: return e.NewOwnerId;
+                case PlayerBankruptedEvent e: return e.PlayerId;
+                case GameEndedEvent e: return e.WinnerId;
+                case CardDrawnEvent e: return e.PlayerId;
+                case PlayerTimedOutEvent e: return e.PlayerId;
+                case LookoutChangedEvent e: return e.PlayerId;
+                case BidPlacedEvent e: return e.PlayerId;
+                case BidPassedEvent e: return e.PlayerId;
+                case AuctionEndedEvent e: return e.WinnerId;
+                case TradeProposedEvent e: return e.Offer.FromPlayerId;
+                case DebtIncurredEvent e: return e.PlayerId;
+                default: return GameState.NoOwner;
             }
         }
 

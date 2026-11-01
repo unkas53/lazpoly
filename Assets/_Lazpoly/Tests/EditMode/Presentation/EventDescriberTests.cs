@@ -64,5 +64,15 @@ namespace Lazpoly.Presentation.Tests
         {
             Assert.IsNull(EventDescriber.Describe(new PhaseChangedEvent(GamePhase.TurnEnd), State(), Board));
         }
+
+        [Test]
+        public void EachLineKnowsWhoseItIs()
+        {
+            Assert.AreEqual(2, EventDescriber.ActorOf(new TurnStartedEvent(2)));
+            Assert.AreEqual(1, EventDescriber.ActorOf(new MoneyChangedEvent(1, -4, MoneyReason.Rent)), "The payer's line, not the landlord's.");
+            Assert.AreEqual(1, EventDescriber.ActorOf(new PropertyOwnerChangedEvent(1, GameState.NoOwner, 1)), "A bought town is the buyer's line.");
+            Assert.AreEqual(GameState.NoOwner, EventDescriber.ActorOf(new PropertyOwnerChangedEvent(1, 1, GameState.NoOwner)), "A town back at the bank is nobody's.");
+            Assert.AreEqual(GameState.NoOwner, EventDescriber.ActorOf(new PhaseChangedEvent(GamePhase.TurnEnd)));
+        }
     }
 }
