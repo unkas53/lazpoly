@@ -12,6 +12,9 @@ Makine: NVIDIA GeForce RTX 4070 Laptop GPU · 13th Gen Intel Core i7-13620H · 3
 | Bellek (ayrılmış) | < 600 MB | 238 MB (rezerve 282 MB) | geçti |
 | Yükleme (menü → masa) | < 3 sn | 0.45 sn | geçti |
 
+İkinci koşu (bfc575f, 21:20, 1786 kare): ortalama 119.0 FPS, en yavaş %1 72.0 FPS, 242 MB (rezerve 282 MB), yükleme 0.46 sn.
+İki koşu arasında en yavaş %1 51 → 72 FPS: kod bu yolu değiştirmedi, fark ölçüm oynaklığı; tek koşuya güvenilmemeli.
+
 Diğer kapılar: derleme 0 hata / 0 uyarı; EditMode 294/294; PlayMode 8/8; zip 38,1 MB < 60 MB.
 
 Notlar
