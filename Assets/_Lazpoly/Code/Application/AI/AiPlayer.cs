@@ -193,12 +193,16 @@ namespace Lazpoly.App.AI
             return null;
         }
 
-        /// <summary>Building only happens on the town the player stands on, so there is one candidate.</summary>
+        /// <summary>
+        /// Building only happens on the town the player stands on, so there is one candidate. A
+        /// player prone to mistakes sometimes leaves the chance unused and moves on.
+        /// </summary>
         private GameCommand Build(View view, int spare)
         {
             int square = view.Me.Position;
             var build = new BuildCommand(PlayerId, square);
-            return view.Legal(build) && spare - view.Board[square].BuildingCost >= 0 ? build : null;
+            if (!view.Legal(build) || spare - view.Board[square].BuildingCost < 0) return null;
+            return view.MakesMistake() ? null : build;
         }
 
         /// <summary>The cost of the next house the rules allow here but the spare money does not cover, or 0.</summary>

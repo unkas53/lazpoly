@@ -292,6 +292,11 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   `Tile`, `Title`), düğme ve kartlarda gölge, üstüne gelince hafif büyüme (`UiHover`), panellerde üst
   kenarda vurgu çizgisi (`UiRoot.Panel`), oyuncu renkleri yuvarlak, ana menüde bayraklı logo ve gölgeli başlık.
 - **Metinler:** ipucu, "Nasıl Oynanır", kare kartı ve bina ipuçları yeni kurala göre; İngilizce girdiler eklendi.
+- **Denge:** yeni kuralla bina kurma fırsatı seyrekleştiği için oyunlar uzamıştı (4 oyuncuda ortalama 19 → 26
+  tur). Ev maliyetleri yaklaşık %35 düştü, binalı kiralar yaklaşık %40 arttı, başlangıç ikramiyesi 200 → 150;
+  Kolay ve Orta yapay zekâ bina fırsatını hata payı oranında kaçırır. 1000'er oyunluk `Reports/Balance`
+  raporları yenilendi: 2 oyuncuda ortalama 16, 4'te 19.5, 6'da 24 tur; Kolay/Orta/Zor kazanma payı 4 oyuncuda
+  %14 / %29 / %32.
 
 ## Kurallar
 
