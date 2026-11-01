@@ -477,6 +477,8 @@ namespace Lazpoly.Presentation.Game
             bool overInterface = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             _hoveredSquare = !overInterface && board.TryGetSquare(camera.ScreenPointToRay(Input.mousePosition), out int square) ? square : NoSquare;
             if (!overInterface && Input.GetMouseButtonDown(0)) _pinnedSquare = _hoveredSquare == _pinnedSquare ? NoSquare : _hoveredSquare;
+            // A pinned square draws the view a little towards itself for as long as it stays pinned.
+            _controller.CameraRig?.Peek(_pinnedSquare != NoSquare ? board.SquarePosition(_pinnedSquare) : (Vector3?)null);
         }
 
         private void UpdateSquareCard(GameState state, int revision)
@@ -1117,7 +1119,9 @@ namespace Lazpoly.Presentation.Game
             UiBuilder row = ui.Row();
             row.IconButton(UiIcon.Sliders, L("Ayarlar"), OpenSettings);
             row.IconButton(UiIcon.Book, L("Nasıl Oynanır (H)"), OpenHowToPlay);
-            ui.IconButton(UiIcon.Home, L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
+            UiBuilder view = ui.Row();
+            view.IconButton(UiIcon.Home, L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
+            view.IconButton(UiIcon.Camera, L("Kamera Açısı (C)"), _controller.ToggleCameraView, height: UiTheme.SmallButtonHeight);
 
             UiBuilder keys = ui.Card(UiTheme.Field, 10);
             keys.Label(L("Klavye"), UiTextStyle.Small, UiTheme.Muted);
@@ -1125,6 +1129,7 @@ namespace Lazpoly.Presentation.Game
             Line(keys, "B", L("bina kartı"));
             Line(keys, "T", L("takas teklif et"));
             Line(keys, "H", L("nasıl oynanır"));
+            Line(keys, "C", L("kamera açısı: masa başı / kuş bakışı"));
             Line(keys, "Home", L("görünümü sıfırla"));
             Line(keys, "Esc", L("menü, pencereyi kapat"));
 
@@ -1213,6 +1218,9 @@ namespace Lazpoly.Presentation.Game
                     break;
                 case HotkeyAction.PauseMenu:
                     OpenPause();
+                    break;
+                case HotkeyAction.CameraView:
+                    _controller.ToggleCameraView();
                     break;
                 case HotkeyAction.Close:
                     CloseTopWindow(state);

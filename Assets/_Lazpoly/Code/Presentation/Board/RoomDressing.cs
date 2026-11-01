@@ -18,6 +18,9 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color FloorColor = new Color(0.07f, 0.06f, 0.07f);
         private static readonly Color BackgroundColor = new Color(0.04f, 0.05f, 0.07f);
 
+        private static Light _sun;
+        private static Light _fill;
+
         /// <summary>Builds the desk and floor around a board of the given half width.</summary>
         public static GameObject CreateRoom(Transform parent, float boardHalfExtent)
         {
@@ -71,21 +74,40 @@ namespace Lazpoly.Presentation.Tabletop
             if (sun == null) sun = sunObject.AddComponent<Light>();
             sun.name = "Sun";
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.93f, 0.82f);
-            sun.intensity = 1.25f;
             sun.shadows = ShadowsFor(quality);
             sun.shadowStrength = 0.55f;
-            sun.transform.rotation = Quaternion.Euler(52f, -35f, 0f);
 
             Light fill = new GameObject("Fill Light").AddComponent<Light>();
             fill.type = LightType.Directional;
-            fill.color = new Color(0.55f, 0.70f, 0.90f);
-            fill.intensity = 0.35f;
             fill.shadows = LightShadows.None;
-            fill.transform.rotation = Quaternion.Euler(35f, 150f, 0f);
 
+            _sun = sun;
+            _fill = fill;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.26f, 0.27f, 0.32f);
+            ApplyDayLight(DayCycle.Noon);
+        }
+
+        /// <summary>Sets the sun, the fill and the ambient to one moment of the day (see <see cref="DayCycle"/>).</summary>
+        public static void ApplyDayLight(in DayLight light)
+        {
+            if (_sun == null) _sun = GameObject.Find("Sun")?.GetComponent<Light>();
+            if (_fill == null) _fill = GameObject.Find("Fill Light")?.GetComponent<Light>();
+            if (_sun != null)
+            {
+                _sun.color = light.SunColor;
+                _sun.intensity = light.SunIntensity;
+                _sun.transform.rotation = Quaternion.Euler(light.SunPitch, light.SunYaw, 0f);
+            }
+
+            if (_fill != null)
+            {
+                _fill.color = light.FillColor;
+                _fill.intensity = light.FillIntensity;
+                // The fill comes from behind the sun's far side, so the evening shadows keep some blue in them.
+                _fill.transform.rotation = Quaternion.Euler(35f, light.SunYaw + 185f, 0f);
+            }
+
+            RenderSettings.ambientLight = light.Ambient;
         }
 
         /// <summary>

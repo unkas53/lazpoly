@@ -40,6 +40,7 @@ namespace Lazpoly.Infra.Settings
         private const string HeightKey = Prefix + "height";
         private const string LanguageKey = Prefix + "language";
         private const string UiScaleKey = Prefix + "uiScale";
+        private const string DayCycleKey = Prefix + "dayCycle";
 
         public static GameSettings Read(ISettingsStorage storage)
         {
@@ -56,7 +57,8 @@ namespace Lazpoly.Infra.Settings
                 storage.HasKey(WidthKey) ? storage.GetInt(WidthKey) : d.ScreenWidth,
                 storage.HasKey(HeightKey) ? storage.GetInt(HeightKey) : d.ScreenHeight,
                 storage.HasKey(LanguageKey) ? (Language)storage.GetInt(LanguageKey) : d.Language,
-                storage.HasKey(UiScaleKey) ? (UiScale)storage.GetInt(UiScaleKey) : d.UiScale);
+                storage.HasKey(UiScaleKey) ? (UiScale)storage.GetInt(UiScaleKey) : d.UiScale,
+                storage.HasKey(DayCycleKey) ? storage.GetInt(DayCycleKey) != 0 : d.DayCycle);
         }
 
         public static void Write(ISettingsStorage storage, GameSettings settings)
@@ -73,6 +75,7 @@ namespace Lazpoly.Infra.Settings
             storage.SetInt(HeightKey, settings.ScreenHeight);
             storage.SetInt(LanguageKey, (int)settings.Language);
             storage.SetInt(UiScaleKey, (int)settings.UiScale);
+            storage.SetInt(DayCycleKey, settings.DayCycle ? 1 : 0);
             storage.Save();
         }
     }

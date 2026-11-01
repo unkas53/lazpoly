@@ -424,6 +424,26 @@ modeli yok; koddan üretilen parçalar iyileştirildi.
   sahip bayrağının kumaşı hafifçe dalgalanır (`FlagWave`, yalnızca dikili bayraklarda).
 - Testler: `PawnSlotsTests` (yuva aralığı, kalabalık kare, bayrak salınımı), `ModelTests` (küre ve işaretler).
 
+## Faz 10b-2: deniz, gün ışığı, kamera, zarlar
+
+Plandaki "Görsel cila" bölümünün kalan sahne maddeleri.
+
+- **Deniz ve ada:** deniz artık bir ızgara yüzey (`SeaSurface`, 26x26 kare); köşe noktaları iki çapraz sinüs dalgasıyla
+  salınır, shader yok. Kayık yerinde ağır bir elipste süzülüp hafifçe yalpalar, halkalar nefes alır; akşam çökünce
+  deniz fenerinin ışığı yanar ve döner (`TownLife`).
+- **Gün ışığı:** gün öğlen başlar, tur ilerledikçe akşama kayar (`DayCycle`: tur sınırı varsa sınırda, yoksa 24. turda
+  alacakaranlık; oyun bitince her zaman akşam). Güneşin rengi, açısı ve şiddeti, dolgu ışığı ve ortam ışığı birlikte
+  değişir (`RoomDressing.ApplyDayLight`); geçiş saniyeler içinde yumuşak. Ayarlardan kapatılabilir
+  (`GameSettings.DayCycle`, "Gün ışığı akışı").
+- **Kamera:** iki hazır açı, masa başı (55°) ve kuş bakışı (76°), C tuşu ya da duraklatma menüsündeki Kamera Açısı düğmesiyle
+  (`CameraView`, `BoardCameraRig.PitchOf`). Bir kare sabitlenince görünüm o kareye doğru yolun %30'u kadar kayar ve
+  sabit kalkınca geri döner (`Peek`); kayma tahtanın kenarını aşamaz (`ClampToBoard`). Sıra değişiminde kamera yine
+  kıpırdamaz.
+- **Zarlar:** her zarın altında yükseldikçe küçülen bir gölge; duran zar kameraya dik gelecek şekilde döner, en fazla
+  14° oynama (`DiceView.RestingYaw`). Zarlar dalganın tepesinin biraz üstünde durur.
+- Testler: `SceneryTests` (gün akışı, akşam ışığı, dalga sınırı ve deniz yüzü, kayık, kamera kayma sınırı, zar
+  yönü), `HotkeysTests` (C), `GameSettingsTests` (gün ışığı ayarı).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

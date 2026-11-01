@@ -28,6 +28,7 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color TableColor = new Color(0.36f, 0.24f, 0.16f);
         private static readonly Color SeaColor = new Color(0.12f, 0.40f, 0.54f);
+        private static readonly Color DuskSeaColor = new Color(0.10f, 0.22f, 0.40f);
         private static readonly Color WaveColor = new Color(0.55f, 0.78f, 0.86f);
         private static readonly Color SandColor = new Color(0.90f, 0.82f, 0.62f);
         private static readonly Color GrassColor = new Color(0.42f, 0.62f, 0.36f);
@@ -61,6 +62,8 @@ namespace Lazpoly.Presentation.Tabletop
         private HashSet<int> _highlighted;
         private float _tile;
         private TextMesh _pot;
+        private SeaSurface _sea;
+        private TownLife _town;
 
         public BoardLayout Layout { get; private set; }
 
@@ -105,6 +108,13 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_highlighted != null) color = _highlighted.Contains(i) ? Color.Lerp(color, Color.white, 0.25f) : Color.Lerp(color, Color.black, 0.45f);
                 Paint(_tiles[i], color);
             }
+        }
+
+        /// <summary>How far into the evening the board is (0 day, 1 dusk): the sea darkens and the lighthouse lights up.</summary>
+        public void SetEvening(float evening)
+        {
+            _sea?.SetEvening(evening);
+            _town?.SetEvening(evening);
         }
 
         /// <summary>Shows what the pot holds in the middle of the board (boards without a pot show nothing).</summary>
@@ -376,8 +386,8 @@ namespace Lazpoly.Presentation.Tabletop
 
             float inner = 2f * HalfSize - tile * 1.05f;
             // The middle of the board is the sea, with the town on an island and the title across the far side.
-            GameObject sea = ModelParts.Create("Sea", transform, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f), SeaColor, 0.75f);
-            sea.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            _sea = SeaSurface.Create(transform, inner, SeaColor, DuskSeaColor);
+            _sea.transform.localPosition = new Vector3(0f, 0.04f, 0f);
             CreateTown(inner);
             CreateTitle(new Vector3(0f, 0.045f, inner * 0.28f), inner);
             if (board.HasPot)
@@ -471,14 +481,17 @@ namespace Lazpoly.Presentation.Tabletop
             var town = new GameObject("Town");
             town.transform.SetParent(transform, false);
             Transform root = town.transform;
+            _town = TownLife.Attach(town);
             var center = new Vector3(-inner * 0.26f, 0.04f, inner * 0.05f);
             float radius = inner * 0.16f;
 
             for (int i = 0; i < 3; i++)
             {
                 GameObject ripple = ModelParts.Create("Ripple", root, MeshFactory.Ring(0.97f, 0.01f), WaveColor, 0.6f);
-                ripple.transform.localPosition = center + Vector3.up * 0.001f;
+                // Rings ride just above the highest wave so the water never cuts through them.
+                ripple.transform.localPosition = center + Vector3.up * (SeaSurface.Amplitude + 0.005f);
                 ripple.transform.localScale = Vector3.one * (radius * (1.25f + i * 0.22f));
+                _town.AddRipple(ripple.transform);
             }
 
             GameObject sand = ModelParts.Create("Island", root, MeshFactory.Disc(0.06f, 40), SandColor, 0.1f);
@@ -508,6 +521,8 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject lighthouse = ModelParts.Create("Lighthouse", root, PawnShapes.Lighthouse(), Color.white, 0.3f);
             lighthouse.transform.localPosition = ground + new Vector3(0.62f * radius, 0f, -0.5f * radius);
             lighthouse.transform.localScale = Vector3.one * (radius * 0.9f);
+            // The lamp sits near the top of the tower (the shape is 0.61 tall); the beam reaches out over the water.
+            _town.AddBeam(lighthouse.transform.localPosition + Vector3.up * (radius * 0.9f * 0.5f), radius * 1.6f);
 
             Vector2[] treeSpots = { new Vector2(-0.6f, 0.0f), new Vector2(-0.2f, 0.55f), new Vector2(0.45f, 0.6f), new Vector2(-0.25f, -0.5f) };
             foreach (Vector2 spot in treeSpots)
@@ -522,9 +537,10 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             GameObject boat = ModelParts.Create("Boat", root, PawnShapes.Boat(), BoatColor, 0.3f);
-            boat.transform.localPosition = new Vector3(inner * 0.27f, 0.04f, -inner * 0.08f);
+            boat.transform.localPosition = new Vector3(inner * 0.27f, 0.04f + SeaSurface.Amplitude, -inner * 0.08f);
             boat.transform.localRotation = Quaternion.Euler(0f, -35f, 0f);
             boat.transform.localScale = Vector3.one * (inner * 0.12f);
+            _town.SetBoat(boat.transform, new Vector2(inner * 0.05f, inner * 0.03f));
         }
 
         /// <summary>Direction from a square on the edge towards the outside of the board.</summary>

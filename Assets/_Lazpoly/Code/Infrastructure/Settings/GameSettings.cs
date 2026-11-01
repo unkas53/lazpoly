@@ -42,11 +42,12 @@ namespace Lazpoly.Infra.Settings
         private const float DefaultMusic = 0.6f;
 
         public static readonly GameSettings Default = new GameSettings(DefaultMaster, DefaultEffects, DefaultMusic, fullscreen: true, vSync: true,
-            AiSpeed.Normal, fastAnimations: false, GraphicsQuality.High, screenWidth: 0, screenHeight: 0, Language.Auto, UiScale.Normal);
+            AiSpeed.Normal, fastAnimations: false, GraphicsQuality.High, screenWidth: 0, screenHeight: 0, Language.Auto, UiScale.Normal, dayCycle: true);
 
         public GameSettings(float masterVolume, float effectsVolume, float musicVolume, bool fullscreen, bool vSync, AiSpeed aiSpeed,
-            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight, Language language, UiScale uiScale)
+            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight, Language language, UiScale uiScale, bool dayCycle = true)
         {
+            DayCycle = dayCycle;
             Language = Enum.IsDefined(typeof(Language), language) ? language : Language.Auto;
             UiScale = Enum.IsDefined(typeof(UiScale), uiScale) ? uiScale : UiScale.Normal;
             MasterVolume = Volume(masterVolume, DefaultMaster);
@@ -85,6 +86,9 @@ namespace Lazpoly.Infra.Settings
 
         public UiScale UiScale { get; }
 
+        /// <summary>The light over the board slides from noon to evening as the rounds go by; off keeps it at noon.</summary>
+        public bool DayCycle { get; }
+
         /// <summary>How much bigger than the 1920x1080 reference the interface is drawn.</summary>
         public float UiScaleFactor => UiScale == UiScale.Small ? 0.88f : UiScale == UiScale.Large ? 1.18f : 1f;
 
@@ -113,19 +117,21 @@ namespace Lazpoly.Infra.Settings
         public GameSettings WithScreenSize(int width, int height) => Copy(width: width, height: height);
         public GameSettings WithLanguage(Language value) => Copy(language: value);
         public GameSettings WithUiScale(UiScale value) => Copy(uiScale: value);
+        public GameSettings WithDayCycle(bool value) => Copy(dayCycle: value);
 
         public bool SameAs(GameSettings other) =>
             other != null && MasterVolume.Equals(other.MasterVolume) && EffectsVolume.Equals(other.EffectsVolume) &&
             MusicVolume.Equals(other.MusicVolume) && Fullscreen == other.Fullscreen && VSync == other.VSync &&
             AiSpeed == other.AiSpeed && FastAnimations == other.FastAnimations && Quality == other.Quality &&
-            ScreenWidth == other.ScreenWidth && ScreenHeight == other.ScreenHeight && Language == other.Language && UiScale == other.UiScale;
+            ScreenWidth == other.ScreenWidth && ScreenHeight == other.ScreenHeight && Language == other.Language && UiScale == other.UiScale &&
+            DayCycle == other.DayCycle;
 
         private GameSettings Copy(float? master = null, float? effects = null, float? music = null, bool? fullscreen = null, bool? vSync = null,
             AiSpeed? aiSpeed = null, bool? fastAnimations = null, GraphicsQuality? quality = null, int? width = null, int? height = null,
-            Language? language = null, UiScale? uiScale = null) =>
+            Language? language = null, UiScale? uiScale = null, bool? dayCycle = null) =>
             new GameSettings(master ?? MasterVolume, effects ?? EffectsVolume, music ?? MusicVolume, fullscreen ?? Fullscreen, vSync ?? VSync,
                 aiSpeed ?? AiSpeed, fastAnimations ?? FastAnimations, quality ?? Quality, width ?? ScreenWidth, height ?? ScreenHeight,
-                language ?? Language, uiScale ?? UiScale);
+                language ?? Language, uiScale ?? UiScale, dayCycle ?? DayCycle);
 
         private static float Volume(float value, float fallback) => float.IsNaN(value) ? fallback : Math.Max(0f, Math.Min(1f, value));
     }

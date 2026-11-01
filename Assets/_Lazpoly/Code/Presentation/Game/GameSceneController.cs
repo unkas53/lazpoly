@@ -37,7 +37,9 @@ namespace Lazpoly.Presentation.Game
     public sealed class GameSceneController : MonoBehaviour
     {
         private const int MaxLogLines = 40;
-        private const float CameraPitch = 55f;
+
+        /// <summary>Seconds the light takes to slide from noon all the way to dusk; a single round's step is a fraction of it.</summary>
+        private const float DaySeconds = 4f;
 
         /// <summary>Pause after a card is drawn so it can be read before it acts.</summary>
         public const float CardReadSeconds = 1.6f;
@@ -76,6 +78,8 @@ namespace Lazpoly.Presentation.Game
         private int _framedHeight;
         private float _framedReserve;
         private GameHud _hud;
+        private float _dayShown = -1f;
+        private float _dayApplied = -1f;
 
         public IGameSession Session => _session;
 
@@ -96,6 +100,19 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Zoom and turn of the board view; the HUD's reset button uses it.</summary>
         public BoardCameraRig CameraRig { get; private set; }
+
+        /// <summary>Which ready-made view the camera is framed for.</summary>
+        public CameraView View { get; private set; } = CameraView.Table;
+
+        /// <summary>Switches between sitting at the table and looking down on it (the C key and the camera button).</summary>
+        public void ToggleCameraView()
+        {
+            View = View == CameraView.Table ? CameraView.Overhead : CameraView.Table;
+            if (_board != null) FrameBoard(_framedReserve);
+        }
+
+        /// <summary>How far the shown day has gone, 0 (noon) to 1 (dusk); -1 before the board is up.</summary>
+        public float DayProgress => _dayShown;
 
         /// <summary>The board on the table, once the game state is known.</summary>
         public BoardView Board => _board;
@@ -203,8 +220,27 @@ namespace Lazpoly.Presentation.Game
             if (_session == null) return;
             _session.Tick();
 
+            UpdateDayLight();
             if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
             if (_session.StepAi()) _nextAiMoveTime = Time.time + Settings.AiMoveDelaySeconds;
+        }
+
+        /// <summary>
+        /// Slides the light towards where the game's round puts it (see <see cref="DayCycle"/>), a little
+        /// each frame so a new round is felt rather than seen. With the setting off the day stays at noon.
+        /// </summary>
+        private void UpdateDayLight()
+        {
+            GameState state = _session.State;
+            if (_board == null || state == null) return;
+            bool over = state.Phase == GamePhase.GameOver || EndReason.HasValue;
+            float target = Settings.DayCycle ? DayCycle.Progress(state.Round, _session.Rules.RoundLimit, over) : 0f;
+            _dayShown = _dayShown < 0f ? target : Mathf.MoveTowards(_dayShown, target, Time.deltaTime / DaySeconds);
+            if (Mathf.Approximately(_dayShown, _dayApplied)) return;
+            _dayApplied = _dayShown;
+            DayLight light = DayCycle.At(_dayShown);
+            RoomDressing.ApplyDayLight(light);
+            _board.SetEvening(light.Evening);
         }
 
         private void LateUpdate()
@@ -222,9 +258,10 @@ namespace Lazpoly.Presentation.Game
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
             _framedReserve = reservedSidePixels;
+            float pitch = BoardCameraRig.PitchOf(View);
             Vector3 framed = BoardCameraFraming.CameraPosition(_board.transform.position, _board.HalfExtent, camera.fieldOfView,
-                CameraPitch, Screen.width, Screen.height, reservedSidePixels);
-            CameraRig.SetBase(_board.transform.position, framed, CameraPitch);
+                pitch, Screen.width, Screen.height, reservedSidePixels);
+            CameraRig.SetBase(_board.transform.position, framed, pitch, _board.HalfExtent);
         }
 
         private void OnDestroy()
@@ -358,7 +395,8 @@ namespace Lazpoly.Presentation.Game
             GameState state = _session.State;
             _board = BoardView.Create(transform, _data);
             RoomDressing.CreateRoom(transform, _board.HalfExtent);
-            _dice = DiceView.Create(transform, new Vector3(0f, 0.04f, -1.2f));
+            // The dice sit a touch above the highest wave.
+            _dice = DiceView.Create(transform, new Vector3(0f, 0.04f + SeaSurface.Amplitude + 0.02f, -1.2f));
             _dice.Speed = Settings.AnimationSpeed;
             _crowd = new PawnCrowd(state.Players.Count);
             _turnMarker = TurnMarker.Create(transform);
@@ -527,7 +565,7 @@ namespace Lazpoly.Presentation.Game
                         break;
                     case DiceRolledEvent rolled:
                         AudioPlayer.Play(SoundCue.DiceShake);
-                        yield return _dice.Roll(rolled.Die1, rolled.Die2);
+                        yield return _dice.Roll(rolled.Die1, rolled.Die2, CameraRig != null ? CameraRig.Yaw : 0f);
                         AudioPlayer.Play(SoundCue.DiceLand);
                         ShowRoll(rolled);
                         yield return new WaitForSeconds(RollReadSeconds / Speed);
@@ -689,7 +727,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             camera.transform.position = new Vector3(0f, 15f, -11f);
-            camera.transform.rotation = Quaternion.Euler(CameraPitch, 0f, 0f);
+            camera.transform.rotation = Quaternion.Euler(BoardCameraRig.PitchOf(View), 0f, 0f);
             camera.fieldOfView = 50f;
             CameraRig = camera.GetComponent<BoardCameraRig>();
             if (CameraRig == null) CameraRig = camera.gameObject.AddComponent<BoardCameraRig>();

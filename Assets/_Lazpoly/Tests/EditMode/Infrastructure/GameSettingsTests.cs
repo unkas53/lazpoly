@@ -31,7 +31,7 @@ namespace Lazpoly.Infra.Tests
             var storage = new MemoryStorage();
             GameSettings chosen = GameSettings.Default.WithMasterVolume(0.25f).WithEffectsVolume(0.5f).WithMusicVolume(0f)
                 .WithFullscreen(false).WithVSync(false).WithAiSpeed(AiSpeed.Fast).WithFastAnimations(true)
-                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900).WithLanguage(Language.English).WithUiScale(UiScale.Large);
+                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900).WithLanguage(Language.English).WithUiScale(UiScale.Large).WithDayCycle(false);
 
             SettingsSerializer.Write(storage, chosen);
 
@@ -84,6 +84,7 @@ namespace Lazpoly.Infra.Tests
             Assert.AreEqual(GameSettings.Default.EffectsVolume, read.EffectsVolume);
             Assert.AreEqual(GameSettings.Default.MusicVolume, read.MusicVolume);
             Assert.AreEqual(GameSettings.Default.Quality, read.Quality);
+            Assert.IsTrue(read.DayCycle, "the day cycle is on until it is turned off");
         }
 
         [Test]

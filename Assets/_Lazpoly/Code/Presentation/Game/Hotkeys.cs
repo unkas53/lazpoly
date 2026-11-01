@@ -21,6 +21,8 @@ namespace Lazpoly.Presentation.Game
         Close,
         /// <summary>Open the pause menu (Esc with nothing on top).</summary>
         PauseMenu,
+        /// <summary>Switch between the table view and the overhead view (C).</summary>
+        CameraView,
     }
 
     /// <summary>What is on the game screen when a key is pressed; <see cref="Hotkeys.Resolve"/> reads it.</summary>
@@ -60,7 +62,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The keys the screen listens to.</summary>
         public static readonly KeyCode[] Keys =
         {
-            KeyCode.Escape, KeyCode.Space, KeyCode.Return, KeyCode.KeypadEnter, KeyCode.B, KeyCode.T, KeyCode.H,
+            KeyCode.Escape, KeyCode.Space, KeyCode.Return, KeyCode.KeypadEnter, KeyCode.B, KeyCode.T, KeyCode.H, KeyCode.C,
         };
 
         public static HotkeyAction Resolve(KeyCode key, in HotkeyContext context)
@@ -90,6 +92,8 @@ namespace Lazpoly.Presentation.Game
                     return context.Acting && context.CanTrade ? HotkeyAction.Trade : HotkeyAction.None;
                 case KeyCode.H:
                     return HotkeyAction.HowToPlay;
+                case KeyCode.C:
+                    return HotkeyAction.CameraView;
                 default:
                     return HotkeyAction.None;
             }

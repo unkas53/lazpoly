@@ -30,6 +30,8 @@ namespace Lazpoly.Presentation.UI
         Pause,
         /// <summary>An exclamation mark: something needs attention.</summary>
         Warning,
+        /// <summary>A camera: the view of the table.</summary>
+        Camera,
     }
 
     /// <summary>Draws a <see cref="UiIcon"/> as a square of shapes inside a layout.</summary>
@@ -128,6 +130,13 @@ namespace Lazpoly.Presentation.UI
                 case UiIcon.Warning:
                     Shape(root, 0.38f, 0.34f, 0.24f, 0.6f, color);
                     Shape(root, 0.38f, 0.06f, 0.24f, 0.2f, color, round: true);
+                    break;
+
+                case UiIcon.Camera:
+                    Shape(root, 0.06f, 0.16f, 0.88f, 0.6f, color);
+                    Shape(root, 0.3f, 0.7f, 0.3f, 0.16f, color);
+                    Shape(root, 0.34f, 0.26f, 0.4f, 0.4f, Ink, round: true);
+                    Shape(root, 0.42f, 0.34f, 0.24f, 0.24f, dark, round: true);
                     break;
             }
         }
