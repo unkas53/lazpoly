@@ -107,6 +107,15 @@ namespace Lazpoly.Platform.Steam
             while (count == MaxMessagesPerPoll);
         }
 
+        public int PingMs(ulong peer)
+        {
+            if (!_steam.IsInitialized) return -1;
+            SteamNetworkingIdentity identity = Identity(peer);
+            ESteamNetworkingConnectionState state = SteamNetworkingMessages.GetSessionConnectionInfo(ref identity,
+                out SteamNetConnectionInfo_t _, out SteamNetConnectionRealTimeStatus_t status);
+            return state == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected ? Math.Max(0, status.m_nPing) : -1;
+        }
+
         /// <summary>Closes the session with a peer that left, and reports it on the next poll.</summary>
         public void DropPeer(ulong peer)
         {

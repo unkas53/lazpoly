@@ -48,6 +48,10 @@ namespace Lazpoly.App.Session
 
         public bool IsAiPlaying(int playerId) => _ai != null && _ai.Controls(playerId);
 
+        public bool IsConnected(int playerId) => true;
+
+        public int PingMs(int playerId) => 0;
+
         public void Submit(GameCommand command)
         {
             if (command == null) throw new ArgumentNullException(nameof(command));

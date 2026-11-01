@@ -14,19 +14,34 @@ namespace Lazpoly.App.Session
     /// <summary>
     /// A player's view of an online game hosted elsewhere. Never decides anything: it sends
     /// commands to the host and mirrors the host's events, re-syncing from a snapshot whenever
-    /// an event goes missing or its copy no longer matches the host's state hash.
+    /// an event goes missing or its copy no longer matches the host's state hash. When the link to
+    /// the host breaks it keeps knocking for <see cref="GiveUpSeconds"/> (a fresh Hello every
+    /// <see cref="RetrySeconds"/>) before it gives the game up as lost; the host's answer puts the
+    /// player back in their seat with the current state.
     /// </summary>
     public sealed class ClientSession : IGameSession
     {
+        /// <summary>Seconds between two attempts to reach the host after the link broke.</summary>
+        public const double RetrySeconds = 3;
+
+        /// <summary>How long a client keeps trying before it reports the host gone.</summary>
+        public const double GiveUpSeconds = 45;
+
         private readonly ITransport _transport;
         private readonly ulong _hostPeer;
         private readonly ulong _boardChecksum;
         private readonly RulesConfig _boardRules;
+        private readonly Func<double> _now;
+        private readonly Dictionary<int, PlayerPresence> _presence = new Dictionary<int, PlayerPresence>();
         private int _lastSequence;
         private bool _awaitingSnapshot;
         private bool _ended;
+        private double _lostAt;
+        private double _lastAttemptAt;
 
-        public ClientSession(ITransport transport, ulong hostPeer, BoardDefinition board, RulesConfig rules, ulong boardChecksum)
+        /// <param name="now">Seconds from any fixed point, for the reconnect timing; null uses a monotonic system clock.</param>
+        public ClientSession(ITransport transport, ulong hostPeer, BoardDefinition board, RulesConfig rules, ulong boardChecksum,
+            Func<double> now = null)
         {
             _transport = transport ?? throw new ArgumentNullException(nameof(transport));
             Board = board ?? throw new ArgumentNullException(nameof(board));
@@ -34,6 +49,7 @@ namespace Lazpoly.App.Session
             Rules = rules;
             _hostPeer = hostPeer;
             _boardChecksum = boardChecksum;
+            _now = now ?? TurnClock.SystemClock();
             _transport.Received += OnReceived;
             _transport.PeerDisconnected += OnPeerDisconnected;
         }
@@ -48,30 +64,58 @@ namespace Lazpoly.App.Session
         /// <summary>How many times this client found its copy out of step and re-synced.</summary>
         public int ResyncCount { get; private set; }
 
+        /// <summary>True from the moment the link to the host broke until the host answers again (or the client gives up).</summary>
+        public bool IsReconnecting { get; private set; }
+
+        /// <summary>Hellos sent since the link broke; 0 when connected.</summary>
+        public int ReconnectAttempts { get; private set; }
+
+        /// <summary>Seconds left before this client gives the host up; <see cref="GiveUpSeconds"/> while connected.</summary>
+        public double SecondsUntilGiveUp => IsReconnecting ? Math.Max(0, GiveUpSeconds - (_now() - _lostAt)) : GiveUpSeconds;
+
         public event Action Ready;
         public event Action StateReset;
         public event Action<SessionEndReason> Ended;
         public event Action<IReadOnlyList<GameEvent>> EventsPublished;
         public event Action<RejectionReason> CommandRejected;
 
+        /// <summary>Raised with false when the link to the host breaks and with true when the host answers again.</summary>
+        public event Action<bool> ConnectionChanged;
+
         public bool CanControl(int playerId) => IsReady && playerId == MyPlayerId;
 
-        /// <summary>Only the host knows who the computer plays.</summary>
-        public bool IsAiPlaying(int playerId) => false;
+        /// <summary>As the host last reported it; false until the first presence message.</summary>
+        public bool IsAiPlaying(int playerId) => _presence.TryGetValue(playerId, out PlayerPresence p) && p.AiPlaying;
+
+        /// <summary>This machine: whether the host is reachable. Others: as the host last reported, true until it has.</summary>
+        public bool IsConnected(int playerId)
+        {
+            if (playerId == MyPlayerId) return !IsReconnecting && !_ended;
+            return !_presence.TryGetValue(playerId, out PlayerPresence p) || p.Connected;
+        }
+
+        public int PingMs(int playerId)
+        {
+            if (playerId == MyPlayerId) return IsReconnecting || _ended ? -1 : _transport.PingMs(_hostPeer);
+            return _presence.TryGetValue(playerId, out PlayerPresence p) ? p.PingMs : -1;
+        }
 
         /// <summary>The host runs every AI move.</summary>
         public bool StepAi() => false;
 
         /// <summary>Introduces this client to the host, which answers with the game state.</summary>
-        public void Start()
-        {
-            Send(new HelloMessage { ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = _boardChecksum });
-        }
+        public void Start() => SendHello();
+
+        /// <summary>
+        /// Something outside the session (the room) knows the host is gone for good: stop now
+        /// instead of waiting out the grace time.
+        /// </summary>
+        public void ReportHostGone() => End(SessionEndReason.HostLeft);
 
         public void Submit(GameCommand command)
         {
             if (command == null) throw new ArgumentNullException(nameof(command));
-            if (_ended || !IsReady)
+            if (_ended || !IsReady || IsReconnecting)
             {
                 CommandRejected?.Invoke(RejectionReason.NotConnected);
                 return;
@@ -86,7 +130,30 @@ namespace Lazpoly.App.Session
             if (!Send(new CommandMessage { Command = command })) CommandRejected?.Invoke(RejectionReason.NotConnected);
         }
 
-        public void Tick() => _transport.Poll();
+        public void Tick()
+        {
+            _transport.Poll();
+            if (!IsReconnecting || _ended) return;
+
+            double now = _now();
+            if (now - _lostAt >= GiveUpSeconds)
+            {
+                End(SessionEndReason.HostLeft);
+                return;
+            }
+
+            if (now - _lastAttemptAt >= RetrySeconds)
+            {
+                ReconnectAttempts++;
+                SendHello();
+            }
+        }
+
+        private void SendHello()
+        {
+            _lastAttemptAt = _now();
+            Send(new HelloMessage { ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = _boardChecksum });
+        }
 
         private void OnReceived(ulong peer, byte[] payload)
         {
@@ -113,6 +180,13 @@ namespace Lazpoly.App.Session
                     break;
                 case RejectedMessage rejected:
                     CommandRejected?.Invoke(rejected.Reason);
+                    break;
+                case PresenceMessage presence:
+                    _presence.Clear();
+                    foreach (PlayerPresence p in presence.Players) _presence[p.PlayerId] = p;
+                    break;
+                case HostLeavingMessage _:
+                    End(SessionEndReason.HostLeft);
                     break;
                 case RefusedMessage refused:
                     End(refused.Reason == RefusalReason.VersionMismatch ? SessionEndReason.VersionMismatch
@@ -159,9 +233,13 @@ namespace Lazpoly.App.Session
             MyPlayerId = start.YourPlayerId;
             _lastSequence = start.Sequence;
             _awaitingSnapshot = false;
+            bool wasReconnecting = IsReconnecting;
+            IsReconnecting = false;
+            ReconnectAttempts = 0;
 
             if (first) Ready?.Invoke();
             else StateReset?.Invoke();
+            if (wasReconnecting) ConnectionChanged?.Invoke(true);
         }
 
         private void ApplyEvents(EventsMessage message)
@@ -192,9 +270,16 @@ namespace Lazpoly.App.Session
             if (State.ComputeHash() != message.StateHash) RequestSnapshot();
         }
 
+        /// <summary>The link broke: keep the state on screen and knock on the host's door until it answers or the time is up.</summary>
         private void OnPeerDisconnected(ulong peer)
         {
-            if (peer == _hostPeer) End(SessionEndReason.HostLeft);
+            if (peer != _hostPeer || _ended || IsReconnecting) return;
+            IsReconnecting = true;
+            ReconnectAttempts = 0;
+            _lostAt = _now();
+            _lastAttemptAt = _lostAt;
+            _awaitingSnapshot = false; // The answer to a Hello is a snapshot anyway.
+            ConnectionChanged?.Invoke(false);
         }
 
         private void RequestSnapshot()

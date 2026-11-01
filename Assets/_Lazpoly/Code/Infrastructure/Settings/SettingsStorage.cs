@@ -10,6 +10,10 @@ namespace Lazpoly.Infra.Settings
         float GetFloat(string key);
         void SetInt(string key, int value);
         void SetFloat(string key, float value);
+
+        /// <summary>The stored text, or an empty string when the key is missing.</summary>
+        string GetString(string key);
+        void SetString(string key, string value);
         void Save();
     }
 
@@ -21,6 +25,8 @@ namespace Lazpoly.Infra.Settings
         public float GetFloat(string key) => PlayerPrefs.GetFloat(key);
         public void SetInt(string key, int value) => PlayerPrefs.SetInt(key, value);
         public void SetFloat(string key, float value) => PlayerPrefs.SetFloat(key, value);
+        public string GetString(string key) => PlayerPrefs.GetString(key, string.Empty);
+        public void SetString(string key, string value) => PlayerPrefs.SetString(key, value ?? string.Empty);
         public void Save() => PlayerPrefs.Save();
     }
 

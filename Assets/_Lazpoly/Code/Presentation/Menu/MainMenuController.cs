@@ -56,6 +56,7 @@ namespace Lazpoly.Presentation.Menu
         private LobbyPanel _lobbyPanel;
         private SavedGame _savedGame;
         private bool _brokenSave;
+        private bool _rejoining;
         private SettingsPanel _settings;
         private SettingsService _settingsService;
         private ILobbyService _lobby;
@@ -87,13 +88,23 @@ namespace Lazpoly.Presentation.Menu
             GameServices.Registry?.TryGet(out transport);
             GameServices.Registry?.TryGet(out _presence);
             _lobbyPanel = new LobbyPanel(_lobby, transport, () => SceneFader.Load("Game"), OpenTableRules, _boardMoney);
+            if (_lobby != null) _lobby.Failed += OnLobbyFailed;
             _settings = new SettingsPanel();
         }
 
         private void OnDestroy()
         {
             if (_settingsService != null) _settingsService.Changed -= OnSettingsChanged;
+            if (_lobby != null) _lobby.Failed -= OnLobbyFailed;
             _lobbyPanel?.Dispose();
+        }
+
+        /// <summary>A room that cannot be re-entered is gone; the offer to go back to it goes too.</summary>
+        private void OnLobbyFailed(LobbyError error)
+        {
+            if (!_rejoining) return;
+            _rejoining = false;
+            LastRoomStore.Forget();
         }
 
         private static void OnSettingsChanged(GameSettings settings)
@@ -165,7 +176,8 @@ namespace Lazpoly.Presentation.Menu
         {
             if (_mainView == null) return;
             _titleView.Refresh(0);
-            int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty, _savedGame != null, _brokenSave);
+            int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey
+                : HashCode.Combine(_playerCount, _opponents, _difficulty, _savedGame != null, _brokenSave, CanRejoin(out _));
             _mainView.Refresh(HashCode.Combine(_mode, modeKey, TableKey()));
             _footerView.Refresh(0);
             if (_settingsLayer.activeSelf) _settingsView.Refresh(0);
@@ -198,6 +210,19 @@ namespace Lazpoly.Presentation.Menu
 
         private void RenderHome(UiBuilder ui)
         {
+            if (CanRejoin(out ulong room))
+            {
+                ui.IconButton(UiIcon.Network, L("Çevrim İçi Oyuna Yeniden Bağlan"), () =>
+                {
+                    _rejoining = true;
+                    _lobby.Join(room);
+                }, style: UiButtonStyle.Primary, height: 60f);
+                UiBuilder row = ui.Row(10f, expand: false);
+                UiBuilder.Fix(row.Label(L("Son çevrim içi oyun kapanmadan koptu; odaya dönersen eski koltuğun seni bekler."), UiTextStyle.Small, UiTheme.Muted), -1f).flexibleWidth = 1f;
+                UiBuilder.Fix(row.Button(L("Unut"), LastRoomStore.Forget, height: UiTheme.SmallButtonHeight), width: 90f);
+                ui.Space(10f);
+            }
+
             if (_savedGame != null)
             {
                 ui.IconButton(UiIcon.Bookmark, L("Kayıtlı Oyuna Devam Et"), ResumeSavedGame, style: UiButtonStyle.Primary, height: 60f);
@@ -407,6 +432,13 @@ namespace Lazpoly.Presentation.Menu
 
             LocalGameSetup.SetSeats(seats, ai);
             SceneFader.Load("Game");
+        }
+
+        /// <summary>Whether a guest seat in an unfinished online game is remembered and Steam could take us back to it.</summary>
+        private bool CanRejoin(out ulong room)
+        {
+            room = 0;
+            return _lobby != null && _lobby.IsAvailable && _lobby.Status == LobbyStatus.Idle && LastRoomStore.TryGet(out room);
         }
 
         /// <summary>Offers the save only if it was made with the board data this build ships.</summary>

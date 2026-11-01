@@ -45,13 +45,13 @@ namespace Lazpoly.App.Tests
                 ITransport transport = Network.CreateTransport(peer);
                 if (wrapClient != null) transport = wrapClient(peer, transport);
                 ClientTransports[player] = transport;
-                Clients[player] = new ClientSession(transport, HostPeer, Board, Rules, Checksum);
+                Clients[player] = new ClientSession(transport, HostPeer, Board, Rules, Checksum, () => Now);
             }
         }
 
         public LoopbackNetwork Network { get; } = new LoopbackNetwork();
 
-        /// <summary>The host's clock, in seconds; tests move it forward by hand.</summary>
+        /// <summary>The clock every machine at the table reads, in seconds; tests move it forward by hand.</summary>
         public double Now { get; set; }
 
         public TurnClock Clock { get; }
@@ -192,5 +192,6 @@ namespace Lazpoly.App.Tests
         public event Action<ulong> PeerDisconnected;
         public bool Send(ulong peer, byte[] payload) => _inner.Send(peer, payload);
         public void Poll() => _inner.Poll();
+        public int PingMs(ulong peer) => _inner.PingMs(peer);
     }
 }

@@ -618,6 +618,7 @@ namespace Lazpoly.Presentation.Game
             {
                 ui.Label(L("Oyun durdu"), UiTextStyle.Heading);
                 ui.Notice(GameSceneController.EndReasonText(_controller.EndReason.Value));
+                RenderContinueOffline(ui);
                 ui.Button(L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
                 return;
             }
@@ -628,6 +629,8 @@ namespace Lazpoly.Presentation.Game
                 ui.Button(L("Vazgeç"), _controller.LeaveToMainMenu);
                 return;
             }
+
+            if (_controller.IsReconnecting) RenderReconnecting(ui);
 
             // What to do now comes first, so the main button never scrolls away; who is playing comes last.
             RenderHeader(ui, state);
@@ -680,8 +683,7 @@ namespace Lazpoly.Presentation.Game
                 UiBuilder.Fix(money, width: 90f);
                 if (!player.IsBankrupt) TrackMoney(player.Id, money);
 
-                string tag = PlayerTag(player);
-                if (tag != null) card.Label(tag, UiTextStyle.Small);
+                RenderPlayerStatus(card, player);
                 if (!player.IsBankrupt) RenderOwnedSquares(card, state, player.Id);
             }
         }
@@ -719,11 +721,47 @@ namespace Lazpoly.Presentation.Game
             else if (_panelHoverSquare == square) _panelHoverSquare = NoSquare;
         }
 
-        private string PlayerTag(PlayerState player)
+        /// <summary>
+        /// Who or what plays the seat. Online every seat also gets a connection dot (green: reachable,
+        /// red: not) and, when known, the latency the host measures to that machine.
+        /// </summary>
+        private void RenderPlayerStatus(UiBuilder card, PlayerState player)
         {
-            bool ai = _controller.Session.IsAiPlaying(player.Id);
-            if (!_controller.IsConnected(player.Id)) return ai ? L("Bağlantı yok, bilgisayar oynuyor") : L("Bağlantı yok");
-            return ai ? L("Bilgisayar") : null;
+            IGameSession session = _controller.Session;
+            bool ai = session.IsAiPlaying(player.Id);
+            bool connected = session.IsConnected(player.Id);
+            string tag = !_controller.IsOnline ? (ai ? L("Bilgisayar") : null)
+                : !connected ? (ai ? L("Bağlantı yok, bilgisayar oynuyor") : L("Bağlantı yok"))
+                : ai ? L("Bilgisayar oynuyor (hamle yapmadı)") : null;
+            if (!_controller.IsOnline || player.IsBankrupt)
+            {
+                if (tag != null) card.Label(tag, UiTextStyle.Small);
+                return;
+            }
+
+            UiBuilder row = card.Row(6f, expand: false);
+            row.Swatch(connected ? UiTheme.Gain : UiTheme.Warning, 10f, round: true);
+            int ping = session.PingMs(player.Id);
+            string latency = !connected ? L("bağlantı yok") : ping > 0 ? F($"{ping} ms") : ping == 0 ? L("bu bilgisayar") : L("gecikme ölçülüyor");
+            UiBuilder.Fix(row.Label(latency, UiTextStyle.Small), -1f).flexibleWidth = 1f;
+            if (tag != null) card.Label(tag, UiTextStyle.Small, connected ? UiTheme.Muted : UiTheme.Warning);
+        }
+
+        /// <summary>The link to the host broke: the board stays, the actions wait, and the player sees how long the game holds their seat open.</summary>
+        private void RenderReconnecting(UiBuilder ui)
+        {
+            int left = Mathf.CeilToInt((float)_controller.SecondsUntilGiveUp);
+            int attempt = Mathf.Max(1, _controller.ReconnectAttempts);
+            ui.Notice(F($"Ev sahibiyle bağlantı koptu; yeniden deneniyor ({attempt}. deneme). {left} sn içinde bağlanamazsa oyun burada biter. Bu sırada yerine bilgisayar oynar."));
+        }
+
+        /// <summary>A guest whose host is gone may keep playing the last state it saw, against computers.</summary>
+        private void RenderContinueOffline(UiBuilder ui)
+        {
+            if (!_controller.CanContinueOffline) return;
+            ui.Button(L("Bilgisayarlara Karşı Devam Et"), _controller.ContinueAgainstComputers, style: UiButtonStyle.Primary);
+            ui.Label(L("Oyun son görüntüden yerel oyun olarak sürer; diğer koltuklarda bilgisayar oynar ve önceki yerel kaydın üzerine yazılır."),
+                UiTextStyle.Small, UiTheme.Muted);
         }
 
         private void RenderActions(UiBuilder ui, GameState state)
@@ -1297,6 +1335,7 @@ namespace Lazpoly.Presentation.Game
             {
                 ui.Title(UiIcon.Warning, L("Oyun durdu"), UiTheme.Warning);
                 ui.Notice(GameSceneController.EndReasonText(_controller.EndReason.Value));
+                RenderContinueOffline(ui);
             }
             else
             {

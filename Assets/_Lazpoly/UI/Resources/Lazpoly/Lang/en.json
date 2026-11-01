@@ -390,7 +390,6 @@
   "Odayı kapatırsın; oyun herkes için biter.": "You close the room; the game ends for everyone.",
   "Odadan çıkarsın; yerine bilgisayar oynar.": "You leave the room; the computer plays in your place.",
   "Oyundan Ayrıl": "Leave Game",
-  "Ev sahibi oyundan ayrıldı; oyun burada bitti. Ana menüden yeni bir oda kurabilir ya da arkadaşının odasına katılabilirsin.": "The host left; the game ends here. From the main menu you can create a new room or join a friend's.",
   "Bu oyunda yerin yok: oyun sen gelmeden başlamış. Ana menüye dönüp ev sahibinden yeni bir oda kurmasını iste.": "There is no seat for you: the game started before you arrived. Go back to the main menu and ask the host for a new room.",
   "Oyun sürümün ev sahibininkiyle aynı değil. İkiniz de Steam'den son güncellemeyi alıp yeniden deneyin.": "Your game version differs from the host's. Both of you should take the latest update from Steam and try again.",
   "Tahta verin ev sahibininkiyle aynı değil. Oyunu Steam'de doğrulayıp (yerel dosyaları doğrula) yeniden dene.": "Your board data differs from the host's. Verify the game files in Steam and try again.",
@@ -430,5 +429,19 @@
   "Kuş bakışı": "Overhead",
   "Yakın köşe": "Close corner",
   "Ada ve deniz": "Island and sea",
-  "Karşı kıyı": "Far shore"
+  "Karşı kıyı": "Far shore",
+  "Bilgisayar oynuyor (hamle yapmadı)": "Computer playing (no move made)",
+  "bağlantı yok": "no connection",
+  "{0} ms": "{0} ms",
+  "bu bilgisayar": "this computer",
+  "gecikme ölçülüyor": "measuring latency",
+  "Ev sahibiyle bağlantı koptu; yeniden deneniyor ({0}. deneme). {1} sn içinde bağlanamazsa oyun burada biter. Bu sırada yerine bilgisayar oynar.": "Connection to the host was lost; trying again (attempt {0}). If it cannot reconnect within {1} s the game ends here. Meanwhile the computer plays your seat.",
+  "Bilgisayarlara Karşı Devam Et": "Continue Against Computers",
+  "Oyun son görüntüden yerel oyun olarak sürer; diğer koltuklarda bilgisayar oynar ve önceki yerel kaydın üzerine yazılır.": "The game goes on from the last state seen as a local game; computers take the other seats and your previous local save is overwritten.",
+  "Ev sahibine yeniden bağlanıldı.": "Reconnected to the host.",
+  "Ev sahibiyle bağlantı koptu; yeniden bağlanılıyor...": "Connection to the host was lost; reconnecting...",
+  "Ev sahibi oyundan ayrıldı; çevrim içi oyun burada bitti. Son görüntüden bilgisayarlara karşı sürdürebilir ya da ana menüye dönebilirsin.": "The host left the game; the online game ends here. You can carry on from the last state against computers or return to the main menu.",
+  "Çevrim İçi Oyuna Yeniden Bağlan": "Reconnect to Online Game",
+  "Son çevrim içi oyun kapanmadan koptu; odaya dönersen eski koltuğun seni bekler.": "Your last online game was cut off before it ended; return to the room and your seat is waiting.",
+  "Unut": "Forget"
 }

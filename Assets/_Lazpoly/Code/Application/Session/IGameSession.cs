@@ -52,9 +52,16 @@ namespace Lazpoly.App.Session
 
         /// <summary>
         /// Whether the computer plays the given player: a chosen AI seat, or a stand-in for an online
-        /// player whose connection dropped. Known only where the rules run; always false on a client.
+        /// player who dropped, never arrived or stopped answering. Decided where the rules run; a
+        /// client learns it from the host's presence messages.
         /// </summary>
         bool IsAiPlaying(int playerId);
+
+        /// <summary>Whether the player's machine is reachable. Always true in a local game.</summary>
+        bool IsConnected(int playerId);
+
+        /// <summary>Round-trip time to the player's machine in milliseconds; 0 for this machine, -1 when unknown.</summary>
+        int PingMs(int playerId);
 
         /// <summary>Lets the computer make one move if the game waits on an AI-played player. Returns whether it moved.</summary>
         bool StepAi();

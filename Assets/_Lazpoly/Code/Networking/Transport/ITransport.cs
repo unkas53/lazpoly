@@ -21,5 +21,8 @@ namespace Lazpoly.Net.Transport
 
         /// <summary>Delivers everything that arrived since the last call. Call once per frame.</summary>
         void Poll();
+
+        /// <summary>Round-trip time to a peer in milliseconds, or -1 when there is no live session with it.</summary>
+        int PingMs(ulong peer);
     }
 }

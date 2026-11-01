@@ -16,21 +16,25 @@ namespace Lazpoly.App.Session
         private readonly Func<double> _now;
         private double _since;
 
-        /// <param name="now">Seconds from any fixed point; null uses a monotonic system clock.</param>
+        /// <param name="now">Seconds from any fixed point; null uses <see cref="SystemClock"/>.</param>
         public TurnClock(Func<double> now = null)
         {
-            if (now == null)
-            {
-                Stopwatch watch = Stopwatch.StartNew();
-                now = () => watch.Elapsed.TotalSeconds;
-            }
-
-            _now = now;
+            _now = now ?? SystemClock();
             _since = _now();
+        }
+
+        /// <summary>A monotonic clock that starts at zero now; unaffected by the system time being changed.</summary>
+        public static Func<double> SystemClock()
+        {
+            Stopwatch watch = Stopwatch.StartNew();
+            return () => watch.Elapsed.TotalSeconds;
         }
 
         public static double LimitFor(GamePhase phase) =>
             phase == GamePhase.AuctionInProgress || phase == GamePhase.AwaitingTradeResponse ? ResponseSeconds : TurnSeconds;
+
+        /// <summary>The clock's reading in seconds, for anything else the session times.</summary>
+        public double Now => _now();
 
         /// <summary>Called whenever the game moves on.</summary>
         public void Restart() => _since = _now();

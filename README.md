@@ -485,6 +485,30 @@ kamp çadırı kurulur (kumaş sahibin rengi, dikişler aynı rengin koyu tonu; 
   yuvalarıyla çakışmaz.
 - Testler: `ObjModelTests` (okuyucu, kırpılmış çadır dosyası, boyama ve yerleşim).
 
+## Faz 10c-1: yeniden bağlanma
+
+Çevrim içi oyunda bağlantı sorunları artık oyunu bitirmez; herkes ne olduğunu görür.
+
+- **Misafirin bağlantısı koparsa:** tahta ekranda kalır, "Ev sahibiyle bağlantı koptu; yeniden deneniyor" uyarısı
+  geri sayımla görünür. İstemci her 3 saniyede bir ev sahibine yeniden selam gönderir (`ClientSession.RetrySeconds`);
+  iki cevapsız denemeden sonra odadan çıkıp yeniden girer (Steam odası da düşürmüş olabilir, ev sahibi yalnızca oda
+  üyelerini kabul eder). 45 saniye içinde cevap gelmezse (`GiveUpSeconds`) "Ev sahibi ayrıldı" penceresi açılır. Bu
+  sırada ev sahibinde koltuğu bilgisayar oynar; selam gelince durum anlık görüntüyle yenilenir ve kontrol oyuncuya döner.
+- **Oyun kapanmadan koparsa:** oda kimliği hatırlanır (`LastRoomStore`); ana menüde "Çevrim İçi Oyuna Yeniden Bağlan"
+  düğmesi çıkar, aynı Steam hesabı aynı koltuğa döner. Oyun bitince, oyuncu bilerek ayrılınca ya da oda artık yoksa unutulur.
+- **Hiç gelmeyen oyuncu:** oyun başladıktan 30 saniye sonra (`HostSession.NoShowSeconds`) koltuğuna bilgisayar oturur;
+  oyuncu sonradan gelirse koltuğu yine alır.
+- **Ev sahibi ayrılırsa:** bilerek ayrılış (menüden çıkış, pencereyi kapatma) `HostLeaving` mesajıyla herkese anında
+  bildirilir; oda da "üye ayrıldı" derse misafirler beklemeden durur. Misafir pencerede "Bilgisayarlara Karşı Devam Et"
+  seçebilir: son görüntü yerel kayda dönüştürülür, diğer koltuklara bilgisayar oturur (önceki yerel kaydın üzerine yazılır).
+- **Durum yayını:** ev sahibi 2 saniyede bir ve her bağlantı değişiminde `Presence` mesajı gönderir (kim bağlı, kimi
+  bilgisayar oynuyor, gecikme). Sol panelde her oyuncunun yanında yeşil/kırmızı bağlantı noktası, gecikme ("42 ms") ve
+  gerekirse "Bağlantı yok, bilgisayar oynuyor" / "Bilgisayar oynuyor (hamle yapmadı)" etiketi görünür. Gecikme Steam'in
+  oturum ölçümünden okunur (`ITransport.PingMs`). Protokol sürümü 7'ye çıktı; eski sürümle oynayan "Steam'den güncelle" uyarısı alır.
+- Testler: `NetworkSessionTests` (kopan istemcinin geri dönüşü, gelmeyen oyuncu, bilerek ayrılan ev sahibi, bekleme
+  süresinin dolması, durum yayını), `MessageCodecTests` (yeni mesajlar), `LastRoomStoreTests`. `LoopbackNetwork.Sever`
+  ve `Restore` bir makinenin kendi hattının kopup gelmesini taklit eder.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

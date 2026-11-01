@@ -43,6 +43,8 @@ namespace Lazpoly.Presentation.Tests
             public float GetFloat(string key) => 0f;
             public void SetInt(string key, int value) => Ints[key] = value;
             public void SetFloat(string key, float value) { }
+            public string GetString(string key) => string.Empty;
+            public void SetString(string key, string value) { }
             public void Save() => Saves++;
         }
 

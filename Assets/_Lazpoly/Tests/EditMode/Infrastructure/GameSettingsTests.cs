@@ -16,6 +16,8 @@ namespace Lazpoly.Infra.Tests
             public float GetFloat(string key) => Values[key];
             public void SetInt(string key, int value) => Values[key] = value;
             public void SetFloat(string key, float value) => Values[key] = value;
+            public string GetString(string key) => string.Empty;
+            public void SetString(string key, string value) { }
             public void Save() => Saves++;
         }
 

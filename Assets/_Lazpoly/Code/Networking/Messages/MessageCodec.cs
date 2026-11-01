@@ -13,7 +13,7 @@ namespace Lazpoly.Net.Messages
     /// </summary>
     public static class MessageCodec
     {
-        public const int ProtocolVersion = 6;
+        public const int ProtocolVersion = 7;
 
         private enum CommandTag : byte
         {
@@ -70,6 +70,18 @@ namespace Lazpoly.Net.Messages
                     w.WriteInt((int)m.Reason);
                     break;
                 case SnapshotRequestMessage _:
+                case HostLeavingMessage _:
+                    break;
+                case PresenceMessage m:
+                    w.WriteInt(m.Players.Count);
+                    foreach (PlayerPresence p in m.Players)
+                    {
+                        w.WriteInt(p.PlayerId);
+                        w.WriteBool(p.Connected);
+                        w.WriteBool(p.AiPlaying);
+                        w.WriteInt(p.PingMs);
+                    }
+
                     break;
                 default:
                     throw new ArgumentException($"Cannot encode {message.GetType().Name}.", nameof(message));
@@ -118,6 +130,24 @@ namespace Lazpoly.Net.Messages
                     break;
                 case MessageType.SnapshotRequest:
                     message = new SnapshotRequestMessage();
+                    break;
+                case MessageType.Presence:
+                    var presence = new PresenceMessage();
+                    int seats = r.ReadCount();
+                    for (int i = 0; i < seats; i++)
+                    {
+                        int playerId = r.ReadInt();
+                        bool connected = r.ReadBool();
+                        bool ai = r.ReadBool();
+                        int ping = r.ReadInt();
+                        if (ping < -1) throw new FormatException($"Invalid ping {ping}.");
+                        presence.Players.Add(new PlayerPresence(playerId, connected, ai, ping));
+                    }
+
+                    message = presence;
+                    break;
+                case MessageType.HostLeaving:
+                    message = new HostLeavingMessage();
                     break;
                 default:
                     throw new FormatException($"Unknown message type {(byte)type}.");

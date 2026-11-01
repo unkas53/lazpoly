@@ -10,6 +10,10 @@ namespace Lazpoly.Net.Transport
     public sealed class LoopbackNetwork
     {
         private readonly Dictionary<ulong, LoopbackTransport> _peers = new Dictionary<ulong, LoopbackTransport>();
+        private readonly Dictionary<ulong, LoopbackTransport> _severed = new Dictionary<ulong, LoopbackTransport>();
+
+        /// <summary>The latency every transport reports for a reachable peer; tests set it to check it travels.</summary>
+        public int PingMs { get; set; }
 
         public ITransport CreateTransport(ulong peer)
         {
@@ -35,6 +39,28 @@ namespace Lazpoly.Net.Transport
             Disconnect(peer);
             return CreateTransport(peer);
         }
+
+        /// <summary>
+        /// Simulates a peer's own link failing: everyone else is told it dropped, and from its side every
+        /// other peer drops too. The peer keeps its transport, so <see cref="Restore"/> can plug it back in.
+        /// </summary>
+        public void Sever(ulong peer)
+        {
+            if (!_peers.TryGetValue(peer, out LoopbackTransport severed)) return;
+            Disconnect(peer);
+            foreach (ulong other in _peers.Keys) severed.Enqueue(new Delivery(other, null));
+            _severed.Add(peer, severed);
+        }
+
+        /// <summary>Plugs a severed peer's link back in; it reaches the others again and they it.</summary>
+        public void Restore(ulong peer)
+        {
+            if (!_severed.TryGetValue(peer, out LoopbackTransport severed)) throw new ArgumentException($"Peer {peer} was not severed.", nameof(peer));
+            _severed.Remove(peer);
+            _peers.Add(peer, severed);
+        }
+
+        private int PingBetween(ulong from, ulong to) => _peers.ContainsKey(from) && _peers.ContainsKey(to) && from != to ? PingMs : -1;
 
         private bool Deliver(ulong from, ulong to, byte[] payload)
         {
@@ -92,6 +118,8 @@ namespace Lazpoly.Net.Transport
                     else Received?.Invoke(delivery.From, delivery.Payload);
                 }
             }
+
+            public int PingMs(ulong peer) => _network.PingBetween(LocalPeer, peer);
 
             internal void Enqueue(Delivery delivery) => _inbox.Enqueue(delivery);
         }

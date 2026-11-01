@@ -15,6 +15,8 @@ namespace Lazpoly.Net.Messages
         Events = 5,
         Rejected = 6,
         SnapshotRequest = 7,
+        Presence = 8,
+        HostLeaving = 9,
     }
 
     public abstract class NetMessage
@@ -88,5 +90,41 @@ namespace Lazpoly.Net.Messages
     public sealed class SnapshotRequestMessage : NetMessage
     {
         public override MessageType Type => MessageType.SnapshotRequest;
+    }
+
+    /// <summary>How one seat is doing on the network, as the host sees it.</summary>
+    public readonly struct PlayerPresence
+    {
+        public PlayerPresence(int playerId, bool connected, bool aiPlaying, int pingMs)
+        {
+            PlayerId = playerId;
+            Connected = connected;
+            AiPlaying = aiPlaying;
+            PingMs = pingMs;
+        }
+
+        public int PlayerId { get; }
+
+        /// <summary>The player's machine is reachable right now.</summary>
+        public bool Connected { get; }
+
+        /// <summary>The computer moves for the player (dropped, never arrived, or idle).</summary>
+        public bool AiPlaying { get; }
+
+        /// <summary>Round-trip time between the host and the player's machine; -1 when unknown.</summary>
+        public int PingMs { get; }
+    }
+
+    /// <summary>Host → all clients, every couple of seconds: who is connected, who the computer plays, and their latency.</summary>
+    public sealed class PresenceMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.Presence;
+        public List<PlayerPresence> Players = new List<PlayerPresence>();
+    }
+
+    /// <summary>Host → all clients: the host is leaving on purpose, so the game ends now rather than after a grace time.</summary>
+    public sealed class HostLeavingMessage : NetMessage
+    {
+        public override MessageType Type => MessageType.HostLeaving;
     }
 }

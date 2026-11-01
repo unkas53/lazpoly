@@ -94,6 +94,29 @@ namespace Lazpoly.App.Tests
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
             yield return new SnapshotRequestMessage();
+            var presence = new PresenceMessage();
+            presence.Players.Add(new PlayerPresence(1, true, false, 0));
+            presence.Players.Add(new PlayerPresence(2, false, true, -1));
+            presence.Players.Add(new PlayerPresence(3, true, true, 48));
+            yield return presence;
+            yield return new HostLeavingMessage();
+        }
+
+        [Test]
+        public void PresenceKeepsEverySeatsDetails()
+        {
+            var sent = new PresenceMessage();
+            sent.Players.Add(new PlayerPresence(2, false, true, -1));
+            sent.Players.Add(new PlayerPresence(3, true, false, 120));
+
+            var received = (PresenceMessage)MessageCodec.Decode(MessageCodec.Encode(sent));
+
+            Assert.AreEqual(2, received.Players.Count);
+            Assert.AreEqual(2, received.Players[0].PlayerId);
+            Assert.IsFalse(received.Players[0].Connected);
+            Assert.IsTrue(received.Players[0].AiPlaying);
+            Assert.AreEqual(-1, received.Players[0].PingMs);
+            Assert.AreEqual(120, received.Players[1].PingMs);
         }
 
         [Test]

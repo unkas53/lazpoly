@@ -16,10 +16,12 @@ namespace Lazpoly.App.Session
     /// <summary>
     /// The authoritative side of an online game. Owns the engine, accepts commands only from the
     /// peer that owns the player, and broadcasts numbered events with the resulting state hash.
-    /// When a player's connection drops, the computer plays for them until they come back. When a
-    /// player lets their time run out (<see cref="TurnClock"/>), the host makes the most cautious move
-    /// for them; after <see cref="StrikesBeforeStandIn"/> timeouts in a row the computer takes their
-    /// seat until they act again.
+    /// When a player's connection drops, or they never arrive within <see cref="NoShowSeconds"/> of the
+    /// start, the computer plays for them until they come (back). When a player lets their time run out
+    /// (<see cref="TurnClock"/>), the host makes the most cautious move for them; after
+    /// <see cref="StrikesBeforeStandIn"/> timeouts in a row the computer takes their seat until they act
+    /// again. Every <see cref="PresenceSeconds"/> the host tells the clients who is connected, who the
+    /// computer plays and everyone's latency.
     /// </summary>
     public sealed class HostSession : IGameSession
     {
@@ -28,15 +30,27 @@ namespace Lazpoly.App.Session
         private readonly int _localPlayerId;
         private readonly Dictionary<ulong, int> _remotePlayers;
         private readonly HashSet<ulong> _connected = new HashSet<ulong>();
+        private readonly HashSet<ulong> _everConnected = new HashSet<ulong>();
         private readonly ulong _boardChecksum;
         private readonly AiRoster _standIns;
         private readonly TurnClock _clock;
         private readonly Dictionary<int, int> _strikes = new Dictionary<int, int>();
         private readonly HashSet<int> _idle = new HashSet<int>();
         private int _sequence;
+        private double _startedAt;
+        private bool _started;
+        private bool _noShowsSeated;
+        private double _nextPresenceAt;
+        private bool _left;
 
         /// <summary>Timeouts in a row after which the computer plays for an idle player.</summary>
         public const int StrikesBeforeStandIn = 2;
+
+        /// <summary>How long after the start a seat waits for its player before the computer takes it.</summary>
+        public const double NoShowSeconds = 30;
+
+        /// <summary>How often the host tells the clients about everyone's connection.</summary>
+        public const double PresenceSeconds = 2;
 
         /// <summary>Difficulty of the computer player that stands in for a dropped player.</summary>
         public const AiDifficulty StandInDifficulty = AiDifficulty.Normal;
@@ -97,6 +111,29 @@ namespace Lazpoly.App.Session
 
         public bool IsAiPlaying(int playerId) => _standIns.Controls(playerId);
 
+        public int PingMs(int playerId)
+        {
+            if (playerId == _localPlayerId) return 0;
+            foreach (ulong peer in _connected)
+            {
+                if (_remotePlayers[peer] == playerId) return _transport.PingMs(peer);
+            }
+
+            return -1;
+        }
+
+        /// <summary>Everyone's connection as the host sees it, in seat order.</summary>
+        public List<PlayerPresence> Presence()
+        {
+            var presence = new List<PlayerPresence>();
+            foreach (PlayerState player in _engine.State.Players)
+            {
+                presence.Add(new PlayerPresence(player.Id, IsConnected(player.Id), IsAiPlaying(player.Id), PingMs(player.Id)));
+            }
+
+            return presence;
+        }
+
         /// <summary>True while the computer plays for a player because they stopped answering (not because they dropped).</summary>
         public bool IsIdle(int playerId) => _idle.Contains(playerId);
 
@@ -119,10 +156,25 @@ namespace Lazpoly.App.Session
             return true;
         }
 
-        /// <summary>Sends the starting state to every remote player.</summary>
+        /// <summary>Sends the starting state to every remote player and starts the wait for latecomers.</summary>
         public void Start()
         {
+            _started = true;
+            _startedAt = _clock.Now;
+            _nextPresenceAt = _startedAt + PresenceSeconds;
             foreach (ulong peer in _remotePlayers.Keys) SendGameStart(peer);
+        }
+
+        /// <summary>
+        /// Tells every client the host is leaving on purpose, so they stop at once instead of waiting
+        /// out their grace time. Safe to call more than once.
+        /// </summary>
+        public void Leave()
+        {
+            if (_left) return;
+            _left = true;
+            byte[] payload = MessageCodec.Encode(new HostLeavingMessage());
+            foreach (ulong peer in _remotePlayers.Keys) _transport.Send(peer, payload);
         }
 
         public void Submit(GameCommand command)
@@ -148,7 +200,27 @@ namespace Lazpoly.App.Session
         public void Tick()
         {
             _transport.Poll();
+            SeatNoShows();
             CheckTimeouts();
+            if (_started && _clock.Now >= _nextPresenceAt) BroadcastPresence();
+        }
+
+        /// <summary>Once the grace time after the start is over, the computer takes every seat whose player never arrived.</summary>
+        private void SeatNoShows()
+        {
+            if (!_started || _noShowsSeated || _clock.Now - _startedAt < NoShowSeconds) return;
+            _noShowsSeated = true;
+            bool changed = false;
+            foreach (KeyValuePair<ulong, int> pair in _remotePlayers)
+            {
+                if (_everConnected.Contains(pair.Key) || _standIns.Controls(pair.Value)) continue;
+                PlayerState player = _engine.State.FindPlayer(pair.Value);
+                if (player == null || player.IsBankrupt) continue;
+                _standIns.Add(pair.Value, StandInDifficulty);
+                changed = true;
+            }
+
+            if (changed) BroadcastPresence();
         }
 
         /// <summary>Moves for every person the game has waited on for too long.</summary>
@@ -274,14 +346,26 @@ namespace Lazpoly.App.Session
                 PlayerState player = _engine.State.FindPlayer(playerId);
                 if (player != null && !player.IsBankrupt && !_standIns.Controls(playerId)) _standIns.Add(playerId, StandInDifficulty);
                 RemotePlayerConnectionChanged?.Invoke(playerId, false);
+                BroadcastPresence();
             }
         }
 
         private void MarkConnected(ulong peer, int playerId)
         {
             if (!_connected.Add(peer)) return;
+            _everConnected.Add(peer);
             _standIns.Remove(playerId);
             RemotePlayerConnectionChanged?.Invoke(playerId, true);
+            BroadcastPresence();
+        }
+
+        private void BroadcastPresence()
+        {
+            _nextPresenceAt = _clock.Now + PresenceSeconds;
+            var message = new PresenceMessage();
+            message.Players.AddRange(Presence());
+            byte[] payload = MessageCodec.Encode(message);
+            foreach (ulong peer in _connected) _transport.Send(peer, payload);
         }
 
         private void Broadcast(IReadOnlyList<GameEvent> events)

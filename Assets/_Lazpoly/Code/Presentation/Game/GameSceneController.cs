@@ -64,6 +64,12 @@ namespace Lazpoly.Presentation.Game
         private BoardData _data;
         private IGameSession _session;
         private HostSession _host;
+        private ClientSession _client;
+        private ILobbyService _lobby;
+        private ulong _roomId;
+        private ulong _hostPeer;
+        private int _nextRejoinAttempt = RejoinAfterAttempts;
+        private float _nextPresenceRefresh;
         private LocalGame _localGame;
         private float _nextAiMoveTime;
         private SettingsService _settings;
@@ -83,9 +89,22 @@ namespace Lazpoly.Presentation.Game
         private float _dayApplied = -1f;
         private int _screenshotPreset = -1;
 
+        /// <summary>Unanswered knocks on the host's door after which a guest leaves and re-enters the room, in case the room dropped it too.</summary>
+        private const int RejoinAfterAttempts = 2;
+
+        /// <summary>How often the side panel re-reads everyone's connection and latency, in seconds.</summary>
+        private const float PresenceRefreshSeconds = 2f;
+
         public IGameSession Session => _session;
 
         public bool IsOnline => _isOnline;
+
+        /// <summary>A guest whose link to the host broke and who is still trying to get back in.</summary>
+        public bool IsReconnecting => _client != null && _client.IsReconnecting;
+
+        public int ReconnectAttempts => _client?.ReconnectAttempts ?? 0;
+
+        public double SecondsUntilGiveUp => _client?.SecondsUntilGiveUp ?? 0;
 
         /// <summary>
         /// Seconds an online player has left before the host moves for them, counted from the last
@@ -209,9 +228,6 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Name of the group a square belongs to, from the board file (null if it has none).</summary>
         public string GroupNameOf(int squareIndex) => _data.GroupName(_session.Board[squareIndex].GroupId);
 
-        /// <summary>Whether a player's machine is reachable. Always true except for dropped players seen by the host.</summary>
-        public bool IsConnected(int playerId) => _host == null || _host.IsConnected(playerId);
-
         private void Start()
         {
             AudioPlayer.Ensure();
@@ -235,6 +251,18 @@ namespace Lazpoly.Presentation.Game
             _session.Ended += OnEnded;
             _session.Ready += BuildViews;
             if (_host != null) _host.RemotePlayerConnectionChanged += OnRemoteConnectionChanged;
+            if (_isOnline)
+            {
+                GameServices.Registry?.TryGet(out _lobby);
+                _roomId = _lobby != null ? _lobby.RoomId : 0UL;
+            }
+
+            if (_client != null)
+            {
+                _client.ConnectionChanged += OnConnectionChanged;
+                if (_lobby != null) _lobby.MemberLeft += OnLobbyMemberLeft;
+                LastRoomStore.Remember(_roomId);
+            }
 
             SetUpCamera();
             Probe = PerfProbe.Ensure(gameObject);
@@ -252,6 +280,12 @@ namespace Lazpoly.Presentation.Game
         {
             if (_session == null) return;
             _session.Tick();
+            if (_client != null) RejoinRoomIfNeeded();
+            if (_isOnline && Time.unscaledTime >= _nextPresenceRefresh)
+            {
+                _nextPresenceRefresh = Time.unscaledTime + PresenceRefreshSeconds;
+                Revision++; // Connection dots, latency and the reconnect countdown move without a game event.
+            }
 
             UpdateDayLight();
             if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
@@ -307,6 +341,9 @@ namespace Lazpoly.Presentation.Game
             _session.Ended -= OnEnded;
             _session.Ready -= BuildViews;
             if (_host != null) _host.RemotePlayerConnectionChanged -= OnRemoteConnectionChanged;
+            if (_client != null) _client.ConnectionChanged -= OnConnectionChanged;
+            if (_client != null && _lobby != null) _lobby.MemberLeft -= OnLobbyMemberLeft;
+            _host?.Leave(); // Closing the window counts as leaving; the guests should not wait out their grace time.
         }
 
         /// <summary>
@@ -315,7 +352,7 @@ namespace Lazpoly.Presentation.Game
         /// </summary>
         public bool IsAllowed(GameCommand command)
         {
-            if (_session == null || !_session.IsReady || EndReason.HasValue || !_session.CanControl(command.PlayerId)) return false;
+            if (_session == null || !_session.IsReady || EndReason.HasValue || IsReconnecting || !_session.CanControl(command.PlayerId)) return false;
             return GameRules.Validate(_session.Board, _session.Rules, _session.State, command) == RejectionReason.None;
         }
 
@@ -331,12 +368,74 @@ namespace Lazpoly.Presentation.Game
         {
             SaveLocalGame();
 
-            if (_isOnline && GameServices.Registry != null && GameServices.Registry.TryGet(out ILobbyService lobby))
+            if (_isOnline)
             {
-                lobby.Leave();
+                _host?.Leave();
+                LastRoomStore.Forget();
+                _lobby?.Leave();
             }
 
             SceneFader.Load("MainMenu");
+        }
+
+        /// <summary>
+        /// A guest whose host is gone can keep the game from the last state it saw: it becomes a local
+        /// game, the other seats go to the computer, and it is saved like any local game.
+        /// </summary>
+        public bool CanContinueOffline =>
+            EndReason == SessionEndReason.HostLeft && _client != null && _client.State != null && _client.State.Phase != GamePhase.GameOver;
+
+        public void ContinueAgainstComputers()
+        {
+            if (!CanContinueOffline) return;
+            GameState state = _client.State;
+            var dice = new Pcg32Random(NewSeed());
+            var ai = new Pcg32Random(NewSeed(), stream: 77UL);
+            var save = new SavedGame
+            {
+                BoardChecksum = _data.Checksum,
+                DiceState = dice.State,
+                DiceIncrement = dice.Increment,
+                AiState = ai.State,
+                AiIncrement = ai.Increment,
+                Table = _session.Rules.Table,
+                Snapshot = GameStateSnapshot.Capture(state),
+            };
+            foreach (PlayerState player in state.Players)
+            {
+                if (player.Id != _client.MyPlayerId && !player.IsBankrupt) save.AiPlayers.Add(player.Id, new SavedAiPlayer { Difficulty = HostSession.StandInDifficulty });
+            }
+
+            LastRoomStore.Forget();
+            _lobby?.Leave();
+            LocalGameSetup.SetResume(save);
+            SceneFader.Load("Game");
+        }
+
+        /// <summary>
+        /// After a couple of unanswered knocks the room may have dropped this machine as well (the host
+        /// only lets room members in), so it goes out and comes back in; then the next Hello gets through.
+        /// </summary>
+        private void RejoinRoomIfNeeded()
+        {
+            if (!_client.IsReconnecting || _lobby == null || !_lobby.IsAvailable || _roomId == 0) return;
+            if (_client.ReconnectAttempts < _nextRejoinAttempt) return;
+            _nextRejoinAttempt = _client.ReconnectAttempts + 2 * RejoinAfterAttempts;
+            _lobby.Leave();
+            _lobby.Join(_roomId);
+        }
+
+        private void OnConnectionChanged(bool connected)
+        {
+            if (connected) _nextRejoinAttempt = RejoinAfterAttempts;
+            AddLog(connected ? L("Ev sahibine yeniden bağlanıldı.") : L("Ev sahibiyle bağlantı koptu; yeniden bağlanılıyor..."));
+            Revision++;
+        }
+
+        /// <summary>The room says the host is out: the game cannot go on, whatever the link does.</summary>
+        private void OnLobbyMemberLeft(ulong peer)
+        {
+            if (_client != null && _lobby != null && peer == _hostPeer) _client.ReportHostGone();
         }
 
         /// <summary>
@@ -372,7 +471,12 @@ namespace Lazpoly.Presentation.Game
             }
 
             _isOnline = true;
-            if (!online.IsHost) return new ClientSession(online.Transport, online.HostPeer, _data.Board, _data.Rules, _data.Checksum);
+            if (!online.IsHost)
+            {
+                _hostPeer = online.HostPeer;
+                _client = new ClientSession(online.Transport, online.HostPeer, _data.Board, _data.Rules, _data.Checksum);
+                return _client;
+            }
 
             OnlineSeatPlan plan = online.HostPlan;
             var engine = new GameEngine(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), plan.Seats, NewRandom());
@@ -506,6 +610,7 @@ namespace Lazpoly.Presentation.Game
             _lastProgressTime = Time.unscaledTime;
             Revision++;
             SaveLocalGame();
+            if (_client != null && _client.State.Phase == GamePhase.GameOver) LastRoomStore.Forget();
             UnlockAchievements(events);
             ShowPresence();
             if (_board == null) return;
@@ -586,7 +691,9 @@ namespace Lazpoly.Presentation.Game
         private void OnEnded(SessionEndReason reason)
         {
             EndReason = reason;
+            LastRoomStore.Forget();
             AddLog(EndReasonText(reason));
+            Revision++;
         }
 
         private void OnRemoteConnectionChanged(int playerId, bool connected)
@@ -599,7 +706,7 @@ namespace Lazpoly.Presentation.Game
         {
             switch (reason)
             {
-                case SessionEndReason.HostLeft: return L("Ev sahibi oyundan ayrıldı; oyun burada bitti. Ana menüden yeni bir oda kurabilir ya da arkadaşının odasına katılabilirsin.");
+                case SessionEndReason.HostLeft: return L("Ev sahibi oyundan ayrıldı; çevrim içi oyun burada bitti. Son görüntüden bilgisayarlara karşı sürdürebilir ya da ana menüye dönebilirsin.");
                 case SessionEndReason.NotInThisGame: return L("Bu oyunda yerin yok: oyun sen gelmeden başlamış. Ana menüye dönüp ev sahibinden yeni bir oda kurmasını iste.");
                 case SessionEndReason.VersionMismatch: return L("Oyun sürümün ev sahibininkiyle aynı değil. İkiniz de Steam'den son güncellemeyi alıp yeniden deneyin.");
                 case SessionEndReason.BoardMismatch: return L("Tahta verin ev sahibininkiyle aynı değil. Oyunu Steam'de doğrulayıp (yerel dosyaları doğrula) yeniden dene.");

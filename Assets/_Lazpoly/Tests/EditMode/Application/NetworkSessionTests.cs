@@ -402,24 +402,187 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void ClientsStopWhenTheHostLeaves()
+        public void ClientsKeepKnockingAfterTheHostDropsAndGiveUpAfterTheGraceTime()
         {
             NetTable table = NetTable.Create(3);
             table.StartAll();
             var ended = new List<SessionEndReason>();
             var rejections = new List<RejectionReason>();
+            var links = new List<bool>();
             foreach (ClientSession client in table.Clients.Values)
             {
                 client.Ended += ended.Add;
                 client.CommandRejected += rejections.Add;
             }
 
+            table.Clients[2].ConnectionChanged += links.Add;
+
             table.Network.Disconnect(NetTable.HostPeer);
             foreach (ClientSession client in table.Clients.Values) client.Tick();
             table.Clients[2].Submit(new RollDiceCommand(2));
 
-            CollectionAssert.AreEqual(new[] { SessionEndReason.HostLeft, SessionEndReason.HostLeft }, ended);
+            Assert.IsEmpty(ended, "The board should stay up while the client tries to get back.");
+            Assert.IsTrue(table.Clients[2].IsReconnecting);
+            Assert.IsFalse(table.Clients[2].IsConnected(2));
+            Assert.IsTrue(table.Clients[2].IsReady, "The last known state stays on screen.");
+            CollectionAssert.AreEqual(new[] { false }, links);
             CollectionAssert.AreEqual(new[] { RejectionReason.NotConnected }, rejections);
+
+            for (int i = 0; i < 2; i++)
+            {
+                table.Now += ClientSession.RetrySeconds + 0.1;
+                foreach (ClientSession client in table.Clients.Values) client.Tick();
+            }
+
+            Assert.AreEqual(2, table.Clients[2].ReconnectAttempts, "One knock per retry interval.");
+            Assert.That(table.Clients[2].SecondsUntilGiveUp, Is.LessThan(ClientSession.GiveUpSeconds));
+
+            table.Now += ClientSession.GiveUpSeconds;
+            foreach (ClientSession client in table.Clients.Values) client.Tick();
+            CollectionAssert.AreEqual(new[] { SessionEndReason.HostLeft, SessionEndReason.HostLeft }, ended);
+            Assert.IsFalse(table.Clients[2].IsReconnecting);
+        }
+
+        [Test]
+        public void ClientsStopAtOnceWhenTheHostLeavesOnPurposeOrTheRoomSaysSo()
+        {
+            NetTable table = NetTable.Create(3);
+            table.StartAll();
+            var ended = new List<SessionEndReason>();
+            foreach (ClientSession client in table.Clients.Values) client.Ended += ended.Add;
+
+            table.Host.Leave();
+            table.Host.Leave();
+            table.Pump();
+            CollectionAssert.AreEqual(new[] { SessionEndReason.HostLeft, SessionEndReason.HostLeft }, ended);
+
+            NetTable other = NetTable.Create(2);
+            other.StartAll();
+            var otherEnded = new List<SessionEndReason>();
+            other.Clients[2].Ended += otherEnded.Add;
+            other.Clients[2].ReportHostGone();
+            other.Clients[2].ReportHostGone();
+            CollectionAssert.AreEqual(new[] { SessionEndReason.HostLeft }, otherEnded);
+        }
+
+        [Test]
+        public void AClientWhoseLinkBreaksGetsItsSeatBackWithTheCurrentState()
+        {
+            NetTable table = NetTable.Create(3, seed: 5UL);
+            table.StartAll();
+            for (int i = 0; i < 6 && table.Step(); i++)
+            {
+            }
+
+            ClientSession guest = table.Clients[2];
+            int resets = 0;
+            var links = new List<bool>();
+            guest.StateReset += () => resets++;
+            guest.ConnectionChanged += links.Add;
+
+            ulong peer = NetTable.PeerOf(2);
+            table.Network.Sever(peer);
+            table.Pump();
+            Assert.IsTrue(guest.IsReconnecting);
+            Assert.IsTrue(table.Host.IsAiPlaying(2), "The computer holds the seat meanwhile.");
+            Assert.IsFalse(table.Host.IsConnected(2));
+
+            // The game goes on without player 2's machine; its knocks go nowhere yet.
+            table.Now += ClientSession.RetrySeconds + 0.1;
+            table.Pump();
+            Assert.AreEqual(1, guest.ReconnectAttempts);
+            for (int i = 0; i < 4; i++)
+            {
+                if (!table.Host.StepAi())
+                {
+                    GameCommand command = table.NextCommand();
+                    if (command.PlayerId == 2) break;
+                    table.SessionOf(command.PlayerId).Submit(command);
+                }
+
+                table.Host.Tick();
+                table.Clients[3].Tick();
+            }
+
+            table.Network.Restore(peer);
+            table.Now += ClientSession.RetrySeconds + 0.1;
+            table.Pump();
+
+            Assert.IsFalse(guest.IsReconnecting);
+            Assert.AreEqual(0, guest.ReconnectAttempts);
+            Assert.AreEqual(2, guest.MyPlayerId);
+            Assert.IsTrue(table.Host.IsConnected(2));
+            Assert.IsFalse(table.Host.IsAiPlaying(2), "The player is back in charge.");
+            Assert.AreEqual(1, resets, "The host's answer replaces the stale state once.");
+            CollectionAssert.AreEqual(new[] { false, true }, links);
+            AssertAllInStep(table);
+
+            for (int i = 0; i < 10 && table.Step(); i++)
+            {
+            }
+
+            AssertAllInStep(table);
+        }
+
+        [Test]
+        public void ASeatWhosePlayerNeverArrivesGoesToTheComputerAfterTheGraceTime()
+        {
+            NetTable table = NetTable.Create(3);
+            table.Host.Start();
+            table.Clients[2].Start();
+            table.Pump();
+            Assert.IsTrue(table.Host.IsConnected(2));
+            Assert.IsFalse(table.Host.IsConnected(3));
+
+            table.Now += HostSession.NoShowSeconds - 1;
+            table.Pump();
+            Assert.IsFalse(table.Host.IsAiPlaying(3), "The seat is still held open.");
+
+            table.Now += 2;
+            table.Pump();
+            Assert.IsTrue(table.Host.IsAiPlaying(3));
+            Assert.IsTrue(table.Clients[2].IsAiPlaying(3), "The other guests hear who the computer plays.");
+            Assert.IsFalse(table.Clients[2].IsConnected(3));
+
+            // The latecomer still gets the seat the moment they arrive.
+            table.Clients[3].Start();
+            table.Pump();
+            Assert.IsFalse(table.Host.IsAiPlaying(3));
+            Assert.IsTrue(table.Host.IsConnected(3));
+            Assert.IsTrue(table.Clients[2].IsConnected(3));
+            AssertAllInStep(table);
+        }
+
+        [Test]
+        public void TheHostTellsEveryoneWhoIsConnectedAndTheirLatency()
+        {
+            NetTable table = NetTable.Create(3);
+            table.Network.PingMs = 42;
+            table.StartAll();
+
+            ClientSession guest = table.Clients[2];
+            Assert.IsTrue(guest.IsConnected(1));
+            Assert.IsTrue(guest.IsConnected(3));
+            Assert.AreEqual(0, guest.PingMs(1), "The host measures nothing to itself.");
+            Assert.AreEqual(42, guest.PingMs(3));
+            Assert.AreEqual(42, guest.PingMs(2), "A guest reads its own latency from its transport.");
+            Assert.AreEqual(0, table.Host.PingMs(1));
+            Assert.AreEqual(42, table.Host.PingMs(2));
+
+            table.Network.Disconnect(NetTable.PeerOf(3));
+            table.Pump();
+            Assert.IsFalse(guest.IsConnected(3));
+            Assert.IsTrue(guest.IsAiPlaying(3));
+            Assert.AreEqual(-1, guest.PingMs(3));
+            Assert.AreEqual(-1, table.Host.PingMs(3));
+
+            // Presence also goes out on its own, every couple of seconds, so latency stays fresh.
+            table.Network.PingMs = 7;
+            table.Now += HostSession.PresenceSeconds + 0.1;
+            table.Pump();
+            Assert.AreEqual(0, guest.PingMs(1));
+            Assert.AreEqual(7, table.Host.PingMs(2));
+            Assert.AreEqual(7, guest.PingMs(2));
         }
 
         [Test]
