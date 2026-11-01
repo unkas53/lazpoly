@@ -51,6 +51,9 @@ namespace Lazpoly.Presentation.Game
         private GameObject _squareCardPanel;
         private int _hoveredSquare = NoSquare;
         private int _pinnedSquare = NoSquare;
+        private Text _perfLabel;
+        private RectTransform _perfRect;
+        private float _perfRefreshAt;
         private int _highlightedFor = NoSquare;
         private Text _banner;
         private CanvasGroup _bannerGroup;
@@ -169,6 +172,13 @@ namespace Lazpoly.Presentation.Game
             _squareCardPanel = card.gameObject;
             _squareCard = new UiView(new UiBuilder(card), RenderSquareCard);
             _squareCardPanel.SetActive(false);
+
+            // Frame rate and memory behind F3, in the strip above the turn banner.
+            RectTransform perf = UiRoot.Rect(_canvas.transform, "Perf Overlay", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(-200f, -44f), new Vector2(200f, -14f));
+            _perfLabel = new UiBuilder(perf).Label("", UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
+            perf.gameObject.SetActive(false);
+            _perfRect = perf;
 
             RectTransform banner = UiRoot.Rect(_canvas.transform, "Turn Banner", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-320f, -150f), new Vector2(320f, -60f));
@@ -415,6 +425,7 @@ namespace Lazpoly.Presentation.Game
 
             UpdateMoney();
             UpdatePointer();
+            UpdatePerfOverlay();
             UpdateSquareCard(state, revision);
             UpdateBanner(state);
             UpdateCardPopup();
@@ -465,6 +476,23 @@ namespace Lazpoly.Presentation.Game
         {
             label.text = money.Shown.ToString();
             label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Accent;
+        }
+
+        /// <summary>Whether the frame rate and memory strip is shown (F3).</summary>
+        public bool PerfOverlayShown => _perfRect != null && _perfRect.gameObject.activeSelf;
+
+        public void TogglePerfOverlay()
+        {
+            if (_perfRect == null) return;
+            _perfRect.gameObject.SetActive(!_perfRect.gameObject.activeSelf);
+            _perfRefreshAt = 0f;
+        }
+
+        private void UpdatePerfOverlay()
+        {
+            if (!PerfOverlayShown || Time.unscaledTime < _perfRefreshAt) return;
+            _perfRefreshAt = Time.unscaledTime + 0.5f;
+            _perfLabel.text = _controller.Probe != null ? _controller.Probe.OverlayText() : "";
         }
 
         /// <summary>The square under the mouse (not over the interface); a left click pins or unpins its card.</summary>
@@ -1131,6 +1159,7 @@ namespace Lazpoly.Presentation.Game
             Line(keys, "H", L("nasıl oynanır"));
             Line(keys, "C", L("kamera açısı: masa başı / kuş bakışı"));
             Line(keys, "Home", L("görünümü sıfırla"));
+            Line(keys, "F3 / F11 / F12", L("kare hızı, ekran görüntüsü açısı, ekran görüntüsü"));
             Line(keys, "Esc", L("menü, pencereyi kapat"));
 
             ui.Space(4f);
@@ -1221,6 +1250,15 @@ namespace Lazpoly.Presentation.Game
                     break;
                 case HotkeyAction.CameraView:
                     _controller.ToggleCameraView();
+                    break;
+                case HotkeyAction.PerfOverlay:
+                    TogglePerfOverlay();
+                    break;
+                case HotkeyAction.ScreenshotPreset:
+                    _controller.NextScreenshotPreset();
+                    break;
+                case HotkeyAction.Screenshot:
+                    _controller.TakeScreenshot();
                     break;
                 case HotkeyAction.Close:
                     CloseTopWindow(state);

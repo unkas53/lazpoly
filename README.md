@@ -444,6 +444,26 @@ Plandaki "Görsel cila" bölümünün kalan sahne maddeleri.
 - Testler: `SceneryTests` (gün akışı, akşam ışığı, dalga sınırı ve deniz yüzü, kayık, kamera kayma sınırı, zar
   yönü), `HotkeysTests` (C), `GameSettingsTests` (gün ışığı ayarı).
 
+## Faz 10b-3: kalite ve performans
+
+10b'nin son adımı; plandaki "Post-processing", "Ekran görüntüleri" ve "Performans ve kalite kapıları" maddeleri.
+
+- **Post-processing:** bloom eşiği 1.25, şiddeti 0.18 (yazılar artık parlamıyor); vinyet 0.18. Orta kalitede bloom
+  kapalı, renk ayarı ve vinyet açık; Düşük'te post-processing tamamen kapalı. Gölgeler her kalitede yumuşak; fark gölge
+  haritasının boyutunda (4096 / 2048 / 1024). Tek gölge kademesi ve 40 birim gölge mesafesi (`RoomDressing.ApplyQuality`).
+- **Performans ölçümü:** `Lazpoly.exe -perf` ana menüden doğrudan 8 bilgisayarlı bir masa açar, 3 sn ısınmadan sonra
+  15 sn ölçer, raporu exe'nin yanına `lazpoly-perf.txt` olarak yazar ve kapanır (`PerfRun`, `PerfProbe`, `PerfReport`).
+  Rapor kapıları plandaki gibi: ortalama ≥ 60 FPS (Düşük'te ≥ 30), en yavaş %1 bilgi olarak, bellek < 600 MB,
+  menü → masa < 3 sn (`SceneFader.LoadRequestedAt` ile ölçülür, log satırına da yazılır). Oyun içinde F3 kare hızı ve
+  belleği gösterir. Ayrıntı ve sonuçlar: `Reports/Perf/README.md`.
+- **Ekran görüntüleri:** F11 beş mağaza açısı arasında gezer (`ScreenshotPresets`: masa başı, kuş bakışı, yakın köşe,
+  ada ve deniz, karşı kıyı), F12 `persistentDataPath/Screenshots` altına PNG kaydeder. Hangi açının neyi göstereceği
+  `Tools/Art/screenshots.md` içinde.
+- Plandaki diğer performans maddeleri: koddan üretilen ağlar zaten `MeshFactory` önbelleğinde tek kez üretiliyor; arayüz
+  `UiView` anahtarıyla yalnızca durum değişince yeniden çiziliyor. Build boyutu 38 MB (< 60 MB kapısı).
+- Testler: `PerfTests` (FPS hesabı, kapılar, rapor metni, -perf bayrağı, ön ayarlar), `RenderingSetupTests` (kalite
+  eşlemesi), `HotkeysTests` (F3/F11/F12).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

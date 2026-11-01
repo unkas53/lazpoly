@@ -23,6 +23,12 @@ namespace Lazpoly.Presentation.Game
         PauseMenu,
         /// <summary>Switch between the table view and the overhead view (C).</summary>
         CameraView,
+        /// <summary>Show or hide the frame rate and memory overlay (F3).</summary>
+        PerfOverlay,
+        /// <summary>Step to the next store-screenshot camera set-up (F11).</summary>
+        ScreenshotPreset,
+        /// <summary>Save a screenshot (F12).</summary>
+        Screenshot,
     }
 
     /// <summary>What is on the game screen when a key is pressed; <see cref="Hotkeys.Resolve"/> reads it.</summary>
@@ -63,11 +69,17 @@ namespace Lazpoly.Presentation.Game
         public static readonly KeyCode[] Keys =
         {
             KeyCode.Escape, KeyCode.Space, KeyCode.Return, KeyCode.KeypadEnter, KeyCode.B, KeyCode.T, KeyCode.H, KeyCode.C,
+            KeyCode.F3, KeyCode.F11, KeyCode.F12,
         };
 
         public static HotkeyAction Resolve(KeyCode key, in HotkeyContext context)
         {
             if (context.Typing) return HotkeyAction.None;
+
+            // The function keys look at the picture, not the game, so windows do not block them.
+            if (key == KeyCode.F3) return HotkeyAction.PerfOverlay;
+            if (key == KeyCode.F11) return HotkeyAction.ScreenshotPreset;
+            if (key == KeyCode.F12) return HotkeyAction.Screenshot;
 
             if (key == KeyCode.Escape)
             {

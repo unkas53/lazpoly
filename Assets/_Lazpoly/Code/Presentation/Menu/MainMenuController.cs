@@ -12,6 +12,7 @@ using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Effects;
+using Lazpoly.Presentation.Perf;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.Tabletop;
@@ -113,6 +114,14 @@ namespace Lazpoly.Presentation.Menu
 
         private void Start()
         {
+            if (PerfRun.Requested && !PerfRun.Started)
+            {
+                // Started with -perf: straight to a full table of computers; the game scene measures and quits.
+                PerfRun.MarkStarted();
+                LocalGameSetup.SetSeats(PerfRun.Seats(), PerfRun.Ai());
+                SceneFader.Load("Game");
+            }
+
             MenuBackdrop.Create(transform, _boardData);
             Canvas canvas = UiRoot.CreateCanvas(transform, "Main Menu UI", 0);
             UiRoot.Background(UiRoot.Stretch(canvas.transform, "Backdrop"), UiTheme.Veil, rounded: false);

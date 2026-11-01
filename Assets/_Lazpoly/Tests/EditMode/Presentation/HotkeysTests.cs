@@ -29,6 +29,10 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(HotkeyAction.HowToPlay, Hotkeys.Resolve(KeyCode.H, watching), "Help is always there.");
             Assert.AreEqual(HotkeyAction.CameraView, Hotkeys.Resolve(KeyCode.C, watching), "The view is anyone's to change.");
             Assert.AreEqual(HotkeyAction.None, Hotkeys.Resolve(KeyCode.C, new HotkeyContext { PauseOpen = true }), "Not behind a window.");
+            Assert.AreEqual(HotkeyAction.PerfOverlay, Hotkeys.Resolve(KeyCode.F3, new HotkeyContext { PauseOpen = true }), "The picture keys work behind windows.");
+            Assert.AreEqual(HotkeyAction.Screenshot, Hotkeys.Resolve(KeyCode.F12, new HotkeyContext { BlockingOpen = true }));
+            Assert.AreEqual(HotkeyAction.ScreenshotPreset, Hotkeys.Resolve(KeyCode.F11, watching));
+            Assert.AreEqual(HotkeyAction.None, Hotkeys.Resolve(KeyCode.F12, new HotkeyContext { Typing = true }), "Never while typing.");
             Assert.AreEqual(HotkeyAction.PauseMenu, Hotkeys.Resolve(KeyCode.Escape, watching));
         }
 

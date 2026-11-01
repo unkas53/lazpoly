@@ -22,10 +22,14 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>True while a scene change is under way; a second request in that time is ignored.</summary>
         public static bool IsLoading => _instance != null && _instance._loading;
 
+        /// <summary>Real time (seconds since start-up) the last scene change was asked for; -1 before the first. The game scene measures its load time from it.</summary>
+        public static float LoadRequestedAt { get; private set; } = -1f;
+
         /// <summary>Fades out, loads <paramref name="sceneName"/> and fades the new scene in.</summary>
         public static void Load(string sceneName)
         {
             if (IsLoading) return;
+            LoadRequestedAt = Time.realtimeSinceStartup;
             Ensure().StartCoroutine(Ensure().Run(sceneName));
         }
 
@@ -71,6 +75,10 @@ namespace Lazpoly.Presentation.Effects
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() => _instance = null;
+        private static void ResetStatics()
+        {
+            _instance = null;
+            LoadRequestedAt = -1f;
+        }
     }
 }

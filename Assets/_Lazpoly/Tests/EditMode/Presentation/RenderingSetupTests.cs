@@ -29,6 +29,22 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void EveryQualityKeepsSoftShadowsAndOnlyHighBlooms()
+        {
+            foreach (Lazpoly.Infra.Settings.GraphicsQuality quality in System.Enum.GetValues(typeof(Lazpoly.Infra.Settings.GraphicsQuality)))
+            {
+                Assert.AreEqual(LightShadows.Soft, RoomDressing.ShadowsFor(quality), $"{quality} loses its soft shadows");
+                Assert.GreaterOrEqual(RoomDressing.ShadowResolutionFor(quality), 1024);
+            }
+
+            Assert.Less(RoomDressing.ShadowResolutionFor(Lazpoly.Infra.Settings.GraphicsQuality.Low), RoomDressing.ShadowResolutionFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            Assert.IsFalse(RoomDressing.PostProcessingOn(Lazpoly.Infra.Settings.GraphicsQuality.Low));
+            Assert.IsTrue(RoomDressing.PostProcessingOn(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
+            Assert.IsFalse(RoomDressing.BloomOn(Lazpoly.Infra.Settings.GraphicsQuality.Medium), "Medium runs the grading without bloom");
+            Assert.IsTrue(RoomDressing.BloomOn(Lazpoly.Infra.Settings.GraphicsQuality.High));
+        }
+
+        [Test]
         public void ModelMaterialIsInResourcesWithASupportedShader()
         {
             var material = Resources.Load<Material>(ModelParts.MaterialResource);

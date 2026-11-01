@@ -44,6 +44,9 @@ namespace Lazpoly.Presentation.Tabletop
             return settings?.Current.Quality ?? GraphicsQuality.High;
         }
 
+        /// <summary>The whole table fits well inside this distance from the camera, so shadows stop there and stay sharp.</summary>
+        public const float ShadowDistance = 40f;
+
         /// <summary>Re-applies a quality level to the scene that is up now: the main camera, the sun and the pipeline.</summary>
         public static void ApplyQuality(GraphicsQuality quality)
         {
@@ -55,12 +58,25 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 pipeline.msaaSampleCount = quality == GraphicsQuality.High ? 4 : quality == GraphicsQuality.Medium ? 2 : 1;
                 pipeline.renderScale = quality == GraphicsQuality.Low ? 0.85f : 1f;
+                // One shadow map over the table is enough; cascades would spend the budget on a distance nobody sees.
+                pipeline.shadowCascadeCount = 1;
+                pipeline.shadowDistance = ShadowDistance;
+                pipeline.mainLightShadowmapResolution = ShadowResolutionFor(quality);
             }
         }
 
-        /// <summary>Soft shadows on High, hard on Medium, none on Low.</summary>
-        public static LightShadows ShadowsFor(GraphicsQuality quality) =>
-            quality == GraphicsQuality.High ? LightShadows.Soft : quality == GraphicsQuality.Medium ? LightShadows.Hard : LightShadows.None;
+        /// <summary>Shadows stay soft on every level: hard-edged shadows under the pieces look like a mistake. Low pays with a smaller map.</summary>
+        public static LightShadows ShadowsFor(GraphicsQuality quality) => LightShadows.Soft;
+
+        /// <summary>Shadow map size per quality; the single cascade keeps even the small one sharp over the board.</summary>
+        public static int ShadowResolutionFor(GraphicsQuality quality) =>
+            quality == GraphicsQuality.High ? 4096 : quality == GraphicsQuality.Medium ? 2048 : 1024;
+
+        /// <summary>Post-processing runs on Medium and High; Low draws the plain picture.</summary>
+        public static bool PostProcessingOn(GraphicsQuality quality) => quality != GraphicsQuality.Low;
+
+        /// <summary>Bloom is the costliest effect and the one that made the labels glow, so only High keeps it.</summary>
+        public static bool BloomOn(GraphicsQuality quality) => quality == GraphicsQuality.High;
 
         /// <summary>Warm sun from the front left, a cool fill from behind, shadows as the quality allows, a dim warm ambient.</summary>
         public static void LightScene(GraphicsQuality quality)
@@ -116,7 +132,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public static void DressCamera(Camera camera, GraphicsQuality quality)
         {
-            bool postProcessing = quality != GraphicsQuality.Low;
+            bool postProcessing = PostProcessingOn(quality);
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = BackgroundColor;
             camera.allowHDR = postProcessing;
@@ -136,6 +152,7 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             volume.enabled = postProcessing;
+            if (volume.profile != null && volume.profile.TryGet(out Bloom bloom)) bloom.active = BloomOn(quality);
         }
 
         private static VolumeProfile CreateProfile()
@@ -143,10 +160,11 @@ namespace Lazpoly.Presentation.Tabletop
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
             profile.name = "Lazpoly Look";
 
+            // A gentle bloom on real highlights only; the earlier setting made the white labels glow.
             var bloom = profile.Add<Bloom>();
-            bloom.threshold.Override(1.05f);
-            bloom.intensity.Override(0.35f);
-            bloom.scatter.Override(0.6f);
+            bloom.threshold.Override(1.25f);
+            bloom.intensity.Override(0.18f);
+            bloom.scatter.Override(0.55f);
 
             var grading = profile.Add<ColorAdjustments>();
             grading.postExposure.Override(0.15f);
@@ -158,8 +176,8 @@ namespace Lazpoly.Presentation.Tabletop
             tonemapping.mode.Override(TonemappingMode.ACES);
 
             var vignette = profile.Add<Vignette>();
-            vignette.intensity.Override(0.28f);
-            vignette.smoothness.Override(0.45f);
+            vignette.intensity.Override(0.18f);
+            vignette.smoothness.Override(0.5f);
             vignette.color.Override(new Color(0.02f, 0.03f, 0.05f));
             return profile;
         }

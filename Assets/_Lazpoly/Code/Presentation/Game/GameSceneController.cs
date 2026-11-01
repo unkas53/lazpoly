@@ -20,6 +20,7 @@ using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Dice;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Pawns;
+using Lazpoly.Presentation.Perf;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.Texts;
@@ -80,6 +81,7 @@ namespace Lazpoly.Presentation.Game
         private GameHud _hud;
         private float _dayShown = -1f;
         private float _dayApplied = -1f;
+        private int _screenshotPreset = -1;
 
         public IGameSession Session => _session;
 
@@ -113,6 +115,36 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>How far the shown day has gone, 0 (noon) to 1 (dusk); -1 before the board is up.</summary>
         public float DayProgress => _dayShown;
+
+        /// <summary>Frame rate and memory watcher; the HUD's F3 strip reads it.</summary>
+        public PerfProbe Probe { get; private set; }
+
+        /// <summary>Seconds from the menu's button to the table on screen; -1 when the scene was not entered from the menu.</summary>
+        public float LoadSeconds { get; private set; } = -1f;
+
+        /// <summary>Frames the next store screenshot: steps through <see cref="ScreenshotPresets"/> (F11).</summary>
+        public void NextScreenshotPreset()
+        {
+            if (_board == null || CameraRig == null) return;
+            _screenshotPreset = (_screenshotPreset + 1) % ScreenshotPresets.All.Length;
+            ScreenshotPreset preset = ScreenshotPresets.At(_screenshotPreset);
+            if (View != preset.View)
+            {
+                View = preset.View;
+                FrameBoard(_framedReserve);
+            }
+
+            CameraRig.SetView(preset.Yaw, preset.Zoom);
+            AddLog(F($"Ekran görüntüsü açısı: {L(preset.Name)}"));
+        }
+
+        /// <summary>Saves a screenshot to the player's data folder (F12) and notes it in the log.</summary>
+        public void TakeScreenshot()
+        {
+            string path = Screenshots.Capture();
+            Debug.Log($"[Lazpoly] Screenshot: {path}");
+            AddLog(L("Ekran görüntüsü kaydedildi (Screenshots klasörü)."));
+        }
 
         /// <summary>The board on the table, once the game state is known.</summary>
         public BoardView Board => _board;
@@ -205,6 +237,7 @@ namespace Lazpoly.Presentation.Game
             if (_host != null) _host.RemotePlayerConnectionChanged += OnRemoteConnectionChanged;
 
             SetUpCamera();
+            Probe = PerfProbe.Ensure(gameObject);
             _hud = gameObject.AddComponent<GameHud>();
             _hud.Bind(this);
 
@@ -416,6 +449,26 @@ namespace Lazpoly.Presentation.Game
             SyncViewsToState();
             AddLog(F($"Sıra: {state.CurrentPlayer.Name}"), LogTone.Neutral, state.CurrentPlayer.Id, turnStart: true);
             ShowPresence();
+            NoteLoadTime(state.Players.Count);
+        }
+
+        /// <summary>Records how long the table took from the menu's button, and starts the -perf measurement when asked for.</summary>
+        private void NoteLoadTime(int players)
+        {
+            if (SceneFader.LoadRequestedAt >= 0f) LoadSeconds = Time.realtimeSinceStartup - SceneFader.LoadRequestedAt;
+            if (LoadSeconds >= 0f) Debug.Log($"[Lazpoly] Table ready {LoadSeconds * 1000f:0} ms after the menu button.");
+            if (Probe == null) return;
+            Probe.LoadSeconds = LoadSeconds;
+            Probe.Players = players;
+            if (PerfRun.Requested && !_isOnline && !Probe.IsRunning)
+            {
+                Probe.StartRun(PerfRun.WarmUpSeconds, PerfRun.Seconds, sample =>
+                {
+                    string path = PerfProbe.WriteReport(sample);
+                    Debug.Log($"[Lazpoly] Perf report written to {path}");
+                    Application.Quit();
+                });
+            }
         }
 
         /// <summary>Puts every pawn and owner marker where the state says, without animation.</summary>

@@ -68,6 +68,13 @@ namespace Lazpoly.Presentation.Tabletop
             _zoom = 1f;
         }
 
+        /// <summary>Turns and zooms the view to given values (the screenshot presets use it).</summary>
+        public void SetView(float yaw, float zoom)
+        {
+            _yaw = yaw;
+            _zoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
+        }
+
         /// <summary>Slides the view part of the way towards a point on the board (a pinned square); null lets it go.</summary>
         public void Peek(Vector3? worldPoint) => _peek = worldPoint;
 
