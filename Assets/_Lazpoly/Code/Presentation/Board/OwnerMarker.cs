@@ -15,7 +15,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float TentLength = 0.30f;
 
         /// <summary>Where the tent's centre sits, inward from the square's centre, in tile depths: on the building row, behind the pawns.</summary>
-        public const float TentOffset = 0.40f;
+        public const float TentOffset = 0.38f;
 
         private GameObject _pennant;
 
