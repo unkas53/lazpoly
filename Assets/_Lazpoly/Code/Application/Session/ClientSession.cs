@@ -294,6 +294,7 @@ namespace Lazpoly.App.Session
         {
             if (_ended) return;
             _ended = true;
+            IsReconnecting = false; // The knocking is over, one way or the other.
             Ended?.Invoke(reason);
         }
 

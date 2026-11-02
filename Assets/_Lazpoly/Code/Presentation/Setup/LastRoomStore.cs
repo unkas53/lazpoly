@@ -29,7 +29,7 @@ namespace Lazpoly.Presentation.Setup
 
         public static void Forget()
         {
-            if (!Storage.HasKey(Key)) return;
+            if (!Storage.HasKey(Key) || Storage.GetString(Key).Length == 0) return;
             Storage.SetString(Key, string.Empty);
             Storage.Save();
         }

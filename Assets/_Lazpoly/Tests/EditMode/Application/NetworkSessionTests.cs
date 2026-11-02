@@ -706,7 +706,8 @@ namespace Lazpoly.App.Tests
             table.Pump();
             Assert.IsTrue(table.Host.IsAiPlaying(2), "The computer takes over the dropped player.");
             Assert.IsFalse(table.Host.IsAiPlaying(3));
-            Assert.IsFalse(table.Clients[3].IsAiPlaying(2), "Clients do not run the AI.");
+            Assert.IsTrue(table.Clients[3].IsAiPlaying(2), "The other guests hear from the host who the computer plays.");
+            Assert.IsFalse(table.Clients[3].StepAi(), "Clients do not run the AI.");
 
             // Players 1 and 3 play from their machines; the host's AI plays player 2's turns.
             for (int i = 0; i < 2000 && turnsStarted.FindAll(id => id == 2).Count < 3; i++)
