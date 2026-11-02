@@ -62,7 +62,7 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color ScoreColor = new Color(0.14f, 0.18f, 0.15f);
         private static readonly Color PotTextColor = new Color(0.20f, 0.26f, 0.20f);
         private static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
-        private static readonly Color PriceColor = new Color(0.28f, 0.25f, 0.22f);
+        private static readonly Color PriceColor = new Color(0.21f, 0.19f, 0.17f);
 
         // Where things sit across a square, from its inner edge (-0.5) to its outer edge (+0.5), in tile depths:
         // buildings and the tent along the inner edge, pawns inside them, then the name, the price and the group band.

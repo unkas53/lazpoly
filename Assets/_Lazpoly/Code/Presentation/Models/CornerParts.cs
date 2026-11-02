@@ -46,8 +46,9 @@ namespace Lazpoly.Presentation.Models
         public static GameObject Pier(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
-            Part(root, "Deck", MeshFactory.RoundedBox(Vector3.one, 0.03f, 2), Timber, new Vector3(0f, 0.15f, 0.12f), new Vector3(0.96f, 0.06f, 0.5f));
-            foreach (float x in new[] { -0.42f, 0.42f })
+            // The deck runs from the lighthouse towards the boat, which is moored at its end on the side the camera sees.
+            Part(root, "Deck", MeshFactory.RoundedBox(Vector3.one, 0.03f, 2), Timber, new Vector3(-0.15f, 0.15f, 0.12f), new Vector3(0.62f, 0.06f, 0.5f));
+            foreach (float x in new[] { -0.4f, 0.1f })
             {
                 foreach (float z in new[] { -0.08f, 0.32f })
                 {
@@ -60,7 +61,7 @@ namespace Lazpoly.Presentation.Models
             Part(root, "Band", MeshFactory.Cylinder(16), Red, new Vector3(-0.2f, 0.46f, 0.12f), new Vector3(0.17f, 0.11f, 0.17f));
             Part(root, "Lamp", MeshFactory.Cylinder(12), Brass, new Vector3(-0.2f, 1f, 0.12f), new Vector3(0.1f, 0.1f, 0.1f));
             Part(root, "Cap", MeshFactory.Cone(12), Red, new Vector3(-0.2f, 1.1f, 0.12f), new Vector3(0.13f, 0.12f, 0.13f));
-            Part(root, "Boat", PawnShapes.Boat(), Sea, new Vector3(0.22f, 0f, -0.28f), Vector3.one * 0.9f, Quaternion.Euler(0f, 70f, 0f));
+            Part(root, "Boat", PawnShapes.Boat(), Sea, new Vector3(0.27f, 0f, 0.1f), Vector3.one * 0.8f, Quaternion.Euler(0f, 20f, 0f));
             return root;
         }
 
@@ -68,8 +69,9 @@ namespace Lazpoly.Presentation.Models
         public static GameObject TeaGarden(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
-            Part(root, "Pole", MeshFactory.Cylinder(8), Slate, Vector3.zero, new Vector3(0.02f, 0.92f, 0.02f));
-            Part(root, "Parasol", MeshFactory.Cone(16), Red, new Vector3(0f, 0.74f, 0f), new Vector3(0.47f, 0.2f, 0.47f));
+            // The parasol stays low: on the near-left corner its top falls up the screen towards the next square's name.
+            Part(root, "Pole", MeshFactory.Cylinder(8), Slate, Vector3.zero, new Vector3(0.02f, 0.68f, 0.02f));
+            Part(root, "Parasol", MeshFactory.Cone(16), Red, new Vector3(0f, 0.52f, 0f), new Vector3(0.42f, 0.18f, 0.42f));
             Part(root, "Leg", MeshFactory.Cylinder(8), Slate, Vector3.zero, new Vector3(0.03f, 0.32f, 0.03f));
             Part(root, "Table", MeshFactory.Disc(0.12f, 24), Whitewash, new Vector3(0f, 0.3f, 0f), new Vector3(0.24f, 0.25f, 0.24f));
             for (int i = 0; i < 3; i++)
@@ -114,8 +116,9 @@ namespace Lazpoly.Presentation.Models
                 Part(root, "Bench leg", MeshFactory.Cylinder(8), Slate, new Vector3(x, 0f, 0.32f), new Vector3(0.02f, 0.26f, 0.02f));
             }
 
-            // The minibus from the bus-station sign, parked along the edge in front of the shelter.
+            // The minibus from the bus-station sign, parked along the edge in front of the shelter, with a window strip so it reads as a bus.
             Part(root, "Minibus", SquareIcons.Bus(), Orange, new Vector3(0f, 0f, -0.22f), Vector3.one * 0.5f, Quaternion.Euler(0f, 90f, 0f));
+            Part(root, "Windows", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Slate, new Vector3(0f, 0.25f, -0.22f), new Vector3(0.4f, 0.07f, 0.32f));
             return root;
         }
 

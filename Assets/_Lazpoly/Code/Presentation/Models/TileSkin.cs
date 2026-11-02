@@ -58,7 +58,8 @@ namespace Lazpoly.Presentation.Models
         /// <summary>The paper's brightness (0-1) at a point of the tile, u along and v across, both 0-1.</summary>
         public static float Value(float u, float v)
         {
-            float paper = 1f - Grain * (0.6f * Noise(u * 9f, v * 9f) + 0.4f * Noise(u * 23f, v * 23f));
+            // Three scales of noise: soft clouds under a fine grain, so it reads as paper rather than wash.
+            float paper = 1f - Grain * (0.35f * Noise(u * 9f, v * 9f) + 0.3f * Noise(u * 29f, v * 29f) + 0.35f * Noise(u * 67f, v * 67f));
             float edge = Mathf.Min(Mathf.Min(u, 1f - u), Mathf.Min(v, 1f - v));
             if (Mathf.Abs(edge - FrameInset) <= FrameWidth) paper *= FrameShade;
             return paper;
