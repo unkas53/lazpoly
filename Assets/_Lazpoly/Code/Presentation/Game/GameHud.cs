@@ -43,6 +43,7 @@ namespace Lazpoly.Presentation.Game
         private UiView _dock;
         private UiView _turn;
         private RectTransform _turnPanel;
+        private RectTransform _bottom;
         private UiView _ticker;
         private UiView _logWindow;
         private GameObject _logLayer;
@@ -112,6 +113,13 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Whether the decision panel at the bottom has something to show.</summary>
         public bool TurnPanelShown => _turnPanel != null && _turnPanel.gameObject.activeSelf;
+
+        /// <summary>
+        /// Screen pixels the bottom stack covers while the decision panel is up, margin included, so the
+        /// camera can lift the board clear of it; nothing while the stack holds only the hint and the strip.
+        /// </summary>
+        public float ReservedBottomPixels =>
+            TurnPanelShown && _bottom != null ? (_bottom.rect.height + 2f * Margin) * (_canvas != null ? _canvas.scaleFactor : 1f) : 0f;
 
         /// <summary>Whether the event log window is open.</summary>
         public bool LogOpen => _logLayer != null && _logLayer.activeSelf;
@@ -189,6 +197,7 @@ namespace Lazpoly.Presentation.Game
             bottom.sizeDelta = new Vector2(BottomWidth, 0f);
             UiBuilder.AddColumnLayout(bottom.gameObject, 0, UiTheme.Spacing);
             bottom.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _bottom = bottom;
             BuildTipPanel(bottom);
             _turnPanel = UiRoot.Rect(bottom, "Turn", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             UiRoot.Panel(_turnPanel);

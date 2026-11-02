@@ -42,6 +42,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
         public const float TitleOffset = 0.40f;
 
+        /// <summary>Where the tea money's jar stands, as a fraction of the lawn's inner width up the screen from the centre: just under the pot's line.</summary>
+        public const float PotPileOffset = -0.04f;
+
         private static readonly Color StartColor = new Color(0.40f, 0.73f, 0.42f);
         private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
@@ -129,6 +132,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Transform _title;
         private TextMesh _score;
         private TextMesh _pot;
+        private PotPile _potPile;
 
         public BoardLayout Layout { get; private set; }
 
@@ -193,6 +197,7 @@ namespace Lazpoly.Presentation.Tabletop
         public void SetPot(int amount)
         {
             if (_pot != null) _pot.text = F($"Çay kumbarası {amount}");
+            _potPile?.Show(amount);
         }
 
         /// <summary>Shows the last roll large on the lawn; two dashes before the first roll of the game.</summary>
@@ -231,6 +236,8 @@ namespace Lazpoly.Presentation.Tabletop
                 _title.localPosition = new Vector3(0f, LawnHeight + 0.01f, 0f) + up * (_inner * TitleOffset);
                 _title.localRotation = FlatFacing(yaw);
             }
+
+            if (_potPile != null) _potPile.Root.localPosition = new Vector3(0f, LawnHeight, 0f) + up * (_inner * PotPileOffset);
         }
 
         /// <summary>The pot's label rocks when money drops in and swells when it is paid out.</summary>
@@ -354,6 +361,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// that appear drop onto the tile and bounce, pieces that go shrink away, and the flag folds
         /// down when the first building takes its place.
         /// </summary>
+        /// <summary>The building level the board shows on a square now.</summary>
+        public int LevelOf(int squareIndex) => _levels[squareIndex];
+
         public void SetBuildingLevel(int squareIndex, int level, bool animate = false)
         {
             GameObject[] pieces = _buildings[squareIndex];
@@ -606,7 +616,7 @@ namespace Lazpoly.Presentation.Tabletop
             scene.transform.localScale = Vector3.one * (side * SceneSize);
         }
 
-        /// <summary>The lawn in the middle: a gravel ring where the squares end, grass with lighter patches, and a path round the park.</summary>
+        /// <summary>The lawn in the middle: a gravel ring where the squares end, grass with lighter patches, a path round the park, and <see cref="LawnDressing"/> on it.</summary>
         private void CreateLawn(float inner)
         {
             var lawn = new GameObject("Lawn");
@@ -637,6 +647,8 @@ namespace Lazpoly.Presentation.Tabletop
                 patch.transform.localPosition = new Vector3(patches[i].x * inner, LawnHeight + 0.002f, patches[i].y * inner);
                 patch.transform.localScale = new Vector3(inner * sizes[i], 1f, inner * sizes[i] * 0.8f);
             }
+
+            LawnDressing.Dress(root, inner, LawnHeight);
         }
 
         /// <summary>The dice score large on the lawn with the pot's line under it; <see cref="FaceCamera"/> places and turns it.</summary>
@@ -648,6 +660,7 @@ namespace Lazpoly.Presentation.Tabletop
             _score = CreateText("Score", ScoreText(0, 0), _scoreboard, Vector3.zero, 192, inner * 0.008f, ScoreColor);
             if (!hasPot) return;
             _pot = CreateText("Pot", "", _scoreboard, new Vector3(0f, -inner * 0.1f, 0f), 128, inner * 0.0036f, PotTextColor);
+            _potPile = new PotPile(transform);
             SetPot(0);
         }
 

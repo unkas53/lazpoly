@@ -630,6 +630,16 @@ Tahta basılı bir oyun tahtası gibi: kareler dikdörtgen, köşeler büyük ka
 - Testler: `BoardLayoutTests` (derin kareler, köşeler, dörde bölünmeyen sayı), `SceneryTests` (şerit sırası ve köşe
   sahnesinin yerleşimi), `ModelTests` (doku koordinatları, kâğıt dokusu, sahnelerin karesine sığması).
 
+## Faz 11d: çimenlik süslemeleri, kumbara ve konuşma balonları
+
+Tahtanın ortasındaki park artık boş değil ve bilgisayar oyuncular kararlarını söylüyor.
+
+- **Çimenlik süslemeleri** (`LawnParts`, `LawnDressing`): yolun dışındaki köşelerde üç çeşit ağaç (yuvarlak taç, çam, çift taç) ve alçak çalılar; yolun kameraya bakan iki kenarı boyunca üç direk arasına gerilmiş flama ipleri (kırmızı, beyaz, deniz mavisi, turuncu). Kamera 35° eğik baktığından bir parçanın yüksekliği ekranda yukarıdaki zemine düşer; her ağaç tacının çimenlikte kaldığı, karelerin adlarına ulaşmadığı yere dikildi, ekranın tepesindeki köşede (başlığın yanında) yalnız çalılar var. `LawnDressing.GroundUnderTop` bunu hesaplar, test de aynı kuralla her noktayı dener.
+- **Kumbara** (`PotPile`): çay kumbarası yazısının altında cam bir kavanoz durur; kumbara büyüdükçe dibine 50'şerlik bozuk paralar yığılır (altışarlık beş yığın, sonra durur), ödeme çıkınca paralar gider.
+- **Konuşma balonları** (`SpeechBubble`): bilgisayar oyuncunun piyonunun üstünde, kameraya dönük kâğıt bir balon, kuyruğu oyuncunun renginde; 2,6 saniye sonra küçülerek gider, yeni bir söz eskisinin yerini alır. Sözler: satın alınca "Aldım!", kareyi bırakınca "Almıyorum, artırmaya.", teklifte "Artırıyorum!", çekilince "Ben yokum.", artırmayı kazanınca "Benim oldu!", inşaatta "Bir ev daha!" / "Otel vakti!", takas teklifinde "Takas edelim mi?", yanıtında "Anlaştık!" / "Olmaz.", çift zarda "Çift!", iflasta "Battım...". Masadaki insanlar konuşmaz; ne yaptıklarını biliyorlar. Olay akışından tetiklenir: `GameSceneController.Say` yalnız `IsAiPlaying` olan oyuncular için balon açar; hangi sözün söyleneceği gösterilen evreye (`PhaseChangedEvent`), son hareket edene ve açık takas teklifine bakılarak seçilir.
+- **Karar paneli açılınca kamera yer açar**: alt panel (satın alma, artırma, takas yanıtı) Başlangıç köşesini örtüyordu. `GameHud.ReservedBottomPixels` panel açıkken alt yığının yüksekliğini bildirir; `BoardCameraFraming.OrthographicSize` artık alttan ayrılan pikselleri de hesaba katar ve `AimAbovePanel` bakış noktasını kameranın kendi yukarı yönünde panelin yarısı kadar aşağı alır, böylece tahta panelin üstünde kalan alanın ortasına oturur. Yükseklik 40 piksellik adımlara yuvarlanır ki paneldeki bir satır fazlası kamerayı kıpırdatmasın; kamera rig'i yeni çerçeveye birkaç karede kayar.
+- **Testler**: ağaç/çalı/direk/kavanoz boyutları ve flamaların ipten sarkması (`ModelTests`), paraların yığılması, süslemelerin ekranda yukarı düşen tepelerinin çimenlikte kalması, kumbaranın para alıp vermesi, balonun satırını kâğıda sarması (`SceneryTests`), alt panel varken tahtanın panelin üstündeki alana ortalanması ve sığması (`RenderingSetupTests`).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

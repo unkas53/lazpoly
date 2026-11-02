@@ -465,5 +465,17 @@
   "oynuyor...": "playing...",
   "Kapat (Esc)": "Close (Esc)",
   "bilet {0}": "ticket {0}",
-  "-{0}": "-{0}"
+  "-{0}": "-{0}",
+  "Aldım!": "Bought it!",
+  "Benim oldu!": "Mine now!",
+  "Almıyorum, artırmaya.": "Not for me, auction it.",
+  "Artırıyorum!": "I'll raise!",
+  "Ben yokum.": "I'm out.",
+  "Bir ev daha!": "One more house!",
+  "Otel vakti!": "Hotel time!",
+  "Takas edelim mi?": "Shall we trade?",
+  "Anlaştık!": "Deal!",
+  "Olmaz.": "No deal.",
+  "Çift!": "Doubles!",
+  "Battım...": "I'm broke..."
 }

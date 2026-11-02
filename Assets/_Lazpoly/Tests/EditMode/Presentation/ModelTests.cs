@@ -1,5 +1,6 @@
 using Lazpoly.Presentation.Dice;
 using Lazpoly.Presentation.Models;
+using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -125,6 +126,98 @@ namespace Lazpoly.Presentation.Tests
             {
                 UnityEngine.Object.DestroyImmediate(root);
             }
+        }
+
+        [Test]
+        public void LawnPiecesStandOnTheGrassAndThePennantsHangFromTheirString()
+        {
+            var root = new GameObject("Lawn");
+            try
+            {
+                for (int kind = 0; kind < LawnParts.TreeKinds; kind++)
+                {
+                    GameObject tree = LawnParts.Tree("Tree", root.transform, kind);
+                    Bounds bounds = Extent(tree);
+                    Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.02f), $"tree {kind} floats or sinks");
+                    Assert.LessOrEqual(bounds.max.y, LawnParts.TreeHeight + 1e-3f, $"tree {kind} is taller than the lawn allows for");
+                    Assert.Greater(bounds.max.y, 0.5f, $"tree {kind} is a shrub");
+                }
+
+                Bounds bush = Extent(LawnParts.Bush("Bush", root.transform));
+                Assert.That(bush.min.y, Is.EqualTo(0f).Within(0.02f));
+                Assert.LessOrEqual(bush.max.y, LawnDressing.BushHeight + 1e-3f, "a bush is low");
+
+                Bounds post = Extent(LawnParts.BuntingPost("Post", root.transform));
+                Assert.That(post.max.y, Is.EqualTo(LawnParts.PostHeight).Within(0.05f));
+                Assert.Less(LawnParts.StringHeight, LawnParts.PostHeight, "the string ties on below the post's top");
+
+                var from = new Vector3(-1f, LawnParts.StringHeight, 0f);
+                var to = new Vector3(1f, LawnParts.StringHeight, 0f);
+                GameObject bunting = LawnParts.Bunting("Bunting", root.transform, from, to, 9);
+                int pennants = 0;
+                foreach (MeshFilter part in bunting.GetComponentsInChildren<MeshFilter>())
+                {
+                    if (part.sharedMesh != MeshFactory.Pennant()) continue;
+                    pennants++;
+                    Vector3 top = part.transform.TransformPoint(new Vector3(0f, 1f, 0f));
+                    Vector3 tip = part.transform.TransformPoint(Vector3.zero);
+                    Assert.LessOrEqual(top.y, LawnParts.StringHeight + 1e-3f, "a pennant hangs from the string, not above it");
+                    Assert.GreaterOrEqual(top.y, LawnParts.StringHeight - LawnParts.Sag - 1e-3f, "a pennant's top is on the string");
+                    Assert.That(tip.y, Is.EqualTo(top.y - LawnParts.PennantDrop).Within(1e-3f), "a pennant hangs straight down");
+                    Assert.That(Mathf.Abs(tip.x), Is.LessThan(1f), "a pennant hangs between the posts");
+                }
+
+                Assert.AreEqual(9, pennants);
+                Assert.AreEqual(6, MeshFactory.Pennant().vertexCount, "a pennant has two faces");
+
+                Bounds jar = Extent(LawnParts.Jar("Jar", root.transform));
+                Assert.That(jar.min.y, Is.EqualTo(0f).Within(0.02f));
+                Assert.That(jar.max.y, Is.EqualTo(1f).Within(0.02f), "the jar is one unit tall, scaled by the board");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void CoinsStackRoundTheJarAndStopAtTheLastStack()
+        {
+            Assert.AreEqual(0, LawnParts.CoinsFor(0, 50));
+            Assert.AreEqual(1, LawnParts.CoinsFor(1, 50), "a little money is still a coin");
+            Assert.AreEqual(3, LawnParts.CoinsFor(150, 50));
+            Assert.AreEqual(LawnParts.CoinsPerStack * LawnParts.MaxStacks, LawnParts.CoinsFor(100000, 50), "the pile stops growing");
+            Vector3 first = LawnParts.CoinSpot(0, 0.2f);
+            Vector3 second = LawnParts.CoinSpot(1, 0.2f);
+            Assert.AreEqual(0f, first.y);
+            Assert.That(second.y, Is.EqualTo(LawnParts.CoinThickness).Within(1e-4f), "the second coin lies on the first");
+            Assert.AreEqual(new Vector2(first.x, first.z), new Vector2(second.x, second.z), "the same stack");
+            Vector3 next = LawnParts.CoinSpot(LawnParts.CoinsPerStack, 0.2f);
+            Assert.AreEqual(0f, next.y, "a new stack starts on the ground");
+            Assert.Greater(Vector2.Distance(new Vector2(first.x, first.z), new Vector2(next.x, next.z)), 2f * LawnParts.CoinRadius, "stacks do not overlap");
+            Assert.Greater(new Vector2(first.x, first.z).magnitude, 0.2f + LawnParts.CoinRadius, "coins lie outside the jar");
+        }
+
+        /// <summary>The box round every mesh of a piece, in the piece's own space.</summary>
+        private static Bounds Extent(GameObject piece)
+        {
+            var low = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var high = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            foreach (MeshFilter part in piece.GetComponentsInChildren<MeshFilter>())
+            {
+                Bounds bounds = part.sharedMesh.bounds;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    var local = new Vector3((corner & 1) == 0 ? bounds.min.x : bounds.max.x, (corner & 2) == 0 ? bounds.min.y : bounds.max.y, (corner & 4) == 0 ? bounds.min.z : bounds.max.z);
+                    Vector3 point = piece.transform.InverseTransformPoint(part.transform.TransformPoint(local));
+                    low = Vector3.Min(low, point);
+                    high = Vector3.Max(high, point);
+                }
+            }
+
+            var extent = new Bounds();
+            extent.SetMinMax(low, high);
+            return extent;
         }
 
         [Test]

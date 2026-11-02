@@ -55,12 +55,21 @@ namespace Lazpoly.Presentation.Game
 
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
+        private readonly Dictionary<int, SpeechBubble> _bubbles = new Dictionary<int, SpeechBubble>();
         private PawnCrowd _crowd;
         private TurnMarker _turnMarker;
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
         private readonly List<LogEntry> _log = new List<LogEntry>();
         private readonly Dictionary<int, int> _shownMoney = new Dictionary<int, int>();
         private int _shownPot;
+
+        /// <summary>What the playback has shown so far of the turn: who last moved, which phase was reached, which trade is open; the bubbles' lines depend on them.</summary>
+        private int _lastMover = GameState.NoOwner;
+        private GamePhase _shownPhase;
+        private TradeOffer _shownOffer;
+
+        /// <summary>The bottom panel's height is rounded up to this many pixels before the camera makes room, so a line more or less in the panel does not nudge the view.</summary>
+        private const float BottomStep = 40f;
 
         private BoardData _data;
         private IGameSession _session;
@@ -85,6 +94,7 @@ namespace Lazpoly.Presentation.Game
         private int _framedWidth;
         private int _framedHeight;
         private float _framedReserve;
+        private float _framedBottom;
         private float _labelYaw = BoardCameraRig.BaseYaw;
         private GameHud _hud;
         private float _dayShown = -1f;
@@ -323,19 +333,23 @@ namespace Lazpoly.Presentation.Game
             }
 
             float reserved = _hud.ReservedSidePixels;
-            if (Screen.width == _framedWidth && Screen.height == _framedHeight && Mathf.Approximately(reserved, _framedReserve)) return;
-            FrameBoard(reserved);
+            float bottom = Mathf.Ceil(_hud.ReservedBottomPixels / BottomStep) * BottomStep;
+            if (Screen.width == _framedWidth && Screen.height == _framedHeight && Mathf.Approximately(reserved, _framedReserve) && Mathf.Approximately(bottom, _framedBottom)) return;
+            FrameBoard(reserved, bottom);
         }
 
-        private void FrameBoard(float reservedSidePixels)
+        /// <summary>Frames the board in the screen area the panels leave free; the rig slides there over a few frames.</summary>
+        private void FrameBoard(float reservedSidePixels, float reservedBottomPixels)
         {
             if (CameraRig == null) return;
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
             _framedReserve = reservedSidePixels;
+            _framedBottom = reservedBottomPixels;
             float size = BoardCameraFraming.OrthographicSize(_board.HalfExtent, BoardView.PlateThickness, BoardCameraRig.Pitch,
-                Screen.width, Screen.height, reservedSidePixels);
+                Screen.width, Screen.height, reservedSidePixels, reservedBottomPixels);
             Vector3 aim = BoardCameraFraming.Aim(_board.transform.position, BoardView.PlateThickness);
+            aim = BoardCameraFraming.AimAbovePanel(aim, BoardCameraRig.Pitch, CameraRig.Yaw, size, Screen.height, reservedBottomPixels);
             CameraRig.SetBase(_board.transform.position, aim, size, _board.HalfExtent);
         }
 
@@ -804,9 +818,11 @@ namespace Lazpoly.Presentation.Game
                         yield return _dice.Roll(rolled.Die1, rolled.Die2, CameraRig != null ? CameraRig.Yaw : 0f);
                         AudioPlayer.Play(SoundCue.DiceLand);
                         ShowRoll(rolled);
+                        if (rolled.Die1 == rolled.Die2) Say(rolled.PlayerId, L("Çift!"));
                         yield return new WaitForSeconds(RollReadSeconds / Speed);
                         break;
                     case PlayerMovedEvent moved:
+                        _lastMover = moved.PlayerId;
                         PawnView pawn = _pawns[moved.PlayerId];
                         if (moved.Kind == MoveKind.Jump) yield return pawn.JumpTo(moved.ToSquare);
                         else yield return pawn.WalkTo(moved.ToSquare, backward: moved.Kind == MoveKind.Back);
@@ -842,13 +858,49 @@ namespace Lazpoly.Presentation.Game
                         _board.SetOwner(owner.SquareIndex, ColorOf(owner.NewOwnerId));
                         _board.PulseOwner(owner.SquareIndex);
                         _board.RaiseFlag(owner.SquareIndex);
+                        // Bought from the bank on landing; an auction win and a trade have their own lines.
+                        if (owner.PreviousOwnerId == GameState.NoOwner && _shownPhase == GamePhase.AwaitingBuyDecision) Say(owner.NewOwnerId, L("Aldım!"));
                         break;
                     case PlayerBankruptedEvent bankrupt:
+                        Say(bankrupt.PlayerId, L("Battım..."));
                         yield return _pawns[bankrupt.PlayerId].Topple();
                         break;
                     case BuildingLevelChangedEvent building:
+                        if (building.Level > _board.LevelOf(building.SquareIndex))
+                        {
+                            Say(_session.State.GetOwner(building.SquareIndex), L(building.Level >= SquareDefinition.MaxBuildingLevel ? "Otel vakti!" : "Bir ev daha!"));
+                        }
+
                         _board.SetBuildingLevel(building.SquareIndex, building.Level, animate: true);
                         if (building.Level >= SquareDefinition.MaxBuildingLevel) AudioPlayer.Play(SoundCue.Hotel);
+                        break;
+                    case PhaseChangedEvent phase:
+                        _shownPhase = phase.Phase;
+                        break;
+                    case AuctionStartedEvent _:
+                        // Straight after a buy decision the auction means the player who landed let the square go.
+                        if (_shownPhase == GamePhase.AwaitingBuyDecision) Say(_lastMover, L("Almıyorum, artırmaya."));
+                        break;
+                    case BidPlacedEvent bid:
+                        Say(bid.PlayerId, L("Artırıyorum!"));
+                        break;
+                    case BidPassedEvent passed:
+                        Say(passed.PlayerId, L("Ben yokum."));
+                        break;
+                    case AuctionEndedEvent ended:
+                        if (ended.WinnerId != GameState.NoOwner) Say(ended.WinnerId, L("Benim oldu!"));
+                        break;
+                    case TradeProposedEvent proposed:
+                        _shownOffer = proposed.Offer;
+                        Say(proposed.Offer.FromPlayerId, L("Takas edelim mi?"));
+                        break;
+                    case TradeResolvedEvent resolved:
+                        if (_shownOffer != null && resolved.Outcome != TradeOutcome.Cancelled)
+                        {
+                            Say(_shownOffer.ToPlayerId, L(resolved.Outcome == TradeOutcome.Accepted ? "Anlaştık!" : "Olmaz."));
+                        }
+
+                        _shownOffer = null;
                         break;
                     case GameEndedEvent _:
                         Confetti.Burst(transform, _board.transform.position + Vector3.up * 0.5f, _board.SurfaceY + 0.01f,
@@ -866,6 +918,19 @@ namespace Lazpoly.Presentation.Game
         }
 
         private float Speed => Mathf.Max(Settings.AnimationSpeed, 0.1f);
+
+        /// <summary>
+        /// A computer player's line in a bubble over its pawn, for the choices it makes (buying, letting a
+        /// square go, bidding, building, trading). People at the table say nothing: they know what they did.
+        /// A newer line replaces the pawn's earlier bubble.
+        /// </summary>
+        private void Say(int playerId, string line)
+        {
+            if (playerId == GameState.NoOwner || !_session.IsAiPlaying(playerId)) return;
+            if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) return;
+            if (_bubbles.TryGetValue(playerId, out SpeechBubble earlier) && earlier != null) earlier.Dismiss();
+            _bubbles[playerId] = SpeechBubble.Say(transform, pawn.transform, line, ColorOf(playerId));
+        }
 
         /// <summary>
         /// A new turn: the pawn hops once; a soft note when the turn goes to someone not at this screen

@@ -1,4 +1,6 @@
 using Lazpoly.Presentation.Dice;
+using Lazpoly.Presentation.Effects;
+using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
@@ -111,6 +113,111 @@ namespace Lazpoly.Presentation.Tests
             Assert.Greater(dusk.SunColor.r - dusk.SunColor.b, noon.SunColor.r - noon.SunColor.b, "the evening sun is redder");
             Assert.AreEqual(0f, DayCycle.At(0.3f).Evening, 1e-4f, "the first half of the day is still daylight");
             Assert.Greater(DayCycle.At(0.8f).Evening, 0.5f);
+        }
+
+        [Test]
+        public void NothingOnTheLawnFallsOverTheSquaresUpTheScreen()
+        {
+            const float inner = 9.8f;
+            float yaw = BoardCameraRig.BaseYaw;
+            float lawnHalf = LawnDressing.LawnHalf * inner;
+            float pathHalf = LawnDressing.PathHalf * inner;
+            Assert.AreEqual(LawnDressing.TreeSpots.Length, LawnDressing.TreeKinds.Length);
+            for (int i = 0; i < LawnDressing.TreeSpots.Length; i++)
+            {
+                Vector3 foot = LawnDressing.Ground(LawnDressing.TreeSpots[i], inner, 0f);
+                Vector3 top = LawnDressing.GroundUnderTop(foot, LawnParts.TreeHeight, yaw);
+                Assert.Less(Mathf.Max(Mathf.Abs(top.x), Mathf.Abs(top.z)), lawnHalf, $"tree {i}'s crown reaches past the lawn up the screen");
+                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf + 0.3f, $"tree {i} stands on the path");
+                Assert.Less(Vector3.Dot(foot, BoardView.ScreenUp(yaw)), 0.3f * inner, $"tree {i} stands at the top of the screen, over the title");
+            }
+
+            for (int i = 0; i < LawnDressing.BushSpots.Length; i++)
+            {
+                Vector3 foot = LawnDressing.Ground(LawnDressing.BushSpots[i], inner, 0f);
+                Vector3 top = LawnDressing.GroundUnderTop(foot, LawnDressing.BushHeight, yaw);
+                Assert.Less(Mathf.Max(Mathf.Abs(top.x), Mathf.Abs(top.z)), lawnHalf, $"bush {i} reaches past the lawn up the screen");
+                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf + 0.2f, $"bush {i} sits on the path");
+            }
+
+            foreach (Vector2 spot in LawnDressing.PostSpots)
+            {
+                Vector3 foot = LawnDressing.Ground(spot, inner, 0f);
+                Assert.LessOrEqual(Vector3.Dot(foot, BoardView.ScreenUp(yaw)), 1e-3f, "the bunting runs along the near sides of the path, below the score");
+                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf, "a post stands just outside the path's corner");
+            }
+
+            var root = new GameObject("Lawn");
+            try
+            {
+                LawnDressing.Dress(root.transform, inner, 0.08f);
+                int trees = 0, pennants = 0;
+                foreach (MeshFilter part in root.GetComponentsInChildren<MeshFilter>())
+                {
+                    if (part.name == "Trunk") trees++;
+                    if (part.sharedMesh == MeshFactory.Pennant()) pennants++;
+                }
+
+                Assert.AreEqual(LawnDressing.TreeSpots.Length, trees);
+                Assert.AreEqual((LawnDressing.PostSpots.Length - 1) * LawnDressing.PennantsPerString, pennants);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void TheJarGathersCoinsAsThePotGrowsAndLosesThemWhenItIsPaidOut()
+        {
+            var root = new GameObject("Lawn");
+            try
+            {
+                var pile = new PotPile(root.transform);
+                Assert.AreEqual(0, pile.Coins);
+                Assert.IsNotNull(pile.Root.Find("Jar"), "the jar is always there");
+                pile.Show(PotPile.CoinValue * 4);
+                Assert.AreEqual(4, pile.Coins);
+                pile.Show(PotPile.CoinValue * 4 + 10);
+                Assert.AreEqual(5, pile.Coins, "a part coin rounds up");
+                pile.Show(0);
+                Assert.AreEqual(0, pile.Coins);
+                Assert.AreEqual(1, pile.Root.childCount, "only the jar is left");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void ASpeechBubbleWrapsItsLineInPaperOverThePawn()
+        {
+            var root = new GameObject("Scene");
+            try
+            {
+                var pawn = new GameObject("Pawn");
+                pawn.transform.position = new Vector3(2f, 0.2f, -3f);
+                SpeechBubble bubble = SpeechBubble.Say(root.transform, pawn.transform, "Takas edelim mi?", Color.red);
+                Assert.AreEqual("Takas edelim mi?", bubble.Text);
+                TextMesh line = bubble.GetComponentInChildren<TextMesh>();
+                Vector3 text = line.GetComponent<MeshRenderer>().bounds.size;
+                Assert.Greater(bubble.PaperSize.x, text.x + SpeechBubble.Padding, "the paper is wider than the line");
+                Assert.Greater(bubble.PaperSize.y, text.y + SpeechBubble.Padding, "the paper is taller than the line");
+                MeshFilter paper = bubble.transform.Find("Paper").GetComponent<MeshFilter>();
+                Assert.That(paper.sharedMesh.bounds.size.x, Is.EqualTo(bubble.PaperSize.x).Within(1e-3f));
+                Assert.Less(line.transform.localPosition.z, 0f, "the line sits on the camera's side of the paper");
+                Assert.That(bubble.transform.position.x, Is.EqualTo(2f).Within(1e-4f));
+                Assert.Greater(bubble.transform.position.y, 0.2f + SpeechBubble.Lift, "the bubble floats over the pawn");
+                Assert.AreEqual(Vector3.zero, bubble.transform.localScale, "it pops in from nothing");
+                SpeechBubble shorter = SpeechBubble.Say(root.transform, pawn.transform, "Pas.", Color.blue);
+                Assert.Less(shorter.PaperSize.x, bubble.PaperSize.x, "a short line gets a small bubble");
+                UnityEngine.Object.DestroyImmediate(pawn);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
         }
 
         [Test]
