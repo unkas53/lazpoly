@@ -28,7 +28,7 @@ namespace Lazpoly.Presentation.Tabletop
         public float FillIntensity { get; }
         public Color Ambient { get; }
 
-        /// <summary>0 by day, 1 at dusk: the lighthouse lights up and the sea darkens along it.</summary>
+        /// <summary>0 by day, 1 at dusk: the sky warms along it.</summary>
         public float Evening { get; }
 
         public static DayLight Lerp(in DayLight a, in DayLight b, float t) => new DayLight(
@@ -49,10 +49,10 @@ namespace Lazpoly.Presentation.Tabletop
         public const int RoundsToEvening = 24;
 
         public static readonly DayLight Noon = new DayLight(
-            new Color(1f, 0.93f, 0.82f), 1.25f, 52f, -35f, new Color(0.55f, 0.70f, 0.90f), 0.35f, new Color(0.26f, 0.27f, 0.32f), 0f);
+            new Color(1f, 0.93f, 0.82f), 1.25f, 52f, -35f, new Color(0.55f, 0.70f, 0.90f), 0.35f, new Color(0.42f, 0.44f, 0.50f), 0f);
 
         public static readonly DayLight Dusk = new DayLight(
-            new Color(1f, 0.62f, 0.38f), 0.95f, 21f, -78f, new Color(0.32f, 0.42f, 0.74f), 0.5f, new Color(0.21f, 0.18f, 0.28f), 1f);
+            new Color(1f, 0.62f, 0.38f), 0.95f, 21f, -78f, new Color(0.32f, 0.42f, 0.74f), 0.5f, new Color(0.34f, 0.28f, 0.36f), 1f);
 
         /// <summary>How far the day has gone, 0 (noon) to 1 (dusk).</summary>
         public static float Progress(int round, int roundLimit, bool gameOver)

@@ -8,22 +8,26 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// The scene behind the main menu: the real board on its desk, a few pawns standing about,
-    /// and a camera that drifts slowly around it. Purely decorative; nothing here reacts to input.
+    /// The scene behind the main menu: the real board floating in the sky, seen from the game's own
+    /// isometric corner with a few pawns standing about, and a camera that breathes in and out very
+    /// slowly. Purely decorative; nothing here reacts to input.
     /// </summary>
     public sealed class MenuBackdrop : MonoBehaviour
     {
-        /// <summary>Degrees the camera travels around the board per second.</summary>
-        public const float YawSpeed = 3f;
-        private const float Pitch = 42f;
+        /// <summary>How much larger and smaller than the framed view the breathing goes.</summary>
+        public const float Breath = 0.04f;
+
+        /// <summary>Seconds for one breath in and out.</summary>
+        public const float BreathSeconds = 14f;
+
+        /// <summary>The menu's windows cover the middle, so the board is framed a little wider than in the game.</summary>
+        private const float Loosen = 1.08f;
         private const int PawnCount = 4;
 
         private static readonly int[] PawnSquares = { 3, 11, 18, 27 };
 
         private Camera _camera;
-        private Vector3 _center;
-        private float _distance;
-        private float _yaw = 200f;
+        private BoardView _board;
         private SettingsService _settings;
 
         public static MenuBackdrop Create(Transform parent, BoardData data)
@@ -35,26 +39,28 @@ namespace Lazpoly.Presentation.Menu
             return backdrop;
         }
 
+        /// <summary>The view's size at a moment of the breath: the framed size swelling and shrinking by <see cref="Breath"/>.</summary>
+        public static float BreathingSize(float framedSize, float seconds) =>
+            framedSize * (1f + Breath * Mathf.Sin(seconds / BreathSeconds * 2f * Mathf.PI));
+
         private void Build(BoardData data)
         {
-            BoardView board = BoardView.Create(transform, data);
-            RoomDressing.CreateRoom(transform, board.HalfExtent);
+            _board = BoardView.Create(transform, data);
             GraphicsQuality quality = RoomDressing.CurrentQuality();
             RoomDressing.LightScene(quality);
 
-            int squares = board.Layout.SquareCount;
+            int squares = _board.Layout.SquareCount;
             var crowd = new PawnCrowd(PawnCount);
             for (int seat = 0; seat < PawnCount; seat++)
             {
-                PawnView.Create(transform, board, seat, PlayerPalette.ForSeat(seat), crowd, seat).PlaceOn(PawnSquares[seat] % squares);
+                PawnView.Create(transform, _board, seat, PlayerPalette.ForSeat(seat), crowd, seat).PlaceOn(PawnSquares[seat] % squares);
             }
-
-            _center = board.transform.position;
-            _distance = board.HalfExtent * 2.4f;
 
             _camera = Camera.main;
             if (_camera == null) _camera = new GameObject("Main Camera") { tag = "MainCamera" }.AddComponent<Camera>();
-            _camera.fieldOfView = 45f;
+            _camera.orthographic = true;
+            _camera.nearClipPlane = 0.3f;
+            _camera.farClipPlane = 100f;
             RoomDressing.DressCamera(_camera, quality);
             Place();
 
@@ -69,18 +75,17 @@ namespace Lazpoly.Presentation.Menu
 
         private static void OnSettingsChanged(GameSettings settings) => RoomDressing.ApplyQuality(settings.Quality);
 
-        private void Update()
-        {
-            _yaw = (_yaw + YawSpeed * Time.deltaTime) % 360f;
-            Place();
-        }
+        private void Update() => Place();
 
         private void Place()
         {
             if (_camera == null) return;
-            Quaternion look = Quaternion.Euler(Pitch, _yaw, 0f);
-            _camera.transform.position = _center - look * Vector3.forward * _distance;
-            _camera.transform.rotation = look;
+            Vector3 aim = BoardCameraFraming.Aim(_board.transform.position, BoardView.PlateThickness);
+            float framed = BoardCameraFraming.OrthographicSize(_board.HalfExtent, BoardView.PlateThickness, BoardCameraRig.Pitch,
+                Screen.width, Screen.height, 0f) * Loosen;
+            _camera.orthographicSize = BreathingSize(framed, Time.unscaledTime);
+            _camera.transform.position = BoardCameraRig.Place(aim, BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, BoardCameraRig.Distance);
+            _camera.transform.rotation = Quaternion.Euler(BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, 0f);
         }
     }
 }

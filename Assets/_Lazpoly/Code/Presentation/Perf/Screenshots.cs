@@ -8,17 +8,17 @@ namespace Lazpoly.Presentation.Perf
     /// <summary>One of the camera set-ups the store screenshots are taken from, so every batch matches.</summary>
     public readonly struct ScreenshotPreset
     {
-        public ScreenshotPreset(string name, CameraView view, float yaw, float zoom)
+        public ScreenshotPreset(string name, float yaw, float zoom)
         {
             Name = name;
-            View = view;
             Yaw = yaw;
             Zoom = zoom;
         }
 
         /// <summary>Turkish name shown in the log when the preset is chosen (a localisation key).</summary>
         public string Name { get; }
-        public CameraView View { get; }
+
+        /// <summary>Which corner the camera looks from; <see cref="BoardCameraRig.BaseYaw"/> is the game's own view.</summary>
         public float Yaw { get; }
         public float Zoom { get; }
     }
@@ -32,11 +32,11 @@ namespace Lazpoly.Presentation.Perf
     {
         public static readonly ScreenshotPreset[] All =
         {
-            new ScreenshotPreset("Masa başı", CameraView.Table, 0f, 1f),
-            new ScreenshotPreset("Kuş bakışı", CameraView.Overhead, 0f, 1f),
-            new ScreenshotPreset("Yakın köşe", CameraView.Table, 35f, 0.6f),
-            new ScreenshotPreset("Ada ve deniz", CameraView.Table, -30f, 0.7f),
-            new ScreenshotPreset("Karşı kıyı", CameraView.Table, 180f, 0.85f),
+            new ScreenshotPreset("Genel görünüm", BoardCameraRig.BaseYaw, 1f),
+            new ScreenshotPreset("Yakın plan", BoardCameraRig.BaseYaw, 0.6f),
+            new ScreenshotPreset("Karşı köşe", BoardCameraRig.BaseYaw + 180f, 1f),
+            new ScreenshotPreset("Sol köşe", BoardCameraRig.BaseYaw - 90f, 0.85f),
+            new ScreenshotPreset("Sağ köşe", BoardCameraRig.BaseYaw + 90f, 0.85f),
         };
 
         public static ScreenshotPreset At(int index) => All[((index % All.Length) + All.Length) % All.Length];

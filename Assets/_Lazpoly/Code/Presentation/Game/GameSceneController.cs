@@ -85,6 +85,7 @@ namespace Lazpoly.Presentation.Game
         private int _framedWidth;
         private int _framedHeight;
         private float _framedReserve;
+        private float _labelYaw = BoardCameraRig.BaseYaw;
         private GameHud _hud;
         private float _dayShown = -1f;
         private float _dayApplied = -1f;
@@ -132,16 +133,6 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Zoom and turn of the board view; the HUD's reset button uses it.</summary>
         public BoardCameraRig CameraRig { get; private set; }
 
-        /// <summary>Which ready-made view the camera is framed for.</summary>
-        public CameraView View { get; private set; } = CameraView.Table;
-
-        /// <summary>Switches between sitting at the table and looking down on it (the C key and the camera button).</summary>
-        public void ToggleCameraView()
-        {
-            View = View == CameraView.Table ? CameraView.Overhead : CameraView.Table;
-            if (_board != null) FrameBoard(_framedReserve);
-        }
-
         /// <summary>How far the shown day has gone, 0 (noon) to 1 (dusk); -1 before the board is up.</summary>
         public float DayProgress => _dayShown;
 
@@ -157,12 +148,6 @@ namespace Lazpoly.Presentation.Game
             if (_board == null || CameraRig == null) return;
             _screenshotPreset = (_screenshotPreset + 1) % ScreenshotPresets.All.Length;
             ScreenshotPreset preset = ScreenshotPresets.At(_screenshotPreset);
-            if (View != preset.View)
-            {
-                View = preset.View;
-                FrameBoard(_framedReserve);
-            }
-
             CameraRig.SetView(preset.Yaw, preset.Zoom);
             AddLog(F($"Ekran görüntüsü açısı: {L(preset.Name)}"));
         }
@@ -325,12 +310,18 @@ namespace Lazpoly.Presentation.Game
             _dayApplied = _dayShown;
             DayLight light = DayCycle.At(_dayShown);
             RoomDressing.ApplyDayLight(light);
-            _board.SetEvening(light.Evening);
         }
 
         private void LateUpdate()
         {
             if (_board == null || _hud == null) return;
+            // The board's writing turns to stay readable when a screenshot preset looks from another corner.
+            if (CameraRig != null && !Mathf.Approximately(CameraRig.Yaw, _labelYaw))
+            {
+                _labelYaw = CameraRig.Yaw;
+                _board.FaceCamera(_labelYaw);
+            }
+
             float reserved = _hud.ReservedSidePixels;
             if (Screen.width == _framedWidth && Screen.height == _framedHeight && Mathf.Approximately(reserved, _framedReserve)) return;
             FrameBoard(reserved);
@@ -338,15 +329,14 @@ namespace Lazpoly.Presentation.Game
 
         private void FrameBoard(float reservedSidePixels)
         {
-            Camera camera = Camera.main;
-            if (camera == null) return;
+            if (CameraRig == null) return;
             _framedWidth = Screen.width;
             _framedHeight = Screen.height;
             _framedReserve = reservedSidePixels;
-            float pitch = BoardCameraRig.PitchOf(View);
-            Vector3 framed = BoardCameraFraming.CameraPosition(_board.transform.position, _board.HalfExtent, camera.fieldOfView,
-                pitch, Screen.width, Screen.height, reservedSidePixels);
-            CameraRig.SetBase(_board.transform.position, framed, pitch, _board.HalfExtent);
+            float size = BoardCameraFraming.OrthographicSize(_board.HalfExtent, BoardView.PlateThickness, BoardCameraRig.Pitch,
+                Screen.width, Screen.height, reservedSidePixels);
+            Vector3 aim = BoardCameraFraming.Aim(_board.transform.position, BoardView.PlateThickness);
+            CameraRig.SetBase(_board.transform.position, aim, size, _board.HalfExtent);
         }
 
         private void OnDestroy()
@@ -602,9 +592,8 @@ namespace Lazpoly.Presentation.Game
 
             GameState state = _session.State;
             _board = BoardView.Create(transform, _data);
-            RoomDressing.CreateRoom(transform, _board.HalfExtent);
-            // The dice sit a touch above the highest wave.
-            _dice = DiceView.Create(transform, new Vector3(0f, 0.04f + SeaSurface.Amplitude + 0.02f, -1.2f));
+            // The dice land on the lawn in the middle of the board.
+            _dice = DiceView.Create(transform, new Vector3(0f, BoardView.LawnHeight + 0.02f, -1.2f));
             _dice.Speed = Settings.AnimationSpeed;
             _crowd = new PawnCrowd(state.Players.Count);
             _turnMarker = TurnMarker.Create(transform);
@@ -668,6 +657,7 @@ namespace Lazpoly.Presentation.Game
             MarkTurn(state.CurrentPlayer.Id);
             _shownPot = state.Pot;
             _board.SetPot(state.Pot);
+            _board.ShowRoll(state.LastDie1, state.LastDie2);
             for (int i = 0; i < state.SquareCount; i++)
             {
                 int owner = state.GetOwner(i);
@@ -901,6 +891,7 @@ namespace Lazpoly.Presentation.Game
             ShownDie1 = rolled.Die1;
             ShownDie2 = rolled.Die2;
             ShownRollTime = Time.unscaledTime;
+            _board.ShowRoll(rolled.Die1, rolled.Die2);
             // The engine ends the turn straight after a third double; the move is forfeited.
             ShownRollForfeited = rolled.Die1 == rolled.Die2 && _pendingEvents.Count > 0 &&
                                  _pendingEvents.Peek() is PhaseChangedEvent next && next.Phase == GamePhase.TurnEnd;
@@ -972,9 +963,11 @@ namespace Lazpoly.Presentation.Game
                 camera = new GameObject("Main Camera") { tag = "MainCamera" }.AddComponent<Camera>();
             }
 
-            camera.transform.position = new Vector3(0f, 15f, -11f);
-            camera.transform.rotation = Quaternion.Euler(BoardCameraRig.PitchOf(View), 0f, 0f);
-            camera.fieldOfView = 50f;
+            camera.transform.position = BoardCameraRig.Place(Vector3.zero, BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, BoardCameraRig.Distance);
+            camera.transform.rotation = Quaternion.Euler(BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, 0f);
+            camera.orthographic = true;
+            camera.nearClipPlane = 0.3f;
+            camera.farClipPlane = 100f;
             CameraRig = camera.GetComponent<BoardCameraRig>();
             if (CameraRig == null) CameraRig = camera.gameObject.AddComponent<BoardCameraRig>();
             GraphicsQuality quality = RoomDressing.CurrentQuality();

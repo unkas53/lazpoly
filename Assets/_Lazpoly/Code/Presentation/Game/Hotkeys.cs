@@ -21,8 +21,6 @@ namespace Lazpoly.Presentation.Game
         Close,
         /// <summary>Open the pause menu (Esc with nothing on top).</summary>
         PauseMenu,
-        /// <summary>Switch between the table view and the overhead view (C).</summary>
-        CameraView,
         /// <summary>Show or hide the frame rate and memory overlay (F3).</summary>
         PerfOverlay,
         /// <summary>Step to the next store-screenshot camera set-up (F11).</summary>
@@ -71,7 +69,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The keys the screen listens to.</summary>
         public static readonly KeyCode[] Keys =
         {
-            KeyCode.Escape, KeyCode.Space, KeyCode.Return, KeyCode.KeypadEnter, KeyCode.B, KeyCode.T, KeyCode.H, KeyCode.C,
+            KeyCode.Escape, KeyCode.Space, KeyCode.Return, KeyCode.KeypadEnter, KeyCode.B, KeyCode.T, KeyCode.H,
             KeyCode.F3, KeyCode.F11, KeyCode.F12,
         };
 
@@ -107,8 +105,6 @@ namespace Lazpoly.Presentation.Game
                     return context.Acting && context.CanTrade ? HotkeyAction.Trade : HotkeyAction.None;
                 case KeyCode.H:
                     return HotkeyAction.HowToPlay;
-                case KeyCode.C:
-                    return HotkeyAction.CameraView;
                 default:
                     return HotkeyAction.None;
             }

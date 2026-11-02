@@ -11,13 +11,29 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
-    /// Builds the board from data with meshes made in code (<see cref="MeshFactory"/>). When the
-    /// Blender models arrive they replace these shapes; the layout and the API stay the same.
+    /// Builds the board from data with meshes made in code (<see cref="MeshFactory"/>): a plate floating
+    /// in the sky with the squares around its edge and a lawn in the middle that carries the dice score,
+    /// the pot and the title. When the Blender models arrive they replace these shapes; the layout and the API stay the same.
     /// </summary>
     public sealed class BoardView : MonoBehaviour
     {
         private const float HalfSize = 6f;
         private const float TileHeight = 0.2f;
+
+        /// <summary>How far the plate hangs below the squares; its edge shows in the isometric view.</summary>
+        public const float PlateThickness = 0.6f;
+
+        /// <summary>The plate's rim outside the squares.</summary>
+        public const float PlateMargin = 0.3f;
+
+        /// <summary>Top of the lawn in the middle of the board, where the dice land.</summary>
+        public const float LawnHeight = 0.08f;
+
+        /// <summary>Where the dice score stands on the lawn, towards the top of the screen from the middle, in lawn widths.</summary>
+        public const float ScoreOffset = 0.08f;
+
+        /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
+        public const float TitleOffset = 0.3f;
 
         private static readonly Color StartColor = new Color(0.40f, 0.73f, 0.42f);
         private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
@@ -26,16 +42,14 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
         private static readonly Color TravelColor = new Color(0.62f, 0.74f, 0.95f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
-        private static readonly Color TableColor = new Color(0.36f, 0.24f, 0.16f);
-        private static readonly Color SeaColor = new Color(0.12f, 0.40f, 0.54f);
-        private static readonly Color DuskSeaColor = new Color(0.10f, 0.22f, 0.40f);
-        private static readonly Color WaveColor = new Color(0.55f, 0.78f, 0.86f);
-        private static readonly Color SandColor = new Color(0.90f, 0.82f, 0.62f);
-        private static readonly Color GrassColor = new Color(0.42f, 0.62f, 0.36f);
-        private static readonly Color TreeColor = new Color(0.22f, 0.46f, 0.28f);
-        private static readonly Color BoatColor = new Color(0.95f, 0.93f, 0.86f);
+        private static readonly Color PlateColor = new Color(0.86f, 0.84f, 0.80f);
+        private static readonly Color RoadColor = new Color(0.80f, 0.78f, 0.72f);
+        private static readonly Color GrassColor = new Color(0.55f, 0.78f, 0.42f);
+        private static readonly Color LightGrassColor = new Color(0.63f, 0.84f, 0.50f);
+        private static readonly Color PathColor = new Color(0.90f, 0.86f, 0.74f);
         private static readonly Color PropertyBodyColor = new Color(0.96f, 0.94f, 0.88f);
         private static readonly Color TitleColor = new Color(0.95f, 0.86f, 0.55f);
+        private static readonly Color ScoreColor = new Color(0.99f, 0.98f, 0.95f);
         private static readonly Color PlaqueColor = new Color(0.17f, 0.15f, 0.14f);
         private static readonly Color LabelColor = new Color(0.97f, 0.94f, 0.87f);
 
@@ -62,21 +76,25 @@ namespace Lazpoly.Presentation.Tabletop
         private GameObject[] _tiles;
         private Color[] _tileColors;
         private TextMesh[] _labels;
+        private readonly List<KeyValuePair<Transform, Vector3>> _marks = new List<KeyValuePair<Transform, Vector3>>();
         private BoardData _data;
         private readonly Dictionary<Collider, int> _squareOfCollider = new Dictionary<Collider, int>();
         private readonly HashSet<Transform> _animating = new HashSet<Transform>();
         private HashSet<int> _highlighted;
         private float _tile;
+        private float _inner;
+        private float _yaw = BoardCameraRig.BaseYaw;
+        private Transform _scoreboard;
+        private Transform _title;
+        private TextMesh _score;
         private TextMesh _pot;
-        private SeaSurface _sea;
-        private TownLife _town;
 
         public BoardLayout Layout { get; private set; }
 
         /// <summary>Top surface height of the tiles, where pawns stand.</summary>
         public float SurfaceY => TileHeight;
 
-        /// <summary>Half the width of the table the board sits on.</summary>
+        /// <summary>Half the width of the plate the board sits on.</summary>
         public float HalfExtent { get; private set; }
 
         public static BoardView Create(Transform parent, BoardData data)
@@ -116,17 +134,46 @@ namespace Lazpoly.Presentation.Tabletop
             }
         }
 
-        /// <summary>How far into the evening the board is (0 day, 1 dusk): the sea darkens and the lighthouse lights up.</summary>
-        public void SetEvening(float evening)
-        {
-            _sea?.SetEvening(evening);
-            _town?.SetEvening(evening);
-        }
-
-        /// <summary>Shows what the pot holds in the middle of the board (boards without a pot show nothing).</summary>
+        /// <summary>Shows what the pot holds under the dice score (boards without a pot show nothing).</summary>
         public void SetPot(int amount)
         {
-            if (_pot != null) _pot.text = F($"Çay kumbarası\n{amount}");
+            if (_pot != null) _pot.text = F($"Çay kumbarası {amount}");
+        }
+
+        /// <summary>Shows the last roll large on the lawn; two dashes before the first roll of the game.</summary>
+        public void ShowRoll(int die1, int die2)
+        {
+            if (_score != null) _score.text = ScoreText(die1, die2);
+        }
+
+        /// <summary>What the lawn's score says for a roll: "6  4", or "–  –" when nothing has been rolled.</summary>
+        public static string ScoreText(int die1, int die2) => die1 == 0 ? "–  –" : $"{die1}  {die2}";
+
+        /// <summary>
+        /// Turns everything written on the board so it reads from a camera at <paramref name="yaw"/>: the
+        /// plaques and group letters flip to run left to right, and the score and the title lie square to the screen.
+        /// </summary>
+        public void FaceCamera(float yaw)
+        {
+            _yaw = yaw;
+            for (int i = 0; _labels != null && i < _labels.Length; i++)
+            {
+                if (_labels[i] != null) _labels[i].transform.localRotation = LabelRotation(Outward(Layout.SquareCenter(i)), yaw);
+            }
+
+            foreach (KeyValuePair<Transform, Vector3> mark in _marks) mark.Key.localRotation = LabelRotation(mark.Value, yaw);
+            Vector3 up = ScreenUp(yaw);
+            if (_scoreboard != null)
+            {
+                _scoreboard.localPosition = new Vector3(0f, LawnHeight + 0.01f, 0f) + up * (_inner * ScoreOffset);
+                _scoreboard.localRotation = FlatFacing(yaw);
+            }
+
+            if (_title != null)
+            {
+                _title.localPosition = new Vector3(0f, LawnHeight + 0.01f, 0f) + up * (_inner * TitleOffset);
+                _title.localRotation = FlatFacing(yaw);
+            }
         }
 
         /// <summary>The pot's label rocks when money drops in and swells when it is paid out.</summary>
@@ -385,24 +432,19 @@ namespace Lazpoly.Presentation.Tabletop
             Layout = new BoardLayout(board.Count, HalfSize);
             float tile = Layout.Spacing * 0.92f;
 
-            float width = 2f * HalfSize + 2f * tile;
+            float width = 2f * HalfSize + 2f * tile + 2f * PlateMargin;
             HalfExtent = width / 2f;
-            GameObject table = ModelParts.Create("Table", transform, MeshFactory.RoundedBox(new Vector3(width, 0.3f, width), 0.15f), TableColor, 0.35f);
-            table.transform.localPosition = new Vector3(0f, -0.15f, 0f);
+            // The plate floats in the sky; its edge hangs below the squares.
+            GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.RoundedBox(new Vector3(width, PlateThickness, width), 0.2f), PlateColor, 0.25f);
+            plate.transform.localPosition = new Vector3(0f, -PlateThickness / 2f, 0f);
 
-            float inner = 2f * HalfSize - tile * 1.05f;
-            // The middle of the board is the sea, with the town on an island and the title across the far side.
-            _sea = SeaSurface.Create(transform, inner, SeaColor, DuskSeaColor);
-            _sea.transform.localPosition = new Vector3(0f, 0.04f, 0f);
-            CreateTown(inner);
-            CreateTitle(new Vector3(0f, 0.045f, inner * 0.28f), inner);
-            if (board.HasPot)
-            {
-                _pot = CreateText("Pot", "", new Vector3(0f, 0.045f, inner * 0.06f), 96, inner * 0.0035f, TitleColor);
-                SetPot(0);
-            }
-
+            _inner = 2f * HalfSize - tile * 1.05f;
             _tile = tile;
+            // The middle of the board is a lawn that carries the dice score, the pot and the title.
+            CreateLawn(_inner);
+            CreateTitle(_inner);
+            CreateScoreboard(_inner, board.HasPot);
+            FaceCamera(_yaw);
             _ownerMarkers = new OwnerMarker[board.Count];
             _flagScale = new Vector3[board.Count];
             _levels = new int[board.Count];
@@ -479,72 +521,49 @@ namespace Lazpoly.Presentation.Tabletop
             }
         }
 
-        /// <summary>A small island with the town's houses, a lighthouse and trees, ripples around it, and a boat out at sea.</summary>
-        private void CreateTown(float inner)
+        /// <summary>The lawn in the middle: a gravel ring where the squares end, grass with lighter patches, and a path round the park.</summary>
+        private void CreateLawn(float inner)
         {
-            var town = new GameObject("Town");
-            town.transform.SetParent(transform, false);
-            Transform root = town.transform;
-            _town = TownLife.Attach(town);
-            var center = new Vector3(-inner * 0.26f, 0.04f, inner * 0.05f);
-            float radius = inner * 0.16f;
+            var lawn = new GameObject("Lawn");
+            lawn.transform.SetParent(transform, false);
+            Transform root = lawn.transform;
 
-            for (int i = 0; i < 3; i++)
+            GameObject road = ModelParts.Create("Gravel", root, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f, 2), RoadColor, 0.1f);
+            road.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+
+            float grass = inner * 0.84f;
+            GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), GrassColor, 0.05f);
+            green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
+
+            // A path runs round the park, a little way in from the gravel.
+            float path = inner * 0.6f;
+            for (int side = 0; side < 4; side++)
             {
-                GameObject ripple = ModelParts.Create("Ripple", root, MeshFactory.Ring(0.97f, 0.01f), WaveColor, 0.6f);
-                // Rings ride just above the highest wave so the water never cuts through them.
-                ripple.transform.localPosition = center + Vector3.up * (SeaSurface.Amplitude + 0.005f);
-                ripple.transform.localScale = Vector3.one * (radius * (1.25f + i * 0.22f));
-                _town.AddRipple(ripple.transform);
+                GameObject piece = ModelParts.Create("Path", root, MeshFactory.RoundedBox(new Vector3(path + inner * 0.03f, 0.01f, inner * 0.03f), 0.005f, 1), PathColor, 0.1f);
+                piece.transform.localRotation = Quaternion.Euler(0f, side * 90f, 0f);
+                piece.transform.localPosition = piece.transform.localRotation * new Vector3(0f, LawnHeight + 0.004f, path / 2f);
             }
 
-            GameObject sand = ModelParts.Create("Island", root, MeshFactory.Disc(0.06f, 40), SandColor, 0.1f);
-            sand.transform.localPosition = center;
-            sand.transform.localScale = new Vector3(radius, 1f, radius * 0.85f);
-            GameObject grass = ModelParts.Create("Grass", root, MeshFactory.Disc(0.05f, 40), GrassColor, 0.05f);
-            grass.transform.localPosition = center + Vector3.up * 0.05f;
-            grass.transform.localScale = new Vector3(radius * 0.72f, 1f, radius * 0.6f);
-
-            Vector3 ground = center + Vector3.up * 0.1f;
-            float house = radius * 0.22f;
-            Vector2[] houseSpots = { new Vector2(-0.35f, -0.1f), new Vector2(-0.05f, 0.25f), new Vector2(0.25f, -0.2f), new Vector2(0.05f, -0.42f), new Vector2(-0.42f, 0.3f) };
-            for (int i = 0; i < houseSpots.Length; i++)
+            Vector2[] patches = { new Vector2(-0.34f, 0.22f), new Vector2(0.3f, 0.3f), new Vector2(0.36f, -0.2f), new Vector2(-0.2f, -0.36f), new Vector2(0.05f, 0.4f) };
+            float[] sizes = { 0.09f, 0.06f, 0.08f, 0.07f, 0.05f };
+            for (int i = 0; i < patches.Length; i++)
             {
-                GameObject piece = BuildingParts.House($"Town house {i + 1}", root);
-                piece.transform.localPosition = ground + new Vector3(houseSpots[i].x * radius, 0f, houseSpots[i].y * radius);
-                piece.transform.localRotation = Quaternion.Euler(0f, 20f + i * 37f, 0f);
-                piece.transform.localScale = Vector3.one * house;
+                GameObject patch = ModelParts.Create("Light grass", root, MeshFactory.Disc(0.004f, 28), LightGrassColor, 0.05f);
+                patch.transform.localPosition = new Vector3(patches[i].x * inner, LawnHeight + 0.002f, patches[i].y * inner);
+                patch.transform.localScale = new Vector3(inner * sizes[i], 1f, inner * sizes[i] * 0.8f);
             }
+        }
 
-            GameObject mansion = BuildingParts.Mansion("Town mansion", root);
-            mansion.transform.localPosition = ground + new Vector3(0.3f * radius, 0f, 0.3f * radius);
-            mansion.transform.localRotation = Quaternion.Euler(0f, -30f, 0f);
-            mansion.transform.localScale = Vector3.one * (house * 1.3f);
-            ChimneySmoke.Attach(mansion, BuildingParts.ChimneyTop);
-
-            GameObject lighthouse = ModelParts.Create("Lighthouse", root, PawnShapes.Lighthouse(), Color.white, 0.3f);
-            lighthouse.transform.localPosition = ground + new Vector3(0.62f * radius, 0f, -0.5f * radius);
-            lighthouse.transform.localScale = Vector3.one * (radius * 0.9f);
-            // The lamp sits near the top of the tower (the shape is 0.61 tall); the beam reaches out over the water.
-            _town.AddBeam(lighthouse.transform.localPosition + Vector3.up * (radius * 0.9f * 0.5f), radius * 1.6f);
-
-            Vector2[] treeSpots = { new Vector2(-0.6f, 0.0f), new Vector2(-0.2f, 0.55f), new Vector2(0.45f, 0.6f), new Vector2(-0.25f, -0.5f) };
-            foreach (Vector2 spot in treeSpots)
-            {
-                Vector3 at = ground + new Vector3(spot.x * radius, 0f, spot.y * radius);
-                GameObject trunk = ModelParts.Create("Trunk", root, MeshFactory.Cylinder(8), BuildingParts.DarkTimber, 0.1f);
-                trunk.transform.localPosition = at;
-                trunk.transform.localScale = new Vector3(radius * 0.025f, radius * 0.12f, radius * 0.025f);
-                GameObject crown = ModelParts.Create("Crown", root, MeshFactory.Cone(10), TreeColor, 0.1f);
-                crown.transform.localPosition = at + Vector3.up * (radius * 0.1f);
-                crown.transform.localScale = new Vector3(radius * 0.11f, radius * 0.3f, radius * 0.11f);
-            }
-
-            GameObject boat = ModelParts.Create("Boat", root, PawnShapes.Boat(), BoatColor, 0.3f);
-            boat.transform.localPosition = new Vector3(inner * 0.27f, 0.04f + SeaSurface.Amplitude, -inner * 0.08f);
-            boat.transform.localRotation = Quaternion.Euler(0f, -35f, 0f);
-            boat.transform.localScale = Vector3.one * (inner * 0.12f);
-            _town.SetBoat(boat.transform, new Vector2(inner * 0.05f, inner * 0.03f));
+        /// <summary>The dice score large on the lawn with the pot's line under it; <see cref="FaceCamera"/> places and turns it.</summary>
+        private void CreateScoreboard(float inner, bool hasPot)
+        {
+            var board = new GameObject("Scoreboard");
+            board.transform.SetParent(transform, false);
+            _scoreboard = board.transform;
+            _score = CreateText("Score", ScoreText(0, 0), _scoreboard, new Vector3(0f, hasPot ? inner * 0.03f : 0f, 0f), 192, inner * 0.0055f, ScoreColor);
+            if (!hasPot) return;
+            _pot = CreateText("Pot", "", _scoreboard, new Vector3(0f, -inner * 0.07f, 0f), 96, inner * 0.0018f, TitleColor);
+            SetPot(0);
         }
 
         /// <summary>Direction from a square on the edge towards the outside of the board.</summary>
@@ -593,31 +612,21 @@ namespace Lazpoly.Presentation.Tabletop
             return piece;
         }
 
-        private void CreateTitle(Vector3 localPosition, float width)
+        /// <summary>The title lying on the far part of the lawn; <see cref="FaceCamera"/> places and turns it.</summary>
+        private void CreateTitle(float inner)
         {
             var title = new GameObject("Title");
             title.transform.SetParent(transform, false);
-            title.transform.localPosition = localPosition;
-            title.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-
-            var mesh = title.AddComponent<TextMesh>();
-            mesh.text = "LAZPOLY";
-            mesh.anchor = TextAnchor.MiddleCenter;
-            mesh.alignment = TextAlignment.Center;
-            mesh.fontSize = 192;
-            mesh.fontStyle = FontStyle.Normal;
-            mesh.characterSize = width * 0.006f;
-            mesh.color = TitleColor;
-            mesh.font = UiTheme.BoldFont;
-            title.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
+            _title = title.transform;
+            CreateText("Lettering", "LAZPOLY", _title, Vector3.zero, 192, inner * 0.0042f, TitleColor);
         }
 
-        private TextMesh CreateText(string name, string text, Vector3 localPosition, int fontSize, float characterSize, Color color)
+        /// <summary>Text lying in its parent's plane, readable from the parent's -Z side (<see cref="FlatFacing"/> turns the parent to the camera).</summary>
+        private static TextMesh CreateText(string name, string text, Transform parent, Vector3 localPosition, int fontSize, float characterSize, Color color)
         {
             var label = new GameObject(name);
-            label.transform.SetParent(transform, false);
+            label.transform.SetParent(parent, false);
             label.transform.localPosition = localPosition;
-            label.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
             var mesh = label.AddComponent<TextMesh>();
             mesh.text = text;
@@ -646,15 +655,27 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// How a square's label lies: flat on the tile, and on the side columns turned to run along the
-        /// edge with the tops of its letters towards the middle of the board, so it fits its plaque. The
-        /// near and far rows read the way the camera looks.
+        /// How a square's label lies: flat on the tile with its line running along the tile's outer edge
+        /// (so it fits its plaque), and with the tops of its letters pointing whichever way makes the
+        /// line read left to right for a camera turned by <paramref name="yaw"/>. From the game's own corner,
+        /// the near and far rows read with their tops away from the camera and the side columns run along the edge.
         /// </summary>
-        public static Quaternion LabelRotation(Vector3 outward)
+        public static Quaternion LabelRotation(Vector3 outward, float yaw)
         {
-            Quaternion flat = Quaternion.Euler(90f, 0f, 0f);
-            return Mathf.Abs(outward.x) > Mathf.Abs(outward.z) ? Quaternion.LookRotation(-outward) * flat : flat;
+            Vector3 right = Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+            // Text lying on the board: its face looks up, the tops of its letters point along or against the outward direction.
+            Vector3 tops = outward.normalized;
+            Vector3 line = Vector3.Cross(tops, Vector3.down);
+            float along = Vector3.Dot(line, right);
+            if (along < -1e-4f || (Mathf.Abs(along) <= 1e-4f && Vector3.Dot(tops, ScreenUp(yaw)) < 0f)) tops = -tops;
+            return Quaternion.LookRotation(Vector3.down, tops);
         }
+
+        /// <summary>The way on the board that is straight up the screen for a camera turned by <paramref name="yaw"/>.</summary>
+        public static Vector3 ScreenUp(float yaw) => Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+
+        /// <summary>Lying flat on the board, square to the screen of a camera turned by <paramref name="yaw"/>: a child text reads upright.</summary>
+        public static Quaternion FlatFacing(float yaw) => Quaternion.LookRotation(Vector3.down, ScreenUp(yaw));
 
         /// <summary>The character size that keeps a label of <paramref name="width"/> within <paramref name="maxWidth"/>.</summary>
         public static float FitCharacterSize(float characterSize, float width, float maxWidth) =>
@@ -693,7 +714,7 @@ namespace Lazpoly.Presentation.Tabletop
             var label = new GameObject("Label");
             label.transform.SetParent(transform, false);
             label.transform.localPosition = localPosition;
-            label.transform.localRotation = LabelRotation(outward);
+            label.transform.localRotation = LabelRotation(outward, _yaw);
 
             var mesh = label.AddComponent<TextMesh>();
             mesh.text = text;
@@ -725,7 +746,8 @@ namespace Lazpoly.Presentation.Tabletop
             var label = new GameObject("Group mark");
             label.transform.SetParent(transform, false);
             label.transform.localPosition = localPosition;
-            label.transform.localRotation = LabelRotation(outward);
+            label.transform.localRotation = LabelRotation(outward, _yaw);
+            _marks.Add(new KeyValuePair<Transform, Vector3>(label.transform, outward));
 
             var mesh = label.AddComponent<TextMesh>();
             mesh.text = mark;

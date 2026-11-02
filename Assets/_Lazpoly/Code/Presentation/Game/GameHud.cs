@@ -1220,9 +1220,7 @@ namespace Lazpoly.Presentation.Game
             UiBuilder row = ui.Row();
             row.IconButton(UiIcon.Sliders, L("Ayarlar"), OpenSettings);
             row.IconButton(UiIcon.Book, L("Nasıl Oynanır (H)"), OpenHowToPlay);
-            UiBuilder view = ui.Row();
-            view.IconButton(UiIcon.Home, L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
-            view.IconButton(UiIcon.Camera, L("Kamera Açısı (C)"), _controller.ToggleCameraView, height: UiTheme.SmallButtonHeight);
+            ui.IconButton(UiIcon.Home, L("Görünümü Sıfırla (Home)"), () => _controller.CameraRig?.ResetView(), height: UiTheme.SmallButtonHeight);
 
             UiBuilder keys = ui.Card(UiTheme.Field, 10);
             keys.Label(L("Klavye"), UiTextStyle.Small, UiTheme.Muted);
@@ -1230,7 +1228,6 @@ namespace Lazpoly.Presentation.Game
             Line(keys, "B", L("bina kartı"));
             Line(keys, "T", L("takas teklif et"));
             Line(keys, "H", L("nasıl oynanır"));
-            Line(keys, "C", L("kamera açısı: masa başı / kuş bakışı"));
             Line(keys, "Home", L("görünümü sıfırla"));
             Line(keys, "F3 / F11 / F12", L("kare hızı, ekran görüntüsü açısı, ekran görüntüsü"));
             Line(keys, "Esc", L("menü, pencereyi kapat"));
@@ -1325,9 +1322,6 @@ namespace Lazpoly.Presentation.Game
                     break;
                 case HotkeyAction.PauseMenu:
                     OpenPause();
-                    break;
-                case HotkeyAction.CameraView:
-                    _controller.ToggleCameraView();
                     break;
                 case HotkeyAction.PerfOverlay:
                     TogglePerfOverlay();

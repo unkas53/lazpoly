@@ -1,4 +1,5 @@
 using Lazpoly.Presentation.Dice;
+using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
 using UnityEngine;
@@ -7,25 +8,37 @@ namespace Lazpoly.Presentation.Tests
 {
     public class SceneryTests
     {
-        [Test]
-        public void SideColumnLabelsRunAlongTheEdgeAndLongNamesShrinkToThePlaque()
+        [TestCase(BoardCameraRig.BaseYaw)]
+        [TestCase(BoardCameraRig.BaseYaw + 90f)]
+        [TestCase(BoardCameraRig.BaseYaw + 180f)]
+        [TestCase(BoardCameraRig.BaseYaw - 90f)]
+        public void LabelsLieFlatAlongTheirEdgeAndReadLeftToRightFromAnyCorner(float yaw)
         {
-            // Near and far rows: flat text whose letters stand up towards +Z, as the camera reads it.
-            foreach (Vector3 outward in new[] { Vector3.back, Vector3.forward })
+            Vector3 cameraRight = Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+            foreach (Vector3 outward in new[] { Vector3.back, Vector3.forward, Vector3.left, Vector3.right })
             {
-                Quaternion rotation = BoardView.LabelRotation(outward);
-                Assert.That(Vector3.Distance(rotation * Vector3.up, Vector3.forward), Is.LessThan(1e-4f), $"{outward}: letters do not stand towards +Z");
-                Assert.That(Vector3.Distance(rotation * Vector3.back, Vector3.up), Is.LessThan(1e-4f), "the text does not face up");
+                Quaternion rotation = BoardView.LabelRotation(outward, yaw);
+                Assert.That(Vector3.Distance(rotation * Vector3.back, Vector3.up), Is.LessThan(1e-4f), $"{outward}: the text does not face up");
+                Vector3 tops = rotation * Vector3.up;
+                Assert.That(Mathf.Abs(Vector3.Dot(tops, outward)), Is.EqualTo(1f).Within(1e-4f), $"{outward}: the letters do not stand across the edge");
+                Vector3 line = rotation * Vector3.right;
+                Assert.That(Mathf.Abs(Vector3.Dot(line, outward)), Is.LessThan(1e-4f), $"{outward}: the line does not run along the edge");
+                Assert.Greater(Vector3.Dot(line, cameraRight), 0.5f, $"{outward}: the line reads right to left from yaw {yaw}");
             }
 
-            // Side columns: the text runs along Z and the tops of the letters point at the middle of the board.
-            foreach (Vector3 outward in new[] { Vector3.left, Vector3.right })
-            {
-                Quaternion rotation = BoardView.LabelRotation(outward);
-                Assert.That(Vector3.Distance(rotation * Vector3.up, -outward), Is.LessThan(1e-4f), $"{outward}: letters do not point inward");
-                Assert.That(Mathf.Abs((rotation * Vector3.right).z), Is.EqualTo(1f).Within(1e-4f), "the line does not run along the edge");
-                Assert.That(Vector3.Distance(rotation * Vector3.back, Vector3.up), Is.LessThan(1e-4f), "the text does not face up");
-            }
+            Quaternion facing = BoardView.FlatFacing(yaw);
+            Assert.That(Vector3.Distance(facing * Vector3.back, Vector3.up), Is.LessThan(1e-4f), "the score does not face up");
+            Assert.That(Vector3.Distance(facing * Vector3.right, cameraRight), Is.LessThan(1e-4f), "the score is not square to the screen");
+            Assert.That(Vector3.Distance(BoardView.ScreenUp(yaw), Quaternion.Euler(0f, yaw, 0f) * Vector3.forward), Is.LessThan(1e-4f));
+        }
+
+        [Test]
+        public void LongNamesShrinkToThePlaqueAndTheLawnShowsTheRoll()
+        {
+            Assert.AreEqual("6  4", BoardView.ScoreText(6, 4));
+            Assert.AreEqual("–  –", BoardView.ScoreText(0, 0), "nothing rolled yet");
+            Assert.Greater(BoardView.PlateThickness, 0f);
+            Assert.Greater(BoardView.LawnHeight, 0f);
 
             Assert.AreEqual(0.02f, BoardView.FitCharacterSize(0.02f, 1.2f, 1.5f), "a label that fits keeps its size");
             Assert.That(BoardView.FitCharacterSize(0.02f, 2f, 1.5f), Is.EqualTo(0.015f).Within(1e-6f), "a long label shrinks to the plaque");
@@ -74,50 +87,6 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void WavesStayWithinTheirHeightAndTheSeaFacesUp()
-        {
-            float highest = 0f;
-            for (float x = -5f; x <= 5f; x += 0.37f)
-            for (float z = -5f; z <= 5f; z += 0.41f)
-            for (float t = 0f; t < 12f; t += 0.3f)
-                highest = Mathf.Max(highest, Mathf.Abs(SeaSurface.Height(x, z, t)));
-            Assert.LessOrEqual(highest, SeaSurface.Amplitude + 1e-4f);
-            Assert.Greater(highest, SeaSurface.Amplitude * 0.8f, "the waves do rise somewhere");
-
-            Mesh sea = SeaSurface.BuildMesh(4f, 6);
-            Assert.AreEqual(49, sea.vertexCount);
-            Assert.AreEqual(6 * 6 * 2 * 3, sea.triangles.Length);
-            Assert.That(sea.bounds.size.x, Is.EqualTo(4f).Within(1e-4f));
-            Vector3[] vertices = sea.vertices;
-            int[] triangles = sea.triangles;
-            for (int i = 0; i < triangles.Length; i += 3)
-            {
-                Vector3 normal = Vector3.Cross(vertices[triangles[i + 1]] - vertices[triangles[i]], vertices[triangles[i + 2]] - vertices[triangles[i]]);
-                Assert.Greater(normal.y, 0f, $"triangle {i / 3} of the sea faces down");
-            }
-
-            Object.DestroyImmediate(sea);
-        }
-
-        [Test]
-        public void TheBoatDriftsRoundItsMooringAndComesBack()
-        {
-            var drift = new Vector2(0.5f, 0.3f);
-            Vector3 start = TownLife.BoatOffset(drift, 0f);
-            Vector3 later = TownLife.BoatOffset(drift, TownLife.DriftSeconds / 4f);
-            Vector3 round = TownLife.BoatOffset(drift, TownLife.DriftSeconds);
-            Assert.Greater(Vector3.Distance(start, later), 0.3f);
-            Assert.That(Vector3.Distance(start, round), Is.LessThan(1e-3f));
-            for (float t = 0f; t < TownLife.DriftSeconds; t += 1f)
-            {
-                Vector3 at = TownLife.BoatOffset(drift, t);
-                Assert.LessOrEqual(Mathf.Abs(at.x), drift.x + 1e-4f);
-                Assert.LessOrEqual(Mathf.Abs(at.z), drift.y + 1e-4f);
-                Assert.AreEqual(0f, at.y);
-            }
-        }
-
-        [Test]
         public void ThePeekNeverPullsTheViewOffTheBoard()
         {
             var center = new Vector3(1f, 0f, 2f);
@@ -126,18 +95,22 @@ namespace Lazpoly.Presentation.Tests
             Vector3 clamped = BoardCameraRig.ClampToBoard(new Vector3(40f, 0f, -50f), center, 6f);
             Assert.AreEqual(new Vector3(7f, 0f, -4f), clamped);
 
-            var aim = new Vector3(1f, 0f, 3f);
-            Assert.AreEqual(aim, BoardCameraRig.PeekAim(aim, null, center, 6f, 0f), "nothing pinned, nothing moves");
-            Vector3 peeked = BoardCameraRig.PeekAim(aim, new Vector3(7f, 0f, 3f), center, 6f, 0f);
+            var aim = new Vector3(1f, -0.3f, 3f);
+            Assert.AreEqual(aim, BoardCameraRig.PeekAim(aim, null, center, 6f), "nothing pinned, nothing moves");
+            Vector3 peeked = BoardCameraRig.PeekAim(aim, new Vector3(7f, 0.2f, 3f), center, 6f);
             Assert.That(peeked.x, Is.EqualTo(aim.x + 6f * BoardCameraRig.PeekAmount).Within(1e-4f), "slides a fraction of the way");
-            Assert.AreEqual(aim.y, peeked.y);
-            Vector3 farPeek = BoardCameraRig.PeekAim(aim, new Vector3(100f, 0f, 3f), center, 6f, 0f);
+            Assert.AreEqual(aim.y, peeked.y, "the aim keeps its height");
+            Vector3 farPeek = BoardCameraRig.PeekAim(aim, new Vector3(100f, 0f, 3f), center, 6f);
             Assert.That(Vector3.Distance(farPeek, peeked), Is.LessThan(1e-4f), "a point off the board counts as its edge");
+        }
 
-            // With the view turned a quarter round, a square to the world's +X is ahead (+Z) of the un-turned aim.
-            Vector3 turned = BoardCameraRig.PeekAim(aim, new Vector3(7f, 0f, 2f), center, 6f, 90f);
-            Assert.That(turned.z - aim.z, Is.GreaterThan(1f));
-            Assert.That(Mathf.Abs(turned.x - aim.x), Is.LessThan(0.3f));
+        [Test]
+        public void TheMenuBackdropBreathesAroundTheFramedView()
+        {
+            Assert.AreEqual(10f, MenuBackdrop.BreathingSize(10f, 0f), 1e-4f);
+            Assert.AreEqual(10f * (1f + MenuBackdrop.Breath), MenuBackdrop.BreathingSize(10f, MenuBackdrop.BreathSeconds / 4f), 1e-4f);
+            Assert.AreEqual(10f, MenuBackdrop.BreathingSize(10f, MenuBackdrop.BreathSeconds), 1e-3f, "a full breath comes back");
+            Assert.Less(MenuBackdrop.Breath, 0.1f, "the breathing stays gentle");
         }
 
         [Test]

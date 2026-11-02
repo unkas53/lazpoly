@@ -71,24 +71,36 @@ namespace Lazpoly.Presentation.Tests
             }
         }
 
-        [TestCase(1920f, 1080f, 412f)]
-        [TestCase(1280f, 1024f, 330f)]
-        [TestCase(3440f, 1440f, 549f)]
-        public void CameraFitsTheWholeBoardBetweenTheSidePanels(float width, float height, float reserved)
+        [TestCase(1920f, 1080f, 412f, BoardCameraRig.BaseYaw)]
+        [TestCase(1280f, 1024f, 330f, BoardCameraRig.BaseYaw)]
+        [TestCase(3440f, 1440f, 549f, BoardCameraRig.BaseYaw)]
+        [TestCase(1920f, 1080f, 0f, BoardCameraRig.BaseYaw)]
+        [TestCase(1920f, 1080f, 412f, BoardCameraRig.BaseYaw + 180f)]
+        public void CameraFitsTheWholeBoardBetweenTheSidePanels(float width, float height, float reserved, float yaw)
         {
-            const float half = 7.8f, fov = 50f, pitch = 55f;
-            Vector3 center = new Vector3(0f, 0f, 0f);
-            Vector3 camera = BoardCameraFraming.CameraPosition(center, half, fov, pitch, width, height, reserved);
+            const float half = 8.1f, thickness = 0.6f, pitch = BoardCameraRig.Pitch;
+            var center = new Vector3(0f, 0f, 0f);
+            float size = BoardCameraFraming.OrthographicSize(half, thickness, pitch, width, height, reserved);
+            Vector3 aim = BoardCameraFraming.Aim(center, thickness);
+            float freeAspect = BoardCameraFraming.FreeAspect(width, height, reserved);
 
-            float tanV = Mathf.Tan(fov * Mathf.Deg2Rad / 2f);
-            float tanH = tanV * (width / height) * BoardCameraFraming.FreeFraction(width, reserved);
-            BoardCameraFraming.Measure(camera, center, half, pitch * Mathf.Deg2Rad, tanH, tanV, out float maxX, out float minY, out float maxY);
+            float maxX = 0f, minY = float.MaxValue, maxY = float.MinValue;
+            for (int corner = 0; corner < 4; corner++)
+            for (int level = 0; level < 2; level++)
+            {
+                var point = center + new Vector3(corner % 2 == 0 ? -half : half, level == 0 ? 0f : -thickness, corner < 2 ? -half : half);
+                Vector2 seen = BoardCameraFraming.Project(point, aim, pitch, yaw, size, freeAspect);
+                maxX = Mathf.Max(maxX, Mathf.Abs(seen.x));
+                minY = Mathf.Min(minY, seen.y);
+                maxY = Mathf.Max(maxY, seen.y);
+            }
 
             Assert.LessOrEqual(maxX, 1f, "A corner is under a side panel.");
-            Assert.GreaterOrEqual(minY, -1f, "The near edge is below the screen.");
-            Assert.LessOrEqual(maxY, 1f, "The far edge is above the screen.");
+            Assert.GreaterOrEqual(minY, -1f, "The plate's bottom edge is below the screen.");
+            Assert.LessOrEqual(maxY, 1f, "The far corner is above the screen.");
             Assert.Greater(Mathf.Max(maxX, (maxY - minY) / 2f), BoardCameraFraming.Fill - 0.02f, "The board could be bigger.");
             Assert.AreEqual(0f, (minY + maxY) / 2f, 0.02f, "The board is not centred vertically.");
+            Assert.AreEqual(size, BoardCameraFraming.OrthographicSize(half, thickness, pitch, width, height, reserved), "the framing is deterministic");
         }
     }
 }

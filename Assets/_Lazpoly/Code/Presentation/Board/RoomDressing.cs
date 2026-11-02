@@ -1,6 +1,5 @@
 using Lazpoly.Infra;
 using Lazpoly.Infra.Settings;
-using Lazpoly.Presentation.Models;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -8,33 +7,23 @@ using UnityEngine.Rendering.Universal;
 namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
-    /// The room the board sits in: a desk under the board, a dim floor, warm key and cool fill
-    /// lights, and the camera's post-processing (bloom, grading, vignette). Shared by the game
-    /// and the main menu so both look the same. Quality can switch the costly parts off.
+    /// The world around the board: the sky it floats in, warm key and cool fill lights, and the
+    /// camera's post-processing (bloom, grading, vignette). Shared by the game and the main menu so
+    /// both look the same. Quality can switch the costly parts off.
     /// </summary>
     public static class RoomDressing
     {
-        private static readonly Color DeskColor = new Color(0.30f, 0.19f, 0.12f);
-        private static readonly Color FloorColor = new Color(0.07f, 0.06f, 0.07f);
-        private static readonly Color BackgroundColor = new Color(0.04f, 0.05f, 0.07f);
+        /// <summary>The sky behind the board at noon: a light, clear blue.</summary>
+        public static readonly Color SkyDay = new Color(0.64f, 0.85f, 0.97f);
+
+        /// <summary>The sky at dusk: warm and rosy.</summary>
+        public static readonly Color SkyDusk = new Color(0.93f, 0.62f, 0.48f);
 
         private static Light _sun;
         private static Light _fill;
 
-        /// <summary>Builds the desk and floor around a board of the given half width.</summary>
-        public static GameObject CreateRoom(Transform parent, float boardHalfExtent)
-        {
-            var room = new GameObject("Room");
-            room.transform.SetParent(parent, false);
-
-            float desk = boardHalfExtent * 2f * 1.7f;
-            GameObject top = ModelParts.Create("Desk", room.transform, MeshFactory.RoundedBox(new Vector3(desk, 0.5f, desk * 0.8f), 0.12f), DeskColor, 0.3f);
-            top.transform.localPosition = new Vector3(0f, -0.56f, 0f);
-
-            GameObject floor = ModelParts.Create("Floor", room.transform, MeshFactory.RoundedBox(new Vector3(120f, 0.2f, 120f), 0.1f, 1), FloorColor, 0.05f);
-            floor.transform.localPosition = new Vector3(0f, -6f, 0f);
-            return room;
-        }
+        /// <summary>The sky at one moment of the day.</summary>
+        public static Color SkyAt(float evening) => Color.Lerp(SkyDay, SkyDusk, Mathf.Clamp01(evening));
 
         /// <summary>The quality the player chose, or High when no settings service runs (tests, sandbox scenes).</summary>
         public static GraphicsQuality CurrentQuality()
@@ -91,7 +80,7 @@ namespace Lazpoly.Presentation.Tabletop
             sun.name = "Sun";
             sun.type = LightType.Directional;
             sun.shadows = ShadowsFor(quality);
-            sun.shadowStrength = 0.55f;
+            sun.shadowStrength = 0.45f;
 
             Light fill = new GameObject("Fill Light").AddComponent<Light>();
             fill.type = LightType.Directional;
@@ -103,7 +92,7 @@ namespace Lazpoly.Presentation.Tabletop
             ApplyDayLight(DayCycle.Noon);
         }
 
-        /// <summary>Sets the sun, the fill and the ambient to one moment of the day (see <see cref="DayCycle"/>).</summary>
+        /// <summary>Sets the sun, the fill, the ambient and the sky to one moment of the day (see <see cref="DayCycle"/>).</summary>
         public static void ApplyDayLight(in DayLight light)
         {
             if (_sun == null) _sun = GameObject.Find("Sun")?.GetComponent<Light>();
@@ -124,6 +113,8 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             RenderSettings.ambientLight = light.Ambient;
+            Camera camera = Camera.main;
+            if (camera != null) camera.backgroundColor = SkyAt(light.Evening);
         }
 
         /// <summary>
@@ -134,7 +125,7 @@ namespace Lazpoly.Presentation.Tabletop
         {
             bool postProcessing = PostProcessingOn(quality);
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = BackgroundColor;
+            camera.backgroundColor = SkyDay;
             camera.allowHDR = postProcessing;
 
             UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
@@ -175,10 +166,11 @@ namespace Lazpoly.Presentation.Tabletop
             var tonemapping = profile.Add<Tonemapping>();
             tonemapping.mode.Override(TonemappingMode.ACES);
 
+            // A faint darkening of the corners only; the sky must stay light.
             var vignette = profile.Add<Vignette>();
-            vignette.intensity.Override(0.18f);
-            vignette.smoothness.Override(0.5f);
-            vignette.color.Override(new Color(0.02f, 0.03f, 0.05f));
+            vignette.intensity.Override(0.12f);
+            vignette.smoothness.Override(0.6f);
+            vignette.color.Override(new Color(0.25f, 0.35f, 0.50f));
             return profile;
         }
     }

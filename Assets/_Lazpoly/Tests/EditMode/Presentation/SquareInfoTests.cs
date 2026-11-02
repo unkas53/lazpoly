@@ -84,17 +84,26 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void CameraRigTurnsAroundTheBoardAndZooms()
+        public void CameraRigLooksDownFromACornerAndZoomsByItsSize()
         {
-            Vector3 center = Vector3.zero, aim = new Vector3(0f, 0f, -1f), offset = new Vector3(0f, 10f, -8f);
-            Assert.AreEqual(aim + offset, BoardCameraRig.Place(center, aim, offset, 0f, 1f));
+            var aim = new Vector3(0f, -0.3f, 0f);
+            Vector3 camera = BoardCameraRig.Place(aim, BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, BoardCameraRig.Distance);
+            Assert.AreEqual(BoardCameraRig.Distance, Vector3.Distance(camera, aim), 1e-3f);
+            Assert.Greater(camera.y, aim.y, "the camera looks down");
+            Assert.Greater(camera.x, 0f, "it stands off the start square's corner (+x, -z)");
+            Assert.Less(camera.z, 0f);
+            Vector3 towards = Quaternion.Euler(BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, 0f) * Vector3.forward;
+            Assert.That(Vector3.Distance(camera + towards * BoardCameraRig.Distance, aim), Is.LessThan(1e-3f), "looking along its forward reaches the aim");
 
-            Vector3 half = BoardCameraRig.Place(center, aim, offset, 0f, 0.5f);
-            Assert.AreEqual((aim + offset * 0.5f).y, half.y, 1e-4f);
+            Vector3 opposite = BoardCameraRig.Place(aim, BoardCameraRig.Pitch, BoardCameraRig.BaseYaw + 180f, BoardCameraRig.Distance);
+            Assert.AreEqual(-camera.x, opposite.x, 1e-3f, "half a turn puts the camera at the far corner");
+            Assert.AreEqual(-camera.z, opposite.z, 1e-3f);
+            Assert.AreEqual(camera.y, opposite.y, 1e-3f);
 
-            Vector3 turned = BoardCameraRig.Place(center, aim, offset, 180f, 1f);
-            Assert.AreEqual(9f, turned.z, 1e-4f, "Half a turn puts the camera on the far side.");
-            Assert.AreEqual(10f, turned.y, 1e-4f);
+            Assert.AreEqual(10f, BoardCameraRig.SizeAt(10f, 1f));
+            Assert.AreEqual(5f, BoardCameraRig.SizeAt(10f, 0.5f), 1e-4f, "zooming in shows less");
+            Assert.AreEqual(10f * BoardCameraRig.MinZoom, BoardCameraRig.SizeAt(10f, 0.01f), 1e-4f, "the zoom is clamped");
+            Assert.AreEqual(10f * BoardCameraRig.MaxZoom, BoardCameraRig.SizeAt(10f, 9f), 1e-4f);
         }
     
         [Test]

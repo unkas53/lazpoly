@@ -557,6 +557,29 @@ Renk görmeyen ya da fare kullanmayan biri de oynayabilsin; İngilizce oyuncu T�
 - Testler: `AccessibilityTests` (paletler, grup harfleri, Tab sırası, odaktaki düğme ile Enter, pencere kapsamı, harfli
   kutucuk), `LangTests` (sayı biçimi, İngilizce uzunluk), `GameSettingsTests` (ayar kaydı).
 
+## Faz 11a: izometrik kamera ve tahta plakası
+
+Yeni görünümün ilk adımı (bkz. plan belgesindeki "Faz 11: yeni görünüm"): tahta artık masanın üstünde değil, açık
+gökyüzünde duran bir plaka; kamera sabit ve izometrik.
+
+- **Kamera:** ortografik, 35° eğik, Başlangıç köşesinden bakar (`BoardCameraRig.Pitch`, `BaseYaw`); tahta ekranda baklava
+  biçiminde durur, Başlangıç altta. Yan paneller arasına sığacak büyüklük köşegenden hesaplanır
+  (`BoardCameraFraming.OrthographicSize`); uzaklığın görüntüye etkisi yoktur. Tekerlek yakınlaştırır (`orthographicSize`
+  ölçeklenir), Home sıfırlar, sabitlenen kare görünümü hafifçe çeker; sağ tuşla döndürme ve masa başı / kuş bakışı
+  seçimi (C tuşu, duraklatma menüsündeki düğme) kalktı. Ekran görüntüsü ön ayarları (F11) artık köşe ve yakınlık seçer:
+  Genel görünüm, Yakın plan, Karşı köşe, Sol köşe, Sağ köşe.
+- **Plaka ve çim:** ahşap masa, deniz, ada, kayık ve fener kalktı (`SeaSurface`, `TownLife` silindi). Kareler açık renk bir
+  plakanın kenarında durur (`BoardView.PlateThickness`, kenarı aşağıdan görünür); ortada çakıl halka, çim, çevresinde
+  patika ve açık yeşil lekeler. Çimde büyük zar skoru ("6  4", ilk atıştan önce "–  –", `BoardView.ShowRoll`) ve altında
+  kumbara satırı; başlık uzak tarafta yatar.
+- **Yazılar kameraya göre:** plaka yazıları ve grup harfleri kenar boyunca yatar, harflerin tepesi kameradan soldan sağa
+  okunacak yöne bakar (`BoardView.LabelRotation(outward, yaw)`); skor ve başlık ekrana dik yatar (`FlatFacing`). Ön ayar
+  kamerayı başka köşeye çevirince `FaceCamera` hepsini yeniden döndürür.
+- **Gökyüzü:** arka plan açık mavi, akşama doğru pembeye döner (`RoomDressing.SkyDay/SkyDusk`); ortam ışığı daha açık,
+  gölgeler daha yumuşak, vinyet hafif. Menü arka planı da aynı açıdan bakar ve yavaşça nefes alır (`MenuBackdrop.BreathingSize`).
+- Testler: `RenderingSetupTests` (plakanın alt köşeleri dahil köşeler ekranda ve ortalanmış), `SquareInfoTests` (kamera yeri,
+  yakınlık sınırı), `SceneryTests` (dört köşeden okunurluk, skor metni, menü nefesi), `HotkeysTests` (C artık boş).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
