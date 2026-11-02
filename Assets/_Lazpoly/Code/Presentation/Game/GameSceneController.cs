@@ -221,6 +221,12 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether the shown roll was the third double in a row, which forfeits the move.</summary>
         public bool ShownRollForfeited { get; private set; }
 
+        /// <summary>Who made the roll on show.</summary>
+        public int ShownRollPlayer { get; private set; } = GameState.NoOwner;
+
+        /// <summary>Whether the roll on show was made by someone at this screen: the "you roll again" note is for them alone.</summary>
+        public bool ShownRollByPerson => _session != null && ShownRollPlayer != GameState.NoOwner && _session.CanControl(ShownRollPlayer) && !_session.IsAiPlaying(ShownRollPlayer);
+
         /// <summary>Who paid last and why, so the matching gain can be shown as coins flying from them.</summary>
         private int _lastPayer = -1;
         private MoneyReason _lastPaymentReason;
@@ -956,6 +962,7 @@ namespace Lazpoly.Presentation.Game
             ShownDie1 = rolled.Die1;
             ShownDie2 = rolled.Die2;
             ShownRollTime = Time.unscaledTime;
+            ShownRollPlayer = rolled.PlayerId;
             _board.ShowRoll(rolled.Die1, rolled.Die2);
             // The engine ends the turn straight after a third double; the move is forfeited.
             ShownRollForfeited = rolled.Die1 == rolled.Die2 && _pendingEvents.Count > 0 &&

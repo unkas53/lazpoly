@@ -42,8 +42,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
         public const float TitleOffset = 0.40f;
 
-        /// <summary>Where the tea money's jar stands, as a fraction of the lawn's inner width up the screen from the centre: just under the pot's line.</summary>
+        /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;
+        public const float PotPileSide = 0.12f;
 
         private static readonly Color StartColor = new Color(0.40f, 0.73f, 0.42f);
         private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
@@ -237,7 +238,7 @@ namespace Lazpoly.Presentation.Tabletop
                 _title.localRotation = FlatFacing(yaw);
             }
 
-            if (_potPile != null) _potPile.Root.localPosition = new Vector3(0f, LawnHeight, 0f) + up * (_inner * PotPileOffset);
+            if (_potPile != null) _potPile.Root.localPosition = new Vector3(0f, LawnHeight, 0f) + up * (_inner * PotPileOffset) + ScreenRight(yaw) * (_inner * PotPileSide);
         }
 
         /// <summary>The pot's label rocks when money drops in and swells when it is paid out.</summary>
@@ -767,6 +768,9 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>The way on the board that is straight up the screen for a camera turned by <paramref name="yaw"/>.</summary>
         public static Vector3 ScreenUp(float yaw) => Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+
+        /// <summary>The way on the board that is straight right across the screen for a camera turned by <paramref name="yaw"/>.</summary>
+        public static Vector3 ScreenRight(float yaw) => Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
 
         /// <summary>Lying flat on the board, square to the screen of a camera turned by <paramref name="yaw"/>: a child text reads upright.</summary>
         public static Quaternion FlatFacing(float yaw) => Quaternion.LookRotation(Vector3.down, ScreenUp(yaw));

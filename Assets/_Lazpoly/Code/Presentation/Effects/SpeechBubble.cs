@@ -65,6 +65,12 @@ namespace Lazpoly.Presentation.Effects
             tail.transform.localRotation = Quaternion.Euler(180f, 0f, 0f);
             tail.transform.localScale = new Vector3(0.06f, TailHeight, 0.06f);
             paper.transform.localPosition = Vector3.zero;
+            // A bubble floats over the table; a hard shadow of it on the lawn would read as a stain.
+            foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>())
+            {
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
 
             bubble.Place();
             bubble.transform.localScale = Vector3.zero;

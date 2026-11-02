@@ -326,7 +326,8 @@ namespace Lazpoly.Presentation.Game
                 return;
             }
 
-            if (_controller.ShownDie1 != _controller.ShownDie2)
+            // Only doubles are worth a note, and only to the person who rolled them: a computer's doubles show in its bubble.
+            if (_controller.ShownDie1 != _controller.ShownDie2 || !_controller.ShownRollByPerson)
             {
                 _rollGroup.alpha = 0f;
                 return;

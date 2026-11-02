@@ -27,11 +27,11 @@ namespace Lazpoly.Presentation.Tabletop
 
         public const int PennantsPerString = 9;
 
-        /// <summary>Trees as (x, z) fractions of the inner width, with the kind of each.</summary>
+        /// <summary>Trees as (x, z) fractions of the inner width, with the kind of each. The two of a side corner stand apart across the screen, not one over the other.</summary>
         public static readonly Vector2[] TreeSpots =
         {
-            new Vector2(-0.36f, -0.31f), new Vector2(-0.31f, -0.39f),
-            new Vector2(0.39f, 0.31f), new Vector2(0.31f, 0.36f),
+            new Vector2(-0.33f, -0.26f), new Vector2(-0.27f, -0.42f),
+            new Vector2(0.42f, 0.27f), new Vector2(0.26f, 0.33f),
             new Vector2(0.36f, -0.36f),
         };
 
