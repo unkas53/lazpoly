@@ -928,13 +928,18 @@ namespace Lazpoly.Presentation.Game
         /// <summary>
         /// A computer player's line in a bubble over its pawn, for the choices it makes (buying, letting a
         /// square go, bidding, building, trading). People at the table say nothing: they know what they did.
-        /// A newer line replaces the pawn's earlier bubble.
+        /// A newer line replaces the earlier bubble over the same square.
         /// </summary>
         private void Say(int playerId, string line)
         {
             if (playerId == GameState.NoOwner || !_session.IsAiPlaying(playerId)) return;
             if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) return;
-            if (_bubbles.TryGetValue(playerId, out SpeechBubble earlier) && earlier != null) earlier.Dismiss();
+            // One bubble over a square at a time: pawns sharing a square would otherwise talk over each other.
+            foreach (KeyValuePair<int, SpeechBubble> shown in _bubbles)
+            {
+                if (shown.Value != null && _pawns.TryGetValue(shown.Key, out PawnView other) && other.Square == pawn.Square) shown.Value.Dismiss();
+            }
+
             _bubbles[playerId] = SpeechBubble.Say(transform, pawn.transform, line, ColorOf(playerId));
         }
 

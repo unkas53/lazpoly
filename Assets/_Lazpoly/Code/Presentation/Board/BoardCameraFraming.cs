@@ -15,6 +15,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Fraction of the free area the board may fill.</summary>
         public const float Fill = 0.94f;
 
+        /// <summary>Room kept above the far corner for what stands on it (a corner scene, a pawn with its bubble), in world units.</summary>
+        public const float Headroom = 0.8f;
+
         /// <param name="boardHalfExtent">Half the plate's width (it is square).</param>
         /// <param name="plateThickness">How far the plate hangs below the board's surface.</param>
         /// <param name="pitchDegrees">Camera tilt below the horizon.</param>
@@ -31,14 +34,15 @@ namespace Lazpoly.Presentation.Tabletop
 
             float pitch = pitchDegrees * Mathf.Deg2Rad;
             float halfDiagonal = boardHalfExtent * Mathf.Sqrt(2f);
-            float halfHeight = halfDiagonal * Mathf.Sin(pitch) + plateThickness * Mathf.Cos(pitch) / 2f;
+            // Top to bottom on the screen: the headroom over the far corner, the diamond, the plate's edge under the near corner.
+            float halfHeight = halfDiagonal * Mathf.Sin(pitch) + (plateThickness + Headroom) * Mathf.Cos(pitch) / 2f;
             float freeAspect = FreeAspect(screenWidth, screenHeight, reservedSidePixels, reservedBottomPixels);
             float freeHeight = FreeHeightFraction(screenHeight, reservedBottomPixels);
             return Mathf.Max(halfHeight, halfDiagonal / freeAspect) / (freeHeight * Fill);
         }
 
-        /// <summary>Where the camera looks: a little below the board's surface, so the plate's edge counts in the centring.</summary>
-        public static Vector3 Aim(Vector3 boardCenter, float plateThickness) => boardCenter - Vector3.up * (plateThickness / 2f);
+        /// <summary>Where the camera looks: between the plate's edge below the surface and the headroom above it, so both count in the centring.</summary>
+        public static Vector3 Aim(Vector3 boardCenter, float plateThickness) => boardCenter + Vector3.up * ((Headroom - plateThickness) / 2f);
 
         /// <summary>
         /// Where the camera looks when a panel covers the bottom of the screen: below the board's aim by

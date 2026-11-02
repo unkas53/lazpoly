@@ -70,10 +70,10 @@ namespace Lazpoly.Presentation.Models
         public static GameObject TeaGarden(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
-            // The parasol stands off the table's corner, across the camera's line of sight, so its shade falls beside
-            // the tea rather than over it or over the pawns; it stays low because on the near-left corner its top
-            // falls up the screen towards the next square's name.
-            var parasol = new Vector3(0.12f, 0f, 0.12f);
+            // The parasol stands beside the table on its -X side: on the near-left corner that is the side away
+            // from the pawns, so its shade never falls over them; it stays low because its top falls up the
+            // screen towards the next square's name.
+            var parasol = new Vector3(-0.12f, 0f, 0.12f);
             Part(root, "Pole", MeshFactory.Cylinder(8), Slate, parasol, new Vector3(0.02f, 0.68f, 0.02f));
             Part(root, "Parasol", MeshFactory.Cone(16), Red, parasol + Vector3.up * 0.52f, new Vector3(0.3f, 0.18f, 0.3f));
             var table = new Vector3(-0.14f, 0f, -0.14f);
@@ -81,7 +81,7 @@ namespace Lazpoly.Presentation.Models
             Part(root, "Table", MeshFactory.Disc(0.12f, 24), Whitewash, table + Vector3.up * 0.3f, new Vector3(0.24f, 0.25f, 0.24f));
             for (int i = 0; i < 3; i++)
             {
-                float angle = (i * 120f + 105f) * Mathf.Deg2Rad;
+                float angle = (i * 120f + 45f) * Mathf.Deg2Rad;
                 Part(root, "Stool", MeshFactory.Cylinder(10), Timber, table + new Vector3(Mathf.Cos(angle) * 0.28f, 0f, Mathf.Sin(angle) * 0.28f), new Vector3(0.075f, 0.2f, 0.075f));
             }
 

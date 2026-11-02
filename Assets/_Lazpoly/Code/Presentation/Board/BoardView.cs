@@ -733,7 +733,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.characterSize = characterSize;
             mesh.color = color;
             mesh.font = UiTheme.BoldFont;
-            label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
+            label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
             return mesh;
         }
 
@@ -834,7 +834,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.fontStyle = FontStyle.Normal;
             mesh.color = color;
             mesh.font = UiTheme.BoldFont;
-            label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
+            label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
             FitLabel(mesh, characterSize, maxSize, outward);
             return mesh;
         }
@@ -867,7 +867,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.characterSize = _width * 0.012f;
             mesh.color = ColorVision.TextOn(band);
             mesh.font = UiTheme.BoldFont;
-            label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
+            label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
         }
 
         private static Color TileColor(SquareDefinition square, BoardData data)

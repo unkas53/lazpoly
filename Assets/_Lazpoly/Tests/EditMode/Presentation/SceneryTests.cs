@@ -191,6 +191,20 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void PrintedTextTestsDepthAndFollowsItsFont()
+        {
+            Font font = Lazpoly.Presentation.UI.UiTheme.BoldFont;
+            Material print = PrintMaterial.For(font);
+            Assert.IsNotNull(print);
+            Assert.IsTrue(PrintMaterial.IsPrinting(font), "the print shader is missing from Resources");
+            Assert.AreEqual(PrintMaterial.ShaderName, print.shader.name);
+            Assert.IsTrue(print.shader.isSupported, "the print shader does not compile");
+            Assert.AreSame(font.material.mainTexture, print.mainTexture, "the print uses the font's own atlas");
+            Assert.AreSame(print, PrintMaterial.For(font), "one material per font");
+            Assert.AreNotSame(font.material, print, "the font's draw-through material is left alone");
+        }
+
+        [Test]
         public void ASpeechBubbleWrapsItsLineInPaperOverThePawn()
         {
             var root = new GameObject("Scene");
