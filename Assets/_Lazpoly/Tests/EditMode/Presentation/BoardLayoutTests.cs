@@ -87,7 +87,11 @@ namespace Lazpoly.Presentation.Tests
             for (int i = 0; i < 10; i++)
             {
                 Assert.IsFalse(layout.IsCorner(i));
-                Assert.AreEqual(4f, Vector3.Distance(layout.SquareCenter(i), layout.SquareCenter(i + 1)), 1e-4f, $"gap after square {i}");
+                Vector3 here = layout.SquareCenter(i);
+                Vector3 next = layout.SquareCenter(i + 1);
+                Assert.IsTrue(Mathf.Abs(Mathf.Abs(here.x) - 5f) < 1e-4f || Mathf.Abs(Mathf.Abs(here.z) - 5f) < 1e-4f, $"square {i} is off the edge");
+                // Four units along the edge, even where the walk turns the board's corner.
+                Assert.AreEqual(4f, Mathf.Abs(next.x - here.x) + Mathf.Abs(next.z - here.z), 1e-4f, $"gap after square {i}");
             }
         }
 
