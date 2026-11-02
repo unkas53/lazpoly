@@ -73,7 +73,7 @@ namespace Lazpoly.Presentation.Tests
 
             Lang.Set(Language.English);
             Assert.AreEqual("1,500", Lang.N(1500));
-            Assert.AreEqual("1,500 (normal)", Lang.F($"{1500} (normal)"));
+            Assert.AreEqual("1,500 (standard)", Lang.F($"{1500} (normal)"), "the text is translated and the number grouped");
         }
 
         [Test]

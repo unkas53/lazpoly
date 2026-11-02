@@ -172,7 +172,8 @@ namespace Lazpoly.PlayTests
             // Space rolls for the person on turn, exactly as the button would.
             Assert.IsTrue(hud.PressKey(KeyCode.Space));
             Assert.IsNull(controller.LastRejection);
-            Assert.AreNotEqual(GamePhase.WaitingForRoll, controller.Session.State.Phase);
+            // A double that lands on a square with nothing to decide leaves the phase at WaitingForRoll again, so the dice are the proof.
+            Assert.AreNotEqual(0, controller.Session.State.LastDie1, "The dice were rolled.");
             Assert.IsTrue(controller.IsBusy, "The roll is being shown.");
             Assert.IsFalse(hud.PressKey(KeyCode.Space), "Nothing is offered while the board animates.");
         }

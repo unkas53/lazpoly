@@ -131,7 +131,7 @@ namespace Lazpoly.Presentation.UI
         {
             Transform top = null;
             int topOrder = int.MinValue, topSibling = int.MinValue;
-            foreach (UiFocusScope scope in FindObjectsByType<UiFocusScope>(FindObjectsSortMode.None))
+            foreach (UiFocusScope scope in FindObjectsByType<UiFocusScope>())
             {
                 if (!scope.gameObject.activeInHierarchy) continue;
                 Canvas canvas = scope.GetComponentInParent<Canvas>();
