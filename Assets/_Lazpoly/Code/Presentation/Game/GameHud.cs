@@ -175,7 +175,9 @@ namespace Lazpoly.Presentation.Game
             dock.pivot = new Vector2(1f, 0.5f);
             dock.anchoredPosition = new Vector2(-Margin, 0f);
             dock.sizeDelta = new Vector2(UiLayout.DockWidth, 0f);
-            UiBuilder.AddColumnLayout(dock.gameObject, 0, 6f);
+            // A dark panel behind the buttons, so their captions read on the light sky.
+            UiRoot.Background(dock, UiTheme.Panel, shadow: true);
+            UiBuilder.AddColumnLayout(dock.gameObject, (int)UiLayout.DockPadding, 6f);
             dock.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             _dock = new UiView(new UiBuilder(dock), RenderDock);
 

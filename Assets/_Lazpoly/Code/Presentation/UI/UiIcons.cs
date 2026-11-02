@@ -54,9 +54,11 @@ namespace Lazpoly.Presentation.UI
             switch (icon)
             {
                 case UiIcon.Dice:
+                    // The pips contrast with the die's body: dark on a light die, light on a dark one (a primary button's icon is dark).
+                    Color pipColor = ColorVision.Luminance(color) < 0.4f ? new Color(1f, 0.97f, 0.9f, 0.95f) : Ink;
                     Shape(root, 0.06f, 0.06f, 0.88f, 0.88f, color);
                     foreach (Vector2 pip in new[] { new Vector2(0.28f, 0.28f), new Vector2(0.72f, 0.28f), new Vector2(0.5f, 0.5f), new Vector2(0.28f, 0.72f), new Vector2(0.72f, 0.72f) })
-                        Shape(root, pip.x - 0.08f, pip.y - 0.08f, 0.16f, 0.16f, Ink, round: true);
+                        Shape(root, pip.x - 0.08f, pip.y - 0.08f, 0.16f, 0.16f, pipColor, round: true);
                     break;
 
                 case UiIcon.People:

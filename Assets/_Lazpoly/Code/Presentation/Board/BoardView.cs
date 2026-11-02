@@ -33,7 +33,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ScoreOffset = 0.17f;
 
         /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
-        public const float TitleOffset = 0.37f;
+        public const float TitleOffset = 0.40f;
 
         private static readonly Color StartColor = new Color(0.40f, 0.73f, 0.42f);
         private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
@@ -537,7 +537,7 @@ namespace Lazpoly.Presentation.Tabletop
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
 
             // A path runs round the park, a little way in from the gravel.
-            float path = inner * 0.6f;
+            float path = inner * 0.44f;
             for (int side = 0; side < 4; side++)
             {
                 GameObject piece = ModelParts.Create("Path", root, MeshFactory.RoundedBox(new Vector3(path + inner * 0.03f, 0.01f, inner * 0.03f), 0.005f, 1), PathColor, 0.1f);
@@ -619,7 +619,7 @@ namespace Lazpoly.Presentation.Tabletop
             var title = new GameObject("Title");
             title.transform.SetParent(transform, false);
             _title = title.transform;
-            CreateText("Lettering", "LAZPOLY", _title, Vector3.zero, 192, inner * 0.0058f, TitleColor);
+            CreateText("Lettering", "LAZPOLY", _title, Vector3.zero, 192, inner * 0.005f, TitleColor);
         }
 
         /// <summary>Text lying in its parent's plane, readable from the parent's -Z side (<see cref="FlatFacing"/> turns the parent to the camera).</summary>

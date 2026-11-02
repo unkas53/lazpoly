@@ -16,8 +16,11 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Diameter of the round buttons in the dock at the right edge of the game screen.</summary>
         public const float DockButton = 64f;
 
-        /// <summary>Width of the dock: a round button with room for its caption.</summary>
-        public const float DockWidth = DockButton + 36f;
+        /// <summary>Padding inside the dock's panel.</summary>
+        public const float DockPadding = 8f;
+
+        /// <summary>Width of the dock: a round button with room for its caption, inside the panel's padding.</summary>
+        public const float DockWidth = DockButton + 36f + 2f * DockPadding;
 
         /// <summary>Gap between the screen edge and a panel, and between panels.</summary>
         public const float Margin = 16f;
