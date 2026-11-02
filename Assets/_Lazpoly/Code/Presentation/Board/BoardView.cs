@@ -79,7 +79,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float PawnOffset = 0.22f;
 
         /// <summary>On a corner, pawns also step this far along the edge away from the corner's scene.</summary>
-        public const float CornerPawnShift = 0.2f;
+        public const float CornerPawnShift = 0.25f;
 
         /// <summary>The name's line, outward from the square's centre.</summary>
         public const float NameOffset = 0.19f;
@@ -105,9 +105,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// On a corner that faces away from the camera the scene and the pawns take the outer part and the name the inner
         /// edge, so their height rises over the sky instead of the name; on the near corners it is the other way round.
         /// </summary>
-        public const float SceneOffset = 0.27f;
+        public const float SceneOffset = 0.29f;
         public const float SceneInset = 0.22f;
-        public const float SceneSize = 0.44f;
+        public const float SceneSize = 0.40f;
 
         private OwnerMarker[] _ownerMarkers;
         private Vector3[] _flagScale;
