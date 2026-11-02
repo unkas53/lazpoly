@@ -33,7 +33,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void LongNamesShrinkToThePlaqueAndTheLawnShowsTheRoll()
+        public void LongNamesShrinkToTheirTileAndTheLawnShowsTheRoll()
         {
             Assert.AreEqual("6  4", BoardView.ScoreText(6, 4));
             Assert.AreEqual("–  –", BoardView.ScoreText(0, 0), "nothing rolled yet");
@@ -41,15 +41,34 @@ namespace Lazpoly.Presentation.Tests
             Assert.Greater(BoardView.LawnHeight, 0f);
 
             Assert.AreEqual(0.02f, BoardView.FitCharacterSize(0.02f, 1.2f, 1.5f), "a label that fits keeps its size");
-            Assert.That(BoardView.FitCharacterSize(0.02f, 2f, 1.5f), Is.EqualTo(0.015f).Within(1e-6f), "a long label shrinks to the plaque");
+            Assert.That(BoardView.FitCharacterSize(0.02f, 2f, 1.5f), Is.EqualTo(0.015f).Within(1e-6f), "a long label shrinks to its tile");
             Assert.AreEqual(0.02f, BoardView.FitCharacterSize(0.02f, 0f, 1.5f), "an unmeasured label is left alone");
             Assert.That(BoardView.FitCharacterSize(0.02f, new Vector2(1f, 0.6f), new Vector2(1.5f, 0.4f)), Is.EqualTo(0.02f * 0.4f / 0.6f).Within(1e-6f),
-                "two tall lines shrink to the plaque's depth");
+                "a tall line shrinks to its strip");
             Assert.That(BoardView.FitCharacterSize(0.02f, new Vector2(2f, 0.6f), new Vector2(1.5f, 0.4f)), Is.EqualTo(0.02f * 0.4f / 0.6f).Within(1e-6f),
                 "the tighter of the two limits wins");
-            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f + 0.045f, "the plaque may tuck under the raised band's edge, no further");
-            Assert.Less(BoardView.PlaqueDepth / 2f - BoardView.PlaqueOffset, 0.12f, "the plaque reaches into the pawns' half of the tile");
-            Assert.Less(BoardView.PlaqueOffset + BoardView.PlaqueDepth / 2f, BoardView.BandOffset, "the plaque runs past the band's centre");
+        }
+
+        [Test]
+        public void EverythingOnASquareHasItsOwnStripFromTheInnerEdgeToTheOuter()
+        {
+            var layout = new BoardLayout(24, 6f, BoardView.DepthRatio);
+            float widthInDepths = layout.Width / layout.Depth;
+            float pawnReach = PawnSlots.Pitch * widthInDepths; // Half the 3x3 slot grid, in tile depths.
+
+            Assert.Greater(BoardView.BuildingOffset, BoardView.PawnOffset, "the building row lies behind the pawns");
+            Assert.Less(BoardView.BuildingOffset + BoardView.HouseSize * widthInDepths / 2f, 0.5f, "houses stay on the tile");
+            Assert.Less(-BoardView.PawnOffset + pawnReach, BoardView.NameOffset - BoardView.NameDepth / 2f, "the back row of pawns stops short of the name");
+            Assert.LessOrEqual(BoardView.NameOffset + BoardView.NameDepth / 2f, BoardView.PriceOffset - BoardView.PriceDepth / 2f, "the price sits under the name");
+            Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f, "the band lies beyond the price");
+            Assert.Less(BoardView.BandOffset + BoardView.BandDepth / 2f, 0.5f, "the band stays on the tile");
+            Assert.Greater(BoardView.NameSize, BoardView.PriceSize, "the name is the larger line");
+
+            // On a corner the scene stands towards the board's corner and the pawns step the other way; neither reaches the other.
+            Assert.LessOrEqual(BoardView.SceneOffset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner along the edge");
+            Assert.LessOrEqual(BoardView.SceneInset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner across it");
+            Assert.Less(-BoardView.CornerPawnShift + pawnReach, BoardView.SceneOffset - BoardView.SceneSize / 2f, "the pawns stay clear of the scene");
+            Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.NameOffset - BoardView.NameDepth / 2f, "the scene ends before the corner's name");
         }
 
         [Test]

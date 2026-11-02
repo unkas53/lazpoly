@@ -28,6 +28,13 @@ namespace Lazpoly.Presentation.Models
             return part;
         }
 
+        /// <summary>Lays a texture over a part made by <see cref="Create"/>; its colour tints the texture.</summary>
+        public static void Skin(GameObject part, Texture texture)
+        {
+            Material material = part.GetComponent<Renderer>().sharedMaterial;
+            if (material != null) material.mainTexture = texture;
+        }
+
         /// <summary>Recolours a part made by <see cref="Create"/>; it already owns its material.</summary>
         public static void Paint(GameObject part, Color color, float smoothness = 0.25f)
         {

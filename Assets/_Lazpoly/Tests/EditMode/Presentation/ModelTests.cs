@@ -36,6 +36,93 @@ namespace Lazpoly.Presentation.Tests
             Assert.That(Vector3.Distance(new Vector3(2f, 0.5f, 1f), box.bounds.size), Is.LessThan(1e-3f));
             AssertFacesOutward(box, Vector3.zero);
             foreach (Vector3 normal in box.normals) Assert.That(normal.magnitude, Is.EqualTo(1f).Within(1e-3f));
+
+            // A texture lies over the box from above: the top face shows all of it, corner to corner.
+            Vector2[] uv = box.uv;
+            Vector3[] vertices = box.vertices;
+            Assert.AreEqual(vertices.Length, uv.Length);
+            for (int i = 0; i < uv.Length; i++)
+            {
+                Assert.That(uv[i].x, Is.EqualTo(vertices[i].x / 2f + 0.5f).Within(1e-4f));
+                Assert.That(uv[i].y, Is.EqualTo(vertices[i].z + 0.5f).Within(1e-4f));
+            }
+        }
+
+        [Test]
+        public void ThePaperSkinIsALightGrainWithAFrameLine()
+        {
+            Texture2D paper = TileSkin.Make(32);
+            try
+            {
+                Assert.AreEqual(32, paper.width);
+                Assert.AreEqual(32, paper.height);
+                float darkest = 1f;
+                float sum = 0f;
+                foreach (Color pixel in paper.GetPixels())
+                {
+                    Assert.That(pixel.r, Is.EqualTo(pixel.g).Within(1e-3f), "the paper is grey; the tile's colour tints it");
+                    darkest = Mathf.Min(darkest, pixel.r);
+                    sum += pixel.r;
+                }
+
+                Assert.Greater(darkest, 0.75f, "nothing on the paper is dark");
+                Assert.Greater(sum / (32 * 32), 0.9f, "the paper is light");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(paper);
+            }
+
+            float middle = TileSkin.Value(0.5f, 0.5f);
+            Assert.That(middle, Is.InRange(1f - TileSkin.Grain, 1f));
+            Assert.Less(TileSkin.Value(TileSkin.FrameInset, 0.5f), middle * (TileSkin.FrameShade + 0.02f), "the frame line is darker than the paper");
+            Assert.Less(TileSkin.Value(0.5f, 1f - TileSkin.FrameInset), middle * (TileSkin.FrameShade + 0.02f), "the frame runs round all four sides");
+            Assert.AreSame(TileSkin.Paper(), TileSkin.Paper(), "every tile shares one texture");
+        }
+
+        [Test]
+        public void CornerScenesStandOnTheirSquareWithTheirBaseOnIt()
+        {
+            var root = new GameObject("Scenes");
+            try
+            {
+                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Start, Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel })
+                {
+                    Assert.IsTrue(CornerParts.Has(type));
+                    GameObject scene = CornerParts.For(type, type.ToString(), root.transform);
+                    Assert.IsNotNull(scene, $"{type} has no scene.");
+                    MeshFilter[] parts = scene.GetComponentsInChildren<MeshFilter>();
+                    Assert.Greater(parts.Length, 3, $"{type}'s scene is too plain.");
+
+                    var low = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+                    var high = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+                    foreach (MeshFilter part in parts)
+                    {
+                        Bounds bounds = part.sharedMesh.bounds;
+                        for (int corner = 0; corner < 8; corner++)
+                        {
+                            var local = new Vector3((corner & 1) == 0 ? bounds.min.x : bounds.max.x, (corner & 2) == 0 ? bounds.min.y : bounds.max.y, (corner & 4) == 0 ? bounds.min.z : bounds.max.z);
+                            Vector3 point = scene.transform.InverseTransformPoint(part.transform.TransformPoint(local));
+                            low = Vector3.Min(low, point);
+                            high = Vector3.Max(high, point);
+                        }
+                    }
+
+                    Assert.That(low.y, Is.EqualTo(0f).Within(0.02f), $"{type}'s scene floats or sinks.");
+                    Assert.LessOrEqual(high.y, 1.3f, $"{type}'s scene is too tall.");
+                    Assert.That(low.x, Is.GreaterThanOrEqualTo(-0.53f), $"{type}'s scene spills over its square.");
+                    Assert.That(high.x, Is.LessThanOrEqualTo(0.53f), $"{type}'s scene spills over its square.");
+                    Assert.That(low.z, Is.GreaterThanOrEqualTo(-0.53f), $"{type}'s scene spills over its square.");
+                    Assert.That(high.z, Is.LessThanOrEqualTo(0.53f), $"{type}'s scene spills over its square.");
+                }
+
+                Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Lookout));
+                Assert.IsNull(CornerParts.For(Lazpoly.Core.Board.SquareType.Tax, "none", root.transform));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
         }
 
         [Test]
@@ -94,7 +181,7 @@ namespace Lazpoly.Presentation.Tests
             }
             finally
             {
-                Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(root);
             }
         }
 

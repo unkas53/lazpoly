@@ -601,6 +601,30 @@ Yan sütunlar kalktı; arayüz baklava biçimli tahtanın boş bıraktığı yer
 - Testler: `UiBuilderTests` (yuvarlak düğme), `AccessibilityTests` (avatar baş harfi, Türkçe İ), `UiLayoutTests`
   (dock payı), PlayMode `InterfaceTests` düğmeleri yeni yazılarıyla basar.
 
+## Faz 11c: dokulu kareler, karedeki adlar ve köşe yapıları
+
+Tahta basılı bir oyun tahtası gibi: kareler dikdörtgen, köşeler büyük kare, adlar doğrudan karenin üstünde.
+
+- **Düzen (`BoardLayout`):** kenar kareleri genişliğinin 1,4 katı derinlikte (`BoardView.DepthRatio`), köşeler bu
+  derinlikte kare. Bir kenar yarım köşe + beş kare + yarım köşe olarak paylaşılır; `Width`, `Depth`, `SquareSize`,
+  `IsCorner`, `Outward` ve `Cornerward` tahtanın ölçüsünü tek yerden verir. Dörde bölünmeyen kare sayısı eski gibi
+  eşit karelerle dizilir. Tahtanın dış kenarı (`OuterHalf`) 11b'deki kadar kaldı, çim biraz küçüldü.
+- **Basılı kareler:** her karenin gövdesi kendi renginin pastel tonu (`BoardView.Pastel`, kâğıt rengine doğru yıkanmış)
+  ve üstünde paylaşılan bir kâğıt dokusu (`TileSkin`: hafif gren + kenardan biraz içeride ince çerçeve çizgisi; 128 px,
+  kodla üretilir). `MeshFactory.RoundedBox` artık üstten bakılmış doku koordinatları taşır; `ModelParts.Skin` dokuyu
+  parçanın kendi malzemesine koyar. Grup rengi dış kenardaki bantta tam renk kalır.
+- **Karede ad ve fiyat:** koyu plaka kalktı. Ad mürekkep renginde, kare genişliğine sığacak kadar büyük (`NameSize`,
+  `NameFill`, `NameDepth`); altında daha küçük fiyat / vergi / bilet satırı (`Subtitle`). Kare üstündeki şerit sırası
+  iç kenardan dışa: bina sırası ve çadır (`BuildingOffset`), piyonlar (`PawnOffset`), ad (`NameOffset`), fiyat
+  (`PriceOffset`), bant (`BandOffset`). Derin kare sayesinde uzak sıradaki piyonlar artık adın önünde durmaz.
+- **Köşe sahneleri (`CornerParts`):** oyunun kendi parçalarından kurulu küçük sahneler, köşenin iç yarısında tahtanın
+  köşesine doğru durur; piyonlar diğer yana, ad dış kenara. Başlangıç'ta iskele ve fener (yanında kayık), Çay
+  Molası'nda şemsiyeli çay bahçesi (masa, tabureler, semaver, çay bardağı), Sokak Haberi'nde gazete büfesi, Otogar'da
+  dolmuş durağı (tente, bank, cam arkalık ve minibüs). Köşelerdeki eski küçük tabelalar kalktı; Seyir Terası'nın dürbünü
+  yerinde. Sahneler kodla üretildiği için kaynak notu gerektirmez; istenirse çadır gibi dış model de konabilir.
+- Testler: `BoardLayoutTests` (derin kareler, köşeler, dörde bölünmeyen sayı), `SceneryTests` (şerit sırası ve köşe
+  sahnesinin yerleşimi), `ModelTests` (doku koordinatları, kâğıt dokusu, sahnelerin karesine sığması).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

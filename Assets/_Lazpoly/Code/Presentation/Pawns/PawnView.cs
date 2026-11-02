@@ -179,6 +179,6 @@ namespace Lazpoly.Presentation.Pawns
             transform.localScale = new Vector3(width, height, width);
         }
 
-        private Vector3 Target(int square) => _board.PawnSpot(square) + PawnSlots.Offset(_slot, _crowd.Capacity, _board.Layout.Spacing);
+        private Vector3 Target(int square) => _board.PawnSpot(square) + PawnSlots.Offset(_slot, _crowd.Capacity, _board.Layout.Width);
     }
 }

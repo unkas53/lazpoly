@@ -101,10 +101,10 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Less(seams.color.grayscale, canvas.color.grayscale, "seams are darker than the canvas");
                 AssertColor(TentParts.Aluminium, poles.color);
 
-                marker.Place(new Vector3(0f, 0f, -6f), Vector3.back, 2f, 0.2f, Vector3.zero);
+                marker.Place(new Vector3(0f, 0f, -6f), Vector3.back, new Vector2(2f, 2.8f), 0.2f, Vector3.zero);
                 Vector3 scale = marker.RestScale(2f);
                 Assert.That(scale.x, Is.EqualTo(scale.z).Within(1e-5f), "the tent scales uniformly");
-                Assert.Less(marker.transform.localPosition.z, -6f + 2f * 0.5f, "the tent stays inside the tile");
+                Assert.Less(marker.transform.localPosition.z, -6f + 2.8f * 0.5f - scale.z / 2f, "the tent stays inside the tile");
                 Assert.Greater(marker.transform.localPosition.z, -6f);
                 Vector3 along = marker.transform.localRotation * Vector3.forward;
                 Assert.That(Mathf.Abs(along.x), Is.EqualTo(1f).Within(1e-4f), "the tent lies along the row");

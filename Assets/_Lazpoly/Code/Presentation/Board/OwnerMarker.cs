@@ -14,8 +14,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The tent's length along the building row, in tile widths.</summary>
         public const float TentLength = 0.30f;
 
-        /// <summary>Where the tent's centre sits, inward from the square's centre, in tile widths (behind the pawns, inside the tile).</summary>
-        public const float TentOffset = 0.375f;
+        /// <summary>Where the tent's centre sits, inward from the square's centre, in tile depths: on the building row, behind the pawns.</summary>
+        public const float TentOffset = 0.36f;
 
         private GameObject _pennant;
 
@@ -41,16 +41,19 @@ namespace Lazpoly.Presentation.Tabletop
             return marker;
         }
 
-        /// <summary>The marker's size on a square, in local scale.</summary>
-        public Vector3 RestScale(float tile) => IsTent ? Vector3.one * (tile * TentLength) : new Vector3(tile * 0.5f, tile * 0.62f, tile * 0.5f);
+        /// <summary>The marker's size on a square <paramref name="width"/> wide, in local scale.</summary>
+        public Vector3 RestScale(float width) => IsTent ? Vector3.one * (width * TentLength) : new Vector3(width * 0.5f, width * 0.62f, width * 0.5f);
 
-        /// <summary>Where the marker stands and which way it turns on a square whose outer edge faces <paramref name="outward"/>.</summary>
-        public void Place(Vector3 squareCenter, Vector3 outward, float tile, float surfaceY, Vector3 buildingRowCenter)
+        /// <summary>
+        /// Where the marker stands and which way it turns on a square whose outer edge faces <paramref name="outward"/>;
+        /// <paramref name="size"/> is the square's width along the edge and its depth from inner edge to outer.
+        /// </summary>
+        public void Place(Vector3 squareCenter, Vector3 outward, Vector2 size, float surfaceY, Vector3 buildingRowCenter)
         {
             if (IsTent)
             {
                 // The tent lies along the row, its door towards the next square, just inside the tile's inner edge.
-                transform.localPosition = squareCenter - outward * (tile * TentOffset) + Vector3.up * surfaceY;
+                transform.localPosition = squareCenter - outward * (size.y * TentOffset) + Vector3.up * surfaceY;
                 transform.localRotation = Quaternion.LookRotation(Vector3.Cross(outward, Vector3.up));
             }
             else

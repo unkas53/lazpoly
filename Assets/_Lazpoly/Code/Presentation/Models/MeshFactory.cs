@@ -26,6 +26,7 @@ namespace Lazpoly.Presentation.Models
 
             var vertices = new List<Vector3>();
             var normals = new List<Vector3>();
+            var uvs = new List<Vector2>();
             var triangles = new List<int>();
             Vector3 inner = half - Vector3.one * radius;
 
@@ -47,8 +48,11 @@ namespace Lazpoly.Presentation.Models
                             Mathf.Clamp(p.x, -inner.x, inner.x), Mathf.Clamp(p.y, -inner.y, inner.y), Mathf.Clamp(p.z, -inner.z, inner.z));
                         Vector3 normal = p - clamped;
                         normal = normal.sqrMagnitude > 1e-12f ? normal.normalized : n;
-                        vertices.Add(clamped + normal * radius);
+                        Vector3 vertex = clamped + normal * radius;
+                        vertices.Add(vertex);
                         normals.Add(normal);
+                        // Texture laid over the box from above: the top face shows it whole, the sides its edges.
+                        uvs.Add(new Vector2(vertex.x / size.x + 0.5f, vertex.z / size.z + 0.5f));
                     }
                 }
 
@@ -69,7 +73,7 @@ namespace Lazpoly.Presentation.Models
                 }
             }
 
-            return Store(key, vertices, normals, triangles);
+            return Store(key, vertices, normals, triangles, uvs);
         }
 
         /// <summary>
@@ -242,13 +246,14 @@ namespace Lazpoly.Presentation.Models
             return mesh;
         }
 
-        private static Mesh Store(string key, List<Vector3> vertices, List<Vector3> normals, List<int> triangles)
+        private static Mesh Store(string key, List<Vector3> vertices, List<Vector3> normals, List<int> triangles, List<Vector2> uvs = null)
         {
             var mesh = new Mesh { name = key };
             mesh.SetVertices(vertices);
             mesh.SetTriangles(triangles, 0);
             if (normals != null) mesh.SetNormals(normals);
             else mesh.RecalculateNormals();
+            if (uvs != null) mesh.SetUVs(0, uvs);
             mesh.RecalculateBounds();
             Cache[key] = mesh;
             return mesh;

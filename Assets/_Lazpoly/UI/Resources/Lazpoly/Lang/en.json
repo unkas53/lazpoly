@@ -1,6 +1,5 @@
 {
   "Çay kumbarası {0}": "Tea jar {0}",
-  "{0}\nbilet {1}": "{0}\nticket {1}",
   "Açık artırma: {0}": "Auction: {0}",
   "Henüz teklif yok": "No bids yet",
   "En yüksek: {0}, {1}": "Highest: {0}, {1}",
@@ -464,5 +463,7 @@
   "Yardım (H)": "Help (H)",
   "düşünüyor...": "thinking...",
   "oynuyor...": "playing...",
-  "Kapat (Esc)": "Close (Esc)"
+  "Kapat (Esc)": "Close (Esc)",
+  "bilet {0}": "ticket {0}",
+  "-{0}": "-{0}"
 }
