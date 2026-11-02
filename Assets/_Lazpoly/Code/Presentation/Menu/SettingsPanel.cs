@@ -158,7 +158,7 @@ namespace Lazpoly.Presentation.Menu
                 {
                     $"sürüm {Application.version}, {Application.platform}, Unity {Application.unityVersion}",
                     $"ekran {Screen.width}x{Screen.height}, tam ekran {Screen.fullScreen}, kalite {QualitySettings.GetQualityLevel()}",
-                    $"dil {Lang.Current}",
+                    $"dil {Current}",
                 });
                 Application.OpenURL("file://" + _errorLog.Folder);
             }, height: UiTheme.SmallButtonHeight);
