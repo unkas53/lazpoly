@@ -38,7 +38,10 @@ namespace Lazpoly.Presentation.UI
         /// Screen pixels kept clear of the board at each side edge: the dock's width with its margins. The
         /// corner cards sit in the empty triangles beside the diamond-shaped board, so they reserve nothing.
         /// </summary>
-        public static float ReservedSidePixels(float canvasScale) => (DockWidth + 2f * Margin) * canvasScale;
+        public static float ReservedSidePixels(float canvasScale) => RightInset * canvasScale;
+
+        /// <summary>Where the right-hand corner cards and windows end: left of the dock and its margins, so nothing stacks on the buttons.</summary>
+        public const float RightInset = DockWidth + 2f * Margin;
 
         /// <summary>
         /// The factor the canvas scaler applies for a screen of this size: the geometric mean of

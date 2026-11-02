@@ -157,12 +157,13 @@ namespace Lazpoly.Presentation.Game
             _canvas = UiRoot.CreateCanvas(transform, "Game UI", 0);
 
             // A player card in each corner: 0 top left, 1 top right, 2 bottom left, 3 bottom right; seats 5-8 stack on 1-4.
+            // The right-hand cards stop short of the dock, so tall stacks never run under the buttons.
             for (int corner = 0; corner < 4; corner++)
             {
                 var anchor = new Vector2(corner % 2, corner < 2 ? 1f : 0f);
                 RectTransform rect = UiRoot.Rect(_canvas.transform, $"Corner {corner}", anchor, anchor, Vector2.zero, Vector2.zero);
                 rect.pivot = anchor;
-                rect.anchoredPosition = new Vector2(anchor.x == 0f ? Margin : -Margin, anchor.y == 0f ? Margin : -Margin);
+                rect.anchoredPosition = new Vector2(anchor.x == 0f ? Margin : -UiLayout.RightInset, anchor.y == 0f ? Margin : -Margin);
                 rect.sizeDelta = new Vector2(CornerWidth, 0f);
                 UiBuilder.AddColumnLayout(rect.gameObject, 0, UiTheme.Spacing);
                 rect.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -620,7 +621,7 @@ namespace Lazpoly.Presentation.Game
             {
                 card.anchorMin = card.anchorMax = new Vector2(1f, 1f);
                 card.pivot = new Vector2(1f, 1f);
-                card.anchoredPosition = new Vector2(-inset, -Margin);
+                card.anchoredPosition = new Vector2(-(inset + UiLayout.RightInset - Margin), -Margin);
             }
             else
             {

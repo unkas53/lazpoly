@@ -31,6 +31,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(2f, UiLayout.CanvasScale(3840, 2160), 0.001f);
             Assert.AreEqual(UiLayout.DockWidth + 2f * UiLayout.Margin, UiLayout.ReservedSidePixels(1f));
             Assert.Less(UiLayout.DockWidth, UiLayout.CornerWidth, "the dock is slimmer than a corner card");
+            Assert.AreEqual(UiLayout.ReservedSidePixels(1f), UiLayout.RightInset, "the right-hand cards start where the board's reserve ends");
         }
 
         [Test]
