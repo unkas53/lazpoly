@@ -592,8 +592,8 @@ namespace Lazpoly.Presentation.Game
 
             GameState state = _session.State;
             _board = BoardView.Create(transform, _data);
-            // The dice land on the lawn in the middle of the board.
-            _dice = DiceView.Create(transform, new Vector3(0f, BoardView.LawnHeight + 0.02f, -1.2f));
+            // The dice land on the lawn, below the middle of the screen so they stay clear of the score.
+            _dice = DiceView.Create(transform, BoardView.ScreenUp(BoardCameraRig.BaseYaw) * -1.5f + Vector3.up * (BoardView.LawnHeight + 0.02f));
             _dice.Speed = Settings.AnimationSpeed;
             _crowd = new PawnCrowd(state.Players.Count);
             _turnMarker = TurnMarker.Create(transform);

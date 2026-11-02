@@ -49,10 +49,10 @@ namespace Lazpoly.Presentation.Tabletop
         public const int RoundsToEvening = 24;
 
         public static readonly DayLight Noon = new DayLight(
-            new Color(1f, 0.93f, 0.82f), 1.25f, 52f, -35f, new Color(0.55f, 0.70f, 0.90f), 0.35f, new Color(0.42f, 0.44f, 0.50f), 0f);
+            new Color(1f, 0.93f, 0.82f), 1.1f, 52f, -35f, new Color(0.55f, 0.70f, 0.90f), 0.35f, new Color(0.36f, 0.38f, 0.44f), 0f);
 
         public static readonly DayLight Dusk = new DayLight(
-            new Color(1f, 0.62f, 0.38f), 0.95f, 21f, -78f, new Color(0.32f, 0.42f, 0.74f), 0.5f, new Color(0.34f, 0.28f, 0.36f), 1f);
+            new Color(1f, 0.62f, 0.38f), 0.9f, 21f, -78f, new Color(0.32f, 0.42f, 0.74f), 0.5f, new Color(0.30f, 0.25f, 0.33f), 1f);
 
         /// <summary>How far the day has gone, 0 (noon) to 1 (dusk).</summary>
         public static float Progress(int round, int roundLimit, bool gameOver)

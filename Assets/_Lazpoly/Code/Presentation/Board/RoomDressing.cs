@@ -158,7 +158,7 @@ namespace Lazpoly.Presentation.Tabletop
             bloom.scatter.Override(0.55f);
 
             var grading = profile.Add<ColorAdjustments>();
-            grading.postExposure.Override(0.15f);
+            grading.postExposure.Override(0f);
             grading.contrast.Override(10f);
             grading.saturation.Override(8f);
             grading.colorFilter.Override(new Color(1f, 0.97f, 0.92f));

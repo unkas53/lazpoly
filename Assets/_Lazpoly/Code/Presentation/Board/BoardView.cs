@@ -24,16 +24,16 @@ namespace Lazpoly.Presentation.Tabletop
         public const float PlateThickness = 0.6f;
 
         /// <summary>The plate's rim outside the squares.</summary>
-        public const float PlateMargin = 0.3f;
+        public const float PlateMargin = 0.12f;
 
         /// <summary>Top of the lawn in the middle of the board, where the dice land.</summary>
         public const float LawnHeight = 0.08f;
 
         /// <summary>Where the dice score stands on the lawn, towards the top of the screen from the middle, in lawn widths.</summary>
-        public const float ScoreOffset = 0.08f;
+        public const float ScoreOffset = 0.17f;
 
         /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
-        public const float TitleOffset = 0.3f;
+        public const float TitleOffset = 0.37f;
 
         private static readonly Color StartColor = new Color(0.40f, 0.73f, 0.42f);
         private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
@@ -42,14 +42,15 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
         private static readonly Color TravelColor = new Color(0.62f, 0.74f, 0.95f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
-        private static readonly Color PlateColor = new Color(0.86f, 0.84f, 0.80f);
-        private static readonly Color RoadColor = new Color(0.80f, 0.78f, 0.72f);
-        private static readonly Color GrassColor = new Color(0.55f, 0.78f, 0.42f);
-        private static readonly Color LightGrassColor = new Color(0.63f, 0.84f, 0.50f);
-        private static readonly Color PathColor = new Color(0.90f, 0.86f, 0.74f);
-        private static readonly Color PropertyBodyColor = new Color(0.96f, 0.94f, 0.88f);
-        private static readonly Color TitleColor = new Color(0.95f, 0.86f, 0.55f);
-        private static readonly Color ScoreColor = new Color(0.99f, 0.98f, 0.95f);
+        private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
+        private static readonly Color RoadColor = new Color(0.72f, 0.68f, 0.60f);
+        private static readonly Color GrassColor = new Color(0.47f, 0.70f, 0.36f);
+        private static readonly Color LightGrassColor = new Color(0.55f, 0.76f, 0.42f);
+        private static readonly Color PathColor = new Color(0.86f, 0.80f, 0.66f);
+        private static readonly Color PropertyBodyColor = new Color(0.93f, 0.90f, 0.82f);
+        private static readonly Color TitleColor = new Color(0.16f, 0.32f, 0.20f);
+        private static readonly Color ScoreColor = new Color(0.14f, 0.18f, 0.15f);
+        private static readonly Color PotTextColor = new Color(0.20f, 0.26f, 0.20f);
         private static readonly Color PlaqueColor = new Color(0.17f, 0.15f, 0.14f);
         private static readonly Color LabelColor = new Color(0.97f, 0.94f, 0.87f);
 
@@ -531,7 +532,7 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject road = ModelParts.Create("Gravel", root, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f, 2), RoadColor, 0.1f);
             road.transform.localPosition = new Vector3(0f, 0.02f, 0f);
 
-            float grass = inner * 0.84f;
+            float grass = inner * 0.9f;
             GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), GrassColor, 0.05f);
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
 
@@ -560,9 +561,9 @@ namespace Lazpoly.Presentation.Tabletop
             var board = new GameObject("Scoreboard");
             board.transform.SetParent(transform, false);
             _scoreboard = board.transform;
-            _score = CreateText("Score", ScoreText(0, 0), _scoreboard, new Vector3(0f, hasPot ? inner * 0.03f : 0f, 0f), 192, inner * 0.0055f, ScoreColor);
+            _score = CreateText("Score", ScoreText(0, 0), _scoreboard, Vector3.zero, 192, inner * 0.008f, ScoreColor);
             if (!hasPot) return;
-            _pot = CreateText("Pot", "", _scoreboard, new Vector3(0f, -inner * 0.07f, 0f), 96, inner * 0.0018f, TitleColor);
+            _pot = CreateText("Pot", "", _scoreboard, new Vector3(0f, -inner * 0.1f, 0f), 128, inner * 0.0036f, PotTextColor);
             SetPot(0);
         }
 
@@ -618,7 +619,7 @@ namespace Lazpoly.Presentation.Tabletop
             var title = new GameObject("Title");
             title.transform.SetParent(transform, false);
             _title = title.transform;
-            CreateText("Lettering", "LAZPOLY", _title, Vector3.zero, 192, inner * 0.0042f, TitleColor);
+            CreateText("Lettering", "LAZPOLY", _title, Vector3.zero, 192, inner * 0.0058f, TitleColor);
         }
 
         /// <summary>Text lying in its parent's plane, readable from the parent's -Z side (<see cref="FlatFacing"/> turns the parent to the camera).</summary>
@@ -733,7 +734,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Long names ("Liman Caddesi") and the two lines of name and price shrink to the plaque instead of running off it.</summary>
         private static void FitLabel(TextMesh mesh, float tile, Vector3 outward)
         {
-            mesh.characterSize = tile * 0.0115f;
+            mesh.characterSize = tile * 0.0125f;
             Vector3 size = mesh.GetComponent<MeshRenderer>().bounds.size;
             bool side = Mathf.Abs(outward.x) > Mathf.Abs(outward.z);
             var extent = new Vector2(side ? size.z : size.x, side ? size.x : size.z);

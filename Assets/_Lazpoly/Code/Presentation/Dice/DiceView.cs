@@ -16,7 +16,7 @@ namespace Lazpoly.Presentation.Dice
 
         private static readonly Color BodyColor = new Color(0.96f, 0.95f, 0.91f);
         private static readonly Color PipColor = new Color(0.12f, 0.12f, 0.14f);
-        private static readonly Color ShadowColor = new Color(0.05f, 0.17f, 0.25f);
+        private static readonly Color ShadowColor = new Color(0.32f, 0.50f, 0.27f);
 
         /// <summary>At most this far from square to the camera a settled die is turned, so its pips read upright.</summary>
         public const int FacingJitterDegrees = 14;
