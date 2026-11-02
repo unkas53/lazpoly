@@ -7,9 +7,9 @@ namespace Lazpoly.Presentation.Tests
 {
     public class BoardLayoutTests
     {
-        private static void AssertNear(Vector3 expected, Vector3 actual)
+        private static void AssertNear(Vector3 expected, Vector3 actual, string note = null)
         {
-            Assert.That(Vector3.Distance(expected, actual), Is.LessThan(1e-4f), $"Expected {expected}, got {actual}.");
+            Assert.That(Vector3.Distance(expected, actual), Is.LessThan(1e-4f), $"Expected {expected}, got {actual}. {note}");
         }
 
         [TestCase(1f)]
