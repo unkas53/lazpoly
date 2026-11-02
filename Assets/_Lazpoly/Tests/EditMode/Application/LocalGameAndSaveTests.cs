@@ -134,7 +134,7 @@ namespace Lazpoly.App.Tests
         [Test]
         public void SaveKeepsTheTableRules()
         {
-            var table = new TableRules(1200, false, 18);
+            var table = new TableRules(1200, false, 18, 120, Lazpoly.Core.Rules.BankReturns.Auction);
             LocalGame game = LocalGame.Create(Board, Rules.WithTable(table), Seats(2), new Dictionary<int, AiDifficulty>(), 4UL);
 
             SavedGame save = SavedGameCodec.Decode(SavedGameCodec.Encode(game.Save(Checksum)));
@@ -145,6 +145,121 @@ namespace Lazpoly.App.Tests
             Assert.AreEqual(1200, resumed.Session.Rules.StartingMoney);
             Assert.IsFalse(resumed.Session.Rules.AuctionsEnabled);
             Assert.AreEqual(18, resumed.Session.Rules.RoundLimit);
+            Assert.AreEqual(120, resumed.Session.Rules.TurnSeconds);
+            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.Auction, resumed.Session.Rules.BankReturns);
+        }
+
+        [Test]
+        public void ASaveFromTheVersionBeforeTableTimingStillOpensAndResumes()
+        {
+            LocalGame game = AllAi(3, 12UL);
+            Steps(game, 30);
+            SavedGame original = game.Save(Checksum);
+
+            SavedGame read = SavedGameCodec.Decode(SaleFormatSave(original));
+
+            Assert.AreEqual(TableRules.DefaultTurnSeconds, read.Table.TurnSeconds, "A Faz 9 save gets the default turn time.");
+            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.FirstComer, read.Table.BankReturns);
+            Assert.AreEqual(original.Snapshot.TurnNumber, read.Snapshot.TurnNumber);
+            Assert.AreEqual(original.Snapshot.Players[2].Money, read.Snapshot.Players[2].Money);
+            Assert.AreEqual(original.Snapshot.Players[0].Laps, read.Snapshot.Players[0].Laps);
+            Assert.AreEqual(original.Snapshot.BuiltThisVisit, read.Snapshot.BuiltThisVisit);
+            Assert.IsEmpty(read.Snapshot.PendingAuctions);
+            Assert.AreEqual(original.Snapshot.Restore().ComputeHash(), read.Snapshot.Restore().ComputeHash());
+
+            LocalGame resumed = LocalGame.Resume(Board, Rules, Checksum, read);
+            Steps(resumed, 5);
+        }
+
+        /// <summary>Save format 5 (Faz 9): a three-value table and a snapshot without the auction queue.</summary>
+        private static byte[] SaleFormatSave(SavedGame save)
+        {
+            var w = new NetWriter();
+            w.WriteULong(0x4C415A504F4C5953UL);
+            w.WriteInt(5);
+            w.WriteULong(save.BoardChecksum);
+            w.WriteULong(save.DiceState);
+            w.WriteULong(save.DiceIncrement);
+            w.WriteULong(save.AiState);
+            w.WriteULong(save.AiIncrement);
+            w.WriteInt(save.AiPlayers.Count);
+            foreach (KeyValuePair<int, SavedAiPlayer> ai in save.AiPlayers)
+            {
+                w.WriteInt(ai.Key);
+                w.WriteByte((byte)ai.Value.Difficulty);
+                w.WriteInt(ai.Value.LastProposalTurn);
+            }
+
+            w.WriteInt(save.Table.StartingMoney);
+            w.WriteBool(save.Table.AuctionsEnabled);
+            w.WriteInt(save.Table.RoundLimit);
+
+            GameStateSnapshot s = save.Snapshot;
+            w.WriteInt((int)s.Phase);
+            w.WriteInt(s.CurrentPlayerIndex);
+            w.WriteInt(s.TurnNumber);
+            w.WriteInt(s.LastDie1);
+            w.WriteInt(s.LastDie2);
+            w.WriteInt(s.ConsecutiveDoubles);
+            w.WriteInt(s.WinnerId);
+            w.WriteInt(s.Round);
+            w.WriteInt(s.Pot);
+            w.WriteInt(s.BuiltThisVisit);
+            w.WriteBool(s.DiceOptions != null);
+            if (s.DiceOptions != null) foreach (int die in s.DiceOptions) w.WriteInt(die);
+            w.WriteInt(s.Players.Count);
+            foreach (GameStateSnapshot.PlayerEntry p in s.Players)
+            {
+                w.WriteInt(p.Id);
+                w.WriteString(p.Name);
+                w.WriteInt(p.Money);
+                w.WriteInt(p.Position);
+                w.WriteBool(p.IsBankrupt);
+                w.WriteBool(p.HasLookout);
+                w.WriteInt(p.Laps);
+            }
+
+            w.WriteInt(s.Owners.Length);
+            for (int i = 0; i < s.Owners.Length; i++)
+            {
+                w.WriteInt(s.Owners[i]);
+                w.WriteInt(s.BuildingLevels[i]);
+            }
+
+            w.WriteBool(s.Auction != null);
+            if (s.Auction != null)
+            {
+                w.WriteInt(s.Auction.SquareIndex);
+                w.WriteInt(s.Auction.HighestBid);
+                w.WriteInt(s.Auction.HighestBidderId);
+                w.WriteInt(s.Auction.PassedPlayerIds.Count);
+                foreach (int id in s.Auction.PassedPlayerIds) w.WriteInt(id);
+            }
+
+            w.WriteBool(s.PendingTrade != null);
+            if (s.PendingTrade != null)
+            {
+                w.WriteInt(s.PendingTrade.FromPlayerId);
+                w.WriteInt(s.PendingTrade.ToPlayerId);
+                w.WriteInt(s.PendingTrade.GiveMoney);
+                w.WriteInt(s.PendingTrade.TakeMoney);
+                w.WriteInt(s.PendingTrade.GiveSquares.Count);
+                foreach (int square in s.PendingTrade.GiveSquares) w.WriteInt(square);
+                w.WriteInt(s.PendingTrade.TakeSquares.Count);
+                foreach (int square in s.PendingTrade.TakeSquares) w.WriteInt(square);
+                w.WriteInt((int)s.TradeReturnPhase);
+            }
+
+            w.WriteBool(s.Debt != null);
+            if (s.Debt != null)
+            {
+                w.WriteInt(s.Debt.PlayerId);
+                w.WriteInt(s.Debt.CreditorId);
+                w.WriteInt(s.Debt.Amount);
+                w.WriteInt((int)s.Debt.Reason);
+            }
+
+            return w.ToArray();
         }
 
         [Test]

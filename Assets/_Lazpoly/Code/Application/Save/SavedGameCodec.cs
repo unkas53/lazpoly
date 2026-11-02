@@ -12,7 +12,7 @@ namespace Lazpoly.App.Save
     /// </summary>
     public static class SavedGameCodec
     {
-        public const int FormatVersion = 5;
+        public const int FormatVersion = 6;
         public const int OldestReadableVersion = 1;
         private const ulong Magic = 0x4C415A504F4C5953UL; // "LAZPOLYS"
 
@@ -45,9 +45,10 @@ namespace Lazpoly.App.Save
             return w.ToArray();
         }
 
-        /// <summary>Save format 1 wrote the legacy snapshot, 2 the table-rules one, 3 the building-visit one, 4 the current one.</summary>
+        /// <summary>Save format 1 wrote the legacy snapshot, 2 the table-rules one, 3 the building-visit one, 4 the lap one, 5 the sale one, 6 the current one (table timing + auction queue).</summary>
         private static int SnapshotVersionOf(int saveVersion) =>
-            saveVersion >= 5 ? MessageCodec.SnapshotVersion
+            saveVersion >= 6 ? MessageCodec.SnapshotVersion
+            : saveVersion == 5 ? MessageCodec.SaleSnapshotVersion
             : saveVersion == 4 ? MessageCodec.LapSnapshotVersion
             : saveVersion == 3 ? MessageCodec.VisitSnapshotVersion
             : saveVersion == 2 ? MessageCodec.TableSnapshotVersion
@@ -84,7 +85,7 @@ namespace Lazpoly.App.Save
                 save.AiPlayers.Add(id, new SavedAiPlayer { Difficulty = (AiDifficulty)difficulty, LastProposalTurn = lastProposalTurn });
             }
 
-            save.Table = version >= 2 ? MessageCodec.ReadTable(r) : Core.Rules.TableRules.Default;
+            save.Table = version >= 2 ? MessageCodec.ReadTable(r, withTiming: version >= 6) : Core.Rules.TableRules.Default;
             save.Snapshot = MessageCodec.ReadSnapshot(r, SnapshotVersionOf(version));
             if (!r.AtEnd) throw new FormatException("Unexpected data after the save.");
             return save;

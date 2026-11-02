@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Lazpoly.Core.Events
 {
     /// <summary>
@@ -249,6 +252,20 @@ namespace Lazpoly.Core.Events
     {
         public AuctionStartedEvent(int squareIndex) { SquareIndex = squareIndex; }
         public int SquareIndex { get; }
+    }
+
+    /// <summary>
+    /// A bankrupt player's squares went back to the bank and the table auctions them at once: these
+    /// squares wait their turn; each <see cref="AuctionStartedEvent"/> takes the next one off the list.
+    /// </summary>
+    public sealed class BankAuctionsQueuedEvent : GameEvent
+    {
+        public BankAuctionsQueuedEvent(IReadOnlyList<int> squares)
+        {
+            Squares = squares ?? throw new ArgumentNullException(nameof(squares));
+        }
+
+        public IReadOnlyList<int> Squares { get; }
     }
 
     public sealed class BidPlacedEvent : GameEvent

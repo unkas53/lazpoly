@@ -62,6 +62,18 @@ namespace Lazpoly.Infra.Tests
         }
 
         [Test]
+        public void AReportIsAnEntryWithItsLinesIndented()
+        {
+            var log = new ErrorLog(Path.Combine(_folder, ErrorLog.FileName));
+            log.AppendReport(new DateTime(2026, 11, 2, 20, 0, 0), "Oyuncu sorun bildirdi", new[] { "oturum: yerel", "", "  12  > Roll(p1) -> ok" });
+
+            string text = File.ReadAllText(log.Path);
+            StringAssert.Contains("2026-11-02 20:00:00 REPORT Oyuncu sorun bildirdi", text);
+            StringAssert.Contains("    oturum: yerel", text);
+            StringAssert.Contains("    12  > Roll(p1) -> ok", text);
+        }
+
+        [Test]
         public void OnlySeriousMessagesAreKept()
         {
             Assert.IsTrue(ErrorLogService.Keeps(LogType.Error));

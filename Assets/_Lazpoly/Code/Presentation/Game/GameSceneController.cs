@@ -14,6 +14,7 @@ using Lazpoly.Core.Events;
 using Lazpoly.Core.Random;
 using Lazpoly.Core.State;
 using Lazpoly.Infra;
+using Lazpoly.Infra.Logging;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Data;
@@ -111,8 +112,16 @@ namespace Lazpoly.Presentation.Game
         /// moves this machine saw (the host keeps the real clock). Infinite in a local game.
         /// </summary>
         public float SecondsLeft => _isOnline && _session?.State != null
-            ? (float)TurnClock.LimitFor(_session.State.Phase) - (Time.unscaledTime - _lastProgressTime)
+            ? (float)TurnClock.LimitFor(_session.State.Phase, _session.Rules.TurnSeconds) - (Time.unscaledTime - _lastProgressTime)
             : float.PositiveInfinity;
+
+        /// <summary>The last moves and answers, for a problem report.</summary>
+        private readonly SessionTrail _trail = new SessionTrail();
+        private ErrorLogService _errorLog;
+        private bool _trailDumped;
+
+        /// <summary>Where the last problem report went; null until the player asks for one.</summary>
+        public string ReportNote { get; private set; }
 
         private float _lastProgressTime;
         /// <summary>The last <see cref="MaxLogLines"/> lines of the event log, oldest first.</summary>
@@ -236,6 +245,8 @@ namespace Lazpoly.Presentation.Game
             GameServices.Registry?.TryGet(out _settings);
             GameServices.Registry?.TryGet(out _achievements);
             GameServices.Registry?.TryGet(out _presence);
+            GameServices.Registry?.TryGet(out _errorLog);
+            Application.logMessageReceived += OnLogMessage;
             if (_settings != null)
             {
                 Lang.Apply(_settings.Current.Language);
@@ -333,6 +344,7 @@ namespace Lazpoly.Presentation.Game
 
         private void OnDestroy()
         {
+            Application.logMessageReceived -= OnLogMessage;
             if (_settings != null) _settings.Changed -= OnSettingsChanged;
             if (_session == null) return;
             _session.EventsPublished -= OnEventsPublished;
@@ -360,7 +372,59 @@ namespace Lazpoly.Presentation.Game
         {
             LastRejection = null;
             Revision++;
+            _trail.Command(command);
             _session.Submit(command);
+        }
+
+        /// <summary>
+        /// Writes what a reader of the error log needs to follow a problem: the game's shape and the
+        /// last moves. The player can then send the log file; the settings window shows where it is.
+        /// </summary>
+        public void ReportProblem()
+        {
+            if (_errorLog == null)
+            {
+                ReportNote = L("Günlük servisi yok; rapor yazılamadı.");
+                Revision++;
+                return;
+            }
+
+            _errorLog.Report("Oyuncu sorun bildirdi", SituationLines());
+            ReportNote = F($"Rapor günlüğe yazıldı: {_errorLog.FilePath}");
+            Application.OpenURL("file://" + _errorLog.Folder);
+            Revision++;
+        }
+
+        /// <summary>Session facts plus the trail, one line each.</summary>
+        private IEnumerable<string> SituationLines()
+        {
+            GameState state = _session?.State;
+            string mode = !_isOnline ? "yerel" : _host != null ? "çevrim içi, ev sahibi" : "çevrim içi, misafir";
+            yield return $"oturum: {mode}; oyuncu {state?.Players.Count ?? 0}; tur {state?.TurnNumber ?? 0}; el {state?.Round ?? 0}; evre {state?.Phase}";
+            yield return $"masa: {TableSetup.Summary(_session?.Rules.Table ?? Core.Rules.TableRules.Default, _data.Rules.StartingMoney)}";
+            if (_isOnline)
+            {
+                yield return $"bağlantı: oda {_roomId}; yeniden bağlanıyor {IsReconnecting}; bitiş {EndReason}";
+                if (state != null)
+                {
+                    foreach (PlayerState player in state.Players)
+                    {
+                        yield return $"  p{player.Id} {player.Name}: bağlı {_session.IsConnected(player.Id)}, bilgisayar {_session.IsAiPlaying(player.Id)}, {_session.PingMs(player.Id)} ms";
+                    }
+                }
+            }
+
+            if (state != null) yield return $"durum özeti: {state.ComputeHash():X16}";
+            yield return "son hamleler:";
+            foreach (string line in _trail.Lines) yield return "  " + line;
+        }
+
+        /// <summary>The first exception in a game gets the trail written next to it, once, so the log tells how it came about.</summary>
+        private void OnLogMessage(string message, string stackTrace, LogType type)
+        {
+            if (_trailDumped || _errorLog == null || (type != LogType.Exception && type != LogType.Error)) return;
+            _trailDumped = true;
+            _errorLog.Report("Hata anındaki oyun durumu", SituationLines());
         }
 
         /// <summary>Leaves the game (and the online room, if any) and returns to the main menu.</summary>
@@ -609,6 +673,7 @@ namespace Lazpoly.Presentation.Game
         {
             _lastProgressTime = Time.unscaledTime;
             Revision++;
+            _trail.Events(events);
             SaveLocalGame();
             if (_client != null && _client.State.Phase == GamePhase.GameOver) LastRoomStore.Forget();
             UnlockAchievements(events);
@@ -668,6 +733,7 @@ namespace Lazpoly.Presentation.Game
         private void OnCommandRejected(RejectionReason reason)
         {
             LastRejection = F($"İşlem reddedildi: {reason}");
+            _trail.Add($"REJECTED {reason}");
             Revision++;
         }
 

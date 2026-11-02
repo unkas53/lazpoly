@@ -333,7 +333,7 @@ namespace Lazpoly.Presentation.Menu
         private static int TableKey()
         {
             TableRules table = TableSetup.Chosen;
-            return HashCode.Combine(table.StartingMoney, table.AuctionsEnabled, table.RoundLimit);
+            return HashCode.Combine(table.StartingMoney, table.AuctionsEnabled, table.RoundLimit, table.TurnSeconds, table.BankReturns);
         }
 
         /// <summary>House rules for the next new game, local or hosted online.</summary>
@@ -364,6 +364,37 @@ namespace Lazpoly.Presentation.Menu
             ui.Label(table.RoundLimit > 0 ? L("Sınır dolunca parası, mülkleri ve binaları en değerli olan kazanır.") : L("Tek bir oyuncu kalana kadar sürer."),
                 UiTextStyle.Small, UiTheme.Muted);
             ui.Toggle(L("Alınmayan mülk açık artırmaya çıksın"), table.AuctionsEnabled, on => TableSetup.Chosen = TableSetup.Chosen.WithAuctions(on));
+
+            ui.Label(L("İflas edenin bankaya dönen mülkleri"));
+            UiBuilder bank = ui.Row();
+            foreach (BankReturns choice in new[] { BankReturns.FirstComer, BankReturns.Auction })
+            {
+                BankReturns value = choice;
+                bool possible = value == BankReturns.FirstComer || table.AuctionsEnabled;
+                bank.Button(TableSetup.BankReturnsText(value), () => TableSetup.Chosen = TableSetup.Chosen.WithBankReturns(value), possible,
+                    table.BankReturns == value ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Label(table.AuctionsBankReturns
+                    ? L("İflas edenin mülkleri sırayla açık artırmaya çıkar; kalan oyuncular teklif verir, sonra sıra devam eder.")
+                    : table.BankReturns == BankReturns.Auction
+                        ? L("Açık artırma kapalıyken bu seçenek çalışmaz; mülkler bankada kalır.")
+                        : L("Mülkler bankada kalır; üstüne gelen oyuncu liste fiyatından alabilir."),
+                UiTextStyle.Small, UiTheme.Muted);
+
+            ui.Label(L("Hamle süresi (çevrim içi)"));
+            UiBuilder turn = ui.Row();
+            foreach (int choice in TableSetup.TurnSecondsChoices)
+            {
+                int value = choice;
+                turn.Button(TableSetup.TurnSecondsText(value), () => TableSetup.Chosen = TableSetup.Chosen.WithTurnSeconds(value),
+                    style: table.TurnSeconds == value ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
+            }
+
+            ui.Label(table.TurnSeconds == 0
+                    ? L("Saat yok: herkes istediği kadar düşünür. Yalnızca çevrim içi oyunlarda geçerli.")
+                    : L("Süre dolunca ev sahibi oyuncu adına en temkinli hamleyi yapar; açık artırma ve takas cevapları için en çok 30 sn. Son 10 saniyede ekran kenarı kızarır. Yalnızca çevrim içi oyunlarda geçerli."),
+                UiTextStyle.Small, UiTheme.Muted);
             ui.Space(6f);
             ui.Button(L("Tamam"), () => _tableLayer.SetActive(false), style: UiButtonStyle.Primary);
         }

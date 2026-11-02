@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Lazpoly.App.Lobby;
 using Lazpoly.Core.Rules;
+using Lazpoly.Net.Messages;
 using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Setup;
@@ -24,6 +25,7 @@ namespace Lazpoly.Presentation.Tests
             public int StartCalls { get; private set; }
             public ulong RoomId { get; set; } = 7654321;
             public TableRules Table { get; set; } = TableRules.Default;
+            public int RoomProtocolVersion { get; set; }
             public bool? ReadySet { get; private set; }
             public void SetTable(TableRules table) => Table = table;
             public void SetReady(bool ready)
@@ -145,6 +147,43 @@ namespace Lazpoly.Presentation.Tests
             lobby.MemberList.Clear();
             lobby.MemberList.Add(new LobbyMember(1, "Ev"));
             Assert.IsFalse(panel.CanStart, "Two players are the least a game takes.");
+            panel.Dispose();
+        }
+
+        [Test]
+        public void AGuestInARoomOfAnotherVersionNeitherReadiesNorFollowsIntoTheGame()
+        {
+            var lobby = new FakeLobby { RoomProtocolVersion = MessageCodec.ProtocolVersion + 1, IsGameStarted = true };
+            int loads = 0;
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(2), () => loads++);
+
+            panel.Update();
+            Assert.IsTrue(panel.RoomIsOutdated);
+            Assert.AreEqual(0, loads, "A guest must not join a game its build cannot play.");
+
+            lobby.RoomProtocolVersion = MessageCodec.ProtocolVersion;
+            panel.Update();
+            Assert.IsFalse(panel.RoomIsOutdated);
+            Assert.AreEqual(1, loads);
+            OnlineGameSetup.Take();
+            panel.Dispose();
+        }
+
+        [Test]
+        public void TheOwnerCannotStartWithAMemberOfAnotherVersion()
+        {
+            var lobby = new FakeLobby { LocalId = 1 };
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(1), () => { });
+
+            lobby.MemberList[1] = new LobbyMember(2, "Ben", isReady: true, protocolVersion: MessageCodec.ProtocolVersion + 1);
+            Assert.AreEqual(1, panel.OutdatedCount());
+            Assert.IsFalse(panel.CanStart);
+
+            lobby.MemberList[1] = new LobbyMember(2, "Ben", isReady: true, protocolVersion: 0);
+            Assert.IsTrue(panel.CanStart, "A member who has not said yet is given the benefit of the doubt.");
+
+            lobby.MemberList[1] = new LobbyMember(2, "Ben", isReady: true, protocolVersion: MessageCodec.ProtocolVersion);
+            Assert.IsTrue(panel.CanStart);
             panel.Dispose();
         }
 

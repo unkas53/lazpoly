@@ -413,7 +413,9 @@ namespace Lazpoly.Core.Engine
                 Emit(new PropertyOwnerChangedEvent(square, GameState.NoOwner, winner));
             }
 
-            FinishMove();
+            // A bankrupt player on turn means these are the bank's auctions after their exit, not a declined purchase.
+            if (State.CurrentPlayer.IsBankrupt) ContinueBankAuctions();
+            else FinishMove();
         }
 
         private void CompleteTrade()
@@ -467,10 +469,12 @@ namespace Lazpoly.Core.Engine
 
             // Properties go to a player creditor; owed to the bank or the pot, they return to the bank.
             int heir = GameState.IsPlayerId(creditorId) ? creditorId : GameState.NoOwner;
+            var returned = new List<int>();
             for (int square = 0; square < Board.Count; square++)
             {
                 if (State.GetOwner(square) != player.Id) continue;
                 Emit(new PropertyOwnerChangedEvent(square, player.Id, heir));
+                if (heir == GameState.NoOwner) returned.Add(square);
             }
 
             if (State.Debt != null) Emit(new DebtClearedEvent(player.Id));
@@ -488,10 +492,30 @@ namespace Lazpoly.Core.Engine
                 }
             }
 
-            if (State.CurrentPlayer.Id == player.Id)
+            if (State.CurrentPlayer.Id != player.Id) return;
+
+            if (Rules.AuctionsBankReturns && returned.Count > 0)
             {
-                StartNextTurn();
+                // The squares the bank took back go under the hammer right away, one after the other,
+                // before the next player's turn. The bankrupt player stays "on turn" meanwhile and cannot bid.
+                Emit(new BankAuctionsQueuedEvent(returned));
+                StartAuction(returned[0]);
+                return;
             }
+
+            StartNextTurn();
+        }
+
+        /// <summary>After one bank auction: the next queued square, or the next player's turn when the list is done.</summary>
+        private void ContinueBankAuctions()
+        {
+            if (State.PendingAuctions.Count > 0)
+            {
+                StartAuction(State.PendingAuctions[0]);
+                return;
+            }
+
+            StartNextTurn();
         }
 
         private void StartNextTurn()

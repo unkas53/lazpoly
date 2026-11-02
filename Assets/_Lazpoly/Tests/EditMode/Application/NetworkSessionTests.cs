@@ -148,6 +148,57 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
+        public void TheTablePicksTheTurnTimeAndMayRunNoClockAtAll()
+        {
+            Assert.AreEqual(60, TurnClock.LimitFor(GamePhase.WaitingForRoll, 60));
+            Assert.AreEqual(30, TurnClock.LimitFor(GamePhase.AuctionInProgress, 60), "Answers keep their shorter limit.");
+            Assert.AreEqual(20, TurnClock.LimitFor(GamePhase.AuctionInProgress, 20), "...unless the turn itself is shorter.");
+            Assert.IsTrue(double.IsPositiveInfinity(TurnClock.LimitFor(GamePhase.WaitingForRoll, 0)));
+            Assert.IsTrue(double.IsPositiveInfinity(TurnClock.LimitFor(GamePhase.AwaitingTradeResponse, 0)));
+
+            double now = 0;
+            var clock = new TurnClock(() => now);
+            now = 1e6;
+            Assert.IsFalse(clock.HasExpired(GamePhase.WaitingForRoll, 0), "No clock never runs out.");
+            Assert.IsTrue(clock.HasExpired(GamePhase.WaitingForRoll, 60));
+        }
+
+        [Test]
+        public void AHostAtATableWithoutAClockNeverMovesForAnyone()
+        {
+            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, true, 0, turnSeconds: 0));
+            table.StartAll();
+            PlayUntilTurnOf(table, 2);
+            Assert.IsTrue(double.IsPositiveInfinity(table.Host.SecondsLeft));
+
+            table.Now += 24 * 3600;
+            table.Pump();
+            Assert.AreEqual(0, table.HostState.LastDie1, "Nobody rolled for the idle player.");
+            Assert.IsFalse(table.Host.IsAiPlaying(2));
+            Assert.AreEqual(0, table.Clients[2].Rules.TurnSeconds, "The guest learns the table's clock from the host.");
+        }
+
+        [Test]
+        public void AShortTurnTimeRunsOutSooner()
+        {
+            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, true, 0, turnSeconds: 60));
+            table.StartAll();
+            PlayUntilTurnOf(table, 2);
+            int rolls = 0;
+            table.Clients[2].EventsPublished += events =>
+            {
+                foreach (GameEvent gameEvent in events) if (gameEvent is DiceRolledEvent) rolls++;
+            };
+
+            table.Now += 59;
+            table.Pump();
+            Assert.AreEqual(0, rolls);
+            table.Now += 2;
+            table.Pump();
+            Assert.AreEqual(1, rolls, "At 61 seconds the host rolled for the idle player.");
+        }
+
+        [Test]
         public void TheCautiousMoveCommitsToNothing()
         {
             Assert.IsInstanceOf<DeclinePurchaseCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingBuyDecision), 1));

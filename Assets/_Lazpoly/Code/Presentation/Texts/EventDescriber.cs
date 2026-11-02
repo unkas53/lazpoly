@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
@@ -101,6 +102,8 @@ namespace Lazpoly.Presentation.Texts
                     return $"{L(board[e.SquareIndex].Name)}: {LevelText(e.Level)}";
                 case AuctionStartedEvent e:
                     return F($"{L(board[e.SquareIndex].Name)} açık artırmada");
+                case BankAuctionsQueuedEvent e:
+                    return F($"Bankaya dönen mülkler sırayla açık artırmaya çıkıyor: {SquareNames(board, e.Squares)}");
                 case BidPlacedEvent e:
                     return F($"{NameOf(state, e.PlayerId)} teklif: {e.Amount}");
                 case BidPassedEvent e:
@@ -172,5 +175,12 @@ namespace Lazpoly.Presentation.Texts
             creditorId == GameState.PotId ? L("çay kumbarası") : creditorId == GameState.NoOwner ? L("banka") : NameOf(state, creditorId);
 
         private static string NameOf(GameState state, int playerId) => state.FindPlayer(playerId)?.Name ?? $"#{playerId}";
+
+        private static string SquareNames(BoardDefinition board, IReadOnlyList<int> squares)
+        {
+            var names = new List<string>(squares.Count);
+            foreach (int square in squares) names.Add(L(board[square].Name));
+            return string.Join(", ", names);
+        }
     }
 }

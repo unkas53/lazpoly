@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Lazpoly.App.Lobby;
 using Lazpoly.Core.Rules;
+using Lazpoly.Net.Messages;
 using Lazpoly.Net.Transport;
 using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.UI;
@@ -63,7 +64,7 @@ namespace Lazpoly.Presentation.Menu
             if (_friendsLoadedFor != _lobby.Status) RefreshFriends();
             // The owner's chosen rules go up to the room as soon as they change, so every member reads the same summary.
             if (_lobby.Status == LobbyStatus.InLobby && _lobby.IsOwner && !TableSetup.Chosen.SameAs(_lobby.Table)) _lobby.SetTable(TableSetup.Chosen);
-            if (_launched || _lobby.Status != LobbyStatus.InLobby || _lobby.IsOwner || !_lobby.IsGameStarted) return;
+            if (_launched || _lobby.Status != LobbyStatus.InLobby || _lobby.IsOwner || !_lobby.IsGameStarted || RoomIsOutdated) return;
 
             _launched = true;
             OnlineGameSetup.Set(OnlineLaunch.AsClient(_transport, _lobby.OwnerId));
@@ -78,8 +79,9 @@ namespace Lazpoly.Presentation.Menu
                 if (!IsAvailable) return 0;
                 TableRules table = _lobby.Table;
                 int key = HashCode.Combine(_lobby.Status, _lobby.IsOwner, _message, _problem, _friends.Count);
-                key = HashCode.Combine(key, table.StartingMoney, table.AuctionsEnabled, table.RoundLimit);
-                foreach (LobbyMember member in _lobby.Members) key = HashCode.Combine(key, member.Id, member.Name, member.IsReady);
+                key = HashCode.Combine(key, table.StartingMoney, table.AuctionsEnabled, table.RoundLimit, table.TurnSeconds, table.BankReturns);
+                key = HashCode.Combine(key, _lobby.RoomProtocolVersion);
+                foreach (LobbyMember member in _lobby.Members) key = HashCode.Combine(key, member.Id, member.Name, member.IsReady, member.ProtocolVersion);
                 return key;
             }
         }
@@ -150,9 +152,20 @@ namespace Lazpoly.Presentation.Menu
             {
                 UiBuilder row = members.Row(10f, expand: false);
                 bool owner = member.Id == _lobby.OwnerId;
-                row.Swatch(member.IsReady ? UiTheme.Gain : UiTheme.Muted, 14f, round: true);
+                bool outdated = IsOutdated(member);
+                row.Swatch(outdated ? UiTheme.Warning : member.IsReady ? UiTheme.Gain : UiTheme.Muted, 14f, round: true);
                 UiBuilder.Fix(row.Label(owner ? F($"{member.Name} (ev sahibi)") : member.Name), -1f).flexibleWidth = 1f;
-                row.Label(member.IsReady ? L("hazır") : L("bekliyor"), UiTextStyle.Small, member.IsReady ? UiTheme.Gain : UiTheme.Muted, TextAnchor.MiddleRight);
+                row.Label(outdated ? L("sürümü farklı") : member.IsReady ? L("hazır") : L("bekliyor"), UiTextStyle.Small,
+                    outdated ? UiTheme.Warning : member.IsReady ? UiTheme.Gain : UiTheme.Muted, TextAnchor.MiddleRight);
+            }
+
+            if (RoomIsOutdated)
+            {
+                ui.Notice(F($"Ev sahibinin oyun sürümü seninkinden farklı (protokol {_lobby.RoomProtocolVersion}, seninki {MessageCodec.ProtocolVersion}). Birlikte oynamak için ikiniz de Steam'den son güncellemeyi alın."));
+            }
+            else if (_lobby.IsOwner && OutdatedCount() > 0)
+            {
+                ui.Notice(L("Sürümü farklı olan oyuncular Steam'den güncelleme almadan oyun başlatılamaz."));
             }
 
             RenderRoomCode(ui);
@@ -164,11 +177,12 @@ namespace Lazpoly.Presentation.Menu
             {
                 bool enough = _lobby.Members.Count >= RulesConfig.AbsoluteMinPlayers;
                 bool everyone = ready == _lobby.Members.Count;
+                bool sameVersion = OutdatedCount() == 0;
                 ui.Label(!enough ? L("En az 2 oyuncu gerekli.") : everyone ? L("Herkes hazır.") : F($"{ready}/{_lobby.Members.Count} hazır; kalanlar bekleniyor."),
                     UiTextStyle.Small, everyone && enough ? UiTheme.Gain : UiTheme.Muted);
-                ui.Button(L("Çevrim İçi Oyunu Başlat"), StartAsHost, enough && everyone, UiButtonStyle.Primary);
+                ui.Button(L("Çevrim İçi Oyunu Başlat"), StartAsHost, enough && everyone && sameVersion, UiButtonStyle.Primary);
             }
-            else
+            else if (!RoomIsOutdated)
             {
                 bool me = IsLocalReady();
                 ui.Button(me ? L("Hazır Değilim") : L("Hazırım"), () => _lobby.SetReady(!me), style: me ? UiButtonStyle.Selected : UiButtonStyle.Primary);
@@ -177,6 +191,21 @@ namespace Lazpoly.Presentation.Menu
 
             ui.Button(L("Odadan Çık"), _lobby.Leave, style: UiButtonStyle.Danger, height: UiTheme.SmallButtonHeight);
         }
+
+        /// <summary>A member whose build speaks another protocol than this one; unknown counts as fine until they say.</summary>
+        private static bool IsOutdated(LobbyMember member) => member.ProtocolVersion != 0 && member.ProtocolVersion != MessageCodec.ProtocolVersion;
+
+        /// <summary>Members the owner cannot start with.</summary>
+        public int OutdatedCount()
+        {
+            int count = 0;
+            foreach (LobbyMember member in _lobby.Members) count += IsOutdated(member) ? 1 : 0;
+            return count;
+        }
+
+        /// <summary>For a guest: the room is run by a build this one cannot play with.</summary>
+        public bool RoomIsOutdated => IsAvailable && _lobby.Status == LobbyStatus.InLobby && !_lobby.IsOwner &&
+                                      _lobby.RoomProtocolVersion != 0 && _lobby.RoomProtocolVersion != MessageCodec.ProtocolVersion;
 
         /// <summary>How many members are ready; the owner always is.</summary>
         public int ReadyCount()
@@ -188,7 +217,7 @@ namespace Lazpoly.Presentation.Menu
 
         /// <summary>Whether the owner may start: enough members and all of them ready.</summary>
         public bool CanStart => IsAvailable && _lobby.Status == LobbyStatus.InLobby && _lobby.IsOwner &&
-                                _lobby.Members.Count >= RulesConfig.AbsoluteMinPlayers && ReadyCount() == _lobby.Members.Count;
+                                _lobby.Members.Count >= RulesConfig.AbsoluteMinPlayers && ReadyCount() == _lobby.Members.Count && OutdatedCount() == 0;
 
         private bool IsLocalReady()
         {

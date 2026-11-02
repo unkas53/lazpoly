@@ -6,11 +6,12 @@ namespace Lazpoly.App.Lobby
 {
     public readonly struct LobbyMember
     {
-        public LobbyMember(ulong id, string name, bool isReady = false)
+        public LobbyMember(ulong id, string name, bool isReady = false, int protocolVersion = 0)
         {
             Id = id;
             Name = name ?? string.Empty;
             IsReady = isReady;
+            ProtocolVersion = protocolVersion;
         }
 
         /// <summary>Network peer id (the Steam id in production).</summary>
@@ -20,6 +21,9 @@ namespace Lazpoly.App.Lobby
 
         /// <summary>The member has pressed "ready"; the owner counts as ready by hosting.</summary>
         public bool IsReady { get; }
+
+        /// <summary>The network protocol the member's build speaks; 0 until they have told the room.</summary>
+        public int ProtocolVersion { get; }
     }
 
     /// <summary>A platform friend as the lobby menu shows them.</summary>
@@ -88,6 +92,9 @@ namespace Lazpoly.App.Lobby
 
         /// <summary>The house rules the owner has chosen for the game, as every member sees them.</summary>
         TableRules Table { get; }
+
+        /// <summary>The network protocol of the owner's build, as the room announces it; 0 until known.</summary>
+        int RoomProtocolVersion { get; }
 
         /// <summary>Owner only: shares the house rules with the room.</summary>
         void SetTable(TableRules table);

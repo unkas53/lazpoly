@@ -137,8 +137,8 @@ namespace Lazpoly.App.Session
         /// <summary>True while the computer plays for a player because they stopped answering (not because they dropped).</summary>
         public bool IsIdle(int playerId) => _idle.Contains(playerId);
 
-        /// <summary>Seconds left before the host moves for the player the game waits on.</summary>
-        public double SecondsLeft => _clock.Remaining(_engine.State.Phase);
+        /// <summary>Seconds left before the host moves for the player the game waits on; infinite at a table without a clock.</summary>
+        public double SecondsLeft => _clock.Remaining(_engine.State.Phase, _engine.Rules.TurnSeconds);
 
         public bool StepAi()
         {
@@ -227,7 +227,7 @@ namespace Lazpoly.App.Session
         private void CheckTimeouts()
         {
             GameState state = _engine.State;
-            if (state.Phase == GamePhase.GameOver || !_clock.HasExpired(state.Phase)) return;
+            if (state.Phase == GamePhase.GameOver || !_clock.HasExpired(state.Phase, _engine.Rules.TurnSeconds)) return;
 
             var waiting = new List<int>();
             foreach (int playerId in AiTurnOrder.PlayersToAct(state))

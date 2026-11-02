@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -41,6 +42,18 @@ namespace Lazpoly.Infra.Logging
         public void Append(DateTime time, string kind, string message, string stackTrace)
         {
             Write(Format(time, kind, message, stackTrace));
+        }
+
+        /// <summary>Appends a report the player asked for, or the game's own notes on a problem: a title and indented lines.</summary>
+        public void AppendReport(DateTime time, string title, IEnumerable<string> lines)
+        {
+            var sb = new StringBuilder();
+            foreach (string line in lines ?? Array.Empty<string>())
+            {
+                if (!string.IsNullOrWhiteSpace(line)) sb.Append(line.TrimEnd()).Append('\n');
+            }
+
+            Write(Format(time, "REPORT", title, sb.ToString()));
         }
 
         /// <summary>One entry: a stamped line, then the trace indented, then a blank line.</summary>

@@ -81,6 +81,7 @@ namespace Lazpoly.Presentation.Game
         private Tip? _tip;
         private UiView _howToWindow;
         private Text _timer;
+        private CanvasGroup _timeEdge;
         private GameObject _howToLayer;
         private UiView _cityWindow;
         private GameObject _cityLayer;
@@ -207,6 +208,7 @@ namespace Lazpoly.Presentation.Game
             timerRect.offsetMin = Vector2.zero;
             timerRect.offsetMax = Vector2.zero;
             _timer.raycastTarget = false;
+            BuildTimeEdge();
 
             // The pause menu comes first, so settings and help opened from it draw on top of it.
             _pauseWindow = new UiView(UiRoot.Modal(_canvas.transform, "Pause", UiLayout.WindowWidth, out _pauseLayer), RenderPause);
@@ -348,20 +350,53 @@ namespace Lazpoly.Presentation.Game
 
         private const int NoPlayer = -1;
 
-        /// <summary>Online, while the game waits on the person here: how long until the host moves for them.</summary>
+        /// <summary>Seconds before the move clock runs out during which the screen edge glows red.</summary>
+        public const float EdgeWarningSeconds = 10f;
+
+        /// <summary>Four thin strips along the screen edges, invisible until the move clock nearly runs out.</summary>
+        private void BuildTimeEdge()
+        {
+            RectTransform edge = UiRoot.Stretch(_canvas.transform, "Time Edge");
+            _timeEdge = edge.gameObject.AddComponent<CanvasGroup>();
+            _timeEdge.alpha = 0f;
+            _timeEdge.blocksRaycasts = false;
+            _timeEdge.interactable = false;
+            const float thickness = 14f;
+            Strip("Top", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -thickness), Vector2.zero);
+            Strip("Bottom", Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, thickness));
+            Strip("Left", Vector2.zero, new Vector2(0f, 1f), Vector2.zero, new Vector2(thickness, 0f));
+            Strip("Right", new Vector2(1f, 0f), Vector2.one, new Vector2(-thickness, 0f), Vector2.zero);
+
+            void Strip(string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
+            {
+                RectTransform strip = UiRoot.Rect(edge, name, anchorMin, anchorMax, offsetMin, offsetMax);
+                Image image = UiRoot.Background(strip, UiTheme.Warning, rounded: false);
+                image.raycastTarget = false;
+            }
+        }
+
+        /// <summary>
+        /// Online, while the game waits on the person here: how long until the host moves for them. In
+        /// the last <see cref="EdgeWarningSeconds"/> the screen edge pulses red as well, so the warning
+        /// reaches a player looking at the board rather than the clock. No clock at a table without one.
+        /// </summary>
         private void UpdateTimer(GameState state)
         {
+            float seconds = _controller.SecondsLeft;
             bool show = _controller.IsOnline && state != null && state.Phase != GamePhase.GameOver && !_controller.IsBusy &&
-                        !_controller.EndReason.HasValue && WaitsOnSomeoneHere(state);
+                        !_controller.EndReason.HasValue && !float.IsInfinity(seconds) && WaitsOnSomeoneHere(state);
             if (!show)
             {
                 _timer.text = "";
+                _timeEdge.alpha = 0f;
                 return;
             }
 
-            int left = Mathf.Max(0, Mathf.CeilToInt(_controller.SecondsLeft));
+            int left = Mathf.Max(0, Mathf.CeilToInt(seconds));
             _timer.text = F($"Hamle süresi: {left} sn");
-            _timer.color = left <= 10 ? UiTheme.Warning : UiTheme.Muted;
+            bool urgent = seconds <= EdgeWarningSeconds;
+            _timer.color = urgent ? UiTheme.Warning : UiTheme.Muted;
+            _timeEdge.alpha = urgent ? 0.35f + 0.35f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * Mathf.PI)) : 0f;
         }
 
         private bool WaitsOnSomeoneHere(GameState state)
@@ -439,7 +474,7 @@ namespace Lazpoly.Presentation.Game
             bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
             if (buildOpen && !_buildLayer.activeSelf) _buildCount = 1;
             SetLayer(_buildLayer, _buildWindow, buildOpen, HashCode.Combine(revision, _buildCount));
-            SetLayer(_pauseLayer, _pauseWindow, _pauseLayer.activeSelf, HashCode.Combine(revision, _controller.EndReason));
+            SetLayer(_pauseLayer, _pauseWindow, _pauseLayer.activeSelf, HashCode.Combine(revision, _controller.EndReason, _controller.ReportNote));
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
             SetLayer(_howToLayer, _howToWindow, _howToLayer.activeSelf, 0);
             bool ended = !_endDismissed && (_controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver && !_controller.IsBusy));
@@ -1200,6 +1235,10 @@ namespace Lazpoly.Presentation.Game
             Line(keys, "F3 / F11 / F12", L("kare hızı, ekran görüntüsü açısı, ekran görüntüsü"));
             Line(keys, "Esc", L("menü, pencereyi kapat"));
 
+            ui.Space(4f);
+            ui.Button(L("Sorun Bildir"), _controller.ReportProblem, height: UiTheme.SmallButtonHeight);
+            ui.Label(_controller.ReportNote ?? L("Oyunun durumunu ve son hamleleri hata günlüğüne yazar, günlük klasörünü açar; dosyayı bildirimine ekle."),
+                UiTextStyle.Small, UiTheme.Muted);
             ui.Space(4f);
             if (over)
             {

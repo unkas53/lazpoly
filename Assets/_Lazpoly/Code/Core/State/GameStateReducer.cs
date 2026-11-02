@@ -100,6 +100,12 @@ namespace Lazpoly.Core.State
                 case AuctionStartedEvent e:
                     RequireSquare(state, e.SquareIndex);
                     state.Auction = new AuctionState(e.SquareIndex, 0, GameState.NoOwner, null);
+                    state.RemovePendingAuction(e.SquareIndex);
+                    break;
+
+                case BankAuctionsQueuedEvent e:
+                    foreach (int square in e.Squares) RequireSquare(state, square);
+                    state.SetPendingAuctions(e.Squares);
                     break;
 
                 case BidPlacedEvent e:

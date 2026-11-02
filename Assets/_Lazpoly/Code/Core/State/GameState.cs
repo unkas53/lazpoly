@@ -21,6 +21,7 @@ namespace Lazpoly.Core.State
         private readonly List<PlayerState> _players;
         private readonly int[] _owners;
         private readonly int[] _buildingLevels;
+        private readonly List<int> _pendingAuctions = new List<int>();
 
         private GameState(List<PlayerState> players, int squareCount)
         {
@@ -74,6 +75,20 @@ namespace Lazpoly.Core.State
 
         /// <summary>The running auction; null unless <see cref="Phase"/> is <see cref="GamePhase.AuctionInProgress"/>.</summary>
         public AuctionState Auction { get; internal set; }
+
+        /// <summary>
+        /// Squares of a bankrupt player still waiting to be auctioned, in board order; empty except
+        /// during the run of bank auctions that follows a bankruptcy at such a table.
+        /// </summary>
+        public IReadOnlyList<int> PendingAuctions => _pendingAuctions;
+
+        internal void SetPendingAuctions(IEnumerable<int> squares)
+        {
+            _pendingAuctions.Clear();
+            _pendingAuctions.AddRange(squares);
+        }
+
+        internal bool RemovePendingAuction(int square) => _pendingAuctions.Remove(square);
 
         /// <summary>The open trade offer; null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingTradeResponse"/>.</summary>
         public TradeOffer PendingTrade { get; internal set; }
@@ -224,6 +239,12 @@ namespace Lazpoly.Core.State
                 state.Auction = auction.Copy();
             }
 
+            if (snapshot.PendingAuctions != null)
+            {
+                foreach (int square in snapshot.PendingAuctions) RequireSquare(square, snapshot.Owners.Length);
+                state.SetPendingAuctions(snapshot.PendingAuctions);
+            }
+
             if (snapshot.PendingTrade != null)
             {
                 TradeOffer trade = snapshot.PendingTrade;
@@ -358,6 +379,9 @@ namespace Lazpoly.Core.State
                 Mix(Auction.PassedPlayerIds.Count);
                 foreach (int id in Auction.PassedPlayerIds) Mix(id);
             }
+
+            Mix(_pendingAuctions.Count);
+            foreach (int square in _pendingAuctions) Mix(square);
 
             Mix(PendingTrade == null ? 0 : 1);
             if (PendingTrade != null)

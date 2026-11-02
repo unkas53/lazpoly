@@ -38,10 +38,11 @@ namespace Lazpoly.App.Tests
             busy.Pot = 250;
             busy.DiceOptions = new[] { 1, 2, 6, 6 };
             busy.Players[1].HasLookout = true;
+            busy.PendingAuctions = new[] { 1, 2 };
             yield return new GameStartMessage
             {
                 ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 1UL, YourPlayerId = 1, Sequence = 3, Snapshot = busy,
-                Table = new Lazpoly.Core.Rules.TableRules(2000, false, 25),
+                Table = new Lazpoly.Core.Rules.TableRules(2000, false, 25, 60, Lazpoly.Core.Rules.BankReturns.Auction),
             };
             yield return new RefusedMessage { Reason = RefusalReason.BoardMismatch };
             yield return new CommandMessage { Command = new RollDiceCommand(1) };
@@ -90,6 +91,7 @@ namespace Lazpoly.App.Tests
                 new DiceOptionsEvent(1, 1, 2, 3, 4),
                 new DebtIncurredEvent(1, GameState.PotId, 40, MoneyReason.Card),
                 new PlayerTimedOutEvent(2, true),
+                new BankAuctionsQueuedEvent(new[] { 4, 7 }),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -100,6 +102,33 @@ namespace Lazpoly.App.Tests
             presence.Players.Add(new PlayerPresence(3, true, true, 48));
             yield return presence;
             yield return new HostLeavingMessage();
+        }
+
+        [Test]
+        public void TheTableTravelsWithItsTimingAndBankRule()
+        {
+            var table = new Lazpoly.Core.Rules.TableRules(1500, true, 0, 0, Lazpoly.Core.Rules.BankReturns.Auction);
+            var w = new NetWriter();
+            MessageCodec.WriteTable(w, table);
+            Lazpoly.Core.Rules.TableRules read = MessageCodec.ReadTable(new NetReader(w.ToArray()));
+            Assert.IsTrue(read.SameAs(table));
+            Assert.AreEqual(0, read.TurnSeconds);
+            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.Auction, read.BankReturns);
+
+            // Three values, as a build before Faz 10c-2 wrote them, read as the default timing.
+            var old = new NetWriter();
+            old.WriteInt(1500);
+            old.WriteBool(true);
+            old.WriteInt(0);
+            Lazpoly.Core.Rules.TableRules legacy = MessageCodec.ReadTable(new NetReader(old.ToArray()), withTiming: false);
+            Assert.AreEqual(Lazpoly.Core.Rules.TableRules.DefaultTurnSeconds, legacy.TurnSeconds);
+            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.FirstComer, legacy.BankReturns);
+
+            var bad = new NetWriter();
+            MessageCodec.WriteTable(bad, table);
+            byte[] bytes = bad.ToArray();
+            bytes[bytes.Length - 1] = 9; // An unknown bank rule.
+            Assert.Throws<FormatException>(() => MessageCodec.ReadTable(new NetReader(bytes)));
         }
 
         [Test]

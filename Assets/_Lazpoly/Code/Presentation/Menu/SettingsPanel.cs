@@ -150,7 +150,18 @@ namespace Lazpoly.Presentation.Menu
             ui.Label(L("Sorun bildirme"), UiTextStyle.Small, UiTheme.Muted);
             ui.Label(L("Hatalar şu dosyaya yazılır; bir sorun bildirirken bu dosyayı ekle:"), UiTextStyle.Small);
             ui.Label(_errorLog.FilePath, UiTextStyle.Small, UiTheme.Muted);
-            ui.Button(L("Günlük klasörünü aç"), () => Application.OpenURL("file://" + _errorLog.Folder), height: UiTheme.SmallButtonHeight);
+            UiBuilder row = ui.Row();
+            row.Button(L("Günlük klasörünü aç"), () => Application.OpenURL("file://" + _errorLog.Folder), height: UiTheme.SmallButtonHeight);
+            row.Button(L("Sorun Bildir"), () =>
+            {
+                _errorLog.Report("Oyuncu sorun bildirdi (menü)", new[]
+                {
+                    $"sürüm {Application.version}, {Application.platform}, Unity {Application.unityVersion}",
+                    $"ekran {Screen.width}x{Screen.height}, tam ekran {Screen.fullScreen}, kalite {QualitySettings.GetQualityLevel()}",
+                    $"dil {Lang.Current}",
+                });
+                Application.OpenURL("file://" + _errorLog.Folder);
+            }, height: UiTheme.SmallButtonHeight);
         }
 
         private void VolumeSlider(UiBuilder ui, string name, float value, Func<float, GameSettings> with)

@@ -390,6 +390,69 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
         }
 
+        // Alice holds A1 and A2, has no money and owes the bank 50 on her own turn.
+        private static GameEngine AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns bankReturns, bool auctions = true)
+        {
+            var table = new Lazpoly.Core.Rules.TableRules(0, auctions, 0, bankReturns: bankReturns);
+            var engine = new GameEngine(Board(), TestRules(1000, passStartBonus: 0).WithTable(table), TestSeats(3), new ScriptedDice());
+            Give(engine, A1, Alice);
+            Give(engine, A2, Alice);
+            GameStateReducer.Apply(engine.State, new MoneyChangedEvent(Alice, -1000, MoneyReason.Tax));
+            GameStateReducer.Apply(engine.State, new DebtIncurredEvent(Alice, GameState.NoOwner, 50, MoneyReason.Tax));
+            GameStateReducer.Apply(engine.State, new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
+            return engine;
+        }
+
+        [Test]
+        public void AtAnAuctionTableTheBankAuctionsABankruptPlayersSquaresOneAfterAnother()
+        {
+            GameEngine engine = AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns.Auction);
+            CommandResult result = Accept(engine, new DeclareBankruptcyCommand(Alice));
+
+            Assert.IsTrue(engine.State.FindPlayer(Alice).IsBankrupt);
+            Assert.IsTrue(result.Events.Any(e => e is BankAuctionsQueuedEvent q && q.Squares.SequenceEqual(new[] { A1, A2 })));
+            Assert.AreEqual(GamePhase.AuctionInProgress, engine.State.Phase);
+            Assert.AreEqual(A1, engine.State.Auction.SquareIndex, "The first square goes under the hammer at once.");
+            CollectionAssert.AreEqual(new[] { A2 }, engine.State.PendingAuctions);
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
+            Assert.AreEqual(Alice, engine.State.CurrentPlayer.Id, "The bankrupt player stays on turn while the bank sells.");
+            Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new PlaceBidCommand(Alice, 10)), "The bankrupt player cannot bid.");
+
+            Accept(engine, new PlaceBidCommand(Bob, 30));
+            Accept(engine, new PassBidCommand(Cem));
+            Assert.AreEqual(Bob, engine.State.GetOwner(A1));
+            Assert.AreEqual(970, Money(engine, Bob));
+            Assert.AreEqual(GamePhase.AuctionInProgress, engine.State.Phase, "The next queued square follows.");
+            Assert.AreEqual(A2, engine.State.Auction.SquareIndex);
+            Assert.IsEmpty(engine.State.PendingAuctions);
+
+            Accept(engine, new PassBidCommand(Bob));
+            Accept(engine, new PassBidCommand(Cem));
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A2), "Nobody bid: the square stays with the bank.");
+            Assert.IsNull(engine.State.Auction);
+            Assert.AreEqual(Bob, engine.State.CurrentPlayer.Id);
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "After the last sale the next player's turn begins.");
+        }
+
+        [Test]
+        public void AtAFirstComerTableOrWithoutAuctionsTheBankJustKeepsTheSquares()
+        {
+            foreach (GameEngine engine in new[]
+            {
+                AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns.FirstComer),
+                AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns.Auction, auctions: false),
+            })
+            {
+                Accept(engine, new DeclareBankruptcyCommand(Alice));
+                Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
+                Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A2));
+                Assert.IsEmpty(engine.State.PendingAuctions);
+                Assert.IsNull(engine.State.Auction);
+                Assert.AreEqual(Bob, engine.State.CurrentPlayer.Id);
+                Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
+            }
+        }
+
         [Test]
         public void TheCreditorTakesOverTheBankruptPlayersProperties()
         {

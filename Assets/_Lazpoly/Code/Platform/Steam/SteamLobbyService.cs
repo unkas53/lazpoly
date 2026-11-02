@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Lazpoly.App.Lobby;
 using Lazpoly.Core.Rules;
 using Lazpoly.Infra;
+using Lazpoly.Net.Messages;
 using Steamworks;
 
 namespace Lazpoly.Platform.Steam
@@ -16,6 +17,7 @@ namespace Lazpoly.Platform.Steam
         private const string StartedKey = "lazpoly_started";
         private const string TableKey = "lazpoly_table";
         private const string ReadyKey = "lazpoly_ready";
+        private const string ProtocolKey = "lazpoly_proto";
         private const uint ChatEnterSuccess = (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess;
         private const uint ChatEnterFull = (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseFull;
         private const uint MemberGone = (uint)(EChatMemberStateChange.k_EChatMemberStateChangeLeft |
@@ -50,6 +52,7 @@ namespace Lazpoly.Platform.Steam
         public bool IsGameStarted => InLobby && SteamMatchmaking.GetLobbyData(_lobby, StartedKey) == "1";
         public ulong RoomId => InLobby ? _lobby.m_SteamID : 0UL;
         public TableRules Table => InLobby ? ParseTable(SteamMatchmaking.GetLobbyData(_lobby, TableKey)) : TableRules.Default;
+        public int RoomProtocolVersion => InLobby && int.TryParse(SteamMatchmaking.GetLobbyData(_lobby, ProtocolKey), out int version) ? version : 0;
 
         public event Action Changed;
         public event Action<LobbyError> Failed;
@@ -177,16 +180,23 @@ namespace Lazpoly.Platform.Steam
             if (InLobby) SteamMatchmaking.SetLobbyMemberData(_lobby, ReadyKey, ready ? "1" : "0");
         }
 
-        /// <summary>"money,auctions,rounds" as lobby data; anything unreadable means the default rules.</summary>
-        public static string FormatTable(TableRules table) => $"{table.StartingMoney},{(table.AuctionsEnabled ? 1 : 0)},{table.RoundLimit}";
+        /// <summary>"money,auctions,rounds,turnSeconds,bankReturns" as lobby data; anything unreadable means the default rules.</summary>
+        public static string FormatTable(TableRules table) =>
+            $"{table.StartingMoney},{(table.AuctionsEnabled ? 1 : 0)},{table.RoundLimit},{table.TurnSeconds},{(int)table.BankReturns}";
 
+        /// <summary>Reads the lobby's rules; a room run by a build before Faz 10c-2 sends three values and gets the default timing.</summary>
         public static TableRules ParseTable(string text)
         {
             if (string.IsNullOrEmpty(text)) return TableRules.Default;
             string[] parts = text.Split(',');
-            if (parts.Length != 3 || !int.TryParse(parts[0], out int money) || !int.TryParse(parts[1], out int auctions) || !int.TryParse(parts[2], out int rounds))
+            if ((parts.Length != 3 && parts.Length != 5) || !int.TryParse(parts[0], out int money) || !int.TryParse(parts[1], out int auctions) ||
+                !int.TryParse(parts[2], out int rounds) || money < 0 || rounds < 0)
                 return TableRules.Default;
-            return new TableRules(money, auctions != 0, rounds);
+            if (parts.Length == 3) return new TableRules(money, auctions != 0, rounds);
+            if (!int.TryParse(parts[3], out int turnSeconds) || !int.TryParse(parts[4], out int bank) || turnSeconds < 0 ||
+                !Enum.IsDefined(typeof(BankReturns), bank))
+                return TableRules.Default;
+            return new TableRules(money, auctions != 0, rounds, turnSeconds, (BankReturns)bank);
         }
 
         public void Leave()
@@ -239,6 +249,10 @@ namespace Lazpoly.Platform.Steam
             }
 
             _lobby = lobby;
+            // Everyone tells the room which protocol their build speaks; the owner's is the room's.
+            string protocol = MessageCodec.ProtocolVersion.ToString();
+            SteamMatchmaking.SetLobbyMemberData(_lobby, ProtocolKey, protocol);
+            if (SteamMatchmaking.GetLobbyOwner(_lobby) == SteamUser.GetSteamID()) SteamMatchmaking.SetLobbyData(_lobby, ProtocolKey, protocol);
             RefreshMembers();
             SetStatus(LobbyStatus.InLobby);
         }
@@ -269,7 +283,8 @@ namespace Lazpoly.Platform.Steam
                 CSteamID member = SteamMatchmaking.GetLobbyMemberByIndex(_lobby, i);
                 if (!_memberIds.Add(member.m_SteamID)) continue;
                 bool ready = member == SteamMatchmaking.GetLobbyOwner(_lobby) || SteamMatchmaking.GetLobbyMemberData(_lobby, member, ReadyKey) == "1";
-                _members.Add(new LobbyMember(member.m_SteamID, SteamFriends.GetFriendPersonaName(member), ready));
+                int.TryParse(SteamMatchmaking.GetLobbyMemberData(_lobby, member, ProtocolKey), out int protocol);
+                _members.Add(new LobbyMember(member.m_SteamID, SteamFriends.GetFriendPersonaName(member), ready, protocol));
             }
         }
 

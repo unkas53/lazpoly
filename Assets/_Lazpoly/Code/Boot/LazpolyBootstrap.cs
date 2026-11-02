@@ -1,9 +1,11 @@
 using Lazpoly.App.Achievements;
 using Lazpoly.App.Lobby;
 using Lazpoly.App.Presence;
+using Lazpoly.App.Save;
 using Lazpoly.Infra;
 using Lazpoly.Infra.Logging;
 using Lazpoly.Infra.Settings;
+using Lazpoly.Net.Messages;
 using Lazpoly.Net.Transport;
 using Lazpoly.Platform.Steam;
 using UnityEngine;
@@ -28,7 +30,7 @@ namespace Lazpoly.Boot
             // Registration order is initialization order: the error log goes first so it sees the
             // others start, and Steam must be up before lobby and transport.
             var registry = new ServiceRegistry();
-            registry.Register(new ErrorLogService());
+            registry.Register(new ErrorLogService($"protokol {MessageCodec.ProtocolVersion}, kayıt biçimi {SavedGameCodec.FormatVersion}"));
             registry.Register(settings);
             registry.Register(steam);
             registry.Register<ILobbyService>(lobby);

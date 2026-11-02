@@ -509,6 +509,32 @@ kamp çadırı kurulur (kumaş sahibin rengi, dikişler aynı rengin koyu tonu; 
   süresinin dolması, durum yayını), `MessageCodecTests` (yeni mesajlar), `LastRoomStoreTests`. `LoopbackNetwork.Sever`
   ve `Restore` bir makinenin kendi hattının kopup gelmesini taklit eder.
 
+## Faz 10c-2: masa kuralları ve sağlamlık
+
+Masa kurulumuna iki yeni kural eklendi; hata günlüğü ve sürüm uyumu güçlendi.
+
+- **Hamle süresi:** masa kuralları penceresinde 60 / 90 / 120 saniye ya da "Süresiz" seçilir (`TableRules.TurnSeconds`,
+  varsayılan 90). Yalnızca çevrim içi oyunlarda geçerlidir: süre dolunca ev sahibi oyuncu adına en temkinli hamleyi yapar;
+  açık artırma ve takas cevapları için en çok 30 sn tanınır (`TurnClock.LimitFor`). Süresiz seçildiğinde saat hiç görünmez
+  ve ev sahibi kimsenin yerine hamle yapmaz. Son 10 saniyede ekranın dört kenarı kırmızı nabız gibi atar
+  (`GameHud.EdgeWarningSeconds`). Kural oda verisiyle (`lazpoly_table`) ve kayıtla taşınır.
+- **İflas edenin bankaya dönen mülkleri:** "Gelen alır" (varsayılan; mülkler bankada kalır, üstüne gelen liste
+  fiyatından alır) ya da "Hemen açık artırmaya çıkar" (`BankReturns.Auction`; açık artırma açıkken seçilebilir). İkinci
+  kuralda iflas anında dönen mülkler sıraya alınır (`BankAuctionsQueuedEvent`, `GameState.PendingAuctions`), kalan
+  oyuncular sırayla teklif verir, kuyruk bitince sıra bir sonraki oyuncuya geçer. Kuyruk anlık görüntüye ve özete girer.
+- **Hata günlüğü:** her oturumun `SessionTrail`'i son 20 komutu ve olay özetini tutar; ilk hata ya da istisna düştüğünde
+  günlüğe otomatik yazılır. Duraklatma menüsü ve ayarlar yardım sekmesindeki **"Sorun Bildir"** düğmesi oyun modunu, masa
+  kurallarını, her oyuncunun bağlantı durumunu, durum özetini ve izi `errors.log`'a "REPORT" kaydı olarak yazar ve klasörü
+  açar. Günlük başlığında protokol ve kayıt biçimi sürümü de bulunur.
+- **Sürüm uyuşmazlığı:** her üye protokol sürümünü oda üye verisine yazar (`lazpoly_proto`); ev sahibi oda verisine de yazar.
+  Odada sürümü farklı üye "sürümü farklı" etiketiyle görünür, ev sahibi oyunu başlatamaz; misafir sürümü farklı odaya
+  girince "Steam'den güncelle" uyarısı alır, hazır olamaz ve oyuna sürüklenmez. Protokol sürümü 8, kayıt biçimi 6
+  (eski kayıtlar varsayılan zamanlamayla açılır).
+- Testler: `EconomyTests` (banka açık artırma kuyruğu), `SnapshotAndChecksumTests` (kuyruğun özete girmesi),
+  `MessageCodecTests` (masa zamanlaması, yeni olay), `LocalGameAndSaveTests` (kural kaydı, eski biçim),
+  `NetworkSessionTests` (hamle süresi seçimi, saatsiz masa), `SessionTrailTests`, `ErrorLogTests` (rapor kaydı),
+  `OnlineSetupTests` (sürümü farklı oda ve üye).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
