@@ -112,7 +112,8 @@ namespace Lazpoly.Presentation.Tests
             var center = new Vector3(0f, 0f, 0f);
             float plain = BoardCameraFraming.OrthographicSize(half, thickness, pitch, width, height, reserved);
             float size = BoardCameraFraming.OrthographicSize(half, thickness, pitch, width, height, reserved, bottom);
-            Assert.Greater(size, plain, "the view zooms out to fit above the panel");
+            // A board held by the screen's width keeps its size and only moves up; one held by the height zooms out.
+            Assert.GreaterOrEqual(size, plain, "the view never zooms in for the panel");
             Vector3 aim = BoardCameraFraming.AimAbovePanel(BoardCameraFraming.Aim(center, thickness), pitch, yaw, size, height, bottom);
             Assert.AreEqual(BoardCameraFraming.Aim(center, thickness), BoardCameraFraming.AimAbovePanel(BoardCameraFraming.Aim(center, thickness), pitch, yaw, size, height, 0f), "no panel, no lift");
             // Across, the free width is the screen's width less the side panels, as a multiple of the view's half height.

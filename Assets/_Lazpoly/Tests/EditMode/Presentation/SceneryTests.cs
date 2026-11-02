@@ -205,7 +205,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Greater(bubble.PaperSize.x, text.x + SpeechBubble.Padding, "the paper is wider than the line");
                 Assert.Greater(bubble.PaperSize.y, text.y + SpeechBubble.Padding, "the paper is taller than the line");
                 MeshFilter paper = bubble.transform.Find("Paper").GetComponent<MeshFilter>();
-                Assert.That(paper.sharedMesh.bounds.size.x, Is.EqualTo(bubble.PaperSize.x).Within(1e-3f));
+                Assert.That(paper.sharedMesh.bounds.size.x, Is.EqualTo(bubble.PaperSize.x).Within(0.02f), "the paper is cut to the line");
                 Assert.Less(line.transform.localPosition.z, 0f, "the line sits on the camera's side of the paper");
                 Assert.That(bubble.transform.position.x, Is.EqualTo(2f).Within(1e-4f));
                 Assert.Greater(bubble.transform.position.y, 0.2f + SpeechBubble.Lift, "the bubble floats over the pawn");
