@@ -46,8 +46,11 @@ namespace Lazpoly.Presentation.Tests
             button.onClick.Invoke();
             Assert.AreEqual(1, clicks);
 
-            Button grey = ui.RoundButton(UiIcon.Book, "Yardım (H)", () => { }, enabled: false);
+            Button grey = ui.RoundButton(UiIcon.Book, "Yardım (H)", () => { }, enabled: false, style: UiButtonStyle.Primary);
             Assert.IsFalse(grey.interactable);
+            Assert.AreEqual(UiTheme.RestingFill, grey.targetGraphic.color, "a resting disc keeps a visible fill instead of the disabled tint");
+            Assert.AreEqual(Color.white, grey.colors.disabledColor, "nothing dims the resting disc further");
+            Assert.IsNull(grey.GetComponent<UiPrimaryMark>(), "a resting primary button does not claim the focus");
             Assert.AreEqual(2, _container.childCount, "each round button is one column in the dock");
         }
 

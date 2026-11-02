@@ -47,6 +47,8 @@ namespace Lazpoly.Presentation.UI
         private static readonly Color SecondaryFill = new Color(0.22f, 0.33f, 0.42f);
         private static readonly Color DangerFill = new Color(0.70f, 0.26f, 0.24f);
         private static readonly Color SelectedFill = new Color(0.16f, 0.58f, 0.60f);
+        /// <summary>A disc that cannot be pressed right now: a step up from the panel, so the button keeps its shape.</summary>
+        public static readonly Color RestingFill = new Color(0.18f, 0.26f, 0.33f);
         private static readonly Color DarkText = new Color(0.12f, 0.08f, 0.03f);
 
         public const float Spacing = 8f;

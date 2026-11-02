@@ -117,13 +117,14 @@ namespace Lazpoly.Presentation.UI
             column.childForceExpandWidth = false;
             column.childForceExpandHeight = false;
 
+            // A resting button keeps its disc and a muted icon: Unity's disabled tint would sink it into the dark dock.
             RectTransform disc = UiRoot.Rect(element.transform, "Disc", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
-            Image image = UiRoot.Background(disc, UiTheme.Fill(style));
+            Image image = UiRoot.Background(disc, enabled ? UiTheme.Fill(style) : UiTheme.RestingFill);
             image.sprite = UiSprites.Circle;
             image.type = Image.Type.Simple;
             UiRoot.AddShadow(disc.gameObject, 3f);
             Fix(disc.gameObject, size, size);
-            RectTransform picture = UiIcons.Create(disc, icon, size * 0.5f, UiTheme.Label(style));
+            RectTransform picture = UiIcons.Create(disc, icon, size * 0.5f, enabled ? UiTheme.Label(style) : UiTheme.Muted);
             picture.anchorMin = picture.anchorMax = new Vector2(0.5f, 0.5f);
             picture.anchoredPosition = Vector2.zero;
             picture.sizeDelta = new Vector2(size * 0.5f, size * 0.5f);
@@ -137,9 +138,11 @@ namespace Lazpoly.Presentation.UI
             element.AddComponent<UiHover>();
             var button = element.AddComponent<Button>();
             button.targetGraphic = image;
-            button.colors = ButtonColors();
+            ColorBlock colors = ButtonColors();
+            colors.disabledColor = Color.white;
+            button.colors = colors;
             button.interactable = enabled;
-            if (style == UiButtonStyle.Primary) element.AddComponent<UiPrimaryMark>();
+            if (style == UiButtonStyle.Primary && enabled) element.AddComponent<UiPrimaryMark>();
             if (onClick != null)
             {
                 button.onClick.AddListener(() =>

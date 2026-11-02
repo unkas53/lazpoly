@@ -757,8 +757,9 @@ namespace Lazpoly.Presentation.Game
             if (!over)
             {
                 int id = state.CurrentPlayer.Id;
-                if (state.Phase == GamePhase.TurnEnd)
-                    ui.RoundButton(UiIcon.Next, L("Sırayı Bitir"), () => Submit(new EndTurnCommand(id)), acting, UiButtonStyle.Primary);
+                // While someone else plays, the first button rests as the die: their turn's end is not this person's to press.
+                if (state.Phase == GamePhase.TurnEnd && acting)
+                    ui.RoundButton(UiIcon.Next, L("Sırayı Bitir"), () => Submit(new EndTurnCommand(id)), true, UiButtonStyle.Primary);
                 else
                     ui.RoundButton(UiIcon.Dice, L("Zar At"), () => Submit(new RollDiceCommand(id)), acting && state.Phase == GamePhase.WaitingForRoll, UiButtonStyle.Primary);
                 ui.RoundButton(UiIcon.Home, L("Bina (B)"), ReopenBuildCard, free && CanReopenBuildCard(state));
