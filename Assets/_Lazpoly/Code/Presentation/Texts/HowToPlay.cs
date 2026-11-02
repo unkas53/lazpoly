@@ -34,7 +34,7 @@ namespace Lazpoly.Presentation.Texts
             if (board.HasPot) sections.Add(Section(L("Çay Molası"), L("Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır.")));
             if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelen isterse {fare} bilet parası ödeyip tahtadaki herhangi bir kareye gider. Bu yolculuk başlangıçtan geçmiş sayılmaz.")));
             if (HasType(board, SquareType.Lookout)) sections.Add(Section(L("Seyir Terası"), L("Buraya gelen bir sonraki sırasında iki kez zar atar ve hangisiyle gideceğini seçer.")));
-            sections.Add(Section(L("İpucu"), L("Bir kareye fareyle gel ya da tıkla: fiyatı, kira tablosu ve sahibi kartında görünür. Fare tekeriyle yakınlaş, sağ tuşla tahtayı döndür, Home ile başa dön.")));
+            sections.Add(Section(L("İpucu"), L("Bir kareye fareyle gel ya da tıkla: fiyatı, kira tablosu ve sahibi kartında görünür. Fare tekeriyle yakınlaş, Home ile başa dön.")));
             return sections;
         }
 

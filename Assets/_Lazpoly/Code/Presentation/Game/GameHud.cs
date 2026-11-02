@@ -21,23 +21,33 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
-    /// The game screen's interface: players and actions on the left, the event log and menu button
-    /// on the right, and windows for trading, settings, pausing and the end of the game. It offers only
-    /// actions <see cref="GameSceneController.IsAllowed"/> approves; the host still validates them.
-    /// Keyboard shortcuts (<see cref="Hotkeys"/>) press the same buttons.
+    /// The game screen's interface around the diamond-shaped board: a player card in each corner, a
+    /// dock of round buttons at the right edge, decisions in a panel at the bottom, the newest event in
+    /// a strip under it, and windows for the log, properties, trading, settings, pausing and the end of
+    /// the game. It offers only actions <see cref="GameSceneController.IsAllowed"/> approves; the host
+    /// still validates them. Keyboard shortcuts (<see cref="Hotkeys"/>) press the same buttons.
     /// </summary>
     public sealed class GameHud : MonoBehaviour
     {
-        private const float SideWidth = UiLayout.SideWidth;
+        private const float CornerWidth = UiLayout.CornerWidth;
         private const float Margin = UiLayout.Margin;
+
+        /// <summary>Width of the stack at the bottom centre: the hint, the decision panel and the event strip.</summary>
+        public const float BottomWidth = 600f;
 
         private GameSceneController _controller;
         private TradePanel _trade;
         private SettingsPanel _settings;
         private Canvas _canvas;
-        private UiView _side;
-        private UiView _log;
-        private UiView _menu;
+        private readonly UiView[] _corners = new UiView[4];
+        private UiView _dock;
+        private UiView _turn;
+        private RectTransform _turnPanel;
+        private UiView _ticker;
+        private UiView _logWindow;
+        private GameObject _logLayer;
+        private UiView _propertiesWindow;
+        private GameObject _propertiesLayer;
         private UiView _tradeWindow;
         private UiView _settingsWindow;
         private UiView _endWindow;
@@ -65,7 +75,6 @@ namespace Lazpoly.Presentation.Game
         private CanvasGroup _cardGroup;
         private RectTransform _cardRect;
         private Text _rollText;
-        private Text _rollNote;
         private CanvasGroup _rollGroup;
         private RectTransform _rollRect;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
@@ -95,14 +104,20 @@ namespace Lazpoly.Presentation.Game
         private const float RollSeconds = 1.5f;
         private const float CardWidth = 440f;
         private const float CardButton = UiLayout.CardButtonHeight;
-        /// <summary>The menu strip under the log: one row of buttons with the panel's padding.</summary>
-        private const float MenuHeight = UiTheme.ButtonHeight + 24f;
+        private const float WindowListHeight = 420f;
+        private static readonly Color CurrentCardColor = new Color(0.24f, 0.25f, 0.31f);
 
-        /// <summary>Screen pixels each side column covers, margins included; the camera keeps the board clear of them.</summary>
+        /// <summary>Screen pixels the dock covers at each side edge, margins included; the camera keeps the board clear of them.</summary>
         public float ReservedSidePixels => UiLayout.ReservedSidePixels(_canvas != null ? _canvas.scaleFactor : 1f);
 
-        /// <summary>The content of the left column, for tests.</summary>
-        public RectTransform SideContent { get; private set; }
+        /// <summary>Whether the decision panel at the bottom has something to show.</summary>
+        public bool TurnPanelShown => _turnPanel != null && _turnPanel.gameObject.activeSelf;
+
+        /// <summary>Whether the event log window is open.</summary>
+        public bool LogOpen => _logLayer != null && _logLayer.activeSelf;
+
+        /// <summary>Whether the properties window (build and sell) is open.</summary>
+        public bool PropertiesOpen => _propertiesLayer != null && _propertiesLayer.activeSelf;
 
         /// <summary>The square whose card is showing: pinned by a click, else under the pointer on the board, else the swatch pointed at in the side panel; or -1.</summary>
         public int ShownSquare => _pinnedSquare != NoSquare ? _pinnedSquare : _hoveredSquare != NoSquare ? _hoveredSquare : _panelHoverSquare;
@@ -141,23 +156,45 @@ namespace Lazpoly.Presentation.Game
         {
             _canvas = UiRoot.CreateCanvas(transform, "Game UI", 0);
 
-            RectTransform side = UiRoot.Rect(_canvas.transform, "Side", Vector2.zero, new Vector2(0f, 1f),
-                new Vector2(Margin, Margin), new Vector2(Margin + SideWidth, -Margin));
-            UiRoot.Panel(side);
-            UiBuilder sideBuilder = UiRoot.ScrollPanel(side);
-            SideContent = sideBuilder.Container;
-            _side = new UiView(sideBuilder, RenderSide);
+            // A player card in each corner: 0 top left, 1 top right, 2 bottom left, 3 bottom right; seats 5-8 stack on 1-4.
+            for (int corner = 0; corner < 4; corner++)
+            {
+                var anchor = new Vector2(corner % 2, corner < 2 ? 1f : 0f);
+                RectTransform rect = UiRoot.Rect(_canvas.transform, $"Corner {corner}", anchor, anchor, Vector2.zero, Vector2.zero);
+                rect.pivot = anchor;
+                rect.anchoredPosition = new Vector2(anchor.x == 0f ? Margin : -Margin, anchor.y == 0f ? Margin : -Margin);
+                rect.sizeDelta = new Vector2(CornerWidth, 0f);
+                UiBuilder.AddColumnLayout(rect.gameObject, 0, UiTheme.Spacing);
+                rect.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                int index = corner;
+                _corners[corner] = new UiView(new UiBuilder(rect), ui => RenderCorner(ui, index));
+            }
 
-            RectTransform log = UiRoot.Rect(_canvas.transform, "Log", new Vector2(1f, 0f), Vector2.one,
-                new Vector2(-Margin - SideWidth, 2f * Margin + MenuHeight), new Vector2(-Margin, -Margin));
-            UiRoot.Panel(log);
-            _log = new UiView(UiRoot.ScrollPanel(log), RenderLog);
+            // The dock: round buttons down the right edge, centred on the board's right corner.
+            RectTransform dock = UiRoot.Rect(_canvas.transform, "Dock", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), Vector2.zero, Vector2.zero);
+            dock.pivot = new Vector2(1f, 0.5f);
+            dock.anchoredPosition = new Vector2(-Margin, 0f);
+            dock.sizeDelta = new Vector2(UiLayout.DockWidth, 0f);
+            UiBuilder.AddColumnLayout(dock.gameObject, 0, 6f);
+            dock.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _dock = new UiView(new UiBuilder(dock), RenderDock);
 
-            RectTransform menu = UiRoot.Rect(_canvas.transform, "Menu", new Vector2(1f, 0f), new Vector2(1f, 0f),
-                new Vector2(-Margin - SideWidth, Margin), new Vector2(-Margin, Margin + MenuHeight));
-            UiRoot.Background(menu, UiTheme.Panel, shadow: true);
-            UiBuilder.AddColumnLayout(menu.gameObject, 12, UiTheme.Spacing);
-            _menu = new UiView(new UiBuilder(menu), RenderMenu);
+            // The stack at the bottom centre: the hint on top, the decision panel, and the event strip at the very bottom.
+            RectTransform bottom = UiRoot.Rect(_canvas.transform, "Bottom", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, Vector2.zero);
+            bottom.pivot = new Vector2(0.5f, 0f);
+            bottom.anchoredPosition = new Vector2(0f, Margin);
+            bottom.sizeDelta = new Vector2(BottomWidth, 0f);
+            UiBuilder.AddColumnLayout(bottom.gameObject, 0, UiTheme.Spacing);
+            bottom.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            BuildTipPanel(bottom);
+            _turnPanel = UiRoot.Rect(bottom, "Turn", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            UiRoot.Panel(_turnPanel);
+            UiBuilder.AddColumnLayout(_turnPanel.gameObject, 14, UiTheme.Spacing);
+            _turn = new UiView(new UiBuilder(_turnPanel), RenderTurn);
+            _turnPanel.gameObject.SetActive(false);
+            RectTransform ticker = UiRoot.Rect(bottom, "Ticker", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            UiBuilder.AddColumnLayout(ticker.gameObject, 0, 0f);
+            _ticker = new UiView(new UiBuilder(ticker), RenderTicker);
 
             // The square card opens at the top of the free area, on the side away from the square it describes.
             // It never takes the mouse, so the squares under it can still be pointed at and clicked.
@@ -197,7 +234,6 @@ namespace Lazpoly.Presentation.Game
 
             BuildCardPopup();
             BuildRollPopup();
-            BuildTipPanel();
 
             RectTransform timer = UiRoot.Rect(_canvas.transform, "Move Timer", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-180f, -52f), new Vector2(180f, -12f));
@@ -220,6 +256,11 @@ namespace Lazpoly.Presentation.Game
                 ui => HowToPlayPanel.Render(ui, _controller.Session.Board, _controller.Session.Rules, () => _howToLayer.SetActive(false)));
             _cityWindow = new UiView(UiRoot.Modal(_canvas.transform, "City Card", UiLayout.WindowWidth, out _cityLayer), RenderCityCard);
             _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", UiLayout.WindowWidth, out _buildLayer), RenderBuildCard);
+            // The log and the properties open on request, over whatever card is up.
+            _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
+            _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
+            _logLayer.SetActive(false);
+            _propertiesLayer.SetActive(false);
             _pauseLayer.SetActive(false);
             _howToLayer.SetActive(false);
             _tradeLayer.SetActive(false);
@@ -247,11 +288,11 @@ namespace Lazpoly.Presentation.Game
             _cardText.fontSize = 22;
         }
 
-        /// <summary>The dice result in big figures under the banner, with a note for doubles. It never takes the mouse.</summary>
+        /// <summary>A note under the banner when a double is rolled (the lawn shows the figures). It never takes the mouse.</summary>
         private void BuildRollPopup()
         {
             RectTransform roll = UiRoot.Rect(_canvas.transform, "Roll Popup", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(-200f, -262f), new Vector2(200f, -160f));
+                new Vector2(-220f, -214f), new Vector2(220f, -160f));
             UiRoot.Background(roll, new Color(0.08f, 0.09f, 0.12f, 0.88f), shadow: true);
             _rollGroup = roll.gameObject.AddComponent<CanvasGroup>();
             _rollGroup.blocksRaycasts = false;
@@ -259,10 +300,8 @@ namespace Lazpoly.Presentation.Game
             _rollGroup.alpha = 0f;
             _rollRect = roll;
             UiBuilder.AddColumnLayout(roll.gameObject, 10, 2f);
-            var builder = new UiBuilder(roll);
-            _rollText = builder.Label("", UiTextStyle.Title, UiTheme.Text, TextAnchor.MiddleCenter);
-            _rollText.fontSize = 40;
-            _rollNote = builder.Label("", UiTextStyle.Small, UiTheme.Accent, TextAnchor.MiddleCenter);
+            _rollText = new UiBuilder(roll).Label("", UiTextStyle.Body, UiTheme.Accent, TextAnchor.MiddleCenter);
+            _rollText.font = UiTheme.BoldFont;
         }
 
         private void UpdateRollPopup()
@@ -275,26 +314,24 @@ namespace Lazpoly.Presentation.Game
                 return;
             }
 
-            int die1 = _controller.ShownDie1, die2 = _controller.ShownDie2;
-            _rollText.text = $"{die1} + {die2} = {die1 + die2}";
-            _rollNote.text = die1 != die2 ? string.Empty
-                : _controller.ShownRollForfeited ? L("Üçüncü çift: hamle yanar, sıra geçer.")
-                : L("Çift! Sıra bitince yeniden atarsın.");
-            _rollNote.color = _controller.ShownRollForfeited ? UiTheme.Warning : UiTheme.Accent;
+            if (_controller.ShownDie1 != _controller.ShownDie2)
+            {
+                _rollGroup.alpha = 0f;
+                return;
+            }
+
+            _rollText.text = _controller.ShownRollForfeited ? L("Üçüncü çift: hamle yanar, sıra geçer.") : L("Çift! Sıra bitince yeniden atarsın.");
+            _rollText.color = _controller.ShownRollForfeited ? UiTheme.Warning : UiTheme.Accent;
             _rollGroup.alpha = Mathf.Clamp01(age / 0.12f) * Mathf.Clamp01((visible - age) / 0.35f);
             _rollRect.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.25f)));
         }
 
-        /// <summary>A hint box at the bottom centre, between the side columns.</summary>
-        private void BuildTipPanel()
+        /// <summary>A hint box at the top of the bottom stack.</summary>
+        private void BuildTipPanel(RectTransform stack)
         {
-            RectTransform tip = UiRoot.Rect(_canvas.transform, "Tip", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, Vector2.zero);
-            tip.pivot = new Vector2(0.5f, 0f);
-            tip.anchoredPosition = new Vector2(0f, Margin);
-            tip.sizeDelta = new Vector2(560f, 0f);
+            RectTransform tip = UiRoot.Rect(stack, "Tip", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             UiRoot.Background(tip, new Color(0.10f, 0.16f, 0.22f, 0.96f), shadow: true);
             UiBuilder.AddColumnLayout(tip.gameObject, 14, 8f);
-            tip.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             _tipPanel = tip.gameObject;
             _tipView = new UiView(new UiBuilder(tip), RenderTip);
             _tipPanel.SetActive(false);
@@ -447,16 +484,21 @@ namespace Lazpoly.Presentation.Game
 
         private void LateUpdate()
         {
-            if (_controller?.Session == null || _side == null) return;
+            if (_controller?.Session == null || _dock == null) return;
             GameState state = _controller.Session.State;
             ReadHotkeys(state);
             int revision = _controller.Revision;
 
             bool tradeOpen = state != null && !_controller.EndReason.HasValue && _trade.KeepOpen(state);
-            // The pinned square is the destination of a ride, so the side panel follows it too.
-            _side.Refresh(HashCode.Combine(revision, _controller.IsBusy, _controller.EndReason, tradeOpen, _pinnedSquare));
-            _log.Refresh(revision);
-            _menu.Refresh(0);
+            // The pinned square is the destination of a ride, so the decision panel follows it too.
+            int key = HashCode.Combine(revision, _controller.IsBusy, _controller.EndReason, tradeOpen, _pinnedSquare);
+            foreach (UiView corner in _corners) corner.Refresh(key);
+            _dock.Refresh(key);
+            _turn.Refresh(key);
+            // The panel shows only while there is something to decide or to say.
+            bool turnShown = _turnPanel.childCount > 0;
+            if (_turnPanel.gameObject.activeSelf != turnShown) _turnPanel.gameObject.SetActive(turnShown);
+            _ticker.Refresh(revision);
 
             UpdateMoney();
             UpdatePointer();
@@ -479,6 +521,8 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_howToLayer, _howToWindow, _howToLayer.activeSelf, 0);
             bool ended = !_endDismissed && (_controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver && !_controller.IsBusy));
             SetLayer(_endLayer, _endWindow, ended, revision);
+            SetLayer(_logLayer, _logWindow, _logLayer.activeSelf, revision);
+            SetLayer(_propertiesLayer, _propertiesWindow, _propertiesLayer.activeSelf && CanOpenProperties(state), revision);
         }
 
         /// <summary>Counts each player's money towards its new value; only the labels change, nothing is rebuilt.</summary>
@@ -569,7 +613,7 @@ namespace Lazpoly.Presentation.Game
             var card = (RectTransform)_squareCardPanel.transform;
             Camera camera = Camera.main;
             bool squareOnLeft = camera == null || camera.WorldToScreenPoint(_controller.Board.SquarePosition(square)).x < Screen.width / 2f;
-            float inset = SideWidth + 2f * Margin;
+            float inset = CornerWidth + 2f * Margin;
             if (squareOnLeft)
             {
                 card.anchorMin = card.anchorMax = new Vector2(1f, 1f);
@@ -646,7 +690,8 @@ namespace Lazpoly.Presentation.Game
             if (open) view.Refresh(key);
         }
 
-        private void RenderSide(UiBuilder ui)
+        /// <summary>The panel at the bottom: what the game waits on from the person here, or why it stopped. Empty (and hidden) at a free moment.</summary>
+        private void RenderTurn(UiBuilder ui)
         {
             GameState state = _controller.Session.State;
             if (_controller.EndReason.HasValue)
@@ -666,61 +711,130 @@ namespace Lazpoly.Presentation.Game
             }
 
             if (_controller.IsReconnecting) RenderReconnecting(ui);
-
-            // What to do now comes first, so the main button never scrolls away; who is playing comes last.
-            RenderHeader(ui, state);
             RenderActions(ui, state);
-            RenderOwnProperties(ui, state);
-            ui.Space(6f);
-            ui.Label(L("Oyuncular"), UiTextStyle.Small, UiTheme.Muted);
-            RenderPlayers(ui, state);
         }
 
-        private void RenderHeader(UiBuilder ui, GameState state)
+        /// <summary>The strip at the very bottom: the round and the newest event; a click opens the whole log.</summary>
+        private void RenderTicker(UiBuilder ui)
         {
-            UiBuilder header = ui.Row();
-            int limit = _controller.Session.Rules.RoundLimit;
-            header.Label(limit > 0 ? F($"Tur {state.Round} / {limit}") : F($"Tur {state.Round}"), UiTextStyle.Small, UiTheme.Muted);
-            if (state.LastDie1 != 0) header.Label(F($"Son zar: {state.LastDie1} + {state.LastDie2}"), UiTextStyle.Small, UiTheme.Accent, TextAnchor.MiddleRight);
-        }
-
-        /// <summary>The property list of the person on turn here, with its build and sell buttons.</summary>
-        private void RenderOwnProperties(UiBuilder ui, GameState state)
-        {
-            if (state.Phase == GamePhase.GameOver || _controller.IsBusy) return;
-            PlayerState player = state.CurrentPlayer;
-            if (!_controller.Session.CanControl(player.Id) || state.Phase == GamePhase.AuctionInProgress || state.Phase == GamePhase.AwaitingTradeResponse) return;
-            ui.Space(6f);
-            PropertyPanel.Render(ui, _controller, state, player.Id);
-        }
-
-        private void RenderPlayers(UiBuilder ui, GameState state)
-        {
-            _moneyLabels.Clear();
-            _playerCards.Clear();
-
-            // Players in seat order, the bankrupt ones sunk to the bottom so the live game stays on top.
-            var players = new List<PlayerState>(state.Players);
-            players.Sort((a, b) => a.IsBankrupt == b.IsBankrupt ? state.IndexOfPlayer(a.Id).CompareTo(state.IndexOfPlayer(b.Id)) : a.IsBankrupt ? 1 : -1);
-            foreach (PlayerState player in players)
+            GameState state = _controller.Session.State;
+            UiBuilder strip = ui.Tile(ToggleLog, UiTheme.Panel, 8);
+            UiBuilder row = strip.Row(8f, expand: false);
+            if (state != null)
             {
-                bool current = player.Id == state.CurrentPlayer.Id && state.Phase != GamePhase.GameOver;
-                Color cardColor = current ? new Color(0.24f, 0.25f, 0.31f) : UiTheme.Card;
-                UiBuilder card = ui.Card(cardColor, 10);
-                _playerCards[player.Id] = card.Container.GetComponent<Image>();
-                _playerCardColors[player.Id] = cardColor;
-                UiBuilder row = card.Row(10f);
-                Color color = player.IsBankrupt ? UiTheme.Muted : _controller.ColorOf(player.Id);
-                row.Swatch(color, 20f, round: true);
-                Text name = row.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
-                name.font = current ? UiTheme.BoldFont : UiTheme.Font;
-                Text money = row.Label(player.IsBankrupt ? L("iflas") : string.Empty, color: UiTheme.Accent, alignment: TextAnchor.MiddleRight);
-                UiBuilder.Fix(money, width: 90f);
-                if (!player.IsBankrupt) TrackMoney(player.Id, money);
-
-                RenderPlayerStatus(card, player);
-                if (!player.IsBankrupt) RenderOwnedSquares(card, state, player.Id);
+                int limit = _controller.Session.Rules.RoundLimit;
+                Text round = row.Label(limit > 0 ? F($"Tur {state.Round} / {limit}") : F($"Tur {state.Round}"), UiTextStyle.Small, UiTheme.Muted);
+                round.font = UiTheme.BoldFont;
+                UiBuilder.Fix(round, width: 110f);
             }
+
+            IReadOnlyList<LogEntry> entries = _controller.Log;
+            if (entries.Count == 0)
+            {
+                UiBuilder.Fix(row.Label(L("Oyun başlıyor..."), UiTextStyle.Small, UiTheme.Muted), -1f).flexibleWidth = 1f;
+                return;
+            }
+
+            LogEntry last = entries[entries.Count - 1];
+            Color dot = last.PlayerId == GameState.NoOwner ? Color.clear : _controller.ColorOf(last.PlayerId);
+            row.Swatch(dot, 10f, round: true).raycastTarget = false;
+            Color color = last.Tone == LogTone.Gain ? UiTheme.Gain : last.Tone == LogTone.Loss ? UiTheme.Warning : UiTheme.Text;
+            UiBuilder.Fix(row.Label(last.Text, UiTextStyle.Small, color), -1f).flexibleWidth = 1f;
+        }
+
+        /// <summary>
+        /// The dock: the turn's main button first (roll, or end the turn), then the building card, the
+        /// properties, trading, the log, help and the menu. Buttons the moment does not allow stay but go grey.
+        /// </summary>
+        private void RenderDock(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            bool over = state == null || state.Phase == GamePhase.GameOver || _controller.EndReason.HasValue;
+            bool acting = !over && WaitsOnPersonHere(state, state.Phase);
+            bool free = acting && OffersExtras(state);
+            if (!over)
+            {
+                int id = state.CurrentPlayer.Id;
+                if (state.Phase == GamePhase.TurnEnd)
+                    ui.RoundButton(UiIcon.Next, L("Sırayı Bitir"), () => Submit(new EndTurnCommand(id)), acting, UiButtonStyle.Primary);
+                else
+                    ui.RoundButton(UiIcon.Dice, L("Zar At"), () => Submit(new RollDiceCommand(id)), acting && state.Phase == GamePhase.WaitingForRoll, UiButtonStyle.Primary);
+                ui.RoundButton(UiIcon.Home, L("Bina (B)"), ReopenBuildCard, free && CanReopenBuildCard(state));
+                ui.RoundButton(UiIcon.Flag, L("Mülkler"), OpenProperties, CanOpenProperties(state));
+                ui.RoundButton(UiIcon.People, L("Takas (T)"), () => _trade.Open(id), free);
+            }
+
+            ui.RoundButton(UiIcon.List, L("Olaylar"), ToggleLog);
+            ui.RoundButton(UiIcon.Book, L("Yardım (H)"), OpenHowToPlay);
+            ui.RoundButton(UiIcon.Pause, L("Menü (Esc)"), OpenPause);
+        }
+
+        /// <summary>The properties window (build and sell) is for the person on turn here, at any moment that is theirs to act in.</summary>
+        private bool CanOpenProperties(GameState state)
+        {
+            if (state == null || state.Phase == GamePhase.GameOver || _controller.IsBusy || _controller.EndReason.HasValue) return false;
+            if (state.Phase == GamePhase.AuctionInProgress || state.Phase == GamePhase.AwaitingTradeResponse || state.Phase == GamePhase.AwaitingBuyDecision) return false;
+            int id = state.CurrentPlayer.Id;
+            return _controller.Session.CanControl(id) && !_controller.Session.IsAiPlaying(id);
+        }
+
+        private void OpenProperties()
+        {
+            _propertiesLayer.SetActive(true);
+            _propertiesWindow.Invalidate();
+        }
+
+        private void ToggleLog()
+        {
+            _logLayer.SetActive(!_logLayer.activeSelf);
+            _logWindow.Invalidate();
+        }
+
+        /// <summary>The players of one corner: seats 1-4 take a corner each, seats 5-8 stack on them; the bottom corners stack upwards from the edge.</summary>
+        private void RenderCorner(UiBuilder ui, int corner)
+        {
+            GameState state = _controller.Session.State;
+            if (state == null) return;
+            var here = new List<PlayerState>();
+            foreach (PlayerState player in state.Players)
+            {
+                if (state.IndexOfPlayer(player.Id) % 4 == corner) here.Add(player);
+            }
+
+            if (corner >= 2) here.Reverse();
+            foreach (PlayerState player in here) RenderPlayerCard(ui, state, player);
+        }
+
+        /// <summary>A player's card: a round avatar with their initial, the name, the money, their connection and who plays the seat, and their properties.</summary>
+        private void RenderPlayerCard(UiBuilder ui, GameState state, PlayerState player)
+        {
+            bool current = player.Id == state.CurrentPlayer.Id && state.Phase != GamePhase.GameOver;
+            Color cardColor = current ? CurrentCardColor : UiTheme.Card;
+            UiBuilder card = ui.Card(cardColor, 10);
+            _playerCards[player.Id] = card.Container.GetComponent<Image>();
+            _playerCardColors[player.Id] = cardColor;
+            if (current) card.Rule();
+
+            UiBuilder row = card.Row(10f, expand: false);
+            Color color = player.IsBankrupt ? UiTheme.Muted : _controller.ColorOf(player.Id);
+            row.Swatch(color, 44f, round: true, mark: Initial(player.Name));
+            UiBuilder column = row.Column(0f);
+            Text name = column.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
+            name.font = current ? UiTheme.BoldFont : UiTheme.Font;
+            Text money = column.Label(player.IsBankrupt ? L("iflas") : string.Empty, UiTextStyle.Heading, UiTheme.Accent);
+            if (!player.IsBankrupt) TrackMoney(player.Id, money);
+
+            RenderPlayerStatus(card, player, current);
+            if (!player.IsBankrupt) RenderOwnedSquares(card, state, player.Id);
+        }
+
+        /// <summary>The letter on a player's avatar: the first of their name, capitalised the Turkish way for a dotted i.</summary>
+        public static string Initial(string name)
+        {
+            string trimmed = name?.Trim();
+            if (string.IsNullOrEmpty(trimmed)) return "?";
+            string first = trimmed.Substring(0, 1);
+            return first == "i" ? "İ" : first.ToUpperInvariant();
         }
 
         private void TrackMoney(int playerId, Text label)
@@ -760,11 +874,13 @@ namespace Lazpoly.Presentation.Game
         /// Who or what plays the seat. Online every seat also gets a connection dot (green: reachable,
         /// red: not) and, when known, the latency the host measures to that machine.
         /// </summary>
-        private void RenderPlayerStatus(UiBuilder card, PlayerState player)
+        private void RenderPlayerStatus(UiBuilder card, PlayerState player, bool current)
         {
             IGameSession session = _controller.Session;
             bool ai = session.IsAiPlaying(player.Id);
             bool connected = session.IsConnected(player.Id);
+            // Whose move it is shows on their card: the person here sees the dock, the others see who they wait for.
+            if (current && !player.IsBankrupt && !session.CanControl(player.Id)) card.Label(ai ? L("düşünüyor...") : L("oynuyor..."), UiTextStyle.Small, UiTheme.Accent);
             string tag = !_controller.IsOnline ? (ai ? L("Bilgisayar") : null)
                 : !connected ? (ai ? L("Bağlantı yok, bilgisayar oynuyor") : L("Bağlantı yok"))
                 : ai ? L("Bilgisayar oynuyor (hamle yapmadı)") : null;
@@ -808,11 +924,7 @@ namespace Lazpoly.Presentation.Game
                 return;
             }
 
-            if (_controller.IsBusy)
-            {
-                ui.Label("...", UiTextStyle.Heading, UiTheme.Muted);
-                return;
-            }
+            if (_controller.IsBusy) return;
 
             // Auctions and trade answers involve players other than the one on turn.
             if (state.Phase == GamePhase.AuctionInProgress) AuctionPanel.Render(ui, _controller, state);
@@ -822,33 +934,14 @@ namespace Lazpoly.Presentation.Game
             if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);
         }
 
+        /// <summary>The decisions that are not a card of their own; rolling and ending the turn are on the dock, buying is on the city card.</summary>
         private void RenderTurnActions(UiBuilder ui, GameState state)
         {
             PlayerState player = state.CurrentPlayer;
-            UiBuilder turn = ui.Row(10f, expand: false);
-            turn.Swatch(_controller.ColorOf(player.Id), 22f, round: true);
-            UiBuilder.Fix(turn.Label(_controller.Session.CanControl(player.Id) ? F($"Sıra sende, {player.Name}") : F($"{player.Name} oynuyor"), UiTextStyle.Heading), -1f).flexibleWidth = 1f;
-
-            if (!_controller.Session.CanControl(player.Id))
-            {
-                ui.Label(_controller.Session.IsAiPlaying(player.Id) ? F($"{player.Name} düşünüyor (bilgisayar)...") : F($"{player.Name} oynuyor, hamlesi bekleniyor."), UiTextStyle.Small);
-                return;
-            }
+            if (!_controller.Session.CanControl(player.Id)) return;
 
             switch (state.Phase)
             {
-                case GamePhase.WaitingForRoll:
-                    ui.Button(L("Zar At (Boşluk)"), () => _controller.Submit(new RollDiceCommand(player.Id)), style: UiButtonStyle.Primary, height: CardButton);
-                    break;
-
-                case GamePhase.AwaitingBuyDecision:
-                    RenderBuyDecision(ui, player);
-                    break;
-
-                case GamePhase.TurnEnd:
-                    ui.Button(L("Sırayı Bitir (Boşluk)"), () => _controller.Submit(new EndTurnCommand(player.Id)), style: UiButtonStyle.Primary, height: CardButton);
-                    break;
-
                 case GamePhase.AwaitingDebtPayment:
                     RenderDebt(ui, state, player);
                     break;
@@ -861,28 +954,14 @@ namespace Lazpoly.Presentation.Game
                     RenderDiceChoice(ui, state, player);
                     break;
             }
-
-            if (OffersExtras(state))
-            {
-                UiBuilder extras = ui.Row();
-                if (CanReopenBuildCard(state)) extras.Button(L("Bina Kartı (B)"), ReopenBuildCard, height: UiTheme.SmallButtonHeight);
-                extras.Button(L("Takas Teklif Et (T)"), () => _trade.Open(player.Id), height: UiTheme.SmallButtonHeight);
-            }
         }
 
-        /// <summary>The row of side actions (building card, trade) shows while the turn is at a free moment.</summary>
+        /// <summary>The building card and trading are offered while the turn is at a free moment.</summary>
         private static bool OffersExtras(GameState state) => state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd;
 
         /// <summary>The building card was put away for this visit but could still be used.</summary>
         private bool CanReopenBuildCard(GameState state) =>
             AffordableBuildings(state, state.CurrentPlayer) > 0 && _buildCardDismissed == BuildVisitKey(state);
-
-        /// <summary>The decision itself is on the city card in the middle; the column only says so.</summary>
-        private void RenderBuyDecision(UiBuilder ui, PlayerState player)
-        {
-            SquareDefinition square = _controller.Session.Board[player.Position];
-            ui.Label(F($"{L(square.Name)} sahipsiz: şehir kartında satın al ya da devam et."), UiTextStyle.Small);
-        }
 
         /// <summary>True while the game waits in <paramref name="phase"/> on a person (not the computer) sitting at this screen.</summary>
         private bool WaitsOnPersonHere(GameState state, GamePhase phase)
@@ -1079,6 +1158,7 @@ namespace Lazpoly.Presentation.Game
             UiBuilder card = ui.Card(new Color(0.30f, 0.16f, 0.16f));
             card.CardHeader(F($"Borç: {debt.Amount} → {creditor}"), EventDescriber.ReasonText(debt.Reason));
             card.Label(L("Bina ya da mülk satarak para bul, sonra öde."), UiTextStyle.Small);
+            UiBuilder.Fix(card.Button(L("Mülkler"), OpenProperties, height: UiTheme.SmallButtonHeight), width: 160f);
 
             var pay = new PayDebtCommand(player.Id);
             ui.Actions(L("İflas Et"), () => _controller.Submit(new DeclareBankruptcyCommand(player.Id)),
@@ -1090,9 +1170,24 @@ namespace Lazpoly.Presentation.Game
         /// turn's lines sit under a heading in the player's colour; a dot in the actor's colour marks
         /// whose line each one is.
         /// </summary>
-        private void RenderLog(UiBuilder ui)
+        private void RenderLogWindow(UiBuilder ui)
         {
             ui.Title(UiIcon.List, L("Olaylar"));
+            RenderLog(ui.Scroll(WindowListHeight));
+            ui.Button(L("Kapat (Esc)"), () => _logLayer.SetActive(false));
+        }
+
+        /// <summary>The properties window: the person on turn's list with its build and sell buttons.</summary>
+        private void RenderProperties(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            if (state == null) return;
+            PropertyPanel.Render(ui.Scroll(WindowListHeight), _controller, state, state.CurrentPlayer.Id);
+            ui.Button(L("Kapat (Esc)"), () => _propertiesLayer.SetActive(false));
+        }
+
+        private void RenderLog(UiBuilder ui)
+        {
             IReadOnlyList<LogEntry> entries = _controller.Log;
             for (int i = entries.Count - 1; i >= 0; i--)
             {
@@ -1169,14 +1264,6 @@ namespace Lazpoly.Presentation.Game
             }
 
             return count;
-        }
-
-        /// <summary>The strip under the log: the pause menu and help. Settings and leaving live in the pause menu.</summary>
-        private void RenderMenu(UiBuilder ui)
-        {
-            UiBuilder row = ui.Row();
-            row.IconButton(UiIcon.Pause, L("Menü (Esc)"), OpenPause);
-            row.IconButton(UiIcon.Book, L("Nasıl Oynanır (H)"), OpenHowToPlay);
         }
 
         private void OpenPause()
@@ -1283,7 +1370,8 @@ namespace Lazpoly.Presentation.Game
                 Typing = IsTyping(),
                 ButtonFocused = UiFocus.ButtonFocused,
                 PauseOpen = _pauseLayer.activeSelf,
-                ClosableOpen = _settingsLayer.activeSelf || _howToLayer.activeSelf || _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
+                ClosableOpen = _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
+                               _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
                 BlockingOpen = _cityLayer.activeSelf,
                 Acting = acting,
                 Phase = state?.Phase ?? GamePhase.GameOver,
@@ -1337,7 +1425,8 @@ namespace Lazpoly.Presentation.Game
                     break;
             }
 
-            _side.Invalidate();
+            _dock.Invalidate();
+            _turn.Invalidate();
         }
 
         /// <summary>A shortcut sends only what its button would: the same command, only when the rules allow it now.</summary>
@@ -1352,6 +1441,8 @@ namespace Lazpoly.Presentation.Game
             if (_settingsLayer.activeSelf) _settingsLayer.SetActive(false);
             else if (_howToLayer.activeSelf) _howToLayer.SetActive(false);
             else if (_pauseLayer.activeSelf) ClosePause();
+            else if (_propertiesLayer.activeSelf) _propertiesLayer.SetActive(false);
+            else if (_logLayer.activeSelf) _logLayer.SetActive(false);
             else if (_tradeLayer.activeSelf) _trade.Close();
             else if (_buildLayer.activeSelf && state != null) _buildCardDismissed = BuildVisitKey(state);
             else if (_endLayer.activeSelf) _endDismissed = true;

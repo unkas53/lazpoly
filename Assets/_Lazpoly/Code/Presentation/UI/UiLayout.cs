@@ -10,8 +10,14 @@ namespace Lazpoly.Presentation.UI
     /// </summary>
     public static class UiLayout
     {
-        /// <summary>Width of each side column of the game screen.</summary>
-        public const float SideWidth = 380f;
+        /// <summary>Width of a player's card in a corner of the game screen.</summary>
+        public const float CornerWidth = 300f;
+
+        /// <summary>Diameter of the round buttons in the dock at the right edge of the game screen.</summary>
+        public const float DockButton = 64f;
+
+        /// <summary>Width of the dock: a round button with room for its caption.</summary>
+        public const float DockWidth = DockButton + 36f;
 
         /// <summary>Gap between the screen edge and a panel, and between panels.</summary>
         public const float Margin = 16f;
@@ -25,8 +31,11 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Height of the buttons that decide something on a card.</summary>
         public const float CardButtonHeight = 52f;
 
-        /// <summary>Screen pixels each side column takes, margins on both sides included.</summary>
-        public static float ReservedSidePixels(float canvasScale) => (SideWidth + 2f * Margin) * canvasScale;
+        /// <summary>
+        /// Screen pixels kept clear of the board at each side edge: the dock's width with its margins. The
+        /// corner cards sit in the empty triangles beside the diamond-shaped board, so they reserve nothing.
+        /// </summary>
+        public static float ReservedSidePixels(float canvasScale) => (DockWidth + 2f * Margin) * canvasScale;
 
         /// <summary>
         /// The factor the canvas scaler applies for a screen of this size: the geometric mean of
@@ -39,7 +48,7 @@ namespace Lazpoly.Presentation.UI
             return Mathf.Pow(2f, 0.5f * byWidth + 0.5f * byHeight);
         }
 
-        /// <summary>Screen pixels left for the board between the two side columns.</summary>
+        /// <summary>Screen pixels left for the board between the side reserves.</summary>
         public static float BoardAreaPixels(int screenWidth, int screenHeight, float uiScale = 1f) =>
             screenWidth - 2f * ReservedSidePixels(CanvasScale(screenWidth, screenHeight, uiScale));
 

@@ -102,6 +102,58 @@ namespace Lazpoly.Presentation.UI
         }
 
         /// <summary>
+        /// A big round button with a short caption under it, for the dock beside the board. The whole
+        /// column (disc and caption) takes the click, so the caption names the button for tests and readers.
+        /// </summary>
+        public Button RoundButton(UiIcon icon, string caption, Action onClick, bool enabled = true, UiButtonStyle style = UiButtonStyle.Secondary,
+            float size = UiLayout.DockButton)
+        {
+            GameObject element = NewChild($"Round {caption}");
+            var column = element.AddComponent<VerticalLayoutGroup>();
+            column.spacing = 4f;
+            column.childAlignment = TextAnchor.UpperCenter;
+            column.childControlWidth = true;
+            column.childControlHeight = true;
+            column.childForceExpandWidth = false;
+            column.childForceExpandHeight = false;
+
+            RectTransform disc = UiRoot.Rect(element.transform, "Disc", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            Image image = UiRoot.Background(disc, UiTheme.Fill(style));
+            image.sprite = UiSprites.Circle;
+            image.type = Image.Type.Simple;
+            UiRoot.AddShadow(disc.gameObject, 3f);
+            Fix(disc.gameObject, size, size);
+            RectTransform picture = UiIcons.Create(disc, icon, size * 0.5f, UiTheme.Label(style));
+            picture.anchorMin = picture.anchorMax = new Vector2(0.5f, 0.5f);
+            picture.anchoredPosition = Vector2.zero;
+            picture.sizeDelta = new Vector2(size * 0.5f, size * 0.5f);
+
+            Text text = TextChild(element.transform, caption, UiTextStyle.Small, stretch: false);
+            text.alignment = TextAnchor.UpperCenter;
+            text.font = UiTheme.BoldFont;
+            text.color = enabled ? UiTheme.Text : UiTheme.Muted;
+            Fix(text, width: size + 36f);
+
+            element.AddComponent<UiHover>();
+            var button = element.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.colors = ButtonColors();
+            button.interactable = enabled;
+            if (style == UiButtonStyle.Primary) element.AddComponent<UiPrimaryMark>();
+            if (onClick != null)
+            {
+                button.onClick.AddListener(() =>
+                {
+                    Pressed?.Invoke();
+                    onClick();
+                    Changed?.Invoke();
+                });
+            }
+
+            return button;
+        }
+
+        /// <summary>
         /// A clickable card: whatever is added to the returned builder sits inside it, and a click
         /// anywhere on it runs <paramref name="onClick"/>. For choices that deserve a title and a line of text.
         /// </summary>

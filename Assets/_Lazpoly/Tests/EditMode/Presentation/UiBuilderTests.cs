@@ -35,6 +35,23 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void RoundButtonCarriesItsCaptionAndTakesTheClickAsAWhole()
+        {
+            int clicks = 0;
+            var ui = new UiBuilder(_container);
+            Button button = ui.RoundButton(UiIcon.Dice, "Zar At", () => clicks++, style: UiButtonStyle.Primary);
+            Assert.AreEqual("Zar At", button.GetComponentInChildren<Text>().text, "the caption names the button");
+            Assert.IsNotNull(button.GetComponent<UiPrimaryMark>(), "the primary round button takes the keyboard focus first");
+            Assert.AreEqual(UiSprites.Circle, button.targetGraphic.GetComponent<Image>().sprite, "the disc is round");
+            button.onClick.Invoke();
+            Assert.AreEqual(1, clicks);
+
+            Button grey = ui.RoundButton(UiIcon.Book, "Yardım (H)", () => { }, enabled: false);
+            Assert.IsFalse(grey.interactable);
+            Assert.AreEqual(2, _container.childCount, "each round button is one column in the dock");
+        }
+
+        [Test]
         public void DisabledButtonIsNotInteractable()
         {
             Button button = new UiBuilder(_container).Button("Satın Al", () => { }, enabled: false);

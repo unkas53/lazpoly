@@ -580,6 +580,27 @@ gökyüzünde duran bir plaka; kamera sabit ve izometrik.
 - Testler: `RenderingSetupTests` (plakanın alt köşeleri dahil köşeler ekranda ve ortalanmış), `SquareInfoTests` (kamera yeri,
   yakınlık sınırı), `SceneryTests` (dört köşeden okunurluk, skor metni, menü nefesi), `HotkeysTests` (C artık boş).
 
+## Faz 11b: köşe panelleri ve yuvarlak düğmeler
+
+Yan sütunlar kalktı; arayüz baklava biçimli tahtanın boş bıraktığı yerlere yerleşti.
+
+- **Köşe kartları:** her oyuncunun kartı bir köşede (1-4. koltuk köşeler, 5-8. koltuk üstlerine dizilir; alt köşeler
+  kenardan yukarı doğru). Kartta baş harfli yuvarlak avatar, ad, büyük para, bağlantı noktası ve gecikme, "Bilgisayar"
+  etiketi, sırası olan kartta "düşünüyor..." / "oynuyor..." ve mülk kutucukları. Sıradaki kartın üstünde turuncu çizgi.
+- **Sağ kenar düğmeleri (dock):** yuvarlak büyük düğmeler (`UiBuilder.RoundButton`, altında kısa yazı): Zar At / Sırayı
+  Bitir (birincil), Bina (B), Mülkler, Takas (T), Olaylar, Yardım (H), Menü (Esc). İzin olmayan düğme kaybolmaz, grileşir.
+  Kamera tahtayı yalnızca bu sütun kadar (`UiLayout.DockWidth`) kenardan uzak tutar; köşe kartları baklavanın yanındaki
+  boş üçgenlerde durduğu için yer ayırtmaz.
+- **Alt orta yığın:** ipucu, karar paneli ve olay şeridi üst üste. Karar paneli yalnızca bir şey beklenirken görünür
+  (borç, yolculuk, Seyir Terası, açık artırma, takas yanıtı, bağlantı uyarıları, reddedilen hamle); zar ve sıra
+  düğmeleri dock'ta, satın alma şehir kartında olduğu için boş anlarda gizlenir. Olay şeridi turu ve son olayı gösterir,
+  tıklanınca tam olay kaydı pencerede açılır.
+- **Pencereler:** Olaylar (kaydırmalı liste), Mülkler (`PropertyPanel`: ev kur, ev sat, mülk sat; borç kartından da
+  açılır). Esc önce bunları kapatır.
+- **Zar notu:** üstteki "4 + 1 = 5" kutusu kalktı (skor çimde); yalnızca çift ve üçüncü çift notu görünür.
+- Testler: `UiBuilderTests` (yuvarlak düğme), `AccessibilityTests` (avatar baş harfi, Türkçe İ), `UiLayoutTests`
+  (dock payı), PlayMode `InterfaceTests` düğmeleri yeni yazılarıyla basar.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

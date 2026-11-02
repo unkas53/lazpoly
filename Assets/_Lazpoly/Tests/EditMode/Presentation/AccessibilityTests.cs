@@ -27,6 +27,16 @@ namespace Lazpoly.Presentation.Tests
         public void NormalColours() => ColorVision.Apply(false);
 
         [Test]
+        public void AvatarInitialsCapitaliseTheTurkishWay()
+        {
+            Assert.AreEqual("A", GameHud.Initial("ayşe"));
+            Assert.AreEqual("İ", GameHud.Initial("ilayda"), "a dotted i keeps its dot");
+            Assert.AreEqual("Ş", GameHud.Initial(" Şule"));
+            Assert.AreEqual("?", GameHud.Initial(""));
+            Assert.AreEqual("?", GameHud.Initial(null));
+        }
+
+        [Test]
         public void TheFriendlyPalettesAreOffByDefaultAndTellEveryGroupAndSeatApart()
         {
             Assert.IsFalse(ColorVision.Friendly);
