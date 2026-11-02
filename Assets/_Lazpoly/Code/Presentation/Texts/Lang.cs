@@ -18,6 +18,7 @@ namespace Lazpoly.Presentation.Texts
 
         private static Dictionary<string, string> _table;
         private static Language _current = Language.Turkish;
+        private static NumberFormatInfo _numbers = NumbersFor(Language.Turkish);
 
         /// <summary>The language in use after <see cref="Apply"/> resolved Auto.</summary>
         public static Language Current => _current;
@@ -41,7 +42,26 @@ namespace Lazpoly.Presentation.Texts
             if (language == _current && (language == Language.Turkish || _table != null)) return;
             _current = language;
             _table = language == Language.Turkish ? null : Load(language);
+            _numbers = NumbersFor(language);
             Version++;
+        }
+
+        /// <summary>How numbers are written in the current language: Turkish groups thousands with a dot (1.500), English with a comma (1,500).</summary>
+        public static NumberFormatInfo Numbers => _numbers;
+
+        /// <summary>A whole number with its thousands grouped the way the current language writes them.</summary>
+        public static string N(int value) => value.ToString("N0", _numbers);
+
+        public static string N(long value) => value.ToString("N0", _numbers);
+
+        private static NumberFormatInfo NumbersFor(Language language)
+        {
+            // Built by hand rather than from a culture, so builds without culture data write the same thing as the editor.
+            var numbers = (NumberFormatInfo)NumberFormatInfo.InvariantInfo.Clone();
+            numbers.NumberGroupSeparator = language == Language.Turkish ? "." : ",";
+            numbers.NumberDecimalSeparator = language == Language.Turkish ? "," : ".";
+            numbers.NumberGroupSizes = new[] { 3 };
+            return numbers;
         }
 
         /// <summary>Looks a Turkish text up in the current language; the text itself when there is no entry.</summary>
@@ -51,11 +71,17 @@ namespace Lazpoly.Presentation.Texts
             return _table.TryGetValue(turkish, out string translated) ? translated : turkish;
         }
 
-        /// <summary>Translates the template of an interpolated string, then fills in its values.</summary>
+        /// <summary>Translates the template of an interpolated string, then fills in its values; whole numbers get the language's thousands separator (<see cref="N(int)"/>).</summary>
         public static string F(FormattableString text)
         {
             if (text == null) return null;
-            return string.Format(CultureInfo.InvariantCulture, L(text.Format), text.GetArguments());
+            object[] arguments = text.GetArguments();
+            for (int i = 0; i < arguments.Length; i++)
+            {
+                if (arguments[i] is int number) arguments[i] = N(number);
+            }
+
+            return string.Format(CultureInfo.InvariantCulture, L(text.Format), arguments);
         }
 
         /// <summary>Entries loaded for the current language, for tests; null while Turkish.</summary>

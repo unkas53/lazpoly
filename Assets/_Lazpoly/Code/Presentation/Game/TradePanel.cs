@@ -169,7 +169,7 @@ namespace Lazpoly.Presentation.Game
                 string label = board[square].Name + (locked ? L(" (binalı)") : "");
 
                 UiBuilder row = list.Row(8f, expand: false);
-                row.Swatch(_controller.GroupColorOf(square), 16f);
+                row.Swatch(_controller.GroupColorOf(square), 16f, mark: _controller.GroupMarkOf(square));
                 Button button = row.Button((chosen ? "• " : "") + label, () =>
                 {
                     if (!selected.Remove(index)) selected.Add(index);

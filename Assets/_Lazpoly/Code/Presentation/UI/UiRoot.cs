@@ -49,8 +49,9 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Buttons need one event system in the scene; the old input manager drives it.</summary>
         public static void EnsureEventSystem()
         {
-            if (Object.FindAnyObjectByType<EventSystem>() != null) return;
-            new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+            EventSystem events = Object.FindAnyObjectByType<EventSystem>();
+            if (events == null) events = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule)).GetComponent<EventSystem>();
+            UiFocus.Ensure(events);
         }
 
         /// <summary>A rectangle anchored to its parent; offsets are in reference pixels.</summary>
@@ -151,6 +152,7 @@ namespace Lazpoly.Presentation.UI
             RectTransform dim = Stretch(canvas, name);
             Background(dim, UiTheme.Dim, rounded: false);
             layer = dim.gameObject;
+            layer.AddComponent<UiFocusScope>();
 
             RectTransform window = Rect(dim, "Window", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             window.sizeDelta = new Vector2(width, 0f);

@@ -37,6 +37,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>A text field has the keyboard, so letters are typed, not commands.</summary>
         public bool Typing;
 
+        /// <summary>A button holds the keyboard focus (Tab), so Enter and Space press it rather than roll or end the turn.</summary>
+        public bool ButtonFocused;
+
         /// <summary>The pause menu is open.</summary>
         public bool PauseOpen;
 
@@ -95,7 +98,7 @@ namespace Lazpoly.Presentation.Game
                 case KeyCode.Space:
                 case KeyCode.Return:
                 case KeyCode.KeypadEnter:
-                    if (!context.Acting) return HotkeyAction.None;
+                    if (!context.Acting || context.ButtonFocused) return HotkeyAction.None;
                     if (context.Phase == GamePhase.WaitingForRoll) return HotkeyAction.Roll;
                     return context.Phase == GamePhase.TurnEnd ? HotkeyAction.EndTurn : HotkeyAction.None;
                 case KeyCode.B:

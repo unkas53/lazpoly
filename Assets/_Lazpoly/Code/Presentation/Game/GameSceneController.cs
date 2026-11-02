@@ -119,6 +119,7 @@ namespace Lazpoly.Presentation.Game
         private readonly SessionTrail _trail = new SessionTrail();
         private ErrorLogService _errorLog;
         private bool _trailDumped;
+        private int _langVersion;
 
         /// <summary>Where the last problem report went; null until the player asks for one.</summary>
         public string ReportNote { get; private set; }
@@ -234,6 +235,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Colour of the group a square belongs to, as the board shows it.</summary>
         public Color GroupColorOf(int squareIndex) => _data.GroupColor(_session.Board[squareIndex].GroupId);
 
+        /// <summary>The letter on the square's group marks when the colour-blind friendly colours are on; null otherwise.</summary>
+        public string GroupMarkOf(int squareIndex) => _data.GroupMark(_session.Board[squareIndex].GroupId);
+
         /// <summary>Name of the group a square belongs to, from the board file (null if it has none).</summary>
         public string GroupNameOf(int squareIndex) => _data.GroupName(_session.Board[squareIndex].GroupId);
 
@@ -250,9 +254,12 @@ namespace Lazpoly.Presentation.Game
             if (_settings != null)
             {
                 Lang.Apply(_settings.Current.Language);
+                // Read once here: the board's bands and the pawns are painted at build time, so a change waits for the next table.
+                ColorVision.Apply(_settings.Current.ColorBlind);
                 _settings.Changed += OnSettingsChanged;
             }
 
+            _langVersion = Lang.Version;
             _session = CreateSession(OnlineGameSetup.Take());
             _tracker = new AchievementTracker(_data.Board, _session.CanControl, _session.IsAiPlaying, _isOnline);
 
@@ -728,6 +735,12 @@ namespace Lazpoly.Presentation.Game
             RoomDressing.ApplyQuality(settings.Quality);
             Lang.Apply(settings.Language);
             UiRoot.ApplyScale(settings.UiScaleFactor);
+            if (Lang.Version != _langVersion)
+            {
+                // The square names on the board are meshes, not views: they are rewritten by hand when the language changes.
+                _langVersion = Lang.Version;
+                _board?.Relabel();
+            }
         }
 
         private void OnCommandRejected(RejectionReason reason)
@@ -939,7 +952,7 @@ namespace Lazpoly.Presentation.Game
         private void ShowMoney(MoneyChangedEvent money)
         {
             if (money.Delta == 0 || !_pawns.TryGetValue(money.PlayerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) return;
-            string text = money.Delta > 0 ? $"+{money.Delta}" : money.Delta.ToString();
+            string text = money.Delta > 0 ? "+" + Lang.N(money.Delta) : Lang.N(money.Delta);
             Color color = money.Delta > 0 ? new Color(0.45f, 0.92f, 0.5f) : new Color(1f, 0.42f, 0.38f);
             FloatingText.Spawn(transform, pawn.transform.position + Vector3.up * 0.65f, text, color);
         }

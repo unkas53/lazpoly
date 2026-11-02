@@ -33,7 +33,7 @@ namespace Lazpoly.Infra.Tests
             var storage = new MemoryStorage();
             GameSettings chosen = GameSettings.Default.WithMasterVolume(0.25f).WithEffectsVolume(0.5f).WithMusicVolume(0f)
                 .WithFullscreen(false).WithVSync(false).WithAiSpeed(AiSpeed.Fast).WithFastAnimations(true)
-                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900).WithLanguage(Language.English).WithUiScale(UiScale.Large).WithDayCycle(false);
+                .WithQuality(GraphicsQuality.Low).WithScreenSize(1600, 900).WithLanguage(Language.English).WithUiScale(UiScale.Large).WithDayCycle(false).WithColorBlind(true);
 
             SettingsSerializer.Write(storage, chosen);
 

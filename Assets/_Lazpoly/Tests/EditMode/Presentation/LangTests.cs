@@ -63,6 +63,33 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ThousandsAreGroupedTheWayTheLanguageWritesThem()
+        {
+            Assert.AreEqual("1.500", Lang.N(1500));
+            Assert.AreEqual("-2.000.000", Lang.N(-2000000));
+            Assert.AreEqual("999", Lang.N(999));
+            Assert.AreEqual("Kira 1.500 ödendi, tur 12", Lang.F($"Kira {1500} ödendi, tur {12}"), "whole numbers in texts are grouped too");
+            Assert.AreEqual("0.5", Lang.F($"{0.5f}"), "only whole numbers; the rest keeps the invariant form");
+
+            Lang.Set(Language.English);
+            Assert.AreEqual("1,500", Lang.N(1500));
+            Assert.AreEqual("1,500 (normal)", Lang.F($"{1500} (normal)"));
+        }
+
+        [Test]
+        public void EnglishButtonTextsStayShortEnoughForTheirButtons()
+        {
+            // A short Turkish text is almost always a button or a heading; its English must fit the same button.
+            var tooLong = new List<string>();
+            foreach (KeyValuePair<string, string> pair in Lang.Load(Language.English))
+            {
+                if (pair.Key.Length <= 24 && pair.Value.Length > pair.Key.Length * 1.5f + 6) tooLong.Add($"\"{pair.Key}\" -> \"{pair.Value}\"");
+            }
+
+            Assert.IsEmpty(tooLong, "Shorten these English texts:\n" + string.Join("\n", tooLong));
+        }
+
+        [Test]
         public void EveryTextInTheCodeHasAnEnglishEntry()
         {
             Dictionary<string, string> english = Lang.Load(Language.English);

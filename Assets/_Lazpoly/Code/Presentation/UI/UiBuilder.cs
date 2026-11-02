@@ -60,7 +60,19 @@ namespace Lazpoly.Presentation.UI
             text.color = UiTheme.Label(style);
             text.alignment = TextAnchor.MiddleCenter;
             text.font = UiTheme.BoldFont;
+            ShrinkToFit(text);
             return button;
+        }
+
+        /// <summary>
+        /// A label that shrinks a little instead of spilling out of its button: English runs longer than
+        /// Turkish, and the Large interface size leaves less room. Never below <see cref="UiTheme.MinButtonFontSize"/>.
+        /// </summary>
+        public static void ShrinkToFit(Text text)
+        {
+            text.resizeTextForBestFit = true;
+            text.resizeTextMaxSize = text.fontSize;
+            text.resizeTextMinSize = Mathf.Min(text.fontSize, UiTheme.MinButtonFontSize);
         }
 
         /// <summary>A button with a small icon before its label.</summary>
@@ -85,6 +97,7 @@ namespace Lazpoly.Presentation.UI
             text.color = UiTheme.Label(style);
             text.alignment = TextAnchor.MiddleLeft;
             text.font = UiTheme.BoldFont;
+            ShrinkToFit(text);
             return button;
         }
 
@@ -113,6 +126,7 @@ namespace Lazpoly.Presentation.UI
             button.targetGraphic = image;
             button.colors = ButtonColors();
             button.interactable = enabled;
+            if (style == UiButtonStyle.Primary) element.AddComponent<UiPrimaryMark>();
             if (onClick != null)
             {
                 button.onClick.AddListener(() =>
@@ -214,8 +228,8 @@ namespace Lazpoly.Presentation.UI
             return input;
         }
 
-        /// <summary>A coloured square (or disc), such as a player's colour.</summary>
-        public Image Swatch(Color color, float size = 18f, bool round = false)
+        /// <summary>A coloured square (or disc), such as a player's colour; an optional letter on it names the colour for those who do not see it.</summary>
+        public Image Swatch(Color color, float size = 18f, bool round = false, string mark = null)
         {
             GameObject element = NewChild("Swatch");
             Image image = UiRoot.Background((RectTransform)element.transform, color);
@@ -226,6 +240,16 @@ namespace Lazpoly.Presentation.UI
             }
 
             Fix(element, size, size);
+            if (!string.IsNullOrEmpty(mark))
+            {
+                Text letter = TextChild(element.transform, mark, UiTextStyle.Small);
+                letter.alignment = TextAnchor.MiddleCenter;
+                letter.font = UiTheme.BoldFont;
+                letter.fontSize = Mathf.Max(8, Mathf.RoundToInt(size * 0.62f));
+                letter.color = ColorVision.TextOn(color);
+                letter.horizontalOverflow = HorizontalWrapMode.Overflow;
+            }
+
             return image;
         }
 
@@ -280,10 +304,10 @@ namespace Lazpoly.Presentation.UI
         /// nothing, the title, a line under it and the same rule every window has, so the city,
         /// building, debt, auction and trade cards all open the same way.
         /// </summary>
-        public Text CardHeader(string title, string subtitle = null, Color? swatch = null)
+        public Text CardHeader(string title, string subtitle = null, Color? swatch = null, string mark = null)
         {
             UiBuilder row = Row(10f, expand: false);
-            if (swatch.HasValue) row.Swatch(swatch.Value, 26f);
+            if (swatch.HasValue) row.Swatch(swatch.Value, 26f, mark: mark);
             Text label = row.Label(title, UiTextStyle.Heading);
             Fix(label, -1f).flexibleWidth = 1f;
             if (!string.IsNullOrEmpty(subtitle)) Label(subtitle, UiTextStyle.Small);

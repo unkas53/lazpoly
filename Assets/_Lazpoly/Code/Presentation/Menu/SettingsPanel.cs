@@ -55,6 +55,7 @@ namespace Lazpoly.Presentation.Menu
                 RenderSound(body, current);
                 RenderPicture(body, current);
                 RenderGame(body, current);
+                RenderAccess(body, current);
                 RenderHelp(body);
             }
 
@@ -141,6 +142,15 @@ namespace Lazpoly.Presentation.Menu
                     style: current.AiSpeed == speed ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
+            ui.Space(6f);
+        }
+
+        private void RenderAccess(UiBuilder ui, GameSettings current)
+        {
+            ui.Label(L("Erişilebilirlik"), UiTextStyle.Small, UiTheme.Muted);
+            ui.Toggle(L("Renk körlüğü dostu renkler (gruplara harf eklenir)"), current.ColorBlind, on => Change(_settings.Current.WithColorBlind(on)));
+            if (current.ColorBlind != ColorVision.Friendly) ui.Label(L("Tahta ve piyonlar bir sonraki masada yeni renkleri alır."), UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Klavye: Tab ile düğmeler arasında gez, Enter ile bas, Esc ile kapat. Oyunda Space/Enter zar atar ve sırayı bitirir."), UiTextStyle.Small, UiTheme.Muted);
             ui.Space(6f);
         }
 

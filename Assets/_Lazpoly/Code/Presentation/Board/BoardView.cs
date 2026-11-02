@@ -61,6 +61,8 @@ namespace Lazpoly.Presentation.Tabletop
         private GameObject[] _ownerFrames;
         private GameObject[] _tiles;
         private Color[] _tileColors;
+        private TextMesh[] _labels;
+        private BoardData _data;
         private readonly Dictionary<Collider, int> _squareOfCollider = new Dictionary<Collider, int>();
         private readonly HashSet<Transform> _animating = new HashSet<Transform>();
         private HashSet<int> _highlighted;
@@ -410,6 +412,8 @@ namespace Lazpoly.Presentation.Tabletop
             _ownerFrames = new GameObject[board.Count];
             _tiles = new GameObject[board.Count];
             _tileColors = new Color[board.Count];
+            _labels = new TextMesh[board.Count];
+            _data = data;
             for (int i = 0; i < board.Count; i++)
             {
                 SquareDefinition square = board[i];
@@ -431,23 +435,23 @@ namespace Lazpoly.Presentation.Tabletop
                         MeshFactory.RoundedBox(new Vector3(tile * 0.96f, 0.07f, tile * BandDepth), 0.03f, 3), TileColor(square, data));
                     band.transform.localPosition = center + outward * (tile * BandOffset) + Vector3.up * (TileHeight + 0.025f);
                     band.transform.localRotation = Quaternion.LookRotation(outward);
+                    // With colour-blind friendly colours on, the group's letter sits on the band as well.
+                    string mark = data.GroupMark(square.GroupId);
+                    if (mark != null) CreateBandMark(mark, band.transform.localPosition + Vector3.up * 0.04f, tile, outward, TileColor(square, data));
                 }
                 else
                 {
                     CreateIcon(square.Type, center, tile);
                 }
 
-                string caption = square.Type == SquareType.Property ? F($"{L(square.Name)}\n{square.Price}")
-                    : square.Type == SquareType.Tax ? F($"{L(square.Name)}\n-{square.TaxAmount}")
-                    : square.Type == SquareType.Travel ? F($"{L(square.Name)}\nbilet {square.Fee}")
-                    : square.Name;
+                string caption = Caption(square);
                 // Name and price sit on a dark plaque towards the outer edge; pawns stand on the inner half (PawnSpot).
                 Vector3 plaqueCenter = center + Outward(center) * (tile * PlaqueOffset);
                 GameObject plaque = ModelParts.Create("Plaque", transform,
                     MeshFactory.RoundedBox(new Vector3(tile * PlaqueWidth, 0.03f, tile * PlaqueDepth), 0.012f, 2), PlaqueColor, 0.15f);
                 plaque.transform.localPosition = plaqueCenter + Vector3.up * (TileHeight + 0.012f);
                 plaque.transform.localRotation = Quaternion.LookRotation(Outward(center));
-                CreateLabel(caption, plaqueCenter + Vector3.up * (TileHeight + 0.03f), tile, Outward(center));
+                _labels[i] = CreateLabel(caption, plaqueCenter + Vector3.up * (TileHeight + 0.03f), tile, Outward(center));
 
                 if (square.Type == SquareType.Property)
                 {
@@ -660,7 +664,31 @@ namespace Lazpoly.Presentation.Tabletop
         public static float FitCharacterSize(float characterSize, Vector2 size, Vector2 maxSize) =>
             Mathf.Min(FitCharacterSize(characterSize, size.x, maxSize.x), FitCharacterSize(characterSize, size.y, maxSize.y));
 
-        private void CreateLabel(string text, Vector3 localPosition, float tile, Vector3 outward)
+        /// <summary>What the square's plaque says: the name in the current language, with the price, the tax or the fare under it.</summary>
+        public static string Caption(SquareDefinition square)
+        {
+            switch (square.Type)
+            {
+                case SquareType.Property: return F($"{L(square.Name)}\n{square.Price}");
+                case SquareType.Tax: return F($"{L(square.Name)}\n-{square.TaxAmount}");
+                case SquareType.Travel: return F($"{L(square.Name)}\nbilet {square.Fee}");
+                default: return L(square.Name);
+            }
+        }
+
+        /// <summary>Rewrites every plaque in the current language, so a language change needs no new scene.</summary>
+        public void Relabel()
+        {
+            if (_labels == null) return;
+            for (int i = 0; i < _labels.Length; i++)
+            {
+                if (_labels[i] == null) continue;
+                _labels[i].text = Caption(_data.Board[i]);
+                FitLabel(_labels[i], _tile, Outward(Layout.SquareCenter(i)));
+            }
+        }
+
+        private TextMesh CreateLabel(string text, Vector3 localPosition, float tile, Vector3 outward)
         {
             var label = new GameObject("Label");
             label.transform.SetParent(transform, false);
@@ -674,17 +702,41 @@ namespace Lazpoly.Presentation.Tabletop
             // A large font size drawn small keeps the letters sharp when the camera is far away.
             mesh.fontSize = 128;
             mesh.fontStyle = FontStyle.Normal;
-            mesh.characterSize = tile * 0.0115f;
             mesh.color = LabelColor;
             mesh.font = UiTheme.BoldFont;
-            var renderer = label.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = mesh.font.material;
+            label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
+            FitLabel(mesh, tile, outward);
+            return mesh;
+        }
 
-            // Long names ("Liman Caddesi") and the two lines of name and price shrink to the plaque instead of running off it.
-            Vector3 size = renderer.bounds.size;
+        /// <summary>Long names ("Liman Caddesi") and the two lines of name and price shrink to the plaque instead of running off it.</summary>
+        private static void FitLabel(TextMesh mesh, float tile, Vector3 outward)
+        {
+            mesh.characterSize = tile * 0.0115f;
+            Vector3 size = mesh.GetComponent<MeshRenderer>().bounds.size;
             bool side = Mathf.Abs(outward.x) > Mathf.Abs(outward.z);
             var extent = new Vector2(side ? size.z : size.x, side ? size.x : size.z);
             mesh.characterSize = FitCharacterSize(mesh.characterSize, extent, new Vector2(tile * PlaqueWidth * LabelFill, tile * PlaqueDepth * LabelDepthFill));
+        }
+
+        /// <summary>The group's letter on its band, in a colour that reads on the band.</summary>
+        private void CreateBandMark(string mark, Vector3 localPosition, float tile, Vector3 outward, Color band)
+        {
+            var label = new GameObject("Group mark");
+            label.transform.SetParent(transform, false);
+            label.transform.localPosition = localPosition;
+            label.transform.localRotation = LabelRotation(outward);
+
+            var mesh = label.AddComponent<TextMesh>();
+            mesh.text = mark;
+            mesh.anchor = TextAnchor.MiddleCenter;
+            mesh.alignment = TextAlignment.Center;
+            mesh.fontSize = 128;
+            mesh.fontStyle = FontStyle.Normal;
+            mesh.characterSize = tile * 0.012f;
+            mesh.color = ColorVision.TextOn(band);
+            mesh.font = UiTheme.BoldFont;
+            label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
         }
 
         private static Color TileColor(SquareDefinition square, BoardData data)

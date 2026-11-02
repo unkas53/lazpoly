@@ -509,7 +509,7 @@ namespace Lazpoly.Presentation.Game
 
         private static void ShowMoney(Text label, RollingNumber money)
         {
-            label.text = money.Shown.ToString();
+            label.text = Lang.N(money.Shown);
             label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Accent;
         }
 
@@ -592,7 +592,7 @@ namespace Lazpoly.Presentation.Game
             SquareInfo info = SquareInfo.Describe(session.Board, session.Rules, session.State, square, _controller.GroupNameOf(square));
 
             UiBuilder title = ui.Row(10f, expand: false);
-            if (definition.Type == SquareType.Property) title.Swatch(_controller.GroupColorOf(square), 22f);
+            if (definition.Type == SquareType.Property) title.Swatch(_controller.GroupColorOf(square), 22f, mark: _controller.GroupMarkOf(square));
             title.Label(info.Title, UiTextStyle.Heading);
             ui.Label(info.Kind, UiTextStyle.Small);
 
@@ -743,7 +743,7 @@ namespace Lazpoly.Presentation.Game
             {
                 if (state.GetOwner(square) != playerId) continue;
                 row ??= card.Row(4f, expand: false);
-                Image swatch = row.Swatch(_controller.GroupColorOf(square), 16f);
+                Image swatch = row.Swatch(_controller.GroupColorOf(square), 16f, mark: _controller.GroupMarkOf(square));
                 // Pointing at the swatch opens the square's card, so the name and rent are a glance away.
                 swatch.raycastTarget = true;
                 swatch.gameObject.AddComponent<SquareHoverTarget>().Bind(square, OnPanelSquareHovered);
@@ -950,7 +950,7 @@ namespace Lazpoly.Presentation.Game
             IGameSession session = _controller.Session;
             SquareInfo info = SquareInfo.Describe(session.Board, session.Rules, session.State, squareIndex, _controller.GroupNameOf(squareIndex));
 
-            ui.CardHeader(info.Title, info.Kind, _controller.GroupColorOf(squareIndex));
+            ui.CardHeader(info.Title, info.Kind, _controller.GroupColorOf(squareIndex), _controller.GroupMarkOf(squareIndex));
 
             UiBuilder table = ui.Card(UiTheme.Field, 10);
             foreach (SquareInfoRow row in info.Rows)
@@ -987,7 +987,7 @@ namespace Lazpoly.Presentation.Game
 
             ui.CardHeader(hotel ? F($"{L(square.Name)}: otel kur") : F($"{L(square.Name)}: ev kur"),
                 F($"Şu an: {EventDescriber.LevelText(level)}, kira {GameRules.CalculateRent(_controller.Session.Board, _controller.Session.Rules, state, squareIndex)}"),
-                _controller.GroupColorOf(squareIndex));
+                _controller.GroupColorOf(squareIndex), _controller.GroupMarkOf(squareIndex));
 
             if (!hotel)
             {
@@ -1003,9 +1003,9 @@ namespace Lazpoly.Presentation.Game
 
             UiBuilder sums = ui.Card(UiTheme.Field, 10);
             Line(sums, hotel ? L("Otel") : F($"{count} ev"), F($"{cost}"));
-            Line(sums, L("Paran"), player.Money.ToString());
-            Line(sums, L("Kalan para"), (player.Money - cost).ToString(), true);
-            Line(sums, L("Yeni kira"), square.DevelopedRents[Mathf.Min(level + count, square.DevelopedRents.Count) - 1].ToString());
+            Line(sums, L("Paran"), Lang.N(player.Money));
+            Line(sums, L("Kalan para"), Lang.N(player.Money - cost), true);
+            Line(sums, L("Yeni kira"), Lang.N(square.DevelopedRents[Mathf.Min(level + count, square.DevelopedRents.Count) - 1]));
 
             ui.Actions(L("Şimdi Değil"), () => _buildCardDismissed = BuildVisitKey(state),
                 hotel ? F($"Otel Kur ({cost})") : F($"{count} Ev Kur ({cost})"), () =>
@@ -1154,9 +1154,9 @@ namespace Lazpoly.Presentation.Game
                     continue;
                 }
 
-                UiBuilder.Fix(row.Label(player.Money.ToString(), color: color, alignment: TextAnchor.MiddleRight), width: 80f);
+                UiBuilder.Fix(row.Label(Lang.N(player.Money), color: color, alignment: TextAnchor.MiddleRight), width: 80f);
                 UiBuilder.Fix(row.Label(OwnedCount(state, player.Id).ToString(), color: color, alignment: TextAnchor.MiddleRight), width: 60f);
-                UiBuilder.Fix(row.Label(GameRules.NetWorth(board, state, player.Id).ToString(), color: UiTheme.Accent, alignment: TextAnchor.MiddleRight), width: 90f);
+                UiBuilder.Fix(row.Label(Lang.N(GameRules.NetWorth(board, state, player.Id)), color: UiTheme.Accent, alignment: TextAnchor.MiddleRight), width: 90f);
             }
         }
 
@@ -1284,6 +1284,7 @@ namespace Lazpoly.Presentation.Game
             return new HotkeyContext
             {
                 Typing = IsTyping(),
+                ButtonFocused = UiFocus.ButtonFocused,
                 PauseOpen = _pauseLayer.activeSelf,
                 ClosableOpen = _settingsLayer.activeSelf || _howToLayer.activeSelf || _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
                 BlockingOpen = _cityLayer.activeSelf,

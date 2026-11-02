@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Rules;
+using Lazpoly.Presentation.UI;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Data
@@ -9,6 +10,7 @@ namespace Lazpoly.Presentation.Data
     public sealed class BoardData
     {
         private readonly Dictionary<int, Color> _groupColors;
+        private readonly List<int> _groupOrder;
 
         private readonly Dictionary<int, string> _groupNames;
 
@@ -19,6 +21,8 @@ namespace Lazpoly.Presentation.Data
             Board = board;
             Rules = rules;
             _groupColors = groupColors;
+            _groupOrder = new List<int>(groupColors.Keys);
+            _groupOrder.Sort();
             Checksum = BoardChecksum.Compute(board, rules);
         }
 
@@ -31,7 +35,18 @@ namespace Lazpoly.Presentation.Data
         /// <summary>The group's name from the board file, or null when it has none.</summary>
         public string GroupName(int groupId) => _groupNames.TryGetValue(groupId, out string name) ? name : null;
 
-        public Color GroupColor(int groupId) =>
-            _groupColors.TryGetValue(groupId, out Color color) ? color : new Color(0.85f, 0.85f, 0.85f);
+        /// <summary>The group's colour: the one from the board file, or the colour-blind friendly one standing in for it (<see cref="ColorVision"/>).</summary>
+        public Color GroupColor(int groupId)
+        {
+            Color normal = _groupColors.TryGetValue(groupId, out Color color) ? color : new Color(0.85f, 0.85f, 0.85f);
+            int ordinal = GroupOrdinal(groupId);
+            return ordinal < 0 ? normal : ColorVision.Group(ordinal, normal);
+        }
+
+        /// <summary>The letter shown on the group's marks when colours alone must not carry the meaning; null otherwise.</summary>
+        public string GroupMark(int groupId) => ColorVision.GroupMark(GroupOrdinal(groupId));
+
+        /// <summary>The group's position among the groups of the board file (by id), or -1 for an unknown group.</summary>
+        public int GroupOrdinal(int groupId) => _groupOrder.IndexOf(groupId);
     }
 }

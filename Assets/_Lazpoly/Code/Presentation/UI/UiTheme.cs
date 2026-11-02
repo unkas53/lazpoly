@@ -24,6 +24,9 @@ namespace Lazpoly.Presentation.UI
     {
         public static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
 
+        /// <summary>The smallest a button label shrinks to before it is allowed to wrap (see <see cref="UiBuilder.ShrinkToFit"/>).</summary>
+        public const int MinButtonFontSize = 12;
+
         // Palette of a seaside town at dusk: deep sea blues for the panels, sand for the text,
         // sunset amber as the accent and a teal for anything selected.
         public static readonly Color Backdrop = new Color(0.05f, 0.09f, 0.13f, 1f);

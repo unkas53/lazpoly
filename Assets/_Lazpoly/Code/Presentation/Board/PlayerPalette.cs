@@ -1,3 +1,4 @@
+using Lazpoly.Presentation.UI;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Tabletop
@@ -17,6 +18,6 @@ namespace Lazpoly.Presentation.Tabletop
             new Color(0.93f, 0.25f, 0.48f), // pink
         };
 
-        public static Color ForSeat(int seatIndex) => Colors[((seatIndex % Colors.Length) + Colors.Length) % Colors.Length];
+        public static Color ForSeat(int seatIndex) => ColorVision.Player(seatIndex, Colors[((seatIndex % Colors.Length) + Colors.Length) % Colors.Length]);
     }
 }

@@ -20,7 +20,7 @@ namespace Lazpoly.Presentation.Game
                 ? L("Henüz teklif yok")
                 : F($"En yüksek: {state.FindPlayer(auction.HighestBidderId)?.Name}, {auction.HighestBid}");
             ui.CardHeader(F($"Açık artırma: {L(controller.Session.Board[auction.SquareIndex].Name)}"), leader,
-                controller.GroupColorOf(auction.SquareIndex));
+                controller.GroupColorOf(auction.SquareIndex), controller.GroupMarkOf(auction.SquareIndex));
 
             bool anyRow = false;
             foreach (PlayerState player in state.Players)

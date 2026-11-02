@@ -25,7 +25,7 @@ namespace Lazpoly.Presentation.Game
 
                 UiBuilder card = ui.Card();
                 UiBuilder title = card.Row();
-                UiBuilder.Fix(title.Swatch(controller.GroupColorOf(square), 16f), 16f, 16f);
+                UiBuilder.Fix(title.Swatch(controller.GroupColorOf(square), 16f, mark: controller.GroupMarkOf(square)), 16f, 16f);
                 title.Label(L(definition.Name));
 
                 string status = EventDescriber.LevelText(state.GetBuildingLevel(square));

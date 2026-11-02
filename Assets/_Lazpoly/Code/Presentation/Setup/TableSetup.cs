@@ -26,7 +26,7 @@ namespace Lazpoly.Presentation.Setup
         public static string RoundLimitText(int limit) =>
             limit == 0 ? L("Sınırsız") : limit == RoundLimitChoices[1] ? F($"Kısa ({limit} tur)") : F($"Çok kısa ({limit} tur)");
 
-        public static string StartingMoneyText(int money, int boardMoney) => money == 0 ? F($"{boardMoney} (normal)") : money.ToString();
+        public static string StartingMoneyText(int money, int boardMoney) => money == 0 ? F($"{boardMoney} (normal)") : N(money);
 
         /// <summary>"60 sn", "90 sn"... or "Süresiz".</summary>
         public static string TurnSecondsText(int seconds) => seconds == 0 ? L("Süresiz") : F($"{seconds} sn");

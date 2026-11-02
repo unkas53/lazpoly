@@ -45,9 +45,11 @@ namespace Lazpoly.Infra.Settings
             AiSpeed.Normal, fastAnimations: false, GraphicsQuality.High, screenWidth: 0, screenHeight: 0, Language.Auto, UiScale.Normal, dayCycle: true);
 
         public GameSettings(float masterVolume, float effectsVolume, float musicVolume, bool fullscreen, bool vSync, AiSpeed aiSpeed,
-            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight, Language language, UiScale uiScale, bool dayCycle = true)
+            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight, Language language, UiScale uiScale, bool dayCycle = true,
+            bool colorBlind = false)
         {
             DayCycle = dayCycle;
+            ColorBlind = colorBlind;
             Language = Enum.IsDefined(typeof(Language), language) ? language : Language.Auto;
             UiScale = Enum.IsDefined(typeof(UiScale), uiScale) ? uiScale : UiScale.Normal;
             MasterVolume = Volume(masterVolume, DefaultMaster);
@@ -89,6 +91,9 @@ namespace Lazpoly.Infra.Settings
         /// <summary>The light over the board slides from noon to evening as the rounds go by; off keeps it at noon.</summary>
         public bool DayCycle { get; }
 
+        /// <summary>Colour-blind friendly palettes for the colour groups and the players, with a letter on every group mark; takes effect at the next table.</summary>
+        public bool ColorBlind { get; }
+
         /// <summary>How much bigger than the 1920x1080 reference the interface is drawn.</summary>
         public float UiScaleFactor => UiScale == UiScale.Small ? 0.88f : UiScale == UiScale.Large ? 1.18f : 1f;
 
@@ -118,20 +123,21 @@ namespace Lazpoly.Infra.Settings
         public GameSettings WithLanguage(Language value) => Copy(language: value);
         public GameSettings WithUiScale(UiScale value) => Copy(uiScale: value);
         public GameSettings WithDayCycle(bool value) => Copy(dayCycle: value);
+        public GameSettings WithColorBlind(bool value) => Copy(colorBlind: value);
 
         public bool SameAs(GameSettings other) =>
             other != null && MasterVolume.Equals(other.MasterVolume) && EffectsVolume.Equals(other.EffectsVolume) &&
             MusicVolume.Equals(other.MusicVolume) && Fullscreen == other.Fullscreen && VSync == other.VSync &&
             AiSpeed == other.AiSpeed && FastAnimations == other.FastAnimations && Quality == other.Quality &&
             ScreenWidth == other.ScreenWidth && ScreenHeight == other.ScreenHeight && Language == other.Language && UiScale == other.UiScale &&
-            DayCycle == other.DayCycle;
+            DayCycle == other.DayCycle && ColorBlind == other.ColorBlind;
 
         private GameSettings Copy(float? master = null, float? effects = null, float? music = null, bool? fullscreen = null, bool? vSync = null,
             AiSpeed? aiSpeed = null, bool? fastAnimations = null, GraphicsQuality? quality = null, int? width = null, int? height = null,
-            Language? language = null, UiScale? uiScale = null, bool? dayCycle = null) =>
+            Language? language = null, UiScale? uiScale = null, bool? dayCycle = null, bool? colorBlind = null) =>
             new GameSettings(master ?? MasterVolume, effects ?? EffectsVolume, music ?? MusicVolume, fullscreen ?? Fullscreen, vSync ?? VSync,
                 aiSpeed ?? AiSpeed, fastAnimations ?? FastAnimations, quality ?? Quality, width ?? ScreenWidth, height ?? ScreenHeight,
-                language ?? Language, uiScale ?? UiScale, dayCycle ?? DayCycle);
+                language ?? Language, uiScale ?? UiScale, dayCycle ?? DayCycle, colorBlind ?? ColorBlind);
 
         private static float Volume(float value, float fallback) => float.IsNaN(value) ? fallback : Math.Max(0f, Math.Min(1f, value));
     }

@@ -356,10 +356,10 @@
   "Bina ya da mülk satarak para bul, sonra öde.": "Sell buildings or a property to raise the money, then pay.",
   "Sat +{0}": "Sell +{0}",
   "Borcunu ödeyecek kadar paran yok. Bina ya da mülk satarak para bul; bulamazsan iflas edersin.": "You cannot cover your debt. Sell buildings or a property to raise the money; if you cannot, you go bankrupt.",
-  "Paran azaldı. Sıkışırsan bir mülkünü bankaya satabilirsin; banka fiyatın yarısını öder ve şehir yeniden boşa çıkar.": "You are running low. If you get stuck, sell a property to the bank; it pays half the price and the town becomes free again.",
+  "Paran azaldı. Sıkışırsan bir mülkünü bankaya satabilirsin; banka fiyatın yarısını öder ve şehir yeniden boşa çıkar.": "You are running low. If you get stuck, sell a property to the bank; it pays half the price and the city becomes free again.",
   "mülk satışı": "property sale",
   "Satış değeri": "Sale value",
-  "Parası yetmeyen mülkünü bankaya satar: banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{0} değerine geri satılır. Borcunu ödeyemeyen iflas eder.": "If you are short, sell a property to the bank: it pays half the price and the town becomes unowned again. Buildings sell back for {0}% of their cost. Whoever cannot pay a debt goes bankrupt.",
+  "Parası yetmeyen mülkünü bankaya satar: banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{0} değerine geri satılır. Borcunu ödeyemeyen iflas eder.": "If you are short, sell a property to the bank: it pays half the price and the city becomes unowned again. Buildings sell back for {0}% of their cost. Whoever cannot pay a debt goes bankrupt.",
   "Üçüncü çift: hamle yanar, sıra geçer.": "Third double: the move is forfeited and the turn passes.",
   "Çift! Sıra bitince yeniden atarsın.": "Doubles! You roll again after this turn.",
   "{0} düşünüyor (bilgisayar)...": "{0} is thinking (computer)...",
@@ -465,5 +465,9 @@
   "Gelen alır": "First comer buys",
   "süresiz hamle": "unlimited turn time",
   "{0} sn hamle": "{0} s turns",
-  "iflas mülkü açık artırmada": "bankrupt's properties auctioned"
+  "iflas mülkü açık artırmada": "bankrupt's properties auctioned",
+  "Erişilebilirlik": "Accessibility",
+  "Renk körlüğü dostu renkler (gruplara harf eklenir)": "Colour-blind friendly colours (groups get a letter)",
+  "Tahta ve piyonlar bir sonraki masada yeni renkleri alır.": "The board and the pawns take the new colours at the next table.",
+  "Klavye: Tab ile düğmeler arasında gez, Enter ile bas, Esc ile kapat. Oyunda Space/Enter zar atar ve sırayı bitirir.": "Keyboard: Tab moves between buttons, Enter presses, Esc closes. In the game Space/Enter rolls the dice and ends the turn."
 }

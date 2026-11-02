@@ -535,6 +535,28 @@ Masa kurulumuna iki yeni kural eklendi; hata günlüğü ve sürüm uyumu güçl
   `NetworkSessionTests` (hamle süresi seçimi, saatsiz masa), `SessionTrailTests`, `ErrorLogTests` (rapor kaydı),
   `OnlineSetupTests` (sürümü farklı oda ve üye).
 
+## Faz 10c-3: erişilebilirlik ve İngilizce
+
+Renk görmeyen ya da fare kullanmayan biri de oynayabilsin; İngilizce oyuncu Türkçe sayı biçimi görmesin.
+
+- **Renk körlüğü dostu renkler:** ayarlardaki "Erişilebilirlik" bölümünden açılır (`GameSettings.ColorBlind`). Açıkken renk
+  grupları Paul Tol'un parlak paletini, oyuncular Okabe-Ito paletini alır (`ColorVision`) ve her grup harf taşır: tahtadaki
+  şeritte, sol paneldeki mülk kutucuklarında ve kartların başlığındaki renk karesinde (A, B, C... tahta dosyasındaki sıra).
+  Tahta ve piyonlar kurulurken boyandığı için seçim bir sonraki masada geçerli olur; ayar penceresi bunu söyler.
+- **Klavyeyle tam oyun:** `UiFocus` (olay sistemine bağlı) Tab ve Shift+Tab ile üstteki pencerenin (pencere yoksa ekranın)
+  düğmelerini okuma sırasıyla gezer (`FocusOrder`: satır satır, soldan sağa), Enter odaktaki düğmeye basar, odaktaki öğe
+  turuncu halka giyer. Klavye kipi ilk Tab ile başlar, ilk fare tıklamasıyla biter; fareyle oynayan hiç halka görmez.
+  Klavye kipinde bir pencere açılınca odak kendiliğinden birincil düğmeye (`UiPrimaryMark`) gider. Odakta düğme varken
+  Space/Enter zar atmaz, düğmeye basar (`HotkeyContext.ButtonFocused`). Ana menüde Esc üstteki pencereyi kapatır.
+- **Sayı biçimi:** `Lang.N` ve `F()` içindeki tam sayılar dile göre binlik ayraç alır: Türkçede 1.500, İngilizcede 1,500
+  (`Lang.Numbers`, kültür verisine bağlı kalmamak için elle kurulur). Para, kira, fiyat ve servet her yerde aynı biçimde.
+- **İngilizce:** tahtadaki kare yazıları dil değişince sahne yüklenmeden yeniden yazılır (`BoardView.Relabel`); özel
+  karelerin adı da artık çevrilir. "town/city" ayrımı tekleştirildi (kasaba = town, şehir = city). Düğme yazıları gerekirse
+  12 punto'ya kadar küçülür, taşmaz (`UiBuilder.ShrinkToFit`); `LangTests` kısa Türkçe metinlerin İngilizcesinin düğmeye
+  sığacak uzunlukta kalmasını denetler.
+- Testler: `AccessibilityTests` (paletler, grup harfleri, Tab sırası, odaktaki düğme ile Enter, pencere kapsamı, harfli
+  kutucuk), `LangTests` (sayı biçimi, İngilizce uzunluk), `GameSettingsTests` (ayar kaydı).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

@@ -68,6 +68,7 @@ namespace Lazpoly.Presentation.Menu
             if (_settingsService != null)
             {
                 Lang.Apply(_settingsService.Current.Language);
+                ColorVision.Apply(_settingsService.Current.ColorBlind);
                 _settingsService.Changed += OnSettingsChanged;
             }
 
@@ -116,6 +117,7 @@ namespace Lazpoly.Presentation.Menu
         private void Update()
         {
             _lobbyPanel.Update();
+            if (Input.GetKeyDown(KeyCode.Escape)) CloseTopWindow();
             // Joining a room from a Steam invite lands on the online screen, whatever was showing.
             if (_lobby != null && _lobby.Status != LobbyStatus.Idle) _mode = Mode.Online;
             if (_presence == null) return;
@@ -424,6 +426,17 @@ namespace Lazpoly.Presentation.Menu
         }
 
         private void CloseSettings() => _settingsLayer.SetActive(false);
+
+        /// <summary>Esc closes the window on top, as it does in the game; with none open it does nothing.</summary>
+        public bool CloseTopWindow()
+        {
+            if (_howToLayer.activeSelf) _howToLayer.SetActive(false);
+            else if (_settingsLayer.activeSelf) CloseSettings();
+            else if (_tableLayer.activeSelf) _tableLayer.SetActive(false);
+            else return false;
+            AudioPlayer.Play(SoundCue.UiClick);
+            return true;
+        }
 
         /// <summary>"Tur 12 · 4 oyuncu · 01.11.2026 18:30": what the save holds, so the player knows which game it is.</summary>
         public static string SaveSummary(SavedGame save, DateTime? savedAt)
