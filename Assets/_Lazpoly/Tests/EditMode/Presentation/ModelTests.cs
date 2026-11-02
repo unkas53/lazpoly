@@ -65,7 +65,7 @@ namespace Lazpoly.Presentation.Tests
                     sum += pixel.r;
                 }
 
-                Assert.Greater(darkest, 0.7f, "nothing on the paper is dark");
+                Assert.Greater(darkest, 0.65f, "nothing on the paper is dark");
                 Assert.Greater(sum / (32 * 32), 0.9f, "the paper is light");
             }
             finally
@@ -74,7 +74,9 @@ namespace Lazpoly.Presentation.Tests
             }
 
             float middle = TileSkin.Value(0.5f, 0.5f);
-            Assert.That(middle, Is.InRange(1f - TileSkin.Grain, 1f));
+            Assert.That(middle, Is.InRange(1f - TileSkin.Grain, 1f), "the middle of the tile lies between the dots");
+            float dotCentre = TileSkin.Value(0.5f + 0.5f / TileSkin.DotsAcross, 0.5f);
+            Assert.Less(dotCentre, middle, "a dot of the print screen is darker than the paper beside it");
             Assert.Less(TileSkin.Value(TileSkin.FrameInset, 0.5f), middle * (TileSkin.FrameShade + 0.02f), "the frame line is darker than the paper");
             Assert.Less(TileSkin.Value(0.5f, 1f - TileSkin.FrameInset), middle * (TileSkin.FrameShade + 0.02f), "the frame runs round all four sides");
             Assert.AreSame(TileSkin.Paper(), TileSkin.Paper(), "every tile shares one texture");

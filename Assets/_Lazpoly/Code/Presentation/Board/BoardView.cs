@@ -78,19 +78,19 @@ namespace Lazpoly.Presentation.Tabletop
         public const float CornerPawnShift = 0.2f;
 
         /// <summary>The name's line, outward from the square's centre.</summary>
-        public const float NameOffset = 0.195f;
+        public const float NameOffset = 0.19f;
 
         /// <summary>The price line, outward from the square's centre.</summary>
         public const float PriceOffset = 0.335f;
 
         /// <summary>The group band's centre, outward from the square's centre, and its depth.</summary>
         public const float BandOffset = 0.445f;
-        public const float BandDepth = 0.10f;
+        public const float BandDepth = 0.09f;
 
         /// <summary>How much of the tile's width the name may use, and how tall its line and the price's line may be, in tile depths.</summary>
         public const float NameFill = 0.92f;
         public const float NameDepth = 0.16f;
-        public const float PriceDepth = 0.11f;
+        public const float PriceDepth = 0.12f;
 
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
         public const float NameSize = 0.02f;

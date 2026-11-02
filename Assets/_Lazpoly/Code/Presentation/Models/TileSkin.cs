@@ -12,7 +12,12 @@ namespace Lazpoly.Presentation.Models
         public const int Size = 128;
 
         /// <summary>How far the paper's brightness wanders: a few percent, a grain rather than a pattern.</summary>
-        public const float Grain = 0.09f;
+        public const float Grain = 0.1f;
+
+        /// <summary>A print screen of soft dots over the paper: how many across the tile, each dot's radius (of the tile) and how dark.</summary>
+        public const int DotsAcross = 12;
+        public const float DotRadius = 0.014f;
+        public const float DotShade = 0.06f;
 
         /// <summary>Where the frame line runs, as a fraction of the tile's size in from each edge.</summary>
         public const float FrameInset = 0.07f;
@@ -60,6 +65,11 @@ namespace Lazpoly.Presentation.Models
         {
             // Three scales of noise: soft clouds under a fine grain, so it reads as paper rather than wash.
             float paper = 1f - Grain * (0.35f * Noise(u * 9f, v * 9f) + 0.3f * Noise(u * 29f, v * 29f) + 0.35f * Noise(u * 67f, v * 67f));
+            // The dot screen sits on the half-steps, so no dot falls on the frame line or the edge.
+            float du = Mathf.Repeat(u * DotsAcross, 1f) - 0.5f;
+            float dv = Mathf.Repeat(v * DotsAcross, 1f) - 0.5f;
+            float dot = Mathf.Sqrt(du * du + dv * dv) / DotsAcross;
+            paper *= 1f - DotShade * Mathf.Clamp01(1f - dot / DotRadius);
             float edge = Mathf.Min(Mathf.Min(u, 1f - u), Mathf.Min(v, 1f - v));
             if (Mathf.Abs(edge - FrameInset) <= FrameWidth) paper *= FrameShade;
             return paper;

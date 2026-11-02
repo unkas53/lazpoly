@@ -69,19 +69,21 @@ namespace Lazpoly.Presentation.Models
         public static GameObject TeaGarden(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
-            // The parasol stays low: on the near-left corner its top falls up the screen towards the next square's name.
-            Part(root, "Pole", MeshFactory.Cylinder(8), Slate, Vector3.zero, new Vector3(0.02f, 0.68f, 0.02f));
-            Part(root, "Parasol", MeshFactory.Cone(16), Red, new Vector3(0f, 0.52f, 0f), new Vector3(0.42f, 0.18f, 0.42f));
-            Part(root, "Leg", MeshFactory.Cylinder(8), Slate, Vector3.zero, new Vector3(0.03f, 0.32f, 0.03f));
-            Part(root, "Table", MeshFactory.Disc(0.12f, 24), Whitewash, new Vector3(0f, 0.3f, 0f), new Vector3(0.24f, 0.25f, 0.24f));
+            // The parasol stands beside the table, not over it, so the tea on the table shows from above; it stays low
+            // because on the near-left corner its top falls up the screen towards the next square's name.
+            Part(root, "Pole", MeshFactory.Cylinder(8), Slate, new Vector3(0.18f, 0f, -0.05f), new Vector3(0.02f, 0.68f, 0.02f));
+            Part(root, "Parasol", MeshFactory.Cone(16), Red, new Vector3(0.18f, 0.52f, -0.05f), new Vector3(0.34f, 0.18f, 0.34f));
+            var table = new Vector3(-0.14f, 0f, 0.05f);
+            Part(root, "Leg", MeshFactory.Cylinder(8), Slate, table, new Vector3(0.03f, 0.32f, 0.03f));
+            Part(root, "Table", MeshFactory.Disc(0.12f, 24), Whitewash, table + Vector3.up * 0.3f, new Vector3(0.24f, 0.25f, 0.24f));
             for (int i = 0; i < 3; i++)
             {
-                float angle = (i * 120f + 60f) * Mathf.Deg2Rad;
-                Part(root, "Stool", MeshFactory.Cylinder(10), Timber, new Vector3(Mathf.Cos(angle) * 0.36f, 0f, Mathf.Sin(angle) * 0.36f), new Vector3(0.075f, 0.2f, 0.075f));
+                float angle = (i * 120f + 150f) * Mathf.Deg2Rad;
+                Part(root, "Stool", MeshFactory.Cylinder(10), Timber, table + new Vector3(Mathf.Cos(angle) * 0.3f, 0f, Mathf.Sin(angle) * 0.3f), new Vector3(0.075f, 0.2f, 0.075f));
             }
 
-            Part(root, "Samovar", Samovar(), Brass, new Vector3(-0.06f, 0.33f, -0.02f), Vector3.one * 0.3f);
-            Part(root, "Tea glass", PawnShapes.TeaGlass(), Tea, new Vector3(0.11f, 0.33f, 0.07f), Vector3.one * 0.22f);
+            Part(root, "Samovar", Samovar(), Brass, table + new Vector3(-0.06f, 0.33f, -0.02f), Vector3.one * 0.3f);
+            Part(root, "Tea glass", PawnShapes.TeaGlass(), Tea, table + new Vector3(0.1f, 0.33f, 0.07f), Vector3.one * 0.22f);
             return root;
         }
 
@@ -117,8 +119,8 @@ namespace Lazpoly.Presentation.Models
             }
 
             // The minibus from the bus-station sign, parked along the edge in front of the shelter, with a window strip so it reads as a bus.
-            Part(root, "Minibus", SquareIcons.Bus(), Orange, new Vector3(0f, 0f, -0.22f), Vector3.one * 0.5f, Quaternion.Euler(0f, 90f, 0f));
-            Part(root, "Windows", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Slate, new Vector3(0f, 0.25f, -0.22f), new Vector3(0.4f, 0.07f, 0.32f));
+            Part(root, "Minibus", SquareIcons.Bus(), Orange, new Vector3(0f, 0f, -0.22f), new Vector3(0.5f, 0.5f, 0.78f), Quaternion.Euler(0f, 90f, 0f));
+            Part(root, "Windows", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Slate, new Vector3(0f, 0.25f, -0.22f), new Vector3(0.62f, 0.07f, 0.32f));
             return root;
         }
 
