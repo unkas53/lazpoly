@@ -57,44 +57,50 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
 
         /// <summary>How far a tile's own colour is washed towards the paper: the pastel of the printed board.</summary>
-        public const float Pastel = 0.72f;
+        public const float Pastel = 0.6f;
         private static readonly Color TitleColor = new Color(0.16f, 0.32f, 0.20f);
         private static readonly Color ScoreColor = new Color(0.14f, 0.18f, 0.15f);
         private static readonly Color PotTextColor = new Color(0.20f, 0.26f, 0.20f);
         private static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
-        private static readonly Color PriceColor = new Color(0.38f, 0.34f, 0.30f);
+        private static readonly Color PriceColor = new Color(0.28f, 0.25f, 0.22f);
 
         // Where things sit across a square, from its inner edge (-0.5) to its outer edge (+0.5), in tile depths:
         // buildings and the tent along the inner edge, pawns inside them, then the name, the price and the group band.
+        // The camera looks down at 35 degrees, so a piece's height falls up the screen over the ground behind it:
+        // on the rows that face away from the camera the pawns' room is kept short of the name so they never cover it.
         /// <summary>The building row's centre, inward from the square's centre.</summary>
-        public const float BuildingOffset = 0.36f;
+        public const float BuildingOffset = 0.40f;
 
         /// <summary>Where pawns stand, inward from the square's centre.</summary>
-        public const float PawnOffset = 0.15f;
+        public const float PawnOffset = 0.22f;
 
         /// <summary>On a corner, pawns also step this far along the edge away from the corner's scene.</summary>
         public const float CornerPawnShift = 0.2f;
 
         /// <summary>The name's line, outward from the square's centre.</summary>
-        public const float NameOffset = 0.13f;
+        public const float NameOffset = 0.195f;
 
         /// <summary>The price line, outward from the square's centre.</summary>
-        public const float PriceOffset = 0.28f;
+        public const float PriceOffset = 0.335f;
 
         /// <summary>The group band's centre, outward from the square's centre, and its depth.</summary>
-        public const float BandOffset = 0.40f;
-        public const float BandDepth = 0.12f;
+        public const float BandOffset = 0.445f;
+        public const float BandDepth = 0.10f;
 
         /// <summary>How much of the tile's width the name may use, and how tall its line and the price's line may be, in tile depths.</summary>
         public const float NameFill = 0.92f;
         public const float NameDepth = 0.16f;
-        public const float PriceDepth = 0.09f;
+        public const float PriceDepth = 0.11f;
 
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
         public const float NameSize = 0.02f;
-        public const float PriceSize = 0.011f;
+        public const float PriceSize = 0.014f;
 
-        /// <summary>A corner's scene: how far along the edge towards the board's corner and how far inward it stands, and its size, in corner sides.</summary>
+        /// <summary>
+        /// A corner's scene: how far along the edge and how far across the corner it stands, and its size, in corner sides.
+        /// On a corner that faces away from the camera the scene and the pawns take the outer part and the name the inner
+        /// edge, so their height rises over the sky instead of the name; on the near corners it is the other way round.
+        /// </summary>
         public const float SceneOffset = 0.27f;
         public const float SceneInset = 0.22f;
         public const float SceneSize = 0.44f;
@@ -147,9 +153,22 @@ namespace Lazpoly.Presentation.Tabletop
         public Vector3 PawnSpot(int index)
         {
             Vector3 center = Layout.SquareCenter(index);
-            Vector3 spot = center - Outward(center) * (_depth * PawnOffset) - Layout.Cornerward(index) * (_depth * CornerPawnShift);
+            Vector3 outward = Outward(center);
+            Vector3 spot = center - outward * (_depth * PawnOffset);
+            if (Layout.IsCorner(index))
+            {
+                bool far = FacesAway(outward);
+                spot = center + outward * (_depth * PawnOffset * (far ? 1f : -1f)) - SceneSide(index, far) * (_depth * CornerPawnShift);
+            }
+
             return transform.TransformPoint(spot) + Vector3.up * SurfaceY;
         }
+
+        /// <summary>Whether a square's outer edge faces away from the game's camera: its pieces' height falls over its outer part.</summary>
+        public static bool FacesAway(Vector3 outward) => Vector3.Dot(outward, ScreenUp(BoardCameraRig.BaseYaw)) > 0f;
+
+        /// <summary>Which way along the edge a corner's scene stands: towards the board's corner when the corner faces away, else away from it.</summary>
+        private Vector3 SceneSide(int index, bool far) => Layout.Cornerward(index) * (far ? 1f : -1f);
 
         /// <summary>The square under a screen ray, if any.</summary>
         public bool TryGetSquare(Ray ray, out int squareIndex)
@@ -166,7 +185,7 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 Color color = _tileColors[i];
                 if (_highlighted != null) color = _highlighted.Contains(i) ? Color.Lerp(color, Color.white, 0.25f) : Color.Lerp(color, Color.black, 0.45f);
-                Paint(_tiles[i], color);
+                PaintTile(_tiles[i], color);
             }
         }
 
@@ -508,7 +527,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // The printed tile: its colour washed to a pastel over the paper grain, the group's full colour kept for the band.
                 Color body = Color.Lerp(TileColor(square, data), PaperColor, Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
-                    MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body);
+                    MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
                 ModelParts.Skin(tileObject, paper);
                 tileObject.transform.localPosition = center + Vector3.up * (TileHeight / 2f);
                 tileObject.transform.localRotation = facing;
@@ -538,13 +557,15 @@ namespace Lazpoly.Presentation.Tabletop
                 }
 
                 // The name and, under it, the price lie on the tile's outer part; pawns stand on the inner part (PawnSpot).
+                // A corner facing away from the camera keeps its name on the inner edge, clear of its scene and pawns.
                 float top = TileHeight + 0.012f;
-                _names[i] = CreateLabel("Name", L(square.Name), center + outward * (_depth * NameOffset) + Vector3.up * top, outward,
+                float textSide = Layout.IsCorner(i) && FacesAway(outward) ? -1f : 1f;
+                _names[i] = CreateLabel("Name", L(square.Name), center + outward * (textSide * _depth * NameOffset) + Vector3.up * top, outward,
                     _width * NameSize, new Vector2(size.x * NameFill, _depth * NameDepth), InkColor);
                 string subtitle = Subtitle(square);
                 if (subtitle != null)
                 {
-                    _prices[i] = CreateLabel("Price", subtitle, center + outward * (_depth * PriceOffset) + Vector3.up * top, outward,
+                    _prices[i] = CreateLabel("Price", subtitle, center + outward * (textSide * _depth * PriceOffset) + Vector3.up * top, outward,
                         _width * PriceSize, new Vector2(size.x * NameFill, _depth * PriceDepth), PriceColor);
                 }
 
@@ -574,12 +595,13 @@ namespace Lazpoly.Presentation.Tabletop
             }
         }
 
-        /// <summary>A corner's scene stands on the inner part of the corner, towards the board's own corner; the pawns take the other side and the name the outer edge.</summary>
+        /// <summary>A corner's scene stands on one side of the corner with the pawns on the other, both on the part away from the name.</summary>
         private void CreateScene(SquareType type, int index, Vector3 center, Vector3 outward, float side)
         {
             GameObject scene = CornerParts.For(type, $"Scene {type}", transform);
             if (scene == null) return;
-            scene.transform.localPosition = center + Layout.Cornerward(index) * (side * SceneOffset) - outward * (side * SceneInset) + Vector3.up * TileHeight;
+            bool far = FacesAway(outward);
+            scene.transform.localPosition = center + SceneSide(index, far) * (side * SceneOffset) + outward * (side * SceneInset * (far ? 1f : -1f)) + Vector3.up * TileHeight;
             scene.transform.localRotation = Quaternion.LookRotation(outward);
             scene.transform.localScale = Vector3.one * (side * SceneSize);
         }
@@ -847,5 +869,8 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         private static void Paint(GameObject target, Color color) => ModelParts.Paint(target, color, 0.5f);
+
+        /// <summary>Tiles are matte paper: the highlight must not polish them.</summary>
+        private static void PaintTile(GameObject tile, Color color) => ModelParts.Paint(tile, color, 0.05f);
     }
 }

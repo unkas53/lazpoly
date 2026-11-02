@@ -179,6 +179,8 @@ namespace Lazpoly.Presentation.Pawns
             transform.localScale = new Vector3(width, height, width);
         }
 
-        private Vector3 Target(int square) => _board.PawnSpot(square) + PawnSlots.Offset(_slot, _crowd.Capacity, _board.Layout.Width);
+        // The slot grid is turned to the square: its first row lies towards the board's middle, so the pawns fill the square from the inside out.
+        private Vector3 Target(int square) =>
+            _board.PawnSpot(square) + Quaternion.LookRotation(_board.Layout.Outward(square)) * PawnSlots.Offset(_slot, _crowd.Capacity, _board.Layout.Width);
     }
 }

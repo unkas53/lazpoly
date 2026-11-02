@@ -610,18 +610,23 @@ Tahta basılı bir oyun tahtası gibi: kareler dikdörtgen, köşeler büyük ka
   `IsCorner`, `Outward` ve `Cornerward` tahtanın ölçüsünü tek yerden verir. Dörde bölünmeyen kare sayısı eski gibi
   eşit karelerle dizilir. Tahtanın dış kenarı (`OuterHalf`) 11b'deki kadar kaldı, çim biraz küçüldü.
 - **Basılı kareler:** her karenin gövdesi kendi renginin pastel tonu (`BoardView.Pastel`, kâğıt rengine doğru yıkanmış)
-  ve üstünde paylaşılan bir kâğıt dokusu (`TileSkin`: hafif gren + kenardan biraz içeride ince çerçeve çizgisi; 128 px,
-  kodla üretilir). `MeshFactory.RoundedBox` artık üstten bakılmış doku koordinatları taşır; `ModelParts.Skin` dokuyu
+  ve üstünde paylaşılan bir kâğıt dokusu (`TileSkin`: gren + kenardan biraz içeride ince çerçeve çizgisi; 128 px,
+  kodla üretilir); kareler mat (parlaklık 0,05) ki güneş ortalarını beyaza boğmasın. `MeshFactory.RoundedBox` artık üstten bakılmış doku koordinatları taşır; `ModelParts.Skin` dokuyu
   parçanın kendi malzemesine koyar. Grup rengi dış kenardaki bantta tam renk kalır.
 - **Karede ad ve fiyat:** koyu plaka kalktı. Ad mürekkep renginde, kare genişliğine sığacak kadar büyük (`NameSize`,
   `NameFill`, `NameDepth`); altında daha küçük fiyat / vergi / bilet satırı (`Subtitle`). Kare üstündeki şerit sırası
   iç kenardan dışa: bina sırası ve çadır (`BuildingOffset`), piyonlar (`PawnOffset`), ad (`NameOffset`), fiyat
-  (`PriceOffset`), bant (`BandOffset`). Derin kare sayesinde uzak sıradaki piyonlar artık adın önünde durmaz.
-- **Köşe sahneleri (`CornerParts`):** oyunun kendi parçalarından kurulu küçük sahneler, köşenin iç yarısında tahtanın
-  köşesine doğru durur; piyonlar diğer yana, ad dış kenara. Başlangıç'ta iskele ve fener (yanında kayık), Çay
-  Molası'nda şemsiyeli çay bahçesi (masa, tabureler, semaver, çay bardağı), Sokak Haberi'nde gazete büfesi, Otogar'da
-  dolmuş durağı (tente, bank, cam arkalık ve minibüs). Köşelerdeki eski küçük tabelalar kalktı; Seyir Terası'nın dürbünü
-  yerinde. Sahneler kodla üretildiği için kaynak notu gerektirmez; istenirse çadır gibi dış model de konabilir.
+  (`PriceOffset`), bant (`BandOffset`). Kamera 35 derece eğik baktığı için bir parçanın boyu ekranda arkasındaki zemine
+  düşer; kameradan uzağa bakan sıralarda bu zemin adın olduğu dış kısımdır. Piyon alanı iç kısımda ve addan uzak
+  tutulduğu, piyon yuvaları da kareyi içten dışa doldurduğu için (`PawnView.Target`, yuva ızgarası kareye göre döner)
+  piyonlar adı kapatmaz; yalnız aynı karede yedi ve daha çok piyon toplanınca son sıra adın alt kenarına yaklaşır.
+- **Köşe sahneleri (`CornerParts`):** oyunun kendi parçalarından kurulu küçük sahneler. Kameraya bakan köşelerde
+  (Başlangıç, Çay Molası) sahne köşenin iç yarısında, piyonlar yanında, ad dış kenarda; kameradan uzağa bakan köşelerde
+  (Sokak Haberi, Otogar) sahne ve piyonlar dış yarıda, ad iç kenarda (`BoardView.FacesAway`): böylece yapıların boyu
+  adın değil gökyüzünün üstüne düşer. Başlangıç'ta iskele ve fener (yanında kayık), Çay Molası'nda şemsiyeli çay bahçesi
+  (masa, tabureler, semaver, çay bardağı), Sokak Haberi'nde gazete büfesi (tezgâhı kameraya dönük), Otogar'da dolmuş
+  durağı (tente, bank, cam arkalık; minibüs durağın önünde). Köşelerdeki eski küçük tabelalar kalktı; Seyir Terası'nın
+  dürbünü yerinde. Sahneler kodla üretildiği için kaynak notu gerektirmez; istenirse çadır gibi dış model de konabilir.
 - Testler: `BoardLayoutTests` (derin kareler, köşeler, dörde bölünmeyen sayı), `SceneryTests` (şerit sırası ve köşe
   sahnesinin yerleşimi), `ModelTests` (doku koordinatları, kâğıt dokusu, sahnelerin karesine sığması).
 

@@ -69,6 +69,14 @@ namespace Lazpoly.Presentation.Tests
             Assert.LessOrEqual(BoardView.SceneInset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner across it");
             Assert.Less(-BoardView.CornerPawnShift + pawnReach, BoardView.SceneOffset - BoardView.SceneSize / 2f, "the pawns stay clear of the scene");
             Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.NameOffset - BoardView.NameDepth / 2f, "the scene ends before the corner's name");
+            Assert.LessOrEqual(BoardView.PawnOffset + pawnReach, 0.5f, "on a far corner the pawns' outer row stays on the tile");
+            Assert.Less(-BoardView.PawnOffset + pawnReach, BoardView.NameOffset - BoardView.NameDepth / 2f, "on a near corner the pawns stop short of the name");
+
+            // The camera sits at the +x, -z corner: the far rows face +z and -x, the near rows -z and +x.
+            Assert.IsTrue(BoardView.FacesAway(Vector3.forward));
+            Assert.IsTrue(BoardView.FacesAway(Vector3.left));
+            Assert.IsFalse(BoardView.FacesAway(Vector3.back));
+            Assert.IsFalse(BoardView.FacesAway(Vector3.right));
         }
 
         [Test]

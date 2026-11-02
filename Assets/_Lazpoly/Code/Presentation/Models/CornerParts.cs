@@ -7,8 +7,9 @@ namespace Lazpoly.Presentation.Models
     /// The little scenes that stand on the four corner squares and say what the corner is, in the
     /// town's own words: a pier with its lighthouse at the start, a tea garden at the tea break, a
     /// newspaper kiosk for the street news and a minibus stop at the bus station. Each is a parent
-    /// object with its base at y = 0, one unit wide (x) and deep (z) and its front towards +Z, built
-    /// from the game's own meshes so the board can scale and place it.
+    /// object with its base at y = 0, one unit wide (x) and deep (z), built from the game's own meshes
+    /// so the board can scale and place it. The board turns a scene's +Z outward; the far corners' scenes
+    /// (kiosk, bus stop) keep their open side at -Z, towards the camera.
     /// </summary>
     public static class CornerParts
     {
@@ -82,39 +83,39 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
-        /// <summary>A green kiosk with a red awning over its counter, newspapers stacked on it and a sign on the roof.</summary>
+        /// <summary>A green kiosk with a red awning over its counter, newspapers stacked on it and a sign on the roof; the counter faces -Z.</summary>
         public static GameObject Kiosk(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
-            Part(root, "Body", MeshFactory.RoundedBox(Vector3.one, 0.04f, 3), Leaf, new Vector3(0f, 0.37f, -0.08f), new Vector3(0.7f, 0.74f, 0.52f));
-            Part(root, "Roof", MeshFactory.RoundedBox(Vector3.one, 0.03f, 2), DarkTimber, new Vector3(0f, 0.77f, -0.08f), new Vector3(0.8f, 0.06f, 0.62f));
-            Part(root, "Sign", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Whitewash, new Vector3(0f, 0.86f, 0.1f), new Vector3(0.5f, 0.12f, 0.04f));
-            Part(root, "Awning", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Red, new Vector3(0f, 0.64f, 0.32f), new Vector3(0.8f, 0.03f, 0.32f), Quaternion.Euler(14f, 0f, 0f));
-            Part(root, "Counter", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Timber, new Vector3(0f, 0.42f, 0.27f), new Vector3(0.74f, 0.05f, 0.2f));
-            Part(root, "Papers", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Whitewash, new Vector3(-0.18f, 0.49f, 0.26f), new Vector3(0.2f, 0.09f, 0.14f), Quaternion.Euler(0f, -8f, 0f));
-            Part(root, "Papers", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Whitewash, new Vector3(0.14f, 0.47f, 0.28f), new Vector3(0.2f, 0.05f, 0.14f), Quaternion.Euler(0f, 10f, 0f));
+            Part(root, "Body", MeshFactory.RoundedBox(Vector3.one, 0.04f, 3), Leaf, new Vector3(0f, 0.37f, 0.08f), new Vector3(0.7f, 0.74f, 0.52f));
+            Part(root, "Roof", MeshFactory.RoundedBox(Vector3.one, 0.03f, 2), DarkTimber, new Vector3(0f, 0.77f, 0.08f), new Vector3(0.8f, 0.06f, 0.62f));
+            Part(root, "Sign", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Whitewash, new Vector3(0f, 0.86f, -0.1f), new Vector3(0.5f, 0.12f, 0.04f));
+            Part(root, "Awning", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Red, new Vector3(0f, 0.64f, -0.32f), new Vector3(0.8f, 0.03f, 0.32f), Quaternion.Euler(-14f, 0f, 0f));
+            Part(root, "Counter", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Timber, new Vector3(0f, 0.42f, -0.27f), new Vector3(0.74f, 0.05f, 0.2f));
+            Part(root, "Papers", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Whitewash, new Vector3(-0.18f, 0.49f, -0.26f), new Vector3(0.2f, 0.09f, 0.14f), Quaternion.Euler(0f, -8f, 0f));
+            Part(root, "Papers", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Whitewash, new Vector3(0.14f, 0.47f, -0.28f), new Vector3(0.2f, 0.05f, 0.14f), Quaternion.Euler(0f, 10f, 0f));
             return root;
         }
 
-        /// <summary>A shelter with a bench and a glass back, and a minibus pulled up beside it along the edge.</summary>
+        /// <summary>A shelter with a bench and a glass back at +Z, and a minibus pulled up in front of it along the edge.</summary>
         public static GameObject BusStop(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
             foreach (float x in new[] { -0.3f, 0.3f })
             {
-                Part(root, "Post", MeshFactory.Cylinder(8), Slate, new Vector3(x, 0f, -0.26f), new Vector3(0.025f, 0.7f, 0.025f));
+                Part(root, "Post", MeshFactory.Cylinder(8), Slate, new Vector3(x, 0f, 0.26f), new Vector3(0.025f, 0.7f, 0.025f));
             }
 
-            Part(root, "Back", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Glass, new Vector3(0f, 0.4f, -0.4f), new Vector3(0.72f, 0.56f, 0.03f));
-            Part(root, "Roof", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Sea, new Vector3(0f, 0.72f, -0.24f), new Vector3(0.78f, 0.05f, 0.4f));
-            Part(root, "Bench", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Timber, new Vector3(0f, 0.26f, -0.32f), new Vector3(0.6f, 0.05f, 0.18f));
+            Part(root, "Back", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Glass, new Vector3(0f, 0.4f, 0.4f), new Vector3(0.72f, 0.56f, 0.03f));
+            Part(root, "Roof", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Sea, new Vector3(0f, 0.72f, 0.24f), new Vector3(0.78f, 0.05f, 0.4f));
+            Part(root, "Bench", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Timber, new Vector3(0f, 0.26f, 0.32f), new Vector3(0.6f, 0.05f, 0.18f));
             foreach (float x in new[] { -0.22f, 0.22f })
             {
-                Part(root, "Bench leg", MeshFactory.Cylinder(8), Slate, new Vector3(x, 0f, -0.32f), new Vector3(0.02f, 0.26f, 0.02f));
+                Part(root, "Bench leg", MeshFactory.Cylinder(8), Slate, new Vector3(x, 0f, 0.32f), new Vector3(0.02f, 0.26f, 0.02f));
             }
 
             // The minibus from the bus-station sign, parked along the edge in front of the shelter.
-            Part(root, "Minibus", SquareIcons.Bus(), Orange, new Vector3(0f, 0f, 0.22f), Vector3.one * 0.5f, Quaternion.Euler(0f, 90f, 0f));
+            Part(root, "Minibus", SquareIcons.Bus(), Orange, new Vector3(0f, 0f, -0.22f), Vector3.one * 0.5f, Quaternion.Euler(0f, 90f, 0f));
             return root;
         }
 

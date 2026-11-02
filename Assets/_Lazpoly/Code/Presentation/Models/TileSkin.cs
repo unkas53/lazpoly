@@ -12,7 +12,7 @@ namespace Lazpoly.Presentation.Models
         public const int Size = 128;
 
         /// <summary>How far the paper's brightness wanders: a few percent, a grain rather than a pattern.</summary>
-        public const float Grain = 0.045f;
+        public const float Grain = 0.09f;
 
         /// <summary>Where the frame line runs, as a fraction of the tile's size in from each edge.</summary>
         public const float FrameInset = 0.07f;
@@ -21,7 +21,7 @@ namespace Lazpoly.Presentation.Models
         public const float FrameWidth = 0.008f;
 
         /// <summary>How much darker the frame line is than the paper around it.</summary>
-        public const float FrameShade = 0.85f;
+        public const float FrameShade = 0.80f;
 
         private static Texture2D _paper;
 
