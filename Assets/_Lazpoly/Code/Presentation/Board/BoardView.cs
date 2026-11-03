@@ -197,9 +197,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>
         /// How far a glowing square turns to its player's colour at the top of a pulse, and how many pulses a
         /// second. The tiles are a pale paper print, so a flash towards white hardly showed; the player's
-        /// own colour, nearly full, reads at the game's speed.
+        /// own colour, about half way, reads at the game's speed and keeps the dark name and price legible (at 85% they vanished).
         /// </summary>
-        public const float GlowAmount = 0.85f;
+        public const float GlowAmount = 0.55f;
         public const float GlowPulsesPerSecond = 2.2f;
 
         private bool _dimOthers;
