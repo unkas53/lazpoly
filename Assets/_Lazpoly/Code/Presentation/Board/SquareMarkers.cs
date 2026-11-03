@@ -12,8 +12,11 @@ namespace Lazpoly.Presentation.Tabletop
     /// </summary>
     public sealed class SquareMarkers : MonoBehaviour
     {
-        /// <summary>A ring's radius as a share of a tile's depth.</summary>
-        public const float RingRadius = 0.30f;
+        /// <summary>
+        /// A ring's radius as a share of a tile's shorter side (its width along the edge): the ring stays
+        /// inside its square and off its neighbours and most of the name.
+        /// </summary>
+        public const float RingRadius = 0.34f;
 
         /// <summary>The colour of the rings on the squares that can be clicked.</summary>
         public static readonly Color ChoiceColor = new Color(1f, 0.84f, 0.22f);
@@ -26,7 +29,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// standing above the square (an arrow was tried) falls on a neighbouring square on screen,
         /// because the camera looks down at a slant.
         /// </summary>
-        public const float TargetScale = 1.25f;
+        public const float TargetScale = 1.1f;
         private const float TargetInner = 0.55f;
 
         private BoardView _board;
@@ -48,7 +51,7 @@ namespace Lazpoly.Presentation.Tabletop
             root.transform.SetParent(board.transform, false);
             var markers = root.AddComponent<SquareMarkers>();
             markers._board = board;
-            markers._radius = board.Layout.Depth * RingRadius;
+            markers._radius = Mathf.Min(board.Layout.Width, board.Layout.Depth) * RingRadius;
             return markers;
         }
 
@@ -93,11 +96,11 @@ namespace Lazpoly.Presentation.Tabletop
             float time = Time.unscaledTime;
             if (_target != null && _target.activeSelf)
             {
-                float size = _radius * TargetScale * (1f + 0.08f * Mathf.Sin(time * 5f));
+                float size = _radius * TargetScale * (1f + 0.05f * Mathf.Sin(time * 5f));
                 _targetRing.transform.localScale = new Vector3(size, 1f, size);
             }
 
-            float breath = 1f + 0.10f * Mathf.Sin(time * 3.5f);
+            float breath = 1f + 0.06f * Mathf.Sin(time * 3.5f);
             foreach (GameObject ring in _choices)
             {
                 if (ring.activeSelf) ring.transform.localScale = new Vector3(_radius * breath, 1f, _radius * breath);
