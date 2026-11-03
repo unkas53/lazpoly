@@ -11,7 +11,9 @@ namespace Lazpoly.Presentation.Effects
     public sealed class FloatingText : MonoBehaviour
     {
         private const float Seconds = 1.3f;
-        private const float Rise = 0.8f;
+
+        /// <summary>How far a line rises while it fades, in world units: from a figure's waist to its shoulder, under the speech bubble.</summary>
+        public const float Rise = 0.5f;
 
         /// <summary>Height between stacked lines, in world units.</summary>
         public const float LineGap = 0.34f;
