@@ -1,0 +1,139 @@
+using System.Collections;
+using Lazpoly.Presentation.Menu;
+using Lazpoly.Presentation.Perf;
+using Lazpoly.Presentation.UI;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+using static Lazpoly.Presentation.Texts.Lang;
+namespace Lazpoly.Presentation.Effects
+{
+    /// <summary>
+    /// The game's own opening screen: paper, the logo, the tagline and a bar that fills while the first
+    /// scene gets ready, held for a moment so it does not flash past, then faded out. It is drawn before
+    /// the first scene loads, in place of the Unity splash (turned off in the player settings), and it
+    /// never takes the pointer, so nothing underneath waits for it.
+    /// </summary>
+    public sealed class BootSplash : MonoBehaviour
+    {
+        /// <summary>How long the screen stays at least, so a fast machine still shows it.</summary>
+        public const float HoldSeconds = 1.6f;
+        public const float FadeSeconds = 0.5f;
+        public const float LogoSize = 420f;
+        public const float BarWidth = 360f;
+        public const float BarHeight = 10f;
+
+        private static BootSplash _instance;
+        private CanvasGroup _group;
+        private RectTransform _fill;
+        private float _started;
+        private bool _sceneReady;
+
+        /// <summary>Whether the opening screen is on screen (fading counts).</summary>
+        public static bool IsShowing => _instance != null;
+
+        /// <summary>How full the bar is after <paramref name="elapsed"/> seconds: it reaches the end as the hold ends.</summary>
+        public static float Progress(float elapsed) => Mathf.Clamp01(elapsed / HoldSeconds);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Show()
+        {
+            if (PerfRun.Requested || !MenuArt.HasLogo) return; // A measured run goes straight to the table; without the picture there is nothing to show.
+            var root = new GameObject("[Boot Splash]", typeof(RectTransform));
+            DontDestroyOnLoad(root);
+            var canvas = root.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 900; // Under the scene fader, over every scene canvas.
+            var scaler = root.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = UiTheme.ReferenceResolution;
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+
+            _instance = root.AddComponent<BootSplash>();
+            _instance._group = root.AddComponent<CanvasGroup>();
+            _instance._group.blocksRaycasts = false;
+            _instance._group.interactable = false;
+            _instance.Build((RectTransform)root.transform);
+            _instance._started = Time.realtimeSinceStartup;
+            SceneManager.sceneLoaded += _instance.OnSceneLoaded;
+            _instance.StartCoroutine(_instance.Run());
+        }
+
+        private void Build(RectTransform root)
+        {
+            UiPalette paper = UiPalette.Paper;
+            Image ground = UiRoot.Background(UiRoot.Stretch(root, "Paper"), paper.Panel, rounded: false);
+            ground.raycastTarget = false;
+
+            RectTransform column = UiRoot.Rect(root, "Column", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            column.sizeDelta = new Vector2(720f, 640f);
+            var layout = column.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 18f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            var ui = new UiBuilder(column);
+            Image logo = ui.Swatch(Color.white, LogoSize);
+            logo.sprite = MenuArt.Logo;
+            logo.type = Image.Type.Simple;
+            logo.preserveAspect = true;
+            logo.raycastTarget = false;
+            ui.Eyebrow(L("Karadeniz Masası"), paper.Muted, TextAnchor.MiddleCenter);
+
+            Image track = ui.Swatch(paper.Field, BarWidth);
+            track.sprite = UiSprites.Pill;
+            track.raycastTarget = false;
+            UiBuilder.Fix(track, BarWidth, BarHeight);
+            _fill = UiRoot.Rect(track.rectTransform, "Fill", Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero);
+            Image fill = UiRoot.Background(_fill, paper.PrimaryFill);
+            fill.sprite = UiSprites.Pill;
+            fill.raycastTarget = false;
+            _fill.pivot = new Vector2(0f, 0.5f);
+            _fill.sizeDelta = new Vector2(0f, 0f);
+
+            ui.Label(L("Masa kuruluyor..."), UiTextStyle.Small, paper.Muted, TextAnchor.MiddleCenter);
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => _sceneReady = true;
+
+        private IEnumerator Run()
+        {
+            float elapsed;
+            do
+            {
+                elapsed = Time.realtimeSinceStartup - _started;
+                _fill.sizeDelta = new Vector2(BarWidth * Progress(elapsed), 0f);
+                yield return null;
+            }
+            while (elapsed < HoldSeconds || !_sceneReady);
+
+            float fadeStarted = Time.realtimeSinceStartup;
+            float t;
+            do
+            {
+                t = Mathf.Clamp01((Time.realtimeSinceStartup - fadeStarted) / FadeSeconds);
+                _group.alpha = 1f - Ease.OutCubic(t);
+                yield return null;
+            }
+            while (t < 1f);
+
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            _instance = null;
+            Destroy(gameObject);
+        }
+
+        private void OnDestroy()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (_instance == this) _instance = null;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => _instance = null;
+    }
+}

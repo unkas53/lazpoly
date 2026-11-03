@@ -8,7 +8,9 @@ so the white ground has to go: every near-white pixel that connects to the pictu
 (a flood fill, so the white faces of the dice and the letters inside the picture stay), the edge gets one pixel
 of softening, and the result is written as a PNG whose bytes ship as a TextAsset:
     Assets/_Lazpoly/UI/Resources/Lazpoly/Art/logo.bytes
-The game reads it with MenuArt (Texture2D.LoadImage). Run from the repository root: python3 Tools/Art/make_logo.py
+The game reads it with MenuArt (Texture2D.LoadImage). The same picture is also written as the player's icon
+(Assets/_Lazpoly/Art/Textures/lazpoly-icon.png, 256x256, set as the default icon in ProjectSettings).
+Run from the repository root: python3 Tools/Art/make_logo.py
 """
 import os
 import sys
@@ -18,6 +20,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 SOURCE = os.path.join("Tools", "Art", "Logo", "lazpoly-logo.jpg")
 TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "logo.bytes")
+ICON = os.path.join("Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon.png")
+ICON_SIZE = 256     # The player's icon (Lazpoly.exe, task bar, window title); Unity scales the smaller sizes from it.
 SIZE = 640          # The menu shows it 160 pixels tall at 1080p; 640 keeps it sharp on a 4K screen and in a bigger interface size.
 WHITE = 236         # A pixel whose darkest channel is at least this counts as the white ground.
 SHADOW_TOP = 850    # Rows from here down (under the lettering) may hold the picture's drop shadow.
@@ -117,6 +121,12 @@ def main():
     crop.save(target, format="PNG", optimize=True)
     cleared = sum(ground) * 100 // (width * height)
     print(f"wrote {TARGET}: {SIZE}x{SIZE} PNG, {os.path.getsize(target)} bytes, {cleared}% of the source was ground")
+
+    # The icon: the same picture, filling its square (the crop above already keeps an 8-pixel margin).
+    icon = os.path.join(root, ICON)
+    os.makedirs(os.path.dirname(icon), exist_ok=True)
+    crop.resize((ICON_SIZE, ICON_SIZE), Image.LANCZOS).save(icon, format="PNG", optimize=True)
+    print(f"wrote {ICON}: {ICON_SIZE}x{ICON_SIZE} PNG, {os.path.getsize(icon)} bytes")
 
 
 if __name__ == "__main__":

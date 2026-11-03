@@ -1,4 +1,6 @@
+using System.IO;
 using Lazpoly.Infra.Settings;
+using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.UI;
@@ -99,6 +101,44 @@ namespace Lazpoly.Presentation.Tests
             finally
             {
                 if (logo != null) Object.DestroyImmediate(logo);
+            }
+        }
+
+        [Test]
+        public void TheOpeningScreenHoldsLongEnoughToBeSeen()
+        {
+            Assert.That(BootSplash.HoldSeconds, Is.GreaterThanOrEqualTo(1f), "a fast machine would flash it otherwise");
+            Assert.AreEqual(0f, BootSplash.Progress(0f));
+            Assert.AreEqual(0.5f, BootSplash.Progress(BootSplash.HoldSeconds / 2f), 1e-5f);
+            Assert.AreEqual(1f, BootSplash.Progress(BootSplash.HoldSeconds * 3f), "the bar stops at the end");
+        }
+
+        [Test]
+        public void ThePlayerCarriesOurIconAndNoUnitySplash()
+        {
+            string project = Path.GetDirectoryName(Application.dataPath);
+            string settings = File.ReadAllText(Path.Combine(project, "ProjectSettings", "ProjectSettings.asset"));
+            Assert.That(settings, Does.Contain("m_ShowUnitySplashScreen: 0"), "the Unity splash is off");
+            Assert.That(settings, Does.Contain("m_ShowUnitySplashLogo: 0"));
+
+            string iconPath = Path.Combine(project, "Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon.png");
+            Assert.IsTrue(File.Exists(iconPath), "run Tools/Art/make_logo.py");
+            string meta = File.ReadAllText(iconPath + ".meta");
+            string guid = System.Text.RegularExpressions.Regex.Match(meta, @"guid: ([0-9a-f]{32})").Groups[1].Value;
+            Assert.That(guid, Is.Not.Empty, "the icon's meta names its guid");
+            Assert.That(settings, Does.Contain($"m_Icon: {{fileID: 2800000, guid: {guid}, type: 3}}"), "the default icon is the logo");
+
+            Texture2D icon = MenuArt.Decode(File.ReadAllBytes(iconPath), "test icon");
+            try
+            {
+                Assert.IsNotNull(icon);
+                Assert.AreEqual(256, icon.width);
+                Assert.AreEqual(256, icon.height);
+                Assert.That(icon.GetPixel(1, 1).a, Is.LessThan(0.02f), "the icon's corner is see-through");
+            }
+            finally
+            {
+                if (icon != null) Object.DestroyImmediate(icon);
             }
         }
 
