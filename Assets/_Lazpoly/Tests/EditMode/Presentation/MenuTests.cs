@@ -1,6 +1,7 @@
 using System.IO;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Effects;
+using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.UI;
@@ -77,9 +78,13 @@ namespace Lazpoly.Presentation.Tests
             string hud = File.ReadAllText(Path.Combine(Application.dataPath, "_Lazpoly", "Code", "Presentation", "Game", "GameHud.cs"));
             Assert.That(hud, Does.Not.Contain("new Color(0.08f, 0.09f, 0.12f"), "no dark slate panels left over from the dusk look");
             // The current player's corner card stands out from the cream cards and keeps dark ink readable.
-            Color current = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.74f);
+            Color current = GameHud.CurrentCardColor;
             Assert.That(Contrast(UiPalette.Paper.Text, current), Is.GreaterThan(4.5f));
-            Assert.That(Mathf.Abs(ColorVision.Luminance(current) - ColorVision.Luminance(UiPalette.Paper.Card)), Is.GreaterThan(0.08f));
+            Assert.That(Mathf.Abs(ColorVision.Luminance(current) - ColorVision.Luminance(UiPalette.Paper.Card)), Is.GreaterThan(0.2f), "the card on turn is plainly greener, not a faint tint");
+            // Money at rest is gold-brown, readable on cream, and never the red of a loss.
+            Assert.That(Contrast(UiPalette.Paper.Money, UiPalette.Paper.Card), Is.GreaterThan(4.5f));
+            Assert.That(Contrast(UiPalette.Paper.Money, current), Is.GreaterThan(3f));
+            Assert.AreNotEqual(UiPalette.Paper.Warning, UiPalette.Paper.Money);
         }
 
         [Test]

@@ -110,8 +110,8 @@ namespace Lazpoly.Presentation.Game
         private const float RollSeconds = 1.5f;
         private const float CardButton = UiLayout.CardButtonHeight;
         private const float WindowListHeight = 420f;
-        /// <summary>The corner card of the player on turn: a light wash of the masthead green, so it stands out from the cream cards.</summary>
-        private static readonly Color CurrentCardColor = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.74f);
+        /// <summary>The corner card of the player on turn: a wash of the masthead green, clearly greener than the cream cards and still light enough for dark ink.</summary>
+        public static readonly Color CurrentCardColor = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.56f);
 
         /// <summary>Screen pixels the dock covers at each side edge, margins included; the camera keeps the board clear of them.</summary>
         public float ReservedSidePixels => UiLayout.ReservedSidePixels(_canvas != null ? _canvas.scaleFactor : 1f);
@@ -615,7 +615,7 @@ namespace Lazpoly.Presentation.Game
         private static void ShowMoney(Text label, RollingNumber money)
         {
             label.text = Lang.N(money.Shown);
-            label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Accent;
+            label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Money;
         }
 
         /// <summary>Whether the frame rate and memory strip is shown (F3).</summary>
@@ -845,7 +845,7 @@ namespace Lazpoly.Presentation.Game
             UiBuilder column = row.Column(0f);
             Text name = column.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
             name.font = current ? UiTheme.BoldFont : UiTheme.Font;
-            Text money = column.Label(player.IsBankrupt ? L("iflas") : string.Empty, UiTextStyle.Heading, UiTheme.Accent);
+            Text money = column.Label(player.IsBankrupt ? L("iflas") : string.Empty, UiTextStyle.Heading, UiTheme.Money);
             if (!player.IsBankrupt) TrackMoney(player.Id, money);
 
             RenderPlayerStatus(card, player, current);
@@ -1202,7 +1202,7 @@ namespace Lazpoly.Presentation.Game
 
                 UiBuilder.Fix(row.Label(Lang.N(player.Money), color: color, alignment: TextAnchor.MiddleRight), width: 80f);
                 UiBuilder.Fix(row.Label(OwnedCount(state, player.Id).ToString(), color: color, alignment: TextAnchor.MiddleRight), width: 60f);
-                UiBuilder.Fix(row.Label(Lang.N(GameRules.NetWorth(board, state, player.Id)), color: UiTheme.Accent, alignment: TextAnchor.MiddleRight), width: 90f);
+                UiBuilder.Fix(row.Label(Lang.N(GameRules.NetWorth(board, state, player.Id)), color: UiTheme.Money, alignment: TextAnchor.MiddleRight), width: 90f);
             }
         }
 

@@ -52,6 +52,7 @@ namespace Lazpoly.Presentation.UI
         public static Color Accent => _palette.Accent;
         public static Color Warning => _palette.Warning;
         public static Color Gain => _palette.Gain;
+        public static Color Money => _palette.Money;
         public static Color ShadowColor => _palette.ShadowColor;
         public static Color NoticeFill => _palette.NoticeFill;
         public static Color ScrollTrack => _palette.ScrollTrack;

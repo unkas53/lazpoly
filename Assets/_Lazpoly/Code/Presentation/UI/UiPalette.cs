@@ -28,6 +28,9 @@ namespace Lazpoly.Presentation.UI
         public Color Accent { get; private set; }
         public Color Warning { get; private set; }
         public Color Gain { get; private set; }
+
+        /// <summary>A player's money at rest: warm gold, so it reads as wealth rather than as a loss (<see cref="Warning"/>) or a gain.</summary>
+        public Color Money { get; private set; }
         public Color ShadowColor { get; private set; }
 
         /// <summary>The tinted card of a warning notice.</summary>
@@ -68,6 +71,7 @@ namespace Lazpoly.Presentation.UI
             Accent = new Color(0.98f, 0.70f, 0.24f),
             Warning = new Color(0.96f, 0.47f, 0.40f),
             Gain = new Color(0.48f, 0.84f, 0.56f),
+            Money = new Color(0.98f, 0.70f, 0.24f),
             ShadowColor = new Color(0f, 0f, 0f, 0.38f),
             NoticeFill = new Color(0.34f, 0.19f, 0.16f),
             ScrollTrack = new Color(1f, 1f, 1f, 0.07f),
@@ -99,6 +103,7 @@ namespace Lazpoly.Presentation.UI
             Accent = new Color(0.871f, 0.380f, 0.286f),
             Warning = new Color(0.871f, 0.380f, 0.286f),
             Gain = new Color(0.302f, 0.604f, 0.380f),
+            Money = new Color(0.500f, 0.340f, 0.070f),
             ShadowColor = new Color(0.19f, 0.33f, 0.32f, 0.20f),
             NoticeFill = new Color(0.992f, 0.898f, 0.851f),
             ScrollTrack = new Color(0.153f, 0.294f, 0.263f, 0.08f),
