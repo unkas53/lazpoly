@@ -532,7 +532,6 @@
   "Oda kodu": "Room code",
   "1-7 bilgisayar": "1-7 computers",
   "2-8 oyuncu": "2-8 players",
-  "Başlangıç parası, oyun süresi, açık artırma ve hamle saati.": "Starting money, game length, auctions and the turn clock.",
   "Şehirler, binalar, kira, takas ve kartlar: masanın kuralları kısaca.": "Towns, buildings, rent, trades and cards: the rules of the table in short.",
   "Rehber": "Guide",
   "Masa seni bekliyor": "The table is waiting",
@@ -543,5 +542,6 @@
   "Hemen {0} bilgisayara karşı başla; ayarlar Tek Oyunculu'da.": "Start against {0} computers right away; the settings are under Single Player.",
   "Kayıtlı Oyuna Devam  →": "Continue Saved Game  →",
   "Odaya Geri Dön  →": "Back to the Room  →",
-  "Masaya Otur  →": "Take a Seat  →"
+  "Masaya Otur  →": "Take a Seat  →",
+  "Sonraki oyun": "Next game"
 }

@@ -322,8 +322,8 @@ namespace Lazpoly.Presentation.Menu
             UiBuilder bottom = CardRow(ui);
             ModeCard(bottom, 3, UiIcon.Home, L("Aynı Bilgisayarda"), L("2-8 kişi aynı ekranda sırayla oynar; istenen koltuğa bilgisayar da oturabilir."),
                 L("2-8 oyuncu"), () => _mode = Mode.Local);
-            ModeCard(bottom, 4, UiIcon.List, L("Masa Kuralları"), L("Başlangıç parası, oyun süresi, açık artırma ve hamle saati."),
-                TableSetup.Summary(TableSetup.Chosen, _boardMoney), OpenTableRules);
+            // The card's line is the rules as chosen, so the tag stays short enough for its pill.
+            ModeCard(bottom, 4, UiIcon.List, L("Masa Kuralları"), TableSetup.Summary(TableSetup.Chosen, _boardMoney), L("Sonraki oyun"), OpenTableRules);
             ModeCard(bottom, 5, UiIcon.Book, L("Nasıl Oynanır"), L("Şehirler, binalar, kira, takas ve kartlar: masanın kuralları kısaca."),
                 L("Rehber"), OpenHowToPlay);
         }

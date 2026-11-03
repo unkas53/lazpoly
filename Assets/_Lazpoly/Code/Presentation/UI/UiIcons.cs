@@ -94,8 +94,10 @@ namespace Lazpoly.Presentation.UI
                     break;
 
                 case UiIcon.Door:
-                    Shape(root, 0.22f, 0.06f, 0.56f, 0.88f, color);
-                    Shape(root, 0.6f, 0.44f, 0.12f, 0.12f, Ink, round: true);
+                    // A dark frame round a lighter leaf, with the knob on the right: square-cornered so it still reads as a door at 24 pixels.
+                    Shape(root, 0.18f, 0.04f, 0.64f, 0.92f, dark, sharp: true);
+                    Shape(root, 0.27f, 0.04f, 0.46f, 0.82f, color, sharp: true);
+                    Shape(root, 0.58f, 0.42f, 0.12f, 0.12f, Ink, round: true);
                     break;
 
                 case UiIcon.List:
@@ -143,14 +145,16 @@ namespace Lazpoly.Presentation.UI
         }
 
         /// <summary>A shape at (x, y) with size (w, h), all as fractions of the icon square.</summary>
-        private static Image Shape(RectTransform root, float x, float y, float w, float h, Color color, bool round = false)
+        /// <param name="round">A disc instead of a block.</param>
+        /// <param name="sharp">A block with square corners (the rounded sprite turns a thin block into a capsule).</param>
+        private static Image Shape(RectTransform root, float x, float y, float w, float h, Color color, bool round = false, bool sharp = false)
         {
             RectTransform rect = UiRoot.Rect(root, round ? "Dot" : "Block", new Vector2(x, y), new Vector2(x + w, y + h), Vector2.zero, Vector2.zero);
             var image = rect.gameObject.AddComponent<Image>();
             image.color = color;
             image.raycastTarget = false;
-            image.sprite = round ? UiSprites.Circle : UiSprites.Rounded;
-            image.type = round ? Image.Type.Simple : Image.Type.Sliced;
+            image.sprite = round ? UiSprites.Circle : sharp ? null : UiSprites.Rounded;
+            image.type = round || sharp ? Image.Type.Simple : Image.Type.Sliced;
             return image;
         }
     }
