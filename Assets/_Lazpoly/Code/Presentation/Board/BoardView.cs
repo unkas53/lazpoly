@@ -194,9 +194,13 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How far the squares outside a choice darken towards black (<see cref="Highlight"/> with dimOthers).</summary>
         public const float DimAmount = 0.55f;
 
-        /// <summary>How bright a glowing square gets at the top of its pulse, and how many pulses a second.</summary>
-        public const float GlowAmount = 0.75f;
-        public const float GlowPulsesPerSecond = 1.6f;
+        /// <summary>
+        /// How far a glowing square turns to its player's colour at the top of a pulse, and how many pulses a
+        /// second. The tiles are a pale paper print, so a flash towards white hardly showed; the player's
+        /// own colour, nearly full, reads at the game's speed.
+        /// </summary>
+        public const float GlowAmount = 0.85f;
+        public const float GlowPulsesPerSecond = 2.2f;
 
         private bool _dimOthers;
         private int _glowSquare = -1;
@@ -225,7 +229,7 @@ namespace Lazpoly.Presentation.Tabletop
         {
             if (_glowSquare >= 0 && _glowSquare != square) PaintTile(_tiles[_glowSquare], ShownTileColor(_glowSquare));
             _glowSquare = square >= 0 && square < _tiles.Length ? square : -1;
-            _glowColor = Color.Lerp(Color.white, color, 0.35f);
+            _glowColor = Color.Lerp(color, Color.white, 0.15f);
         }
 
         public void StopGlow()
