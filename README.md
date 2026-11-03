@@ -721,6 +721,13 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Sık sesler birkaç çekim: adım 4, zarın düşüşü 3, tık 3, zar sallama, para gelişi/gidişi, inşaat ve teklif 2'şer (`ad_2.wav`, `ad_3.wav`...). Oyun her seferinde rastgele birini, bir önceki dışında, seçer (`SoundCues.Variants`, `PickVariant`); perde oynaması ezgili seslerde yarıya indi, müzikle akort kayması duyulmaz.
 - Testler: `SoundCuesTests.FrequentSoundsHaveSeveralTakesInTheBuild`, `TheSameTakeNeverPlaysTwiceInARow`. Müzik (`make_music.py`) değişmedi.
 
+## Faz 13a: mülk yalnız borçta satılır
+
+- `SellPropertyCommand` yalnız oyuncunun kendi borç anında (`AwaitingDebtPayment`) geçerli; ev sırası, satın alma kararı ya da otogar sırasında artık reddedilir (`WrongPhase`). Borç çoğunlukla kiradır; vergi, kart ve yol parası borçlarında da aynı liste açılır, yoksa binası olmayan oyuncunun önünde iflastan başka yol kalmazdı. Ev satışı (`SellBuildingCommand`) eskisi gibi.
+- Borç kartı satış ekranını kendisi gösterir (`PropertyPanel.RenderSales`): her mülk, "Ev Sat +N" ve "Sat +N" düğmeleriyle; ayrı "Mülkler" düğmesi kalktı. Mülkler penceresindeki "Sat" düğmesi de yalnız borçta görünür (izin verilen komut kuralı).
+- Yapay zekâ zaten yalnız borçta satıyordu. "Nasıl Oynanır" ve ipucu metinleri güncellendi.
+- Testler: `EconomyTests.APropertyIsSoldOnlyToPayADebt`, `SellingABuiltTownPaysForItsBuildingsToo` (borçta).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

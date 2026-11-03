@@ -54,8 +54,9 @@ namespace Lazpoly.Core.Engine
                         .Then(() => CanSell(board, state, player, c.SquareIndex));
 
                 case SellPropertyCommand c:
-                    return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd, GamePhase.AwaitingBuyDecision,
-                            GamePhase.AwaitingDebtPayment, GamePhase.AwaitingTravelDecision)
+                    // A property goes back to the bank only to raise money for a payment the player cannot make
+                    // (rent above all); otherwise towns are kept, built on or traded.
+                    return OnTurn(state, player, GamePhase.AwaitingDebtPayment)
                         .Then(() => RequireOwnProperty(board, state, player, c.SquareIndex));
 
                 case PlaceBidCommand c:

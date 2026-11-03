@@ -73,7 +73,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
                        F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
                    ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasSellable(board, state, playerId),
-                       L("Paran azaldı. Sıkışırsan bir mülkünü bankaya satabilirsin; banka fiyatın yarısını öder ve şehir yeniden boşa çıkar."))
+                       L("Paran azaldı. Bir ödemeye yetmezse satış listesi açılır: mülkünü bankaya satabilirsin, banka fiyatın yarısını öder."))
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
                        F($"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır."))
                    ?? Offer(TipId.Trade, myTurn && state.Phase == GamePhase.WaitingForRoll && state.Round >= 3,

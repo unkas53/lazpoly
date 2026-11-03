@@ -179,10 +179,15 @@ namespace Lazpoly.Core.Tests
         // ---- Property sales ----
 
         [Test]
-        public void SellingAPropertyReturnsItToTheBankForHalfThePrice()
+        public void APropertyIsSoldOnlyToPayADebt()
         {
-            var engine = NewGame();
+            GameEngine engine = AliceOwesCem();
             Give(engine, A1, Alice);
+            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new SellPropertyCommand(Alice, A1)), "No selling while the money lasts.");
+
+            Accept(engine, new RollDiceCommand(Alice)); // Lands on Cem's Solo and cannot pay the rent.
+            Assert.AreEqual(GamePhase.AwaitingDebtPayment, engine.State.Phase);
+            Assert.AreEqual(MoneyReason.Rent, engine.State.Debt.Reason);
             Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new SellPropertyCommand(Bob, A1)));
             Assert.AreEqual(RejectionReason.NotOwner, Reason(engine, new SellPropertyCommand(Alice, A2)));
             Assert.AreEqual(RejectionReason.InvalidSquare, Reason(engine, new SellPropertyCommand(Alice, 3)));
@@ -190,9 +195,9 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new SellPropertyCommand(Alice, A1));
 
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
-            Assert.AreEqual(1030, Money(engine, Alice), "The bank pays half the price.");
+            Assert.AreEqual(10 + 30, Money(engine, Alice), "The bank pays half the price.");
             Assert.AreEqual(RejectionReason.NotOwner, Reason(engine, new SellPropertyCommand(Alice, A1)));
-            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "Selling does not use up the turn.");
+            Assert.AreEqual(GamePhase.AwaitingDebtPayment, engine.State.Phase, "The debt is still to be paid.");
         }
 
         [Test]
@@ -203,7 +208,11 @@ namespace Lazpoly.Core.Tests
             Stand(engine, Alice, A1);
             Accept(engine, new BuildCommand(Alice, A1));
             Assert.AreEqual(30 + 25, GameRules.PropertySaleProceeds(engine.Board, engine.Rules, engine.State, A1));
+            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new SellPropertyCommand(Alice, A1)));
 
+            // Alice owes Bob more than she holds.
+            GameStateReducer.Apply(engine.State, new DebtIncurredEvent(Alice, Bob, 9000, MoneyReason.Rent));
+            GameStateReducer.Apply(engine.State, new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
             int before = Money(engine, Alice);
             CommandResult result = Accept(engine, new SellPropertyCommand(Alice, A1));
 

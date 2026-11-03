@@ -8,7 +8,10 @@ using Lazpoly.Presentation.UI;
 using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
-    /// <summary>A player's properties, each with the build and sell actions the rules allow now.</summary>
+    /// <summary>
+    /// A player's properties, each with the build and sell actions the rules allow now. Selling a property is
+    /// allowed only while a debt is open, so its button shows up then (and in <see cref="RenderSales"/>, the debt card's list).
+    /// </summary>
     public static class PropertyPanel
     {
         public static void Render(UiBuilder ui, GameSceneController controller, GameState state, int playerId)
@@ -45,6 +48,29 @@ namespace Lazpoly.Presentation.Game
             }
 
             if (!any) ui.Label(L("Henüz mülkün yok."), UiTextStyle.Small);
+        }
+
+        /// <summary>
+        /// The sale screen inside the debt card: every property of the player with what selling it (or one of its
+        /// houses) brings in. It shows only while a payment cannot be made; selling is not offered at other times.
+        /// </summary>
+        public static void RenderSales(UiBuilder ui, GameSceneController controller, GameState state, int playerId)
+        {
+            BoardDefinition board = controller.Session.Board;
+            bool any = false;
+            for (int square = 0; square < board.Count; square++)
+            {
+                if (state.GetOwner(square) != playerId) continue;
+                any = true;
+                UiBuilder row = ui.Row(6f);
+                UiBuilder.Fix(row.Swatch(controller.GroupColorOf(square), 14f, mark: controller.GroupMarkOf(square)), 14f, 14f);
+                row.Label(L(board[square].Name), UiTextStyle.Small);
+                Offer(row, controller, new SellBuildingCommand(playerId, square), F($"Ev Sat +{controller.Session.Rules.SellbackValue(board[square].BuildingCost)}"));
+                int proceeds = GameRules.PropertySaleProceeds(board, controller.Session.Rules, state, square);
+                Offer(row, controller, new SellPropertyCommand(playerId, square), F($"Sat +{proceeds}"));
+            }
+
+            if (!any) ui.Label(L("Satacak mülkün yok."), UiTextStyle.Small);
         }
 
         // Only allowed actions get a button, so the row stays short.

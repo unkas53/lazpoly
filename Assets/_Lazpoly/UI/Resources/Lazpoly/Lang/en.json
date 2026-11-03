@@ -332,13 +332,10 @@
   "Başlangıçtan geçene kadar her şehre tek ev; sonra {0} eve kadar.": "One house per city until you pass Start; up to {0} after that.",
   "Otel için {0} gerekli, paran yetmiyor.": "The hotel costs {0}; you cannot afford it.",
   "Paran yetmiyor: bina ya da mülk satışıyla para bulabilirsin.": "Not enough cash: sell buildings or a property to raise it.",
-  "Bina ya da mülk satarak para bul, sonra öde.": "Sell buildings or a property to raise the money, then pay.",
   "Sat +{0}": "Sell +{0}",
   "Borcunu ödeyecek kadar paran yok. Bina ya da mülk satarak para bul; bulamazsan iflas edersin.": "You cannot cover your debt. Sell buildings or a property to raise the money; if you cannot, you go bankrupt.",
-  "Paran azaldı. Sıkışırsan bir mülkünü bankaya satabilirsin; banka fiyatın yarısını öder ve şehir yeniden boşa çıkar.": "You are running low. If you get stuck, sell a property to the bank; it pays half the price and the city becomes free again.",
   "mülk satışı": "property sale",
   "Satış değeri": "Sale value",
-  "Parası yetmeyen mülkünü bankaya satar: banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{0} değerine geri satılır. Borcunu ödeyemeyen iflas eder.": "If you are short, sell a property to the bank: it pays half the price and the city becomes unowned again. Buildings sell back for {0}% of their cost. Whoever cannot pay a debt goes bankrupt.",
   "Üçüncü çift: hamle yanar, sıra geçer.": "Third double: the move is forfeited and the turn passes.",
   "Çift! Sıra bitince yeniden atarsın.": "Doubles! You roll again after this turn.",
   "Oyuncu": "Player",
@@ -545,5 +542,10 @@
   "Masaya Otur  →": "Take a Seat  →",
   "Sonraki oyun": "Next game",
   "Masa kuruluyor...": "Setting the table...",
-  "Menüye dönülüyor...": "Back to the menu..."
+  "Menüye dönülüyor...": "Back to the menu...",
+  "Paran {0}. Bina ya da mülk satarak para bul, sonra öde.": "You have {0}. Sell buildings or a property to raise the money, then pay.",
+  "Ev Sat +{0}": "Sell house +{0}",
+  "Satacak mülkün yok.": "You have no property to sell.",
+  "Paran azaldı. Bir ödemeye yetmezse satış listesi açılır: mülkünü bankaya satabilirsin, banka fiyatın yarısını öder.": "You are running low. If a payment is more than you have, the sale list opens: sell a property to the bank for half its price.",
+  "Mülk yalnız bir ödemeye (çoğunlukla kiraya) para yetmediğinde satılır; o an satış listesi açılır. Banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{0} değerine geri satılır. Borcunu ödeyemeyen iflas eder.": "A property is sold only when a payment (usually rent) is more than you have; the sale list opens then. The bank pays half the price and the city becomes unowned again. Buildings sell back for {0}% of their cost. Whoever cannot pay a debt goes bankrupt."
 }

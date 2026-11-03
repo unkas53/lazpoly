@@ -110,6 +110,9 @@ namespace Lazpoly.Presentation.Game
         private const float RollSeconds = 1.5f;
         private const float CardButton = UiLayout.CardButtonHeight;
         private const float WindowListHeight = 420f;
+
+        /// <summary>The debt card's sale list: about five properties before it scrolls.</summary>
+        private const float DebtSalesHeight = 200f;
         /// <summary>The corner card of the player on turn: a wash of the masthead green, clearly greener than the cream cards and still light enough for dark ink.</summary>
         public static readonly Color CurrentCardColor = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.56f);
 
@@ -1108,8 +1111,8 @@ namespace Lazpoly.Presentation.Game
             string creditor = EventDescriber.CreditorText(state, debt.CreditorId);
             UiBuilder card = ui.Card(UiTheme.NoticeFill);
             card.CardHeader(F($"Borç: {debt.Amount} → {creditor}"), EventDescriber.ReasonText(debt.Reason));
-            card.Label(L("Bina ya da mülk satarak para bul, sonra öde."), UiTextStyle.Small);
-            UiBuilder.Fix(card.Button(L("Mülkler"), OpenProperties, height: UiTheme.SmallButtonHeight), width: 160f);
+            card.Label(F($"Paran {player.Money}. Bina ya da mülk satarak para bul, sonra öde."), UiTextStyle.Small);
+            PropertyPanel.RenderSales(card.Scroll(DebtSalesHeight), _controller, state, player.Id);
 
             var pay = new PayDebtCommand(player.Id);
             ui.Actions(L("İflas Et"), () => _controller.Submit(new DeclareBankruptcyCommand(player.Id)),
