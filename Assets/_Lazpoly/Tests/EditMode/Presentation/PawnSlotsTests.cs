@@ -33,6 +33,32 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void StandingFiguresLineUpSideBySide()
+        {
+            const float spacing = 1.78f;
+            foreach (int capacity in new[] { 4, 9 })
+            {
+                var seen = new List<Vector3>();
+                for (int slot = 0; slot < capacity; slot++)
+                {
+                    Vector3 offset = PawnSlots.Line(slot, capacity, spacing);
+                    Assert.AreEqual(0f, offset.y);
+                    Assert.LessOrEqual(Mathf.Abs(offset.x), spacing * 0.45f, "a figure stands off the square");
+                    Assert.LessOrEqual(Mathf.Abs(offset.z), spacing * 0.1f, "figures stay in one line, not rows behind each other");
+                    // Side by side: no two figures share a place along the edge, so none stands right behind another.
+                    foreach (Vector3 other in seen) Assert.Greater(Mathf.Abs(offset.x - other.x), spacing * 0.08f, $"slots of {capacity} stand behind each other");
+                    seen.Add(offset);
+                }
+            }
+
+            // Two players on a square of a four-player game stand clearly apart, either side of the middle.
+            Vector3 first = PawnSlots.Line(0, 4, spacing), second = PawnSlots.Line(1, 4, spacing);
+            Assert.Greater(Mathf.Abs(first.x - second.x), spacing * 0.25f);
+            Assert.Less(first.x * second.x, 0f);
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => PawnSlots.Line(4, 4, spacing));
+        }
+
+        [Test]
         public void PawnsOnOneSquareNeverShareASlot()
         {
             var crowd = new PawnCrowd(4);

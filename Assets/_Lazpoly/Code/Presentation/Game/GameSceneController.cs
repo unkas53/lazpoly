@@ -55,7 +55,9 @@ namespace Lazpoly.Presentation.Game
 
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
-        private readonly Dictionary<int, SpeechBubble> _bubbles = new Dictionary<int, SpeechBubble>();
+        private readonly BubbleQueue _bubbleQueue = new BubbleQueue();
+        private SpeechBubble _bubble;
+        private float _bubbleShownAt;
         private PawnCrowd _crowd;
         private TurnMarker _turnMarker;
         private readonly Dictionary<int, Color> _playerColors = new Dictionary<int, Color>();
@@ -308,6 +310,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             UpdateDayLight();
+            ShowNextBubble();
             if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
             if (_session.StepAi()) _nextAiMoveTime = Time.time + Settings.AiMoveDelaySeconds;
         }
@@ -930,19 +933,28 @@ namespace Lazpoly.Presentation.Game
         /// <summary>
         /// A computer player's line in a bubble over its pawn, for the choices it makes (buying, letting a
         /// square go, bidding, building, trading). People at the table say nothing: they know what they did.
-        /// A newer line replaces the earlier bubble over the same square.
+        /// The line waits in <see cref="BubbleQueue"/>: one bubble on the table at a time, so lines said
+        /// together (an auction where everyone passes) come one after the other instead of over each other.
         /// </summary>
         private void Say(int playerId, string line)
         {
             if (playerId == GameState.NoOwner || !_session.IsAiPlaying(playerId)) return;
-            if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) return;
-            // One bubble over a square at a time: pawns sharing a square would otherwise talk over each other.
-            foreach (KeyValuePair<int, SpeechBubble> shown in _bubbles)
-            {
-                if (shown.Value != null && _pawns.TryGetValue(shown.Key, out PawnView other) && other.Square == pawn.Square) shown.Value.Dismiss();
-            }
+            _bubbleQueue.Add(playerId, line);
+            ShowNextBubble();
+        }
 
-            _bubbles[playerId] = SpeechBubble.Say(transform, pawn.transform, line, ColorOf(playerId));
+        /// <summary>Puts the next waiting line up once the table is free or the bubble on show has been read.</summary>
+        private void ShowNextBubble()
+        {
+            while (_bubbleQueue.ShouldAdvance(_bubble != null, Time.time - _bubbleShownAt))
+            {
+                (int playerId, string text) = _bubbleQueue.Take();
+                if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) continue;
+                if (_bubble != null) _bubble.Dismiss();
+                _bubble = SpeechBubble.Say(transform, pawn.transform, text, ColorOf(playerId));
+                _bubbleShownAt = Time.time;
+                return;
+            }
         }
 
         /// <summary>
@@ -1018,13 +1030,29 @@ namespace Lazpoly.Presentation.Game
             return total;
         }
 
-        /// <summary>"+200" or "-60" rising over the player's pawn.</summary>
+        /// <summary>
+        /// "+200" or "-60" rising beside the player's figure, at chest height and a little to the screen's
+        /// right, so it neither hides the figure nor runs into the speech bubble over its head. Several at
+        /// once stack (see <see cref="FloatingText"/>).
+        /// </summary>
         private void ShowMoney(MoneyChangedEvent money)
         {
             if (money.Delta == 0 || !_pawns.TryGetValue(money.PlayerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) return;
             string text = money.Delta > 0 ? "+" + Lang.N(money.Delta) : Lang.N(money.Delta);
-            Color color = money.Delta > 0 ? new Color(0.45f, 0.92f, 0.5f) : new Color(1f, 0.42f, 0.38f);
-            FloatingText.Spawn(transform, pawn.transform.position + Vector3.up * 0.65f, text, color);
+            Color color = money.Delta > 0 ? MoneyGain : MoneyLoss;
+            FloatingText.Spawn(transform, MoneySpot(pawn), text, color);
+        }
+
+        private static readonly Color MoneyGain = new Color(0.30f, 0.80f, 0.38f);
+        private static readonly Color MoneyLoss = new Color(0.93f, 0.32f, 0.28f);
+
+        /// <summary>How far to the screen's right of the figure a money line starts, in world units.</summary>
+        public const float MoneySide = 0.45f;
+
+        private Vector3 MoneySpot(PawnView pawn)
+        {
+            float height = pawn.IsCharacter ? PawnView.CharacterHeight * 0.55f : 0.65f;
+            return pawn.transform.position + Vector3.up * height + BoardView.ScreenRight(_labelYaw) * MoneySide;
         }
 
         private void AddLog(string line, LogTone tone = LogTone.Neutral, int playerId = GameState.NoOwner, bool turnStart = false)

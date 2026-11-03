@@ -223,8 +223,14 @@ namespace Lazpoly.Presentation.Pawns
             transform.localScale = new Vector3(width, height, width);
         }
 
-        // The slot grid is turned to the square: its first row lies towards the board's middle, so the pawns fill the square from the inside out.
-        private Vector3 Target(int square) =>
-            _board.PawnSpot(square) + Quaternion.LookRotation(_board.Layout.Outward(square)) * PawnSlots.Offset(_slot, _crowd.Capacity, _board.Layout.Width);
+        // The slots are turned to the square. Characters stand in a line along the edge (PawnSlots.Line) so a tall figure never
+        // hides one behind it; the small shapes keep the grid, whose first row lies towards the board's middle.
+        private Vector3 Target(int square)
+        {
+            Vector3 offset = IsCharacter
+                ? PawnSlots.Line(_slot, _crowd.Capacity, _board.Layout.Width)
+                : PawnSlots.Offset(_slot, _crowd.Capacity, _board.Layout.Width);
+            return _board.PawnSpot(square) + Quaternion.LookRotation(_board.Layout.Outward(square)) * offset;
+        }
     }
 }

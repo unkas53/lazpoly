@@ -15,7 +15,10 @@ namespace Lazpoly.Presentation.Effects
         public const float Lift = 2.05f;
 
         /// <summary>Paper round the text, in world units each side.</summary>
-        public const float Padding = 0.1f;
+        public const float Padding = 0.08f;
+
+        /// <summary>The line's character size: small enough that a bubble over a far figure leaves most of the names behind it readable.</summary>
+        public const float TextSize = 0.034f;
 
         public const float TailHeight = 0.14f;
         private const float PopSeconds = 0.22f;
@@ -50,7 +53,7 @@ namespace Lazpoly.Presentation.Effects
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.fontSize = 96;
-            mesh.characterSize = 0.04f;
+            mesh.characterSize = TextSize;
             mesh.color = Ink;
             mesh.font = UI.UiTheme.BoldFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;

@@ -684,10 +684,17 @@ Proje sahibinin verdiği menü / lobi tasarımının düzeni ve tarzı kodla kur
 
 Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` → `UiTheme.Use(UiPalette.Paper)`; `UiTheme`'in varsayılan paleti artık `Paper`, `Dusk` ikinci palet olarak duruyor).
 
-- Köşe oyuncu kartları, dock, alt yığın, pencereler ve olay satırı krem kağıt ve koyu yeşil mürekkeple; sırası gelen oyuncunun kartı bant yeşilinin açık bir tonunda (`Ink.Wash(Masthead, 0.74)`).
+- Köşe oyuncu kartları, dock, alt yığın, pencereler ve olay satırı krem kağıt ve koyu yeşil mürekkeple; sırası gelen oyuncunun kartı bant yeşilinin belirgin bir tonunda (`GameHud.CurrentCardColor`, `Ink.Wash(Masthead, 0.56)`); kenardaki paralar kayıp kırmızısı yerine altın-kahve (`UiPalette.Money`).
 - "Sıra sende" şeridi oyuncunun renginde, yazısı o renkte okunan mürekkeple (`ColorVision.TextOn`); çift atınca çıkan not yeşil bantta krem yazı (üçüncü çiftte altın).
 - İpucu kutusu kağıt kart, borç kartı uyarı tonunda (`NoticeFill`); eski koyu lacivert kutular kalmadı.
-- Test (`MenuTests.TheTableUsesPaperToo`): oyun sahnesi kağıt paletini seçer, HUD'da eski koyu kutu rengi kalmadı, sıradaki oyuncunun kartı krem kartlardan ayrılır ve mürekkep üstünde okunur.
+- Test (`MenuTests.TheTableUsesPaperToo`): oyun sahnesi kağıt paletini seçer, HUD'da eski koyu kutu rengi kalmadı, sıradaki oyuncunun kartı krem kartlardan ayrılır ve mürekkep üstünde okunur; dinlenen para rengi kremde ve yeşil kartta okunur, uyarı renginden ayrıdır.
+
+## Faz 12b: balonlar, para yazıları, kalabalık kareler
+
+- Konuşma balonları sıraya girer (`BubbleQueue`): masada aynı anda tek balon olur. Bekleyen satır, gösterilen balon en az 1,2 sn okunduktan sonra çıkar; bir oyuncunun yeni satırı bekleyen eskisinin yerine geçer, en çok 3 satır bekler (en eskisi düşer). Balon yazısı biraz küçüldü (`SpeechBubble.TextSize` 0,034), arkadaki isimler daha az kapanır.
+- Para yazıları ("+200", "-60") figürün göğüs hizasında, ekranın sağına doğru 0,45 birim yanda çıkar; balonla ve figürle çakışmaz. Aynı yerde peş peşe çıkanlar üst üste değil alt alta dizilir (`FloatingText.StackIndex`), arkalarında okunmayı sağlayan koyu bir gölge kopyası var.
+- Aynı karedeki karakterler ızgara yerine kenar boyunca yan yana dizilir (`PawnSlots.Line`): ilki ortaya yakın, sonrakiler sağa sola; her ikinciden biri biraz içeride durur. Arkadaki figür öndekinin arkasında kaybolmaz. Küçük şekil piyonlar (karakter modeli yoksa) eski ızgarayı kullanır.
+- Testler: `BubbleQueueTests` (sıra, okuma süresi, yer değiştirme, kısa kuyruk, para yazısı yığını), `PawnSlotsTests.StandingFiguresLineUpSideBySide`.
 
 ## Kurallar
 
