@@ -943,14 +943,23 @@ namespace Lazpoly.Presentation.Game
             ShowNextBubble();
         }
 
-        /// <summary>Puts the next waiting line up once the table is free or the bubble on show has been read.</summary>
+        /// <summary>
+        /// Puts the next waiting line up once the table is free. When the bubble on show has been read and a line
+        /// waits, the bubble is let go first and the next one pops up only after it has gone, so two lines never
+        /// show over each other while one fades.
+        /// </summary>
         private void ShowNextBubble()
         {
             while (_bubbleQueue.ShouldAdvance(_bubble != null, Time.time - _bubbleShownAt))
             {
+                if (_bubble != null)
+                {
+                    _bubble.Dismiss();
+                    return;
+                }
+
                 (int playerId, string text) = _bubbleQueue.Take();
                 if (!_pawns.TryGetValue(playerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) continue;
-                if (_bubble != null) _bubble.Dismiss();
                 _bubble = SpeechBubble.Say(transform, pawn.transform, text, ColorOf(playerId));
                 _bubbleShownAt = Time.time;
                 return;
@@ -1049,9 +1058,12 @@ namespace Lazpoly.Presentation.Game
         /// <summary>How far to the screen's right of the figure a money line starts, in world units.</summary>
         public const float MoneySide = 0.45f;
 
+        /// <summary>Where a money line starts on a figure, as a share of its height: the waist, so it rises past the chest and stays under any speech bubble.</summary>
+        public const float MoneyHeight = 0.45f;
+
         private Vector3 MoneySpot(PawnView pawn)
         {
-            float height = pawn.IsCharacter ? PawnView.CharacterHeight * 0.55f : 0.65f;
+            float height = pawn.IsCharacter ? PawnView.CharacterHeight * MoneyHeight : 0.65f;
             return pawn.transform.position + Vector3.up * height + BoardView.ScreenRight(_labelYaw) * MoneySide;
         }
 
