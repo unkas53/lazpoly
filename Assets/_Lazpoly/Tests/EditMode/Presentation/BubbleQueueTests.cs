@@ -50,6 +50,10 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(2, FloatingText.StackIndex(starts, ages, at), "two fresh lines here, the third goes above them");
             ages[0] = ages[1] = FloatingText.StackSeconds + 0.1f;
             Assert.AreEqual(0, FloatingText.StackIndex(starts, ages, at), "lines that have risen away leave the spot free");
+
+            // Even the third line of a stack ends its rise under the speech bubble over the figure's head.
+            float top = Pawns.PawnView.CharacterHeight * Game.GameSceneController.MoneyHeight + 2 * FloatingText.LineGap + FloatingText.Rise;
+            Assert.Less(top, SpeechBubble.Lift, "money lines stay under the bubbles");
         }
     }
 }

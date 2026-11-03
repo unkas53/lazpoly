@@ -4,10 +4,11 @@
 The owner's references (a business man and a business woman in one cartoon style) came as pictures; only the man
 exists as a model. The woman is made from him so both stand in the same style, scale and palette:
   * beard, moustache, sideburns, quiff, fringe and hair ridges go; the hair grows long: a shell behind the head
-    down past the shoulders, open at the face, plus small gold earrings,
+    down to the shoulder blades, open at the face, and two locks over the shoulders to the chest (so it reads
+    long from the front too), plus small gold earrings,
   * the figure is slimmer below the head (waist, legs, shoes), the neck and brows finer,
-  * the jeans become dark tights and a knee-length skirt is added (painted in the player's colour, a shade darker
-    than the jacket, like a suit), the sneakers become plain dark shoes without laces or socks,
+  * the jeans become dark tights and a knee-length skirt is added (painted in a clearly darker shade of the
+    player's colour than the jacket), the sneakers become plain dark shoes without laces or socks,
   * the T-shirt becomes a plum blouse (as in the reference picture), the smile gets rose lips.
 The tablet, the hands, the face and the jacket stay as they are, so the two read as colleagues.
 
@@ -204,14 +205,26 @@ def main():
         (0.0, 0.045, 1.88, 0.212, 0.19),
         (0.0, 0.06, 1.74, 0.222, 0.17),
         (0.0, 0.085, 1.6, 0.21, 0.14),
-        (0.0, 0.11, 1.47, 0.2, 0.1),
-        (0.0, 0.12, 1.39, 0.17, 0.07),
+        (0.0, 0.12, 1.47, 0.21, 0.11),
+        (0.0, 0.16, 1.36, 0.2, 0.08),
+        (0.0, 0.18, 1.24, 0.17, 0.07),
+        (0.0, 0.19, 1.16, 0.13, 0.05),
     ], back[0], back[1], 14, 0.03))
+    # Two locks falling from beside the face over the shoulders to the chest: seen from the front, the hair is long.
+    for side in (-1, 1):
+        woman.append(frustum(f"{'L' if side < 0 else 'R'}_Hair_lock", "hair_w", [
+            (side * 0.168, 0.0, 1.8, 0.05, 0.075),
+            (side * 0.18, -0.03, 1.62, 0.055, 0.07),
+            (side * 0.19, -0.1, 1.49, 0.055, 0.06),
+            (side * 0.175, -0.165, 1.34, 0.05, 0.04),
+            (side * 0.155, -0.175, 1.22, 0.04, 0.03),
+        ], 10))
     # A darker lock down the back, for depth.
-    woman.append(ring_loft("Hair_lock", "hair_w_dark", [
+    woman.append(ring_loft("Hair_back_lock", "hair_w_dark", [
         (0.0, 0.1, 1.72, 0.14, 0.15),
-        (0.0, 0.125, 1.55, 0.13, 0.115),
-        (0.0, 0.14, 1.41, 0.1, 0.075),
+        (0.0, 0.14, 1.5, 0.135, 0.12),
+        (0.0, 0.19, 1.3, 0.12, 0.085),
+        (0.0, 0.2, 1.2, 0.09, 0.06),
     ], math.radians(40), math.radians(140), 6, 0.02))
     # A side-swept fringe over the forehead, lighter where the light catches it.
     woman.append(ring_loft("Fringe", "hair_w_light", [

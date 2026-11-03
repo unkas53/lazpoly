@@ -43,7 +43,7 @@ namespace Lazpoly.Presentation.Models
         public const float LightTint = 0.18f;
         public const float DarkShade = 0.30f;
         public const float LapelShade = 0.14f;
-        public const float SkirtShade = 0.22f;
+        public const float SkirtShade = 0.45f;
 
         private static readonly ObjModel[] Models = new ObjModel[2];
         private static readonly List<Mesh>[] Meshes = new List<Mesh>[2];
@@ -205,8 +205,8 @@ namespace Lazpoly.Presentation.Models
                 case "hair_w": return new Color(0.400f, 0.215f, 0.150f);
                 case "hair_w_light": return new Color(0.520f, 0.300f, 0.200f);
                 case "hair_w_dark": return new Color(0.270f, 0.145f, 0.110f);
-                case "blouse": return new Color(0.560f, 0.330f, 0.520f);
-                case "blouse_shadow": return new Color(0.440f, 0.240f, 0.410f);
+                case "blouse": return new Color(0.640f, 0.460f, 0.600f);
+                case "blouse_shadow": return new Color(0.520f, 0.360f, 0.490f);
                 case "lips": return new Color(0.760f, 0.310f, 0.360f);
                 case "tights": return new Color(0.230f, 0.205f, 0.225f);
                 case "pump": return new Color(0.330f, 0.130f, 0.200f);
