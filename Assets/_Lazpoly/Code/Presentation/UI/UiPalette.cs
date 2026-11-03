@@ -3,9 +3,9 @@ using UnityEngine;
 namespace Lazpoly.Presentation.UI
 {
     /// <summary>
-    /// One set of interface colours. The game screen keeps <see cref="Dusk"/>, the seaside town at
-    /// dusk the HUD was drawn in; the main menu and lobby use <see cref="Paper"/>, the light "paper
-    /// window on a sky" look of the menu design. <see cref="UiTheme"/> reads whichever is in force.
+    /// One set of interface colours. Every screen uses <see cref="Paper"/>, the light "paper window on a
+    /// sky" look of the menu design; <see cref="Dusk"/>, the dark seaside-at-dusk look the HUD was first
+    /// drawn in, stays as a second palette. <see cref="UiTheme"/> reads whichever is in force.
     /// </summary>
     public sealed class UiPalette
     {

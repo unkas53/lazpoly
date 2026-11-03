@@ -244,7 +244,7 @@ namespace Lazpoly.Presentation.Game
 
         private void Start()
         {
-            UiTheme.Use(UiPalette.Dusk); // The table keeps its dusk colours; the menu before it used paper.
+            UiTheme.Use(UiPalette.Paper); // The table wears the menu's paper look: cream panels, green ink, a green band for news.
             AudioPlayer.Ensure();
             MusicPlayer.Ensure();
             _data = BoardDataLoader.LoadFromResources();

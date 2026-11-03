@@ -680,6 +680,15 @@ Proje sahibinin verdiği menü / lobi tasarımının düzeni ve tarzı kodla kur
 - **Unity açılış ekranı kapalı, exe simgesi logo** (`ProjectSettings.asset`): Unity 6 ücretsiz lisansta da "Made with Unity" ekranı kapatılabiliyor (`m_ShowUnitySplashScreen: 0`). Varsayılan simge `Assets/_Lazpoly/Art/Textures/lazpoly-icon.png` (256x256, `make_logo.py` üretir); masaüstü oyuncusunda 256 ve 128 tam logo, 48/32/16 ise yalnız madalyon (`lazpoly-icon-small.png`, 64x64: altın halka, lacivert disk, beyaz L) çünkü tam logo o boyda leke olur. Lazpoly.exe, görev çubuğu ve pencere başlığında böyle görünür. Ayarlar silinirse editörde `Lazpoly/Apply Branding` (ya da `-executeMethod Lazpoly.Editor.Branding.Apply`) yeniden yazar.
 - **Testler** (`MenuTests`): kağıt mürekkebi her kağıt zeminde ve bant / chip renkleri kendi zeminlerinde okunur; tema verilen paleti alır; ana sayfa 1080 satıra sığar (`MinScreenHeight`) ve kart yüksekliği en küçük ekranda tam en az değer; logo yapıda, 640x640, köşeleri şeffaf, ortası boyalı, madalyon mavi (portre yok), alt gölge silinmiş; açılış ekranı en az 1 sn durur ve çubuğu zamanla dolar; Unity açılış ekranı kapalı ve varsayılan simge 256x256 logo (ProjectSettings ile simge meta'sının guid'i eşleşir); Türkçe büyük harfte noktalı İ. PlayMode `InterfaceTests` yeni menüde "Tek Oyunculu" kartına ve "Oyunu Başlat" düğmesine fareyle ulaşır.
 
+## Faz 12a: oyun ekranı kağıt tarzında
+
+Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` → `UiTheme.Use(UiPalette.Paper)`; `UiTheme`'in varsayılan paleti artık `Paper`, `Dusk` ikinci palet olarak duruyor).
+
+- Köşe oyuncu kartları, dock, alt yığın, pencereler ve olay satırı krem kağıt ve koyu yeşil mürekkeple; sırası gelen oyuncunun kartı bant yeşilinin açık bir tonunda (`Ink.Wash(Masthead, 0.74)`).
+- "Sıra sende" şeridi oyuncunun renginde, yazısı o renkte okunan mürekkeple (`ColorVision.TextOn`); çift atınca çıkan not yeşil bantta krem yazı (üçüncü çiftte altın).
+- İpucu kutusu kağıt kart, borç kartı uyarı tonunda (`NoticeFill`); eski koyu lacivert kutular kalmadı.
+- Test (`MenuTests.TheTableUsesPaperToo`): oyun sahnesi kağıt paletini seçer, HUD'da eski koyu kutu rengi kalmadı, sıradaki oyuncunun kartı krem kartlardan ayrılır ve mürekkep üstünde okunur.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

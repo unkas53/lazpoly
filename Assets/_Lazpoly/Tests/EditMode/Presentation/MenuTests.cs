@@ -15,7 +15,7 @@ namespace Lazpoly.Presentation.Tests
         [TearDown]
         public void BackToTheGameColours()
         {
-            UiTheme.Use(UiPalette.Dusk);
+            UiTheme.Use(UiPalette.Paper);
             Lang.Set(Language.Turkish);
         }
 
@@ -64,7 +64,22 @@ namespace Lazpoly.Presentation.Tests
             UiTheme.Use(UiPalette.Dusk);
             Assert.AreEqual(UiPalette.Dusk.Panel, UiTheme.Panel);
             Assert.AreEqual(UiPalette.Dusk.Text, UiTheme.Text);
+            UiTheme.Use(UiPalette.Paper);
             Assert.Throws<System.ArgumentNullException>(() => UiTheme.Use(null));
+        }
+
+        [Test]
+        public void TheTableUsesPaperToo()
+        {
+            string controller = File.ReadAllText(Path.Combine(Application.dataPath, "_Lazpoly", "Code", "Presentation", "Game", "GameSceneController.cs"));
+            Assert.That(controller, Does.Contain("UiTheme.Use(UiPalette.Paper)"), "the game scene switches to the paper palette");
+            Assert.That(controller, Does.Not.Contain("UiTheme.Use(UiPalette.Dusk)"));
+            string hud = File.ReadAllText(Path.Combine(Application.dataPath, "_Lazpoly", "Code", "Presentation", "Game", "GameHud.cs"));
+            Assert.That(hud, Does.Not.Contain("new Color(0.08f, 0.09f, 0.12f"), "no dark slate panels left over from the dusk look");
+            // The current player's corner card stands out from the cream cards and keeps dark ink readable.
+            Color current = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.74f);
+            Assert.That(Contrast(UiPalette.Paper.Text, current), Is.GreaterThan(4.5f));
+            Assert.That(Mathf.Abs(ColorVision.Luminance(current) - ColorVision.Luminance(UiPalette.Paper.Card)), Is.GreaterThan(0.08f));
         }
 
         [Test]

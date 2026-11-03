@@ -94,6 +94,7 @@ namespace Lazpoly.Presentation.Game
         private Tip? _tip;
         private UiView _howToWindow;
         private Text _timer;
+        private Image _bannerFill;
         private CanvasGroup _timeEdge;
         private GameObject _howToLayer;
         private UiView _cityWindow;
@@ -109,7 +110,8 @@ namespace Lazpoly.Presentation.Game
         private const float RollSeconds = 1.5f;
         private const float CardButton = UiLayout.CardButtonHeight;
         private const float WindowListHeight = 420f;
-        private static readonly Color CurrentCardColor = new Color(0.24f, 0.25f, 0.31f);
+        /// <summary>The corner card of the player on turn: a light wash of the masthead green, so it stands out from the cream cards.</summary>
+        private static readonly Color CurrentCardColor = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.74f);
 
         /// <summary>Screen pixels the dock covers at each side edge, margins included; the camera keeps the board clear of them.</summary>
         public float ReservedSidePixels => UiLayout.ReservedSidePixels(_canvas != null ? _canvas.scaleFactor : 1f);
@@ -225,11 +227,11 @@ namespace Lazpoly.Presentation.Game
 
             RectTransform banner = UiRoot.Rect(_canvas.transform, "Turn Banner", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-320f, -150f), new Vector2(320f, -60f));
-            UiRoot.Background(banner, new Color(0.08f, 0.09f, 0.12f, 0.92f));
+            _bannerFill = UiRoot.Background(banner, UiPalette.Ink.Masthead, shadow: true);
             _bannerGroup = banner.gameObject.AddComponent<CanvasGroup>();
             _bannerGroup.blocksRaycasts = false;
             _bannerGroup.alpha = 0f;
-            _banner = new UiBuilder(banner).Label("", UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
+            _banner = new UiBuilder(banner).Label("", UiTextStyle.Heading, UiPalette.Ink.OnMasthead, TextAnchor.MiddleCenter);
             var bannerRect = (RectTransform)_banner.transform;
             bannerRect.anchorMin = Vector2.zero;
             bannerRect.anchorMax = Vector2.one;
@@ -305,14 +307,14 @@ namespace Lazpoly.Presentation.Game
         {
             RectTransform roll = UiRoot.Rect(_canvas.transform, "Roll Popup", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-220f, -214f), new Vector2(220f, -160f));
-            UiRoot.Background(roll, new Color(0.08f, 0.09f, 0.12f, 0.88f), shadow: true);
+            UiRoot.Background(roll, UiPalette.Ink.Masthead, shadow: true);
             _rollGroup = roll.gameObject.AddComponent<CanvasGroup>();
             _rollGroup.blocksRaycasts = false;
             _rollGroup.interactable = false;
             _rollGroup.alpha = 0f;
             _rollRect = roll;
             UiBuilder.AddColumnLayout(roll.gameObject, 10, 2f);
-            _rollText = new UiBuilder(roll).Label("", UiTextStyle.Body, UiTheme.Accent, TextAnchor.MiddleCenter);
+            _rollText = new UiBuilder(roll).Label("", UiTextStyle.Body, UiPalette.Ink.OnMasthead, TextAnchor.MiddleCenter);
             _rollText.font = UiTheme.BoldFont;
         }
 
@@ -334,7 +336,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             _rollText.text = _controller.ShownRollForfeited ? L("Üçüncü çift: hamle yanar, sıra geçer.") : L("Çift! Sıra bitince yeniden atarsın.");
-            _rollText.color = _controller.ShownRollForfeited ? UiTheme.Warning : UiTheme.Accent;
+            _rollText.color = _controller.ShownRollForfeited ? UiPalette.Ink.Gold : UiPalette.Ink.OnMasthead;
             _rollGroup.alpha = Mathf.Clamp01(age / 0.12f) * Mathf.Clamp01((visible - age) / 0.35f);
             _rollRect.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.25f)));
         }
@@ -387,7 +389,7 @@ namespace Lazpoly.Presentation.Game
         private void BuildTipPanel(RectTransform stack)
         {
             RectTransform tip = UiRoot.Rect(stack, "Tip", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
-            UiRoot.Background(tip, new Color(0.10f, 0.16f, 0.22f, 0.96f), shadow: true);
+            UiRoot.Background(tip, UiTheme.Card, shadow: true);
             UiBuilder.AddColumnLayout(tip.gameObject, 14, 8f);
             _tipPanel = tip.gameObject;
             _tipView = new UiView(new UiBuilder(tip), RenderTip);
@@ -688,7 +690,10 @@ namespace Lazpoly.Presentation.Game
                 {
                     AudioPlayer.Play(SoundCue.YourTurn);
                     _banner.text = F($"Sıra sende, {player.Name}");
-                    _banner.color = _controller.ColorOf(player.Id);
+                    // The band takes the player's colour and the words whichever ink reads on it.
+                    Color color = _controller.ColorOf(player.Id);
+                    _bannerFill.color = color;
+                    _banner.color = ColorVision.TextOn(color);
                     _bannerUntil = Time.unscaledTime + BannerSeconds;
                 }
             }
@@ -1101,7 +1106,7 @@ namespace Lazpoly.Presentation.Game
         {
             DebtState debt = state.Debt;
             string creditor = EventDescriber.CreditorText(state, debt.CreditorId);
-            UiBuilder card = ui.Card(new Color(0.30f, 0.16f, 0.16f));
+            UiBuilder card = ui.Card(UiTheme.NoticeFill);
             card.CardHeader(F($"Borç: {debt.Amount} → {creditor}"), EventDescriber.ReasonText(debt.Reason));
             card.Label(L("Bina ya da mülk satarak para bul, sonra öde."), UiTextStyle.Small);
             UiBuilder.Fix(card.Button(L("Mülkler"), OpenProperties, height: UiTheme.SmallButtonHeight), width: 160f);

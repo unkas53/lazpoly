@@ -23,8 +23,8 @@ namespace Lazpoly.Presentation.UI
 
     /// <summary>
     /// Colours, font and sizes of the interface, in pixels of the 1920x1080 reference screen. The colours
-    /// come from the <see cref="UiPalette"/> in force: <see cref="UiPalette.Dusk"/> for the game screen,
-    /// <see cref="UiPalette.Paper"/> for the main menu and lobby (see <see cref="Use"/>).
+    /// come from the <see cref="UiPalette"/> in force: <see cref="UiPalette.Paper"/> everywhere (menu, lobby
+    /// and table); <see cref="UiPalette.Dusk"/>, the table's first dark look, stays for comparison (see <see cref="Use"/>).
     /// </summary>
     public static class UiTheme
     {
@@ -33,7 +33,7 @@ namespace Lazpoly.Presentation.UI
         /// <summary>The smallest a button label shrinks to before it is allowed to wrap (see <see cref="UiBuilder.ShrinkToFit"/>).</summary>
         public const int MinButtonFontSize = 12;
 
-        private static UiPalette _palette = UiPalette.Dusk;
+        private static UiPalette _palette = UiPalette.Paper;
 
         /// <summary>The colours in force; elements built from now on take them.</summary>
         public static UiPalette Palette => _palette;
