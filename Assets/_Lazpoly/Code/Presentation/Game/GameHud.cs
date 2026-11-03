@@ -34,7 +34,7 @@ namespace Lazpoly.Presentation.Game
         private const float Margin = UiLayout.Margin;
 
         /// <summary>Width of the stack at the bottom centre: the hint, the decision panel and the event strip.</summary>
-        public const float BottomWidth = 700f;
+        public const float BottomWidth = 760f;
 
         private GameSceneController _controller;
         private TradePanel _trade;
@@ -857,14 +857,21 @@ namespace Lazpoly.Presentation.Game
                 Color dot = last.PlayerId == GameState.NoOwner ? Color.clear : _controller.ColorOf(last.PlayerId);
                 row.Swatch(dot, 10f, round: true).raycastTarget = false;
                 Color color = last.Tone == LogTone.Gain ? UiTheme.Gain : last.Tone == LogTone.Loss ? UiTheme.Warning : UiTheme.Text;
-                UiBuilder.Fix(row.Label(last.Text, UiTextStyle.Small, color), -1f).flexibleWidth = 1f;
+                // One line only: a long event shrinks a little and is then cut, so the strip never grows taller.
+                Text line = row.Label(last.Text, UiTextStyle.Small, color);
+                line.verticalOverflow = VerticalWrapMode.Truncate;
+                UiBuilder.ShrinkToFit(line);
+                UiBuilder.Fix(line, -1f, TickerLineHeight).flexibleWidth = 1f;
             }
 
             RenderToolbar(row, state);
         }
 
+        /// <summary>Height of the newest event's single line in the bottom strip.</summary>
+        private const float TickerLineHeight = 24f;
+
         /// <summary>Width of each small button at the end of the bottom strip.</summary>
-        public const float ToolbarButtonWidth = 104f;
+        public const float ToolbarButtonWidth = 120f;
 
         /// <summary>
         /// The few buttons the game screen keeps (the side dock is gone): the properties and a trade offer

@@ -21,8 +21,11 @@ namespace Lazpoly.Presentation.Tabletop
         private const float RingInner = 0.74f;
         private const float RingThickness = 0.035f;
 
-        /// <summary>How high the arrow floats over the square: above a standing character (<c>PawnView.CharacterHeight</c>).</summary>
-        public const float ArrowHeight = 2.2f;
+        /// <summary>
+        /// How high the arrow's tip floats over the square: low enough to read as the square's own mark
+        /// even on the far row (the pawn is not there yet; the mark goes when it arrives).
+        /// </summary>
+        public const float ArrowHeight = 0.9f;
         private const float ArrowWidth = 0.32f;
         private const float ArrowLength = 0.42f;
 
