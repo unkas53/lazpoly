@@ -165,7 +165,7 @@ namespace Lazpoly.App.Tests
         [Test]
         public void AHostAtATableWithoutAClockNeverMovesForAnyone()
         {
-            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, true, 0, turnSeconds: 0));
+            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, 0, turnSeconds: 0));
             table.StartAll();
             PlayUntilTurnOf(table, 2);
             Assert.IsTrue(double.IsPositiveInfinity(table.Host.SecondsLeft));
@@ -180,7 +180,7 @@ namespace Lazpoly.App.Tests
         [Test]
         public void AShortTurnTimeRunsOutSooner()
         {
-            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, true, 0, turnSeconds: 60));
+            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, 0, turnSeconds: 60));
             table.StartAll();
             PlayUntilTurnOf(table, 2);
             int rolls = 0;
