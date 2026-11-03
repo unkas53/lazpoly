@@ -262,6 +262,55 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheBuildingPreviewStagesEachLevelFarUnderTheBoard()
+        {
+            var holder = new GameObject("Preview Holder");
+            var preview = new BuildingPreview(holder.transform);
+            try
+            {
+                Assert.AreEqual(BuildingPreview.StageOrigin, preview.Root.transform.localPosition);
+                Assert.Less(BuildingPreview.StageOrigin.y, -BoardCameraRig.Distance * 4f, "the stage lies beyond the main camera's reach");
+
+                Camera camera = preview.Root.GetComponentInChildren<Camera>(true);
+                Assert.IsNotNull(camera);
+                Assert.IsFalse(camera.enabled, "the picture camera renders only on request");
+                Assert.IsTrue(camera.orthographic);
+                Assert.That(Quaternion.Angle(camera.transform.localRotation, Quaternion.Euler(BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, 0f)), Is.LessThan(1e-3f),
+                    "the pictures share the board's angle");
+                float halfDiagonal = Mathf.Sqrt(BuildingPreview.TileWidth * BuildingPreview.TileWidth + BuildingPreview.TileDepth * BuildingPreview.TileDepth) / 2f;
+                Assert.Greater(BuildingPreview.ViewSize, halfDiagonal * Mathf.Cos(45f * Mathf.Deg2Rad) * 1.1f, "the tile fits the picture with air around it");
+
+                for (int level = 0; level < BuildingPreview.Levels; level++)
+                {
+                    preview.Show(level);
+                    Assert.AreEqual(level, preview.Shown);
+                    int houses = 0, mansions = 0;
+                    foreach (Transform child in preview.Root.transform)
+                    {
+                        if (!child.gameObject.activeSelf) continue;
+                        if (child.name == "House") houses++;
+                        if (child.name == "Mansion") mansions++;
+                    }
+
+                    Assert.AreEqual(level >= 5 ? 0 : level, houses, $"level {level}: houses on the stage");
+                    Assert.AreEqual(level >= 5 ? 1 : 0, mansions, $"level {level}: the mansion stands for the hotel");
+                }
+
+                float row = BuildingPreview.HouseSize + 3f * BuildingPreview.HouseStep;
+                Assert.Less(row, BuildingPreview.TileWidth, "four houses fit across the tile");
+                Assert.Less(BuildingPreview.MansionSize.x, BuildingPreview.TileWidth);
+                Assert.Less(BuildingPreview.RowDepth + BuildingPreview.MansionSize.z / 2f, BuildingPreview.TileDepth / 2f, "the mansion stays on the tile");
+
+                Assert.IsNull(preview.Picture(1, Color.white), "no pictures are drawn outside play mode");
+            }
+            finally
+            {
+                preview.Dispose();
+                UnityEngine.Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void SettledDiceSquareUpToTheCameraAndShadowsShrinkInTheAir()
         {
             Assert.AreEqual(30f, DiceView.RestingYaw(30f, 0));

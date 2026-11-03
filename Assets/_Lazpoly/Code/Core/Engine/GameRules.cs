@@ -272,6 +272,20 @@ namespace Lazpoly.Core.Engine
             return Math.Max(0, limit - level);
         }
 
+        /// <summary>
+        /// How many houses the player could put up on a town right after buying it, on the same
+        /// visit: the first-lap limit until they have passed the start square, otherwise all four.
+        /// The property card shows the levels this allows on top of the purchase. Zero for a
+        /// square that takes no buildings.
+        /// </summary>
+        public static int BuildableAfterPurchase(BoardDefinition board, PlayerState player, int squareIndex)
+        {
+            if (player == null || squareIndex < 0 || squareIndex >= board.Count) return 0;
+            SquareDefinition square = board[squareIndex];
+            if (square.Type != SquareType.Property || !square.IsDevelopable) return 0;
+            return player.Laps == 0 ? FirstLapHouseLimit : MaxHouses;
+        }
+
         /// <summary>True when the next building on this square would be the hotel.</summary>
         public static bool NextIsHotel(GameState state, int squareIndex) => state.GetBuildingLevel(squareIndex) == MaxHouses;
 

@@ -58,7 +58,8 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color GrassColor = new Color(0.47f, 0.70f, 0.36f);
         private static readonly Color LightGrassColor = new Color(0.55f, 0.76f, 0.42f);
         private static readonly Color PathColor = new Color(0.86f, 0.80f, 0.66f);
-        private static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
+        /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
+        public static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
 
         /// <summary>How far a tile's own colour is washed towards the paper: the pastel of the printed board.</summary>
         public const float Pastel = 0.6f;

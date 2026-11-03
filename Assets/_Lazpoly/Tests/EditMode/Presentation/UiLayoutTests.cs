@@ -74,6 +74,25 @@ namespace Lazpoly.Presentation.Tests
             }
         }
 
+        /// <summary>The property card: its band, six tiles, three lines and the big button, in reference pixels.</summary>
+        private const float PropertyCardHeight = 520f;
+
+        [Test]
+        public void ThePropertyCardHoldsSixTilesInARowAndFitsEveryScreen()
+        {
+            float tiles = 6f * Lazpoly.Presentation.Game.PropertyCard.TileWidth + 5f * UiTheme.Spacing;
+            Assert.LessOrEqual(tiles, UiLayout.PropertyCardWidth - 2f * (UiTheme.Padding + 8f), "the tiles overflow the window's padding");
+            Assert.LessOrEqual(Lazpoly.Presentation.Game.PropertyCard.PictureSize + 16f, Lazpoly.Presentation.Game.PropertyCard.TileWidth, "the picture overflows its tile");
+            foreach (Vector2Int screen in Screens)
+            {
+                foreach (float scale in Scales)
+                {
+                    Assert.IsTrue(UiLayout.WindowFits(UiLayout.PropertyCardWidth, PropertyCardHeight, screen.x, screen.y, scale),
+                        $"The property card does not fit {screen.x}x{screen.y} at {scale:0.00}.");
+                }
+            }
+        }
+
         [Test]
         public void UltrawideScalesBetweenItsWidthAndItsHeight()
         {

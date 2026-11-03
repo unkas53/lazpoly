@@ -10,6 +10,7 @@ using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Menu;
+using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.UI;
@@ -99,8 +100,9 @@ namespace Lazpoly.Presentation.Game
         private GameObject _cityLayer;
         private UiView _buildWindow;
         private GameObject _buildLayer;
-        private int _buildCount = 1;
         private int _buildCardDismissed;
+        private PropertyCard _propertyCard;
+        private BuildingPreview _preview;
 
         private const int NoSquare = -1;
         private const float BannerSeconds = 1.8f;
@@ -159,8 +161,12 @@ namespace Lazpoly.Presentation.Game
             _controller = controller;
             _trade = new TradePanel(controller);
             _settings = new SettingsPanel();
+            _preview = new BuildingPreview(transform);
+            _propertyCard = new PropertyCard(controller, _preview);
             Build();
         }
+
+        private void OnDestroy() => _preview?.Dispose();
 
         private void Build()
         {
@@ -269,8 +275,8 @@ namespace Lazpoly.Presentation.Game
             _endWindow = new UiView(UiRoot.Modal(_canvas.transform, "Game End", UiLayout.WindowWidth, out _endLayer), RenderEnd);
             _howToWindow = new UiView(UiRoot.Modal(_canvas.transform, "How To Play", HowToPlayPanel.Width, out _howToLayer),
                 ui => HowToPlayPanel.Render(ui, _controller.Session.Board, _controller.Session.Rules, () => _howToLayer.SetActive(false)));
-            _cityWindow = new UiView(UiRoot.Modal(_canvas.transform, "City Card", UiLayout.WindowWidth, out _cityLayer), RenderCityCard);
-            _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", UiLayout.WindowWidth, out _buildLayer), RenderBuildCard);
+            _cityWindow = new UiView(UiRoot.Modal(_canvas.transform, "City Card", UiLayout.PropertyCardWidth, out _cityLayer), RenderCityCard);
+            _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", UiLayout.PropertyCardWidth, out _buildLayer), RenderBuildCard);
             // The log and the properties open on request, over whatever card is up.
             _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
             _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
@@ -574,8 +580,7 @@ namespace Lazpoly.Presentation.Game
             bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
             SetLayer(_cityLayer, _cityWindow, cityOpen, revision);
             bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
-            if (buildOpen && !_buildLayer.activeSelf) _buildCount = 1;
-            SetLayer(_buildLayer, _buildWindow, buildOpen, HashCode.Combine(revision, _buildCount));
+            SetLayer(_buildLayer, _buildWindow, buildOpen, revision);
             SetLayer(_pauseLayer, _pauseWindow, _pauseLayer.activeSelf, HashCode.Combine(revision, _controller.EndReason, _controller.ReportNote));
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
             SetLayer(_howToLayer, _howToWindow, _howToLayer.activeSelf, 0);
@@ -1064,97 +1069,30 @@ namespace Lazpoly.Presentation.Game
         public void ReopenBuildCard()
         {
             _buildCardDismissed = 0;
-            _buildCount = 1;
-        }
-
-        /// <summary>The city's card: its details, and at the bottom "buy" or "move on".</summary>
-        private void RenderCityCard(UiBuilder ui)
-        {
-            GameState state = _controller.Session.State;
-            PlayerState player = state.CurrentPlayer;
-            int squareIndex = player.Position;
-            SquareDefinition square = _controller.Session.Board[squareIndex];
-            RenderCityDetails(ui, squareIndex);
-
-            var buy = new BuyPropertyCommand(player.Id);
-            bool affordable = player.Money >= square.Price;
-            ui.Label(affordable ? F($"Paran: {player.Money}, alırsan kalan: {player.Money - square.Price}") : F($"Paran: {player.Money}"), UiTextStyle.Small, UiTheme.Muted);
-            if (!affordable) ui.Label(L("Paran yetmiyor: bina ya da mülk satışıyla para bulabilirsin."), UiTextStyle.Small, UiTheme.Warning);
-            if (_controller.Session.Rules.AuctionsEnabled) ui.Label(L("Devam edersen şehir açık artırmaya çıkar."), UiTextStyle.Small, UiTheme.Muted);
-
-            ui.Actions(L("Devam Et"), () => _controller.Submit(new DeclinePurchaseCommand(player.Id)),
-                F($"Satın Al ({square.Price})"), () => _controller.Submit(buy), _controller.IsAllowed(buy));
-        }
-
-        /// <summary>Name, colour, price, rent table and owner of a city, as on the hover card.</summary>
-        private void RenderCityDetails(UiBuilder ui, int squareIndex)
-        {
-            IGameSession session = _controller.Session;
-            SquareInfo info = SquareInfo.Describe(session.Board, session.Rules, session.State, squareIndex, _controller.GroupNameOf(squareIndex));
-
-            ui.CardHeader(info.Title, info.Kind, _controller.GroupColorOf(squareIndex), _controller.GroupMarkOf(squareIndex));
-
-            UiBuilder table = ui.Card(UiTheme.Field, 10);
-            foreach (SquareInfoRow row in info.Rows)
-            {
-                UiBuilder line = table.Row();
-                Color color = row.Current ? UiTheme.Accent : UiTheme.Text;
-                Text label = line.Label(row.Label, UiTextStyle.Small, color);
-                Text value = line.Label(row.Value, UiTextStyle.Small, color, TextAnchor.MiddleRight);
-                if (row.Current)
-                {
-                    label.font = UiTheme.BoldFont;
-                    value.font = UiTheme.BoldFont;
-                }
-            }
-
-            foreach (string note in info.Notes) ui.Label(note, UiTextStyle.Small);
+            _propertyCard.Reset();
         }
 
         /// <summary>
-        /// The building card: how many houses to add (or the hotel), what they cost and what money is
-        /// left afterwards. Building sends one command per house; the host accepts each in turn.
+        /// The city's card while it is for sale: the land and the houses the first visit allows,
+        /// "buy" with the whole price, or "move on". Buying puts the building card away for this visit.
+        /// </summary>
+        private void RenderCityCard(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            int playerId = state.CurrentPlayer.Id;
+            _propertyCard.Render(ui, buying: true, dismiss: () => _controller.Submit(new DeclinePurchaseCommand(playerId)),
+                done: () => _buildCardDismissed = BuildVisitKey(state));
+        }
+
+        /// <summary>
+        /// The same card on an owned city: the levels above the one it stands at, what they cost
+        /// and earn, "build" or "not now". Building sends one command per house; the host accepts each in turn.
         /// </summary>
         private void RenderBuildCard(UiBuilder ui)
         {
             GameState state = _controller.Session.State;
-            PlayerState player = state.CurrentPlayer;
-            int squareIndex = player.Position;
-            SquareDefinition square = _controller.Session.Board[squareIndex];
-            int level = state.GetBuildingLevel(squareIndex);
-            bool hotel = GameRules.NextIsHotel(state, squareIndex);
-            int most = AffordableBuildings(state, player);
-            int count = Mathf.Clamp(_buildCount, 1, Mathf.Max(1, most));
-            int cost = count * square.BuildingCost;
-
-            ui.CardHeader(hotel ? F($"{L(square.Name)}: otel kur") : F($"{L(square.Name)}: ev kur"),
-                F($"Şu an: {EventDescriber.LevelText(level)}, kira {GameRules.CalculateRent(_controller.Session.Board, _controller.Session.Rules, state, squareIndex)}"),
-                _controller.GroupColorOf(squareIndex), _controller.GroupMarkOf(squareIndex));
-
-            if (!hotel)
-            {
-                UiBuilder pick = ui.Row();
-                UiBuilder.Fix(pick.Label(L("Kaç ev?")), width: 110f);
-                UiBuilder.Fix(pick.Button("-", () => _buildCount = count - 1, count > 1), width: 52f);
-                pick.Label(count.ToString(), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
-                UiBuilder.Fix(pick.Button("+", () => _buildCount = count + 1, count < most), width: 52f);
-                ui.Label(player.Laps == 0
-                    ? L("Başlangıçtan geçene kadar her şehre tek ev kurulur; sonra dörde kadar.")
-                    : F($"Bu gelişte en çok {most} ev kurabilirsin."), UiTextStyle.Small, UiTheme.Muted);
-            }
-
-            UiBuilder sums = ui.Card(UiTheme.Field, 10);
-            Line(sums, hotel ? L("Otel") : F($"{count} ev"), F($"{cost}"));
-            Line(sums, L("Paran"), Lang.N(player.Money));
-            Line(sums, L("Kalan para"), Lang.N(player.Money - cost), true);
-            Line(sums, L("Yeni kira"), Lang.N(square.DevelopedRents[Mathf.Min(level + count, square.DevelopedRents.Count) - 1]));
-
-            ui.Actions(L("Şimdi Değil"), () => _buildCardDismissed = BuildVisitKey(state),
-                hotel ? F($"Otel Kur ({cost})") : F($"{count} Ev Kur ({cost})"), () =>
-                {
-                    for (int i = 0; i < count; i++) _controller.Submit(new BuildCommand(player.Id, squareIndex));
-                    _buildCardDismissed = BuildVisitKey(state);
-                }, most > 0);
+            _propertyCard.Render(ui, buying: false, dismiss: () => _buildCardDismissed = BuildVisitKey(state),
+                done: () => _buildCardDismissed = BuildVisitKey(state));
         }
 
         private static void Line(UiBuilder card, string label, string value, bool strong = false)
