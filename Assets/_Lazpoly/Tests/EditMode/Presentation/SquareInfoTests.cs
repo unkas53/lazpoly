@@ -38,10 +38,12 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("Sur Yolu", info.Title);
             Assert.AreEqual("Mülk · Sokaklar", info.Kind);
             Assert.AreEqual("60", ValueOf(info, "Fiyat"));
-            Assert.AreEqual("4", ValueOf(info, "Kira"));
-            Assert.AreEqual("8", ValueOf(info, "Kira, rengin tamamı"));
-            Assert.AreEqual("50", ValueOf(info, "Kira, 1 ev"));
-            Assert.AreEqual("700", ValueOf(info, "Kira, otel"));
+            Assert.AreEqual("4", ValueOf(info, "Arsa"));
+            Assert.AreEqual("8", ValueOf(info, "Rengin tamamı"));
+            Assert.AreEqual("50", ValueOf(info, "1 ev"));
+            Assert.AreEqual("700", ValueOf(info, "Otel"));
+            Assert.AreEqual(7, info.Rows.Count(row => row.Rent), "land, whole colour, four houses and the hotel make the rent table");
+            Assert.IsFalse(info.Rows.Single(row => row.Label == "Fiyat").Rent);
             Assert.AreEqual("50", ValueOf(info, "Ev maliyeti"));
             Assert.AreEqual("30", ValueOf(info, "Satış değeri"), "The bank pays half the price.");
             Assert.IsFalse(info.Rows.Any(row => row.Current));
@@ -53,14 +55,14 @@ namespace Lazpoly.Presentation.Tests
         {
             GameState state = State();
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(1, GameState.NoOwner, 1));
-            Assert.AreEqual("Kira", SquareInfo.Describe(Board, Rules, state, 1, null).Rows.Single(row => row.Current).Label);
+            Assert.AreEqual("Arsa", SquareInfo.Describe(Board, Rules, state, 1, null).Rows.Single(row => row.Current).Label);
 
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(2, GameState.NoOwner, 1));
-            Assert.AreEqual("Kira, rengin tamamı", SquareInfo.Describe(Board, Rules, state, 1, null).Rows.Single(row => row.Current).Label);
+            Assert.AreEqual("Rengin tamamı", SquareInfo.Describe(Board, Rules, state, 1, null).Rows.Single(row => row.Current).Label);
 
             GameStateReducer.Apply(state, new BuildingLevelChangedEvent(1, 2));
             SquareInfo built = SquareInfo.Describe(Board, Rules, state, 1, null);
-            Assert.AreEqual("Kira, 2 ev", built.Rows.Single(row => row.Current).Label);
+            Assert.AreEqual("2 ev", built.Rows.Single(row => row.Current).Label);
             CollectionAssert.Contains(built.Notes, "Sahibi Ayşe.");
             CollectionAssert.Contains(built.Notes, "Bu renk: 2 kare; Ayşe 2.");
         }

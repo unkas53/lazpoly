@@ -59,8 +59,9 @@ namespace Lazpoly.Presentation.Game
         private UiView _pauseWindow;
         private GameObject _pauseLayer;
         private bool _endDismissed;
-        private UiView _squareCard;
-        private GameObject _squareCardPanel;
+        private UiView _squareWindow;
+        private GameObject _squareLayer;
+        private SquareCard _squareCard;
         private int _hoveredSquare = NoSquare;
         private int _pinnedSquare = NoSquare;
         private Text _perfLabel;
@@ -87,7 +88,6 @@ namespace Lazpoly.Presentation.Game
         private readonly Dictionary<int, Color> _playerCardColors = new Dictionary<int, Color>();
         private readonly Dictionary<int, float> _moneyFlash = new Dictionary<int, float>();
         private readonly Dictionary<int, int> _moneyFlashSign = new Dictionary<int, int>();
-        private int _panelHoverSquare = NoSquare;
         private TipMemory _tipMemory;
         private UiView _tipView;
         private GameObject _tipPanel;
@@ -107,7 +107,6 @@ namespace Lazpoly.Presentation.Game
         private const int NoSquare = -1;
         private const float BannerSeconds = 1.8f;
         private const float RollSeconds = 1.5f;
-        private const float CardWidth = 440f;
         private const float CardButton = UiLayout.CardButtonHeight;
         private const float WindowListHeight = 420f;
         private static readonly Color CurrentCardColor = new Color(0.24f, 0.25f, 0.31f);
@@ -131,8 +130,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether the properties window (build and sell) is open.</summary>
         public bool PropertiesOpen => _propertiesLayer != null && _propertiesLayer.activeSelf;
 
-        /// <summary>The square whose card is showing: pinned by a click, else under the pointer on the board, else the swatch pointed at in the side panel; or -1.</summary>
-        public int ShownSquare => _pinnedSquare != NoSquare ? _pinnedSquare : _hoveredSquare != NoSquare ? _hoveredSquare : _panelHoverSquare;
+        /// <summary>The square whose card is open: the one clicked on the board or in a player's card; or -1.</summary>
+        public int ShownSquare => _pinnedSquare;
 
         /// <summary>The first-game hint on screen, or null.</summary>
         public Tip? ShownTip => _tip;
@@ -163,6 +162,7 @@ namespace Lazpoly.Presentation.Game
             _settings = new SettingsPanel();
             _preview = new BuildingPreview(transform);
             _propertyCard = new PropertyCard(controller, _preview);
+            _squareCard = new SquareCard(controller, _preview);
             Build();
         }
 
@@ -216,21 +216,6 @@ namespace Lazpoly.Presentation.Game
             UiBuilder.AddColumnLayout(ticker.gameObject, 0, 0f);
             _ticker = new UiView(new UiBuilder(ticker), RenderTicker);
 
-            // The square card opens at the top of the free area, on the side away from the square it describes.
-            // It never takes the mouse, so the squares under it can still be pointed at and clicked.
-            RectTransform card = UiRoot.Rect(_canvas.transform, "Square Card", new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, Vector2.zero);
-            card.pivot = new Vector2(0f, 1f);
-            card.sizeDelta = new Vector2(CardWidth, 0f);
-            UiRoot.Background(card, UiTheme.Panel, shadow: true);
-            var cardGroup = card.gameObject.AddComponent<CanvasGroup>();
-            cardGroup.blocksRaycasts = false;
-            cardGroup.interactable = false;
-            UiBuilder.AddColumnLayout(card.gameObject, 14, 4f);
-            card.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            _squareCardPanel = card.gameObject;
-            _squareCard = new UiView(new UiBuilder(card), RenderSquareCard);
-            _squareCardPanel.SetActive(false);
-
             // Frame rate and memory behind F3, in the strip above the turn banner.
             RectTransform perf = UiRoot.Rect(_canvas.transform, "Perf Overlay", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-200f, -44f), new Vector2(200f, -14f));
@@ -280,6 +265,12 @@ namespace Lazpoly.Presentation.Game
             // The log and the properties open on request, over whatever card is up.
             _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
             _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
+            // The square card opens over everything on a click, in the middle of the screen; a click on the dimmed board closes it.
+            _squareWindow = new UiView(UiRoot.Modal(_canvas.transform, "Square Card", UiLayout.WindowWidth, out _squareLayer), RenderSquareCard);
+            var dim = _squareLayer.AddComponent<Button>();
+            dim.transition = Selectable.Transition.None;
+            dim.onClick.AddListener(() => _pinnedSquare = NoSquare);
+            _squareLayer.SetActive(false);
             _logLayer.SetActive(false);
             _propertiesLayer.SetActive(false);
             _pauseLayer.SetActive(false);
@@ -567,7 +558,7 @@ namespace Lazpoly.Presentation.Game
             _ticker.Refresh(revision);
 
             UpdateMoney();
-            UpdatePointer();
+            UpdatePointer(state);
             UpdatePerfOverlay();
             UpdateSquareCard(state, revision);
             UpdateBanner(state);
@@ -588,7 +579,8 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_endLayer, _endWindow, ended, revision);
             SetLayer(_logLayer, _logWindow, _logLayer.activeSelf, revision);
             SetLayer(_propertiesLayer, _propertiesWindow, _propertiesLayer.activeSelf && CanOpenProperties(state), revision);
-            bool windowOpen = tradeOpen || _pauseLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || ended || _logLayer.activeSelf || _propertiesLayer.activeSelf;
+            bool windowOpen = tradeOpen || _pauseLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || ended || _logLayer.activeSelf ||
+                              _propertiesLayer.activeSelf || _squareLayer.activeSelf;
             UpdateRollPrompt(state, windowOpen);
         }
 
@@ -641,8 +633,11 @@ namespace Lazpoly.Presentation.Game
             _perfLabel.text = _controller.Probe != null ? _controller.Probe.OverlayText() : "";
         }
 
-        /// <summary>The square under the mouse (not over the interface); a left click pins or unpins its card.</summary>
-        private void UpdatePointer()
+        /// <summary>
+        /// The square under the mouse (not over the interface) lights up its colour group; a left click
+        /// opens its card, or picks it as the destination while a ride is being chosen.
+        /// </summary>
+        private void UpdatePointer(GameState state)
         {
             BoardView board = _controller.Board;
             Camera camera = Camera.main;
@@ -651,20 +646,22 @@ namespace Lazpoly.Presentation.Game
             bool overInterface = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             _hoveredSquare = !overInterface && board.TryGetSquare(camera.ScreenPointToRay(Input.mousePosition), out int square) ? square : NoSquare;
             if (!overInterface && Input.GetMouseButtonDown(0)) _pinnedSquare = _hoveredSquare == _pinnedSquare ? NoSquare : _hoveredSquare;
-            // A pinned square draws the view a little towards itself for as long as it stays pinned.
-            _controller.CameraRig?.Peek(_pinnedSquare != NoSquare ? board.SquarePosition(_pinnedSquare) : (Vector3?)null);
+            // While a ride's destination is being chosen the view leans a little towards the chosen square.
+            bool choosing = ChoosingRide(state);
+            _controller.CameraRig?.Peek(choosing && _pinnedSquare != NoSquare ? board.SquarePosition(_pinnedSquare) : (Vector3?)null);
         }
+
+        /// <summary>True while the person here picks where to ride: a click then chooses the square instead of opening its card.</summary>
+        private bool ChoosingRide(GameState state) => WaitsOnPersonHere(state, GamePhase.AwaitingTravelDecision);
 
         private void UpdateSquareCard(GameState state, int revision)
         {
-            int shown = state == null ? NoSquare : ShownSquare;
-            bool open = shown != NoSquare;
-            if (_squareCardPanel.activeSelf != open) _squareCardPanel.SetActive(open);
-            if (open) _squareCard.Refresh(HashCode.Combine(shown, revision, _pinnedSquare == shown));
+            bool open = state != null && _pinnedSquare != NoSquare && !ChoosingRide(state);
+            SetLayer(_squareLayer, _squareWindow, open, HashCode.Combine(revision, _pinnedSquare));
 
+            int shown = state == null ? NoSquare : _pinnedSquare != NoSquare ? _pinnedSquare : _hoveredSquare;
             if (shown == _highlightedFor || _controller.Board == null) return;
             _highlightedFor = shown;
-            if (open) PlaceSquareCard(shown);
             BoardDefinition board = _controller.Session.Board;
             if (shown == NoSquare || board[shown].Type != SquareType.Property)
             {
@@ -675,54 +672,8 @@ namespace Lazpoly.Presentation.Game
             _controller.Board.Highlight(new List<int>(GameRules.GroupSquares(board, board[shown].GroupId)));
         }
 
-        private void PlaceSquareCard(int square)
-        {
-            var card = (RectTransform)_squareCardPanel.transform;
-            Camera camera = Camera.main;
-            bool squareOnLeft = camera == null || camera.WorldToScreenPoint(_controller.Board.SquarePosition(square)).x < Screen.width / 2f;
-            float inset = CornerWidth + 2f * Margin;
-            if (squareOnLeft)
-            {
-                card.anchorMin = card.anchorMax = new Vector2(1f, 1f);
-                card.pivot = new Vector2(1f, 1f);
-                card.anchoredPosition = new Vector2(-(inset + UiLayout.RightInset - Margin), -Margin);
-            }
-            else
-            {
-                card.anchorMin = card.anchorMax = new Vector2(0f, 1f);
-                card.pivot = new Vector2(0f, 1f);
-                card.anchoredPosition = new Vector2(inset, -Margin);
-            }
-        }
-
-        private void RenderSquareCard(UiBuilder ui)
-        {
-            int square = ShownSquare;
-            IGameSession session = _controller.Session;
-            SquareDefinition definition = session.Board[square];
-            SquareInfo info = SquareInfo.Describe(session.Board, session.Rules, session.State, square, _controller.GroupNameOf(square));
-
-            UiBuilder title = ui.Row(10f, expand: false);
-            if (definition.Type == SquareType.Property) title.Swatch(_controller.GroupColorOf(square), 22f, mark: _controller.GroupMarkOf(square));
-            title.Label(info.Title, UiTextStyle.Heading);
-            ui.Label(info.Kind, UiTextStyle.Small);
-
-            foreach (SquareInfoRow row in info.Rows)
-            {
-                UiBuilder line = ui.Row();
-                Color color = row.Current ? UiTheme.Accent : UiTheme.Text;
-                Text label = line.Label(row.Label, color: color);
-                Text value = line.Label(row.Value, color: color, alignment: TextAnchor.MiddleRight);
-                if (row.Current)
-                {
-                    label.font = UiTheme.BoldFont;
-                    value.font = UiTheme.BoldFont;
-                }
-            }
-
-            foreach (string note in info.Notes) ui.Label(note, UiTextStyle.Small);
-            ui.Label(_pinnedSquare == square ? L("Kapatmak için kareye yeniden tıkla.") : L("Sabitlemek için kareye tıkla."), UiTextStyle.Small, UiTheme.Muted);
-        }
+        private void RenderSquareCard(UiBuilder ui) =>
+            _squareCard.Render(ui, _pinnedSquare, () => _pinnedSquare = NoSquare, square => _pinnedSquare = square);
 
         /// <summary>A short "your turn" banner whenever a new turn goes to someone at this screen.</summary>
         private void UpdateBanner(GameState state)
@@ -926,16 +877,10 @@ namespace Lazpoly.Presentation.Game
                 if (state.GetOwner(square) != playerId) continue;
                 row ??= card.Row(4f, expand: false);
                 Image swatch = row.Swatch(_controller.GroupColorOf(square), 16f, mark: _controller.GroupMarkOf(square));
-                // Pointing at the swatch opens the square's card, so the name and rent are a glance away.
+                // A click on the swatch opens the square's card, as a click on the square itself does.
                 swatch.raycastTarget = true;
-                swatch.gameObject.AddComponent<SquareHoverTarget>().Bind(square, OnPanelSquareHovered);
+                swatch.gameObject.AddComponent<SquareClickTarget>().Bind(square, PinSquare);
             }
-        }
-
-        private void OnPanelSquareHovered(int square, bool over)
-        {
-            if (over) _panelHoverSquare = square;
-            else if (_panelHoverSquare == square) _panelHoverSquare = NoSquare;
         }
 
         /// <summary>
@@ -1371,7 +1316,7 @@ namespace Lazpoly.Presentation.Game
                 Typing = IsTyping(),
                 ButtonFocused = UiFocus.ButtonFocused,
                 PauseOpen = _pauseLayer.activeSelf,
-                ClosableOpen = _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
+                ClosableOpen = _squareLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
                                _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
                 BlockingOpen = _cityLayer.activeSelf,
                 Acting = acting,
@@ -1439,7 +1384,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Esc closes whatever is on top, in the order the windows stack.</summary>
         private void CloseTopWindow(GameState state)
         {
-            if (_settingsLayer.activeSelf) _settingsLayer.SetActive(false);
+            if (_squareLayer.activeSelf) _pinnedSquare = NoSquare;
+            else if (_settingsLayer.activeSelf) _settingsLayer.SetActive(false);
             else if (_howToLayer.activeSelf) _howToLayer.SetActive(false);
             else if (_pauseLayer.activeSelf) ClosePause();
             else if (_propertiesLayer.activeSelf) _propertiesLayer.SetActive(false);

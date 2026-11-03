@@ -174,7 +174,8 @@ namespace Lazpoly.Presentation.Texts
         public static string CreditorText(GameState state, int creditorId) =>
             creditorId == GameState.PotId ? L("çay kumbarası") : creditorId == GameState.NoOwner ? L("banka") : NameOf(state, creditorId);
 
-        private static string NameOf(GameState state, int playerId) => state.FindPlayer(playerId)?.Name ?? $"#{playerId}";
+        /// <summary>A player's name, or "#id" for one no longer at the table.</summary>
+        public static string NameOf(GameState state, int playerId) => state.FindPlayer(playerId)?.Name ?? $"#{playerId}";
 
         private static string SquareNames(BoardDefinition board, IReadOnlyList<int> squares)
         {

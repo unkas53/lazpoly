@@ -77,6 +77,23 @@ namespace Lazpoly.Presentation.Tests
         /// <summary>The property card: its band, six tiles, three lines and the big button, in reference pixels.</summary>
         private const float PropertyCardHeight = 520f;
 
+        /// <summary>The square card of a developed city: band, picture row, seven rent rows, group chips, notes and the button.</summary>
+        private const float SquareCardHeight = 720f;
+
+        [Test]
+        public void TheSquareCardFitsEveryScreenWithItsPictureBesideTheFacts()
+        {
+            Assert.Less(Lazpoly.Presentation.Game.SquareCard.PictureSize + 14f + 200f, UiLayout.WindowWidth - 2f * (UiTheme.Padding + 8f), "the facts beside the picture get under 200 pixels");
+            foreach (Vector2Int screen in Screens)
+            {
+                foreach (float scale in Scales)
+                {
+                    Assert.IsTrue(UiLayout.WindowFits(UiLayout.WindowWidth, SquareCardHeight, screen.x, screen.y, scale),
+                        $"The square card does not fit {screen.x}x{screen.y} at {scale:0.00}.");
+                }
+            }
+        }
+
         [Test]
         public void ThePropertyCardHoldsSixTilesInARowAndFitsEveryScreen()
         {

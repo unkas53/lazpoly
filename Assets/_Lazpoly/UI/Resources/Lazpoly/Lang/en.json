@@ -12,8 +12,6 @@
   "İpuçlarını Kapat": "Turn Tips Off",
   "Hamle süresi: {0} sn": "Time left: {0} s",
   "SOKAK HABERİ · {0}": "STREET NEWS · {0}",
-  "Kapatmak için kareye yeniden tıkla.": "Click the square again to close.",
-  "Sabitlemek için kareye tıkla.": "Click the square to pin.",
   "Sıra sende, {0}": "Your turn, {0}",
   "Oyun durdu": "Game paused",
   "Ana Menü": "Main Menu",
@@ -239,9 +237,6 @@
   "Mülk · {0}": "Property · {0}",
   "Fiyat": "Price",
   "Kira": "Rent",
-  "Kira, rengin tamamı": "Rent, whole colour",
-  "Kira, otel": "Rent, hotel",
-  "Kira, {0} ev": "Rent, {0} houses",
   "Ev maliyeti": "House cost",
   "Sahibi yok: buraya gelen satın alabilir.": "Unowned: whoever lands here may buy it.",
   "Sahibi {0}.": "Owned by {0}.",
@@ -479,5 +474,9 @@
   "Bu gelişte en çok {0}": "At most {0} this visit",
   "4 evle yeniden gelince": "On a later visit with 4 houses",
   "Yeniden gelince": "On a later visit",
-  "Kur ({0})": "Build ({0})"
+  "Kur ({0})": "Build ({0})",
+  "Sahibi": "Owner",
+  "Bina": "Buildings",
+  "Rengin tamamı": "Whole colour",
+  "Bu renk: {0} kare": "This colour: {0} squares"
 }

@@ -7,24 +7,29 @@ using Lazpoly.Core.State;
 using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Texts
 {
-    /// <summary>One line of a square's card: a label, its value and whether it is what applies right now.</summary>
+    /// <summary>One line of a square's card: a label, its value, whether it is what applies right now, and whether it belongs to the rent table.</summary>
     public readonly struct SquareInfoRow
     {
-        public SquareInfoRow(string label, string value, bool current = false)
+        public SquareInfoRow(string label, string value, bool current = false, bool rent = false)
         {
             Label = label;
             Value = value;
             Current = current;
+            Rent = rent;
         }
 
         public string Label { get; }
         public string Value { get; }
         public bool Current { get; }
+
+        /// <summary>True for a line of the rent table (land, whole colour, houses, hotel); false for a fact such as the price.</summary>
+        public bool Rent { get; }
     }
 
     /// <summary>
-    /// What the square card shows: price, the whole rent table with the rent that applies now marked,
-    /// building cost, sale value, owner and how much of the group each player holds.
+    /// What the square card shows: price, building cost and sale value as facts, the whole rent table
+    /// (<see cref="SquareInfoRow.Rent"/>) with the rent that applies now marked, and notes on the owner
+    /// and how much of the group each player holds.
     /// </summary>
     public sealed class SquareInfo
     {
@@ -114,15 +119,15 @@ namespace Lazpoly.Presentation.Texts
             bool live = owner != GameState.NoOwner;
 
             info.Rows.Add(new SquareInfoRow(L("Fiyat"), square.Price.ToString()));
-            info.Rows.Add(new SquareInfoRow(L("Kira"), square.BaseRent.ToString(), live && level == 0 && !wholeGroup));
-            info.Rows.Add(new SquareInfoRow(L("Kira, rengin tamamı"), (square.BaseRent * rules.FullGroupRentMultiplier).ToString(), live && level == 0 && wholeGroup));
+            info.Rows.Add(new SquareInfoRow(L("Arsa"), square.BaseRent.ToString(), live && level == 0 && !wholeGroup, rent: true));
+            info.Rows.Add(new SquareInfoRow(L("Rengin tamamı"), (square.BaseRent * rules.FullGroupRentMultiplier).ToString(), live && level == 0 && wholeGroup, rent: true));
 
             if (square.IsDevelopable)
             {
                 for (int i = 0; i < square.DevelopedRents.Count; i++)
                 {
-                    string label = i + 1 == SquareDefinition.MaxBuildingLevel ? L("Kira, otel") : F($"Kira, {i + 1} ev");
-                    info.Rows.Add(new SquareInfoRow(label, square.DevelopedRents[i].ToString(), live && level == i + 1));
+                    string label = i + 1 == SquareDefinition.MaxBuildingLevel ? L("Otel") : F($"{i + 1} ev");
+                    info.Rows.Add(new SquareInfoRow(label, square.DevelopedRents[i].ToString(), live && level == i + 1, rent: true));
                 }
 
                 info.Rows.Add(new SquareInfoRow(L("Ev maliyeti"), square.BuildingCost.ToString()));

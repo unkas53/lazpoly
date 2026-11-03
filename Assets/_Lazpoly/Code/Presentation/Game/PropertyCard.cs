@@ -73,7 +73,7 @@ namespace Lazpoly.Presentation.Game
             int cost = choice.CostOf(picked);
             Color groupColor = _controller.GroupColorOf(squareIndex);
 
-            RenderBand(ui, L(square.Name), groupColor, _controller.GroupMarkOf(squareIndex), dismiss);
+            Band(ui, L(square.Name), groupColor, _controller.GroupMarkOf(squareIndex), dismiss);
             ui.Label((buying ? L("Satılık şehir") : L("Senin şehrin")) + " · " + _controller.GroupNameOf(squareIndex), UiTextStyle.Small, UiTheme.Muted,
                 TextAnchor.MiddleCenter);
             RenderTiles(ui, choice, Color.Lerp(groupColor, BoardView.PaperColor, BoardView.Pastel));
@@ -106,12 +106,13 @@ namespace Lazpoly.Presentation.Game
             UiRoot.AddShadow(confirm.gameObject, 6f);
         }
 
-        /// <summary>The title on a band of the group's colour, its letter mark at the left and a close mark at the right.</summary>
-        private static void RenderBand(UiBuilder ui, string title, Color color, string mark, Action close)
+        /// <summary>The title on a band of the group's colour, its letter mark at the left and a close mark at the right; the square card opens the same way.</summary>
+        internal static void Band(UiBuilder ui, string title, Color color, string mark, Action close)
         {
             UiBuilder band = ui.Card(color, 6);
             UiBuilder head = band.Row(10f, expand: false);
-            head.Swatch(color, 36f, mark: mark);
+            if (mark != null) head.Swatch(color, 36f, mark: mark);
+            else UiBuilder.Fix(UiRoot.Rect(head.Container, "Spacer", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero).gameObject, 36f, 36f);
             Text label = head.Label(title, UiTextStyle.Heading, ColorVision.TextOn(color), TextAnchor.MiddleCenter);
             UiBuilder.Fix(label, -1f).flexibleWidth = 1f;
             UiBuilder.Fix(head.Button("×", close, height: 36f), width: 36f);
