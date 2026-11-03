@@ -43,17 +43,19 @@ namespace Lazpoly.Presentation.Tests
                 {
                     Vector3 offset = PawnSlots.Line(slot, capacity, spacing);
                     Assert.AreEqual(0f, offset.y);
-                    Assert.LessOrEqual(Mathf.Abs(offset.x), spacing * 0.45f, "a figure stands off the square");
+                    // A square spans about (width + depth) / sqrt 2 across the screen, a little over 1.7 widths: the line stays on it.
+                    Assert.LessOrEqual(Mathf.Abs(offset.x), spacing * 0.8f, "a figure stands off the square");
                     Assert.LessOrEqual(Mathf.Abs(offset.z), spacing * 0.1f, "figures stay in one line, not rows behind each other");
-                    // Side by side: no two figures share a place along the edge, so none stands right behind another.
-                    foreach (Vector3 other in seen) Assert.Greater(Mathf.Abs(offset.x - other.x), spacing * 0.08f, $"slots of {capacity} stand behind each other");
+                    // Side by side across the screen: a figure is about a third of its height wide (0.6 units at height 1.8),
+                    // and neighbours stand about half of that apart, so every face and jacket shows.
+                    foreach (Vector3 other in seen) Assert.Greater(Mathf.Abs(offset.x - other.x), 0.29f, $"slots of {capacity} stand behind each other");
                     seen.Add(offset);
                 }
             }
 
             // Two players on a square of a four-player game stand clearly apart, either side of the middle.
             Vector3 first = PawnSlots.Line(0, 4, spacing), second = PawnSlots.Line(1, 4, spacing);
-            Assert.Greater(Mathf.Abs(first.x - second.x), spacing * 0.25f);
+            Assert.Greater(Mathf.Abs(first.x - second.x), 0.45f, "two figures stand clear of each other");
             Assert.Less(first.x * second.x, 0f);
             Assert.Throws<System.ArgumentOutOfRangeException>(() => PawnSlots.Line(4, 4, spacing));
         }

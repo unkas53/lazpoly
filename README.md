@@ -693,7 +693,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 
 - Konuşma balonları sıraya girer (`BubbleQueue`): masada aynı anda tek balon olur. Bekleyen satır, gösterilen balon en az 1,2 sn okunduktan sonra çıkar; bir oyuncunun yeni satırı bekleyen eskisinin yerine geçer, en çok 3 satır bekler (en eskisi düşer). Balon yazısı biraz küçüldü (`SpeechBubble.TextSize` 0,034), arkadaki isimler daha az kapanır.
 - Para yazıları ("+200", "-60") figürün göğüs hizasında, ekranın sağına doğru 0,45 birim yanda çıkar; balonla ve figürle çakışmaz. Aynı yerde peş peşe çıkanlar üst üste değil alt alta dizilir (`FloatingText.StackIndex`), arkalarında okunmayı sağlayan koyu bir gölge kopyası var.
-- Aynı karedeki karakterler ızgara yerine kenar boyunca yan yana dizilir (`PawnSlots.Line`): ilki ortaya yakın, sonrakiler sağa sola; her ikinciden biri biraz içeride durur. Arkadaki figür öndekinin arkasında kaybolmaz. Küçük şekil piyonlar (karakter modeli yoksa) eski ızgarayı kullanır.
+- Aynı karedeki karakterler ızgara yerine ekranın yatayında yan yana dizilir (`PawnSlots.Line`, kameranın açısıyla çevrilir; kare kenarı ekranda çapraz durduğu için kenar boyunca dizmek figürleri yine arka arkaya koyuyordu): ilki ortaya yakın, sonrakiler sola sağa; her ikinciden biri biraz geride durur. Komşular arası 4 kişide 0,46, 8 kişide 0,30 birim. Arkadaki figür öndekinin arkasında kaybolmaz. Küçük şekil piyonlar (karakter modeli yoksa) eski ızgarayı kullanır.
 - Testler: `BubbleQueueTests` (sıra, okuma süresi, yer değiştirme, kısa kuyruk, para yazısı yığını), `PawnSlotsTests.StandingFiguresLineUpSideBySide`.
 
 ## Kurallar

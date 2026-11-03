@@ -31,27 +31,27 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// Where a standing figure goes: side by side along the square's edge (x) instead of in a grid,
-        /// because a tall figure in a back row hides behind the one in front of it. The first figure
-        /// stands near the middle, the next ones alternate right and left; every other one stands a
-        /// little further in (z), so neighbours' feet and shoulders overlap like a queue, not a wall.
-        /// The offsets are in the square's frame (z points out of the board), like <see cref="Offset"/>.
+        /// Where a standing figure goes: side by side across the screen instead of in a grid, because a tall
+        /// figure further from the camera hides behind the one in front of it (the square's own edge runs
+        /// diagonally on screen, so a line along it hides them too). The first figure stands near the middle,
+        /// the next ones alternate left and right; every other one stands a little further back, so neighbours
+        /// overlap like a queue, not a wall. The offset is in the camera's frame: x along the screen's right,
+        /// z along the screen's up (away from the camera); turn it by the camera's yaw to place it.
         /// </summary>
         public static Vector3 Line(int slot, int capacity, float spacing)
         {
             if (slot < 0 || slot >= capacity) throw new ArgumentOutOfRangeException(nameof(slot));
-            float across = LineAcross(slot);
-            float widest = LineAcross(capacity - 1 - (capacity - 1) % 2);
-            float step = spacing * LineReach / Mathf.Max(Mathf.Abs(widest), 0.5f);
-            float depth = slot % 2 == 1 ? -spacing * LineStagger : 0f;
-            return new Vector3(across * step, 0f, depth);
+            float step = spacing * (capacity <= 4 ? LineStep : CrowdedLineStep);
+            float depth = slot % 2 == 1 ? spacing * LineStagger : 0f;
+            return new Vector3(LineAcross(slot) * step, 0f, depth);
         }
 
-        /// <summary>How far from the middle the outermost figure stands, as a fraction of the square's width.</summary>
-        public const float LineReach = 0.4f;
+        /// <summary>Gap between neighbours across the screen, as a fraction of the square's width (four players, and more).</summary>
+        public const float LineStep = 0.26f;
+        public const float CrowdedLineStep = 0.17f;
 
-        /// <summary>How much further in every other figure stands, as a fraction of the square's width.</summary>
-        public const float LineStagger = 0.08f;
+        /// <summary>How much further back every other figure stands, as a fraction of the square's width.</summary>
+        public const float LineStagger = 0.06f;
 
         // Places in steps from the middle: -0.5, +0.5, -1.5, +1.5, ...
         private static float LineAcross(int slot) => (slot / 2 + 0.5f) * (slot % 2 == 0 ? -1f : 1f);
