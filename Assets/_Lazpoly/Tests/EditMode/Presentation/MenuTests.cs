@@ -125,6 +125,18 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void SceneChangesShowTheLoadingScreenLongEnoughAndFillTheBar()
+        {
+            Assert.That(SceneFader.MinShowSeconds, Is.GreaterThan(SceneFader.OutSeconds + 0.3f), "the logo is seen, not flashed");
+            Assert.That(SceneFader.MinShowSeconds + SceneFader.InSeconds, Is.LessThan(1.6f), "and does not keep the player waiting");
+            Assert.AreEqual(0f, SceneFader.Progress(1f, 0f), "the bar starts empty even when loading is instant");
+            Assert.AreEqual(1f, SceneFader.Progress(0.9f, SceneFader.MinShowSeconds), 1e-5f, "a loaded scene fills it once the time is up");
+            Assert.AreEqual(0.5f, SceneFader.Progress(0.45f, 10f), 1e-5f, "a slow load moves it as it goes");
+            Assert.AreEqual(Lang.L("Menüye dönülüyor..."), SceneFader.CaptionFor("MainMenu"));
+            Assert.AreEqual(Lang.L("Masa kuruluyor..."), SceneFader.CaptionFor("Game"));
+        }
+
+        [Test]
         public void TheOpeningScreenHoldsLongEnoughToBeSeen()
         {
             Assert.That(BootSplash.HoldSeconds, Is.GreaterThanOrEqualTo(1f), "a fast machine would flash it otherwise");
@@ -141,6 +153,11 @@ namespace Lazpoly.Presentation.Tests
             string settings = File.ReadAllText(Path.Combine(project, "ProjectSettings", "ProjectSettings.asset")).Replace("\r\n", "\n");
             Assert.That(settings, Does.Contain("m_ShowUnitySplashScreen: 0"), "the Unity splash is off");
             Assert.That(settings, Does.Contain("m_ShowUnitySplashLogo: 0"));
+            Assert.That(settings, Does.Contain("\n  productName: Lazpoly\n"), "the window title reads Lazpoly, capital L");
+            Assert.That(settings, Does.Contain("\n  companyName: DefaultCompany\n"), "the saves and settings stay where they are until the release moves them");
+            // Before our first frame the player clears the window to the loading screen's paper, not to dark grey or white.
+            Assert.That(settings, Does.Contain("m_SplashScreenBackgroundColor: {r: 0.9843137, g: 0.972549, b: 0.9254902, a: 1}"));
+            Assert.That(Vector4.Distance(UiPalette.Paper.Panel, new Color(0.9843137f, 0.972549f, 0.9254902f, 1f)), Is.LessThan(0.002f), "the start colour is the loading screen's paper");
 
             string iconPath = Path.Combine(project, "Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon.png");
             Assert.IsTrue(File.Exists(iconPath), "run Tools/Art/make_logo.py");

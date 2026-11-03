@@ -10,8 +10,8 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
-    /// The game's own opening screen: paper, the logo, the tagline and a bar that fills while the first
-    /// scene gets ready, held for a moment so it does not flash past, then faded out. It is drawn before
+    /// The game's own opening screen (<see cref="LoadingScreen"/>: paper, the logo, the tagline and a bar) while
+    /// the first scene gets ready, held for a moment so it does not flash past, then faded out. It is drawn before
     /// the first scene loads, in place of the Unity splash (turned off in the player settings), and it
     /// never takes the pointer, so nothing underneath waits for it.
     /// </summary>
@@ -21,12 +21,10 @@ namespace Lazpoly.Presentation.Effects
         public const float HoldSeconds = 1.6f;
         public const float FadeSeconds = 0.5f;
         public const float LogoSize = 420f;
-        public const float BarWidth = 360f;
-        public const float BarHeight = 10f;
 
         private static BootSplash _instance;
         private CanvasGroup _group;
-        private RectTransform _fill;
+        private LoadingScreen _screen;
         private float _started;
         private bool _sceneReady;
 
@@ -61,43 +59,7 @@ namespace Lazpoly.Presentation.Effects
             _instance.StartCoroutine(_instance.Run());
         }
 
-        private void Build(RectTransform root)
-        {
-            UiPalette paper = UiPalette.Paper;
-            Image ground = UiRoot.Background(UiRoot.Stretch(root, "Paper"), paper.Panel, rounded: false);
-            ground.raycastTarget = false;
-
-            RectTransform column = UiRoot.Rect(root, "Column", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
-            column.sizeDelta = new Vector2(720f, 640f);
-            var layout = column.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = 18f;
-            layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.childControlWidth = true;
-            layout.childControlHeight = true;
-            layout.childForceExpandWidth = false;
-            layout.childForceExpandHeight = false;
-
-            var ui = new UiBuilder(column);
-            Image logo = ui.Swatch(Color.white, LogoSize);
-            logo.sprite = MenuArt.Logo;
-            logo.type = Image.Type.Simple;
-            logo.preserveAspect = true;
-            logo.raycastTarget = false;
-            ui.Eyebrow(L("Karadeniz Masası"), paper.Muted, TextAnchor.MiddleCenter);
-
-            Image track = ui.Swatch(paper.Field, BarWidth);
-            track.sprite = UiSprites.Pill;
-            track.raycastTarget = false;
-            UiBuilder.Fix(track, BarWidth, BarHeight);
-            _fill = UiRoot.Rect(track.rectTransform, "Fill", Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero);
-            Image fill = UiRoot.Background(_fill, paper.PrimaryFill);
-            fill.sprite = UiSprites.Pill;
-            fill.raycastTarget = false;
-            _fill.pivot = new Vector2(0f, 0.5f);
-            _fill.sizeDelta = new Vector2(0f, 0f);
-
-            ui.Label(L("Masa kuruluyor..."), UiTextStyle.Small, paper.Muted, TextAnchor.MiddleCenter);
-        }
+        private void Build(RectTransform root) => _screen = LoadingScreen.Build(root, LogoSize, L("Masa kuruluyor..."));
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => _sceneReady = true;
 
@@ -107,7 +69,7 @@ namespace Lazpoly.Presentation.Effects
             do
             {
                 elapsed = Time.realtimeSinceStartup - _started;
-                _fill.sizeDelta = new Vector2(BarWidth * Progress(elapsed), 0f);
+                _screen.SetProgress(Progress(elapsed));
                 yield return null;
             }
             while (elapsed < HoldSeconds || !_sceneReady);

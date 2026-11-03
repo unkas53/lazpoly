@@ -703,6 +703,13 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Hareketler (`CharacterMotion`, iskelet olmadan modelin tamamıyla): durunca hafif nefes (her oyuncu ayrı fazda), yürürken öne eğilip sağa sola sallanma, sevinç (satın alma, yeni ev/otel, 150 ve üstü para gelişi, kazanan): zıplayıp bir tam dönüş; üzülme (100 ve üstü kira/vergi): çöküp başını sallama.
 - Testler: `CharacterPartsTests.TheWomanStandsInTheSameStyleWithASkirtAndLongHair`, `SeatsAlternateBetweenTheTwoFigures`, `TheFiguresMovesStartAndEndAtRest`.
 
+## Faz 12d: pencere adı, ilk kare, sahne geçişinde yükleme ekranı
+
+- Pencere ve görev çubuğu adı "Lazpoly" (`productName`). Şirket adı şimdilik `DefaultCompany`: kayıtlar ve ayarlar bu adın altındaki klasörde ve kayıt defterinde duruyor; Windows büyük-küçük harfe bakmadığı için ürün adının "L"si onlara dokunmuyor. Şirket adı yayın aşamasında (10d) taşıma ile değişir.
+- Oyuncunun ilk karemizden önce pencereyi boyadığı renk (`m_SplashScreenBackgroundColor`) koyu gri yerine yükleme ekranının kremi; Unity kendi açılış ekranı kapalıyken de bu rengi kullanıyorsa açılıştaki beyaz/gri an krem olur. Windows'un pencereyi daha Unity çizmeden gösterdiği an oyunun elinde değil.
+- Menü ile masa arasındaki geçiş artık siyah perde değil, açılış ekranının aynısı (`LoadingScreen`: krem kağıt, logo, "Karadeniz Masası", dolan çubuk, "Masa kuruluyor..." / "Menüye dönülüyor..."). Sahne arka planda yüklenir (`LoadSceneAsync`), çubuk yüklemeyi izler; ekran en az 0,9 sn görünür, sonra yeni sahne açılır. Masa yüklenir yüklenmez başlar, ölçülen yükleme süresi şişmez.
+- `Editor/Branding.Apply` adı ve rengi de yazar. Testler: `MenuTests.ThePlayerCarriesOurIconAndNoUnitySplash` (ad, şirket, renk), `SceneChangesShowTheLoadingScreenLongEnoughAndFillTheBar`.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
