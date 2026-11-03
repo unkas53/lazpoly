@@ -21,7 +21,9 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 SOURCE = os.path.join("Tools", "Art", "Logo", "lazpoly-logo.jpg")
 TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "logo.bytes")
 ICON = os.path.join("Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon.png")
-ICON_SIZE = 256     # The player's icon (Lazpoly.exe, task bar, window title); Unity scales the smaller sizes from it.
+ICON_SIZE = 256     # The player's icon at 256 and 128 (Lazpoly.exe's big icon, the window title); Unity scales 128 from it.
+SMALL_ICON = os.path.join("Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon-small.png")
+SMALL_ICON_SIZE = 64  # The 48, 32 and 16 pixel icons (task bar, Explorer lists): the medallion alone, since the whole logo is a smear that small.
 SIZE = 640          # The menu shows it 160 pixels tall at 1080p; 640 keeps it sharp on a 4K screen and in a bigger interface size.
 WHITE = 236         # A pixel whose darkest channel is at least this counts as the white ground.
 SHADOW_TOP = 850    # Rows from here down (under the lettering) may hold the picture's drop shadow.
@@ -127,6 +129,32 @@ def main():
     os.makedirs(os.path.dirname(icon), exist_ok=True)
     crop.resize((ICON_SIZE, ICON_SIZE), Image.LANCZOS).save(icon, format="PNG", optimize=True)
     print(f"wrote {ICON}: {ICON_SIZE}x{ICON_SIZE} PNG, {os.path.getsize(icon)} bytes")
+
+    small = os.path.join(root, SMALL_ICON)
+    make_small_icon().save(small, format="PNG", optimize=True)
+    print(f"wrote {SMALL_ICON}: {SMALL_ICON_SIZE}x{SMALL_ICON_SIZE} PNG, {os.path.getsize(small)} bytes")
+
+
+def make_small_icon():
+    """The medallion on its own, drawn big and scaled down: a gold ring, the two-tone navy disc and a white L."""
+    size = SMALL_ICON_SIZE * 4
+    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    margin = size * 0.03
+    ring = (margin, margin, size - margin, size - margin)
+    draw.ellipse(ring, fill=(214, 172, 74, 255))
+    inset = size * 0.085
+    disc = (inset, inset, size - inset, size - inset)
+    draw.ellipse(disc, fill=NAVY_DEEP + (255,))
+    mask = Image.new("L", image.size, 0)
+    ImageDraw.Draw(mask).ellipse(disc, fill=255)
+    upper_left = Image.new("L", image.size, 0)
+    ImageDraw.Draw(upper_left).polygon([(0, 0), (size, 0), (0, size)], fill=255)
+    image.paste(Image.new("RGBA", image.size, NAVY_LIGHT + (255,)), (0, 0), ImageChops.multiply(mask, upper_left))
+    font = ImageFont.truetype(os.path.join(os.getcwd(), MARK_FONT), int(size * 0.62))
+    left, top, right, bottom = draw.textbbox((0, 0), "L", font=font)
+    draw.text((size / 2 - (right - left) / 2 - left, size / 2 - (bottom - top) / 2 - top), "L", font=font, fill=(252, 252, 250, 255))
+    return image.resize((SMALL_ICON_SIZE, SMALL_ICON_SIZE), Image.LANCZOS)
 
 
 if __name__ == "__main__":

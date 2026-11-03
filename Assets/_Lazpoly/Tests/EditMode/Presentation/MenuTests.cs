@@ -127,6 +127,11 @@ namespace Lazpoly.Presentation.Tests
             string guid = System.Text.RegularExpressions.Regex.Match(meta, @"guid: ([0-9a-f]{32})").Groups[1].Value;
             Assert.That(guid, Is.Not.Empty, "the icon's meta names its guid");
             Assert.That(settings, Does.Contain($"m_Icon: {{fileID: 2800000, guid: {guid}, type: 3}}"), "the default icon is the logo");
+            string smallMeta = File.ReadAllText(Path.Combine(project, "Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon-small.png.meta"));
+            string smallGuid = System.Text.RegularExpressions.Regex.Match(smallMeta, @"guid: ([0-9a-f]{32})").Groups[1].Value;
+            Assert.That(settings, Does.Contain("m_BuildTarget: Standalone"), "the desktop player lists its icon sizes");
+            Assert.That(settings, Does.Contain($"guid: {smallGuid}, type: 3}}\n      m_Width: 16"), "the 16 pixel icon is the medallion");
+            Assert.That(settings, Does.Contain($"guid: {guid}, type: 3}}\n      m_Width: 256"), "the 256 pixel icon is the whole logo");
 
             Texture2D icon = MenuArt.Decode(File.ReadAllBytes(iconPath), "test icon");
             try
