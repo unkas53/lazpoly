@@ -534,8 +534,9 @@ namespace Lazpoly.Presentation.Tabletop
             Vector3 size = Vector3.one;
             for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
             {
+                // Out to the sides only: rising, the frame's top came over the tile and hid its name and price.
                 float swell = 1f + 0.12f * Ease.Bump(t);
-                frame.localScale = new Vector3(size.x * swell, size.y * (1f + 0.6f * Ease.Bump(t)), size.z * swell);
+                frame.localScale = new Vector3(size.x * swell, size.y, size.z * swell);
                 yield return null;
             }
 
