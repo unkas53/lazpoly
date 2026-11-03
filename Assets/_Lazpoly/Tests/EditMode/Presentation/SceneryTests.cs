@@ -65,6 +65,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f, "the band lies beyond the price");
             Assert.Less(BoardView.BandOffset + BoardView.BandDepth / 2f, 0.5f, "the band stays on the tile");
             Assert.Greater(BoardView.NameSize, BoardView.PriceSize, "the name is the larger line");
+            Assert.LessOrEqual(BoardView.NameFill, 0.88f, "a long name keeps a margin at both ends of its tile");
 
             // On a corner the scene stands towards the board's corner and the pawns step the other way; neither reaches the other.
             Assert.LessOrEqual(BoardView.SceneOffset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner along the edge");

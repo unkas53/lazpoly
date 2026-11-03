@@ -96,8 +96,12 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BandOffset = 0.445f;
         public const float BandDepth = 0.09f;
 
-        /// <summary>How much of the tile's width the name may use, and how tall its line and the price's line may be, in tile depths.</summary>
-        public const float NameFill = 0.92f;
+        /// <summary>
+        /// How much of the tile's width the name may use, and how tall its line and the price's line may be, in tile depths.
+        /// The fill leaves a clear margin at both ends, so "Rio de Janeiro" does not run into the tile's edge. A second line does
+        /// not help: the name's room is low and wide, so two lines would each come out smaller than the shrunk single line.
+        /// </summary>
+        public const float NameFill = 0.86f;
         public const float NameDepth = 0.16f;
         public const float PriceDepth = 0.12f;
 
