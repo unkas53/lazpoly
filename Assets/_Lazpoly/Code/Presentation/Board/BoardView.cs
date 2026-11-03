@@ -190,7 +190,8 @@ namespace Lazpoly.Presentation.Tabletop
             for (int i = 0; i < _tiles.Length; i++)
             {
                 Color color = _tileColors[i];
-                if (_highlighted != null) color = _highlighted.Contains(i) ? Color.Lerp(color, Color.white, 0.25f) : Color.Lerp(color, Color.black, 0.45f);
+                // Only the group lights up; the rest of the board keeps its colour (fading it reads as a mistake).
+                if (_highlighted != null && _highlighted.Contains(i)) color = Color.Lerp(color, Color.white, 0.25f);
                 PaintTile(_tiles[i], color);
             }
         }
