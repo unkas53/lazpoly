@@ -14,7 +14,8 @@ namespace Lazpoly.Presentation.Models
     /// A stage far below the board holds one tile and the pieces; a camera of its own renders it
     /// into one texture per level the first time a card needs them, and again when the tile's
     /// colour changes. Nothing renders every frame. In the editor, or where the render pipeline
-    /// cannot take a render request, the pictures stay null and the card shows an icon instead.
+    /// cannot take a render request (or there is no graphics device, as under -nographics), the
+    /// pictures stay null and the card shows an icon instead.
     /// </summary>
     public sealed class BuildingPreview
     {
@@ -129,6 +130,12 @@ namespace Lazpoly.Presentation.Models
         private bool Render()
         {
             if (_failed || !Application.isPlaying) return false;
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+            {
+                _failed = true; // No graphics device (-nographics): nothing can be drawn, and nothing is missing.
+                return false;
+            }
+
             try
             {
                 var request = new RenderPipeline.StandardRequest();
@@ -143,7 +150,11 @@ namespace Lazpoly.Presentation.Models
                     if (_pictures[level] == null)
                     {
                         _pictures[level] = new RenderTexture(PictureSize, PictureSize, 24, RenderTextureFormat.ARGB32) { name = $"building-{level}" };
-                        _pictures[level].Create();
+                        if (!_pictures[level].Create())
+                        {
+                            Fail("a render texture could not be made");
+                            return false;
+                        }
                     }
 
                     Show(level);
