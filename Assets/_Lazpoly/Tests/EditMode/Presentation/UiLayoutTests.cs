@@ -25,6 +25,15 @@ namespace Lazpoly.Presentation.Tests
         private const float TallestWindow = 620f;
 
         [Test]
+        public void TheRollPromptSitsOverTheLawnClearOfTheCardsAndTheBottomStack()
+        {
+            // At the smallest supported screen the button still lies between the corner cards and above the bottom stack's hint.
+            Assert.Less(UiLayout.RollPromptWidth, 1280f - 2f * UiLayout.CornerWidth - 2f * UiLayout.Margin, "the button runs into the corner cards");
+            Assert.Less(UiLayout.RollPromptDrop + UiLayout.RollPromptHeight / 2f, 720f / 2f - 120f, "the button sits on the bottom stack");
+            Assert.Greater(UiLayout.RollPromptDrop, UiLayout.RollPromptHeight, "the button covers the dice score in the lawn's middle");
+        }
+
+        [Test]
         public void TheReferenceScreenScalesOneToOne()
         {
             Assert.AreEqual(1f, UiLayout.CanvasScale(1920, 1080), 0.001f);

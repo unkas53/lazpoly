@@ -34,6 +34,11 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Height of the buttons that decide something on a card.</summary>
         public const float CardButtonHeight = 52f;
 
+        /// <summary>The big "roll" button over the lawn while it is this person's roll: its size, and how far below the screen's centre it sits.</summary>
+        public const float RollPromptWidth = 300f;
+        public const float RollPromptHeight = 76f;
+        public const float RollPromptDrop = 170f;
+
         /// <summary>
         /// Screen pixels kept clear of the board at each side edge: the dock's width with its margins. The
         /// corner cards sit in the empty triangles beside the diamond-shaped board, so they reserve nothing.

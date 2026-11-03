@@ -77,6 +77,8 @@ namespace Lazpoly.Presentation.Game
         private RectTransform _cardRect;
         private Text _rollText;
         private CanvasGroup _rollGroup;
+        private RectTransform _rollPrompt;
+        private float _rollPromptShownAt = float.NegativeInfinity;
         private RectTransform _rollRect;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
         private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
@@ -246,6 +248,7 @@ namespace Lazpoly.Presentation.Game
 
             BuildCardPopup();
             BuildRollPopup();
+            BuildRollPrompt();
 
             RectTransform timer = UiRoot.Rect(_canvas.transform, "Move Timer", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-180f, -52f), new Vector2(180f, -12f));
@@ -337,6 +340,50 @@ namespace Lazpoly.Presentation.Game
             _rollText.color = _controller.ShownRollForfeited ? UiTheme.Warning : UiTheme.Accent;
             _rollGroup.alpha = Mathf.Clamp01(age / 0.12f) * Mathf.Clamp01((visible - age) / 0.35f);
             _rollRect.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.25f)));
+        }
+
+        /// <summary>
+        /// The big "roll" button over the lawn: it pops up when the roll is this person's and goes the
+        /// moment it is pressed. The dock's die and the Space key still roll too.
+        /// </summary>
+        private void BuildRollPrompt()
+        {
+            RectTransform prompt = UiRoot.Rect(_canvas.transform, "Roll Prompt", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            prompt.pivot = new Vector2(0.5f, 0.5f);
+            prompt.anchoredPosition = new Vector2(0f, -UiLayout.RollPromptDrop);
+            prompt.sizeDelta = new Vector2(UiLayout.RollPromptWidth, UiLayout.RollPromptHeight);
+            UiBuilder.AddColumnLayout(prompt.gameObject, 0, 0f);
+            Button button = new UiBuilder(prompt).Button(L("Zar At").ToUpperInvariant(), PressRollPrompt, true, UiButtonStyle.Primary, UiLayout.RollPromptHeight);
+            UiRoot.AddShadow(button.gameObject, 6f);
+            Text label = button.GetComponentInChildren<Text>();
+            label.fontSize = 34;
+            label.resizeTextMaxSize = 34;
+            _rollPrompt = prompt;
+            prompt.gameObject.SetActive(false);
+        }
+
+        private void PressRollPrompt()
+        {
+            GameState state = _controller.Session.State;
+            if (!WaitsOnPersonHere(state, GamePhase.WaitingForRoll)) return;
+            _rollPrompt.gameObject.SetActive(false);
+            Submit(new RollDiceCommand(state.CurrentPlayer.Id));
+        }
+
+        /// <summary>Shows the roll button while the roll is this person's and no window covers the board; it pops in when it appears.</summary>
+        private void UpdateRollPrompt(GameState state, bool windowOpen)
+        {
+            if (_rollPrompt == null) return;
+            bool shown = !windowOpen && WaitsOnPersonHere(state, GamePhase.WaitingForRoll);
+            if (shown != _rollPrompt.gameObject.activeSelf)
+            {
+                _rollPrompt.gameObject.SetActive(shown);
+                if (shown) _rollPromptShownAt = Time.unscaledTime;
+            }
+
+            if (!shown) return;
+            float age = Time.unscaledTime - _rollPromptShownAt;
+            _rollPrompt.localScale = Vector3.one * Mathf.Lerp(0.6f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.28f)));
         }
 
         /// <summary>A hint box at the top of the bottom stack.</summary>
@@ -536,6 +583,8 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_endLayer, _endWindow, ended, revision);
             SetLayer(_logLayer, _logWindow, _logLayer.activeSelf, revision);
             SetLayer(_propertiesLayer, _propertiesWindow, _propertiesLayer.activeSelf && CanOpenProperties(state), revision);
+            bool windowOpen = tradeOpen || _pauseLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || ended || _logLayer.activeSelf || _propertiesLayer.activeSelf;
+            UpdateRollPrompt(state, windowOpen);
         }
 
         /// <summary>Counts each player's money towards its new value; only the labels change, nothing is rebuilt.</summary>
