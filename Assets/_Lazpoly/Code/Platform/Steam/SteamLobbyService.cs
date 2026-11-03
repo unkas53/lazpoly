@@ -180,23 +180,18 @@ namespace Lazpoly.Platform.Steam
             if (InLobby) SteamMatchmaking.SetLobbyMemberData(_lobby, ReadyKey, ready ? "1" : "0");
         }
 
-        /// <summary>"money,auctions,rounds,turnSeconds,bankReturns" as lobby data; anything unreadable means the default rules.</summary>
-        public static string FormatTable(TableRules table) =>
-            $"{table.StartingMoney},{(table.AuctionsEnabled ? 1 : 0)},{table.RoundLimit},{table.TurnSeconds},{(int)table.BankReturns}";
+        /// <summary>"money,rounds,turnSeconds" as lobby data; anything unreadable means the default rules.</summary>
+        public static string FormatTable(TableRules table) => $"{table.StartingMoney},{table.RoundLimit},{table.TurnSeconds}";
 
-        /// <summary>Reads the lobby's rules; a room run by a build before Faz 10c-2 sends three values and gets the default timing.</summary>
+        /// <summary>Reads the lobby's rules. A room run by an older build (other layout) shows the default rules; it cannot be joined anyway, the protocol differs.</summary>
         public static TableRules ParseTable(string text)
         {
             if (string.IsNullOrEmpty(text)) return TableRules.Default;
             string[] parts = text.Split(',');
-            if ((parts.Length != 3 && parts.Length != 5) || !int.TryParse(parts[0], out int money) || !int.TryParse(parts[1], out int auctions) ||
-                !int.TryParse(parts[2], out int rounds) || money < 0 || rounds < 0)
+            if (parts.Length != 3 || !int.TryParse(parts[0], out int money) || !int.TryParse(parts[1], out int rounds) ||
+                !int.TryParse(parts[2], out int turnSeconds) || money < 0 || rounds < 0 || turnSeconds < 0)
                 return TableRules.Default;
-            if (parts.Length == 3) return new TableRules(money, auctions != 0, rounds);
-            if (!int.TryParse(parts[3], out int turnSeconds) || !int.TryParse(parts[4], out int bank) || turnSeconds < 0 ||
-                !Enum.IsDefined(typeof(BankReturns), bank))
-                return TableRules.Default;
-            return new TableRules(money, auctions != 0, rounds, turnSeconds, (BankReturns)bank);
+            return new TableRules(money, rounds, turnSeconds);
         }
 
         public void Leave()

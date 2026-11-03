@@ -21,7 +21,6 @@ namespace Lazpoly.Core.State
         private readonly List<PlayerState> _players;
         private readonly int[] _owners;
         private readonly int[] _buildingLevels;
-        private readonly List<int> _pendingAuctions = new List<int>();
 
         private GameState(List<PlayerState> players, int squareCount)
         {
@@ -72,23 +71,6 @@ namespace Lazpoly.Core.State
         public int ConsecutiveDoubles { get; internal set; }
 
         public int WinnerId { get; internal set; }
-
-        /// <summary>The running auction; null unless <see cref="Phase"/> is <see cref="GamePhase.AuctionInProgress"/>.</summary>
-        public AuctionState Auction { get; internal set; }
-
-        /// <summary>
-        /// Squares of a bankrupt player still waiting to be auctioned, in board order; empty except
-        /// during the run of bank auctions that follows a bankruptcy at such a table.
-        /// </summary>
-        public IReadOnlyList<int> PendingAuctions => _pendingAuctions;
-
-        internal void SetPendingAuctions(IEnumerable<int> squares)
-        {
-            _pendingAuctions.Clear();
-            _pendingAuctions.AddRange(squares);
-        }
-
-        internal bool RemovePendingAuction(int square) => _pendingAuctions.Remove(square);
 
         /// <summary>The open trade offer; null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingTradeResponse"/>.</summary>
         public TradeOffer PendingTrade { get; internal set; }
@@ -222,29 +204,6 @@ namespace Lazpoly.Core.State
                 state.SetBuildingLevel(i, level);
             }
 
-            if (snapshot.Auction != null)
-            {
-                AuctionState auction = snapshot.Auction;
-                if (auction.SquareIndex < 0 || auction.SquareIndex >= snapshot.Owners.Length ||
-                    (auction.HighestBidderId != NoOwner && !ids.Contains(auction.HighestBidderId)))
-                {
-                    throw new ArgumentException("Snapshot auction is inconsistent.", nameof(snapshot));
-                }
-
-                foreach (int passed in auction.PassedPlayerIds)
-                {
-                    if (!ids.Contains(passed)) throw new ArgumentException("Snapshot auction names an unknown player.", nameof(snapshot));
-                }
-
-                state.Auction = auction.Copy();
-            }
-
-            if (snapshot.PendingAuctions != null)
-            {
-                foreach (int square in snapshot.PendingAuctions) RequireSquare(square, snapshot.Owners.Length);
-                state.SetPendingAuctions(snapshot.PendingAuctions);
-            }
-
             if (snapshot.PendingTrade != null)
             {
                 TradeOffer trade = snapshot.PendingTrade;
@@ -369,19 +328,6 @@ namespace Lazpoly.Core.State
             }
 
             foreach (int level in _buildingLevels) Mix(level);
-
-            Mix(Auction == null ? 0 : 1);
-            if (Auction != null)
-            {
-                Mix(Auction.SquareIndex);
-                Mix(Auction.HighestBid);
-                Mix(Auction.HighestBidderId);
-                Mix(Auction.PassedPlayerIds.Count);
-                foreach (int id in Auction.PassedPlayerIds) Mix(id);
-            }
-
-            Mix(_pendingAuctions.Count);
-            foreach (int square in _pendingAuctions) Mix(square);
 
             Mix(PendingTrade == null ? 0 : 1);
             if (PendingTrade != null)

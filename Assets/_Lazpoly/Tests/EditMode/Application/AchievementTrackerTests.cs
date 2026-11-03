@@ -65,12 +65,9 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void AuctionTradeAndBankruptcy()
+        public void TradeAndBankruptcy()
         {
             NewGame();
-            Play(new AuctionStartedEvent(3));
-            CollectionAssert.AreEqual(new[] { AchievementCatalog.AuctionWin }, Play(new AuctionEndedEvent(3, Me, 80)));
-
             Play(new PropertyOwnerChangedEvent(A1, GameState.NoOwner, Friend));
             var offer = new TradeOffer(Friend, Me, 0, 50, new[] { A1 }, Array.Empty<int>());
             CollectionAssert.IsEmpty(Play(new TradeProposedEvent(offer)));

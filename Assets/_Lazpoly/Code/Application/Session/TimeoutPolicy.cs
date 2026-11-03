@@ -5,7 +5,7 @@ namespace Lazpoly.App.Session
 {
     /// <summary>
     /// The move made for a player whose time ran out: the one that commits them to the least.
-    /// Nothing is bought, bid, accepted or paid for them; the game only goes on.
+    /// Nothing is bought, accepted or paid for them; the game only goes on.
     /// </summary>
     public static class TimeoutPolicy
     {
@@ -17,7 +17,6 @@ namespace Lazpoly.App.Session
                 case GamePhase.WaitingForRoll: return new RollDiceCommand(playerId);
                 case GamePhase.AwaitingBuyDecision: return new DeclinePurchaseCommand(playerId);
                 case GamePhase.TurnEnd: return new EndTurnCommand(playerId);
-                case GamePhase.AuctionInProgress: return new PassBidCommand(playerId);
                 case GamePhase.AwaitingTradeResponse: return new RejectTradeCommand(playerId);
                 case GamePhase.AwaitingTravelDecision: return new DeclineTravelCommand(playerId);
                 case GamePhase.AwaitingDiceChoice: return new ChooseDiceCommand(playerId, 0);

@@ -18,10 +18,8 @@ namespace Lazpoly.Core.Rules
             int maxConsecutiveDoubles,
             int fullGroupRentMultiplier,
             int buildingSellbackPercent,
-            bool auctionsEnabled = true,
             int roundLimit = 0,
-            int turnSeconds = TableRules.DefaultTurnSeconds,
-            BankReturns bankReturns = BankReturns.FirstComer)
+            int turnSeconds = TableRules.DefaultTurnSeconds)
         {
             if (startingMoney <= 0) throw new ArgumentOutOfRangeException(nameof(startingMoney));
             if (passStartBonus < 0) throw new ArgumentOutOfRangeException(nameof(passStartBonus));
@@ -38,10 +36,8 @@ namespace Lazpoly.Core.Rules
             MaxConsecutiveDoubles = maxConsecutiveDoubles;
             FullGroupRentMultiplier = fullGroupRentMultiplier;
             BuildingSellbackPercent = buildingSellbackPercent;
-            AuctionsEnabled = auctionsEnabled;
             RoundLimit = roundLimit;
             TurnSeconds = turnSeconds;
-            BankReturns = bankReturns;
         }
 
         public int StartingMoney { get; }
@@ -61,9 +57,6 @@ namespace Lazpoly.Core.Rules
         /// <summary>Share of the building cost the bank pays back when a building is sold, in percent.</summary>
         public int BuildingSellbackPercent { get; }
 
-        /// <summary>Whether a declined purchase goes to auction; otherwise the square simply stays with the bank.</summary>
-        public bool AuctionsEnabled { get; }
-
         /// <summary>
         /// Rounds (every player has had a turn) after which the game ends and the richest player
         /// wins; 0 plays until one player is left.
@@ -73,14 +66,8 @@ namespace Lazpoly.Core.Rules
         /// <summary>Seconds per move online (0 = no clock); see <see cref="TableRules.TurnSeconds"/>.</summary>
         public int TurnSeconds { get; }
 
-        /// <summary>Where a bankrupt player's squares go when owed to the bank; see <see cref="TableRules.BankReturns"/>.</summary>
-        public BankReturns BankReturns { get; }
-
-        /// <summary>Whether a bankrupt player's squares are auctioned at once (auctions on and the table says so).</summary>
-        public bool AuctionsBankReturns => AuctionsEnabled && BankReturns == BankReturns.Auction;
-
         /// <summary>The choices made at the table for this game.</summary>
-        public TableRules Table => new TableRules(StartingMoney, AuctionsEnabled, RoundLimit, TurnSeconds, BankReturns);
+        public TableRules Table => new TableRules(StartingMoney, RoundLimit, TurnSeconds);
 
         /// <summary>These rules with the table's choices applied; a table value of 0 keeps the board's starting money.</summary>
         public RulesConfig WithTable(TableRules table)
@@ -88,7 +75,7 @@ namespace Lazpoly.Core.Rules
             if (table == null) throw new ArgumentNullException(nameof(table));
             return new RulesConfig(table.StartingMoney > 0 ? table.StartingMoney : StartingMoney, PassStartBonus, DiceSides,
                 MaxConsecutiveDoubles, FullGroupRentMultiplier, BuildingSellbackPercent,
-                table.AuctionsEnabled, table.RoundLimit, table.TurnSeconds, table.BankReturns);
+                table.RoundLimit, table.TurnSeconds);
         }
 
         /// <summary>What the bank pays for one building level that cost <paramref name="buildingCost"/>.</summary>

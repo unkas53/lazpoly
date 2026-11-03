@@ -477,7 +477,7 @@ namespace Lazpoly.Presentation.Menu
         private static int TableKey()
         {
             TableRules table = TableSetup.Chosen;
-            return HashCode.Combine(table.StartingMoney, table.AuctionsEnabled, table.RoundLimit, table.TurnSeconds, table.BankReturns);
+            return HashCode.Combine(table.StartingMoney, table.RoundLimit, table.TurnSeconds);
         }
 
         /// <summary>House rules for the next new game, local or hosted online.</summary>

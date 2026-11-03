@@ -30,7 +30,6 @@ namespace Lazpoly.App.Tests
             };
             GameStateSnapshot busy = SampleSnapshot();
             busy.BuildingLevels[1] = 3;
-            busy.Auction = new AuctionState(7, 40, 2, new[] { 1 });
             busy.PendingTrade = new TradeOffer(1, 2, 10, 20, new[] { 1 }, new[] { 2, 4 });
             busy.TradeReturnPhase = GamePhase.TurnEnd;
             busy.Debt = new DebtState(1, 2, 75, MoneyReason.Rent);
@@ -38,11 +37,10 @@ namespace Lazpoly.App.Tests
             busy.Pot = 250;
             busy.DiceOptions = new[] { 1, 2, 6, 6 };
             busy.Players[1].HasLookout = true;
-            busy.PendingAuctions = new[] { 1, 2 };
             yield return new GameStartMessage
             {
                 ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 1UL, YourPlayerId = 1, Sequence = 3, Snapshot = busy,
-                Table = new Lazpoly.Core.Rules.TableRules(2000, false, 25, 60, Lazpoly.Core.Rules.BankReturns.Auction),
+                Table = new Lazpoly.Core.Rules.TableRules(2000, 25, 60),
             };
             yield return new RefusedMessage { Reason = RefusalReason.BoardMismatch };
             yield return new CommandMessage { Command = new RollDiceCommand(1) };
@@ -52,8 +50,6 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new BuildCommand(1, 5) };
             yield return new CommandMessage { Command = new SellBuildingCommand(1, 5) };
             yield return new CommandMessage { Command = new SellPropertyCommand(2, 7) };
-            yield return new CommandMessage { Command = new PlaceBidCommand(3, 140) };
-            yield return new CommandMessage { Command = new PassBidCommand(3) };
             yield return new CommandMessage { Command = new ProposeTradeCommand(new TradeOffer(1, 2, 30, 0, new[] { 1, 2 }, new[] { 4 })) };
             yield return new CommandMessage { Command = new AcceptTradeCommand(2) };
             yield return new CommandMessage { Command = new RejectTradeCommand(2) };
@@ -75,10 +71,6 @@ namespace Lazpoly.App.Tests
                 new PhaseChangedEvent(GamePhase.TurnEnd),
                 new GameEndedEvent(1),
                 new BuildingLevelChangedEvent(4, 5),
-                new AuctionStartedEvent(4),
-                new BidPlacedEvent(2, 60),
-                new BidPassedEvent(1),
-                new AuctionEndedEvent(4, GameState.NoOwner, 0),
                 new TradeProposedEvent(new TradeOffer(1, 2, 0, 15, null, new[] { 8 })),
                 new TradeResolvedEvent(TradeOutcome.Cancelled),
                 new DebtIncurredEvent(1, GameState.NoOwner, 100, MoneyReason.Tax),
@@ -91,7 +83,6 @@ namespace Lazpoly.App.Tests
                 new DiceOptionsEvent(1, 1, 2, 3, 4),
                 new DebtIncurredEvent(1, GameState.PotId, 40, MoneyReason.Card),
                 new PlayerTimedOutEvent(2, true),
-                new BankAuctionsQueuedEvent(new[] { 4, 7 }),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -105,30 +96,39 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void TheTableTravelsWithItsTimingAndBankRule()
+        public void TheTableTravelsWithItsTimingAndOldLayoutsStillRead()
         {
-            var table = new Lazpoly.Core.Rules.TableRules(1500, true, 0, 0, Lazpoly.Core.Rules.BankReturns.Auction);
+            var table = new Lazpoly.Core.Rules.TableRules(1500, 0, 0);
             var w = new NetWriter();
             MessageCodec.WriteTable(w, table);
             Lazpoly.Core.Rules.TableRules read = MessageCodec.ReadTable(new NetReader(w.ToArray()));
             Assert.IsTrue(read.SameAs(table));
             Assert.AreEqual(0, read.TurnSeconds);
-            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.Auction, read.BankReturns);
 
-            // Three values, as a build before Faz 10c-2 wrote them, read as the default timing.
+            // Layout 2 (Faz 10c-2 .. 13a): the auction switch and the bank rule are read and dropped.
+            var timed = new NetWriter();
+            timed.WriteInt(1500);
+            timed.WriteBool(true);
+            timed.WriteInt(25);
+            timed.WriteInt(60);
+            timed.WriteByte(1);
+            var fromTimed = MessageCodec.ReadTable(new NetReader(timed.ToArray()), MessageCodec.TimedTableVersion);
+            Assert.IsTrue(fromTimed.SameAs(new Lazpoly.Core.Rules.TableRules(1500, 25, 60)));
+
+            // Layout 1 (before Faz 10c-2): three values and the default timing.
             var old = new NetWriter();
             old.WriteInt(1500);
             old.WriteBool(true);
             old.WriteInt(0);
-            Lazpoly.Core.Rules.TableRules legacy = MessageCodec.ReadTable(new NetReader(old.ToArray()), withTiming: false);
+            Lazpoly.Core.Rules.TableRules legacy = MessageCodec.ReadTable(new NetReader(old.ToArray()), MessageCodec.LegacyTableVersion);
             Assert.AreEqual(Lazpoly.Core.Rules.TableRules.DefaultTurnSeconds, legacy.TurnSeconds);
-            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.FirstComer, legacy.BankReturns);
 
             var bad = new NetWriter();
             MessageCodec.WriteTable(bad, table);
             byte[] bytes = bad.ToArray();
-            bytes[bytes.Length - 1] = 9; // An unknown bank rule.
+            bytes[bytes.Length - 1] = 0xFF; // A negative turn time.
             Assert.Throws<FormatException>(() => MessageCodec.ReadTable(new NetReader(bytes)));
+            Assert.Throws<FormatException>(() => MessageCodec.ReadTable(new NetReader(w.ToArray()), 4), "An unknown layout.");
         }
 
         [Test]
@@ -167,10 +167,10 @@ namespace Lazpoly.App.Tests
             var start = (GameStartMessage)MessageCodec.Decode(MessageCodec.Encode(new GameStartMessage
             {
                 ProtocolVersion = MessageCodec.ProtocolVersion, Sequence = 1, Snapshot = SampleSnapshot(),
-                Table = new Lazpoly.Core.Rules.TableRules(1800, false, 12),
+                Table = new Lazpoly.Core.Rules.TableRules(1800, 12),
             }));
             Assert.AreEqual(1800, start.Table.StartingMoney);
-            Assert.IsFalse(start.Table.AuctionsEnabled);
+            Assert.AreEqual(Lazpoly.Core.Rules.TableRules.DefaultTurnSeconds, start.Table.TurnSeconds);
             Assert.AreEqual(12, start.Table.RoundLimit);
 
             var events = new EventsMessage();

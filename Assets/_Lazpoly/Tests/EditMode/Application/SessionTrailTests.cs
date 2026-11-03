@@ -27,7 +27,7 @@ namespace Lazpoly.App.Tests
         {
             var trail = new SessionTrail();
             trail.Command(new BuildCommand(2, 7));
-            trail.Command(new PlaceBidCommand(1, 40), RejectionReason.InsufficientFunds);
+            trail.Command(new ChooseDiceCommand(1, 1), RejectionReason.InvalidChoice);
             trail.Command(new ProposeTradeCommand(new TradeOffer(1, 2, 50, 0, new[] { 3 }, null)));
             trail.Events(new GameEvent[]
             {
@@ -37,7 +37,7 @@ namespace Lazpoly.App.Tests
 
             string[] lines = trail.Lines.ToArray();
             StringAssert.Contains("> Build(p2, sq7) -> ok", lines[0]);
-            StringAssert.Contains("> PlaceBid(p1, 40) -> REJECTED InsufficientFunds", lines[1]);
+            StringAssert.Contains("> ChooseDice(p1, 1) -> REJECTED InvalidChoice", lines[1]);
             StringAssert.Contains("> ProposeTrade(p1->p2, give 50+1sq, take 0+0sq) -> ok", lines[2]);
             StringAssert.Contains("< DiceRolled MoneyChangedx2 PhaseChanged", lines[3]);
         }

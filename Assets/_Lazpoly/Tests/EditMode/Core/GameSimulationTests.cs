@@ -98,7 +98,6 @@ namespace Lazpoly.Core.Tests
                 }
             }
 
-            Assert.AreEqual(state.Phase == GamePhase.AuctionInProgress, state.Auction != null, $"{where}: auction state and phase disagree.");
             Assert.AreEqual(state.Phase == GamePhase.AwaitingTradeResponse, state.PendingTrade != null, $"{where}: trade state and phase disagree.");
             Assert.AreEqual(state.Phase == GamePhase.AwaitingDebtPayment, state.Debt != null, $"{where}: debt state and phase disagree.");
 
@@ -139,8 +138,8 @@ namespace Lazpoly.Core.Tests
 
             foreach (System.Type expected in new[]
                      {
-                         typeof(BuildingLevelChangedEvent), typeof(AuctionEndedEvent),
-                         typeof(BidPlacedEvent), typeof(TradeResolvedEvent), typeof(DebtIncurredEvent), typeof(DebtClearedEvent),
+                         typeof(BuildingLevelChangedEvent),
+                         typeof(TradeResolvedEvent), typeof(DebtIncurredEvent), typeof(DebtClearedEvent),
                          typeof(PlayerBankruptedEvent),
                      })
             {

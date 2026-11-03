@@ -148,7 +148,6 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   | `LAZ_BEAT_COMPUTERS` | Makineye Karşı | Bilgisayar oyuncularının da olduğu bir oyunu kazan. |
   | `LAZ_FULL_GROUP` | Tam Takım | Bir renk grubunun bütün mülklerine sahip ol. |
   | `LAZ_FIRST_HOTEL` | Otelci | İlk otelini kur. |
-  | `LAZ_AUCTION_WIN` | Son Teklif | Bir açık artırmayı kazan. |
   | `LAZ_TRADE_DONE` | Pazarlıkçı | Bir takası tamamla. |
   | `LAZ_BANKRUPT_RIVAL` | Alacaklı | Bir rakibi sana olan borcu yüzünden iflas ettir. |
   | `LAZ_TYCOON` | Kodaman | Aynı anda 5000 paraya sahip ol. |
@@ -727,6 +726,14 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Borç kartı satış ekranını kendisi gösterir (`PropertyPanel.RenderSales`): her mülk, "Ev Sat +N" ve "Sat +N" düğmeleriyle; ayrı "Mülkler" düğmesi kalktı. Mülkler penceresindeki "Sat" düğmesi de yalnız borçta görünür (izin verilen komut kuralı).
 - Yapay zekâ zaten yalnız borçta satıyordu. "Nasıl Oynanır" ve ipucu metinleri güncellendi.
 - Testler: `EconomyTests.APropertyIsSoldOnlyToPayADebt`, `SellingABuiltTownPaysForItsBuildingsToo` (borçta).
+
+## Faz 13b: açık artırma kalktı
+
+- Alınmayan mülk bankada kalır; üstüne gelen sonraki oyuncu liste fiyatından alabilir. Bilgisayar oyuncusu kareyi bırakınca balonda "Almıyorum." der. İflas edenin bankaya dönen mülkleri de öyle bekler. Masa kurallarındaki "açık artırma" anahtarı ve "iflas mülkü" seçimi kalktı; masa artık başlangıç parası, tur sınırı ve hamle süresinden ibaret.
+- Çekirdekten `AuctionState`, `GamePhase.AuctionInProgress`, teklif komutları ve olayları, `MoneyReason.Auction`, `RejectionReason.InvalidBid` çıktı. Yapay zekânın teklif ayarları, zaman aşımı için pas, "Son Teklif" başarımı (`LAZ_AUCTION_WIN`), `AuctionPanel`, tokmak ve teklif sesleri ve ilgili metinler de gitti.
+- Ağ protokolü 9: eski sürümle aynı odada oynanamaz. Durum özeti 7, masa düzeni 3, kayıt biçimi 7. Eski kayıtlar (biçim 1-6) yine açılır: açık artırma alanları okunup atılır. Açık artırma sürerken kaydedilmiş bir oyun ise açılmaz (o evre artık yok). Steam lobisi kuralları "para,tur,süre" olarak yazar.
+- Testler: `GameEngineTests.ADeclinedSquareStaysWithTheBankAndTheMoveGoesOn`, `EconomyTests.ABankruptPlayersSquaresGoBackToTheBankForTheNextVisitor`, `NetworkSessionTests.ADeclinedSquareStaysWithTheBankOnEveryMachine`, `LocalGameAndSaveTests.SavesFromTheAuctionVersionsStillOpenAndResume` (biçim 5 ve 6), `MessageCodecTests.TheTableTravelsWithItsTimingAndOldLayoutsStillRead`, `AiPlayerTests.AnOpenTradeWaitsOnlyForItsAnswer`. Açık artırmayı deneyen testler kaldırıldı.
+- `Reports/Balance` altındaki eski denge raporları açık artırmalı kurallarla üretildi; bir sonraki denge koşusunda yenilenecek.
 
 ## Kurallar
 

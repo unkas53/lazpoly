@@ -255,7 +255,7 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void TheRoundLimitEndsTheGameWithTheRichestPlayer()
         {
-            RulesConfig rules = TestRules().WithTable(new TableRules(0, true, 1));
+            RulesConfig rules = TestRules().WithTable(new TableRules(0, 1));
             GameEngine engine = NewGame(Board(), rules, 1, 2, 2, 3);
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new EndTurnCommand(Alice));
@@ -283,33 +283,19 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void WithAuctionsOffADeclinedSquareStaysWithTheBank()
-        {
-            RulesConfig rules = TestRules().WithTable(new TableRules(0, false, 0));
-            GameEngine engine = NewGame(Board(), rules, 2, 4);
-            Accept(engine, new RollDiceCommand(Alice));
-            Assert.AreEqual(GamePhase.AwaitingBuyDecision, engine.State.Phase);
-            CommandResult result = Accept(engine, new DeclinePurchaseCommand(Alice));
-            Assert.IsFalse(result.Events.OfType<AuctionStartedEvent>().Any());
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
-            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(P2));
-        }
-
-        [Test]
         public void TableRulesReplaceOnlyWhatTheyChoose()
         {
             RulesConfig board = TestRules(startingMoney: 1500);
             RulesConfig same = board.WithTable(TableRules.Default);
             Assert.AreEqual(1500, same.StartingMoney);
-            Assert.IsTrue(same.AuctionsEnabled);
             Assert.AreEqual(0, same.RoundLimit);
 
-            RulesConfig custom = board.WithTable(new TableRules(2000, false, 20));
+            RulesConfig custom = board.WithTable(new TableRules(2000, 20, 60));
             Assert.AreEqual(2000, custom.StartingMoney);
-            Assert.IsFalse(custom.AuctionsEnabled);
             Assert.AreEqual(20, custom.RoundLimit);
+            Assert.AreEqual(60, custom.TurnSeconds);
             Assert.AreEqual(board.PassStartBonus, custom.PassStartBonus);
-            Assert.IsTrue(custom.Table.SameAs(new TableRules(2000, false, 20)));
+            Assert.IsTrue(custom.Table.SameAs(new TableRules(2000, 20, 60)));
         }
 
         // ---- Data and state ----

@@ -86,8 +86,6 @@ namespace Lazpoly.Presentation.Game
                 ui.Label(F($"Paran: {choice.Money}"), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
             if (buying && !choice.AffordsLand)
                 ui.Label(L("Paran yetmiyor: bina ya da mülk satışıyla para bulabilirsin."), UiTextStyle.Small, UiTheme.Warning, TextAnchor.MiddleCenter);
-            if (buying && session.Rules.AuctionsEnabled)
-                ui.Label(L("Devam edersen şehir açık artırmaya çıkar."), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
 
             UiBuilder actions = ui.Row();
             UiBuilder.Fix(actions.Button(buying ? L("Devam Et") : L("Şimdi Değil"), dismiss, height: ConfirmHeight), width: DismissWidth);

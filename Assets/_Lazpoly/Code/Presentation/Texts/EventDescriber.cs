@@ -64,9 +64,6 @@ namespace Lazpoly.Presentation.Texts
                 case CardDrawnEvent e: return e.PlayerId;
                 case PlayerTimedOutEvent e: return e.PlayerId;
                 case LookoutChangedEvent e: return e.PlayerId;
-                case BidPlacedEvent e: return e.PlayerId;
-                case BidPassedEvent e: return e.PlayerId;
-                case AuctionEndedEvent e: return e.WinnerId;
                 case TradeProposedEvent e: return e.Offer.FromPlayerId;
                 case DebtIncurredEvent e: return e.PlayerId;
                 default: return GameState.NoOwner;
@@ -100,18 +97,6 @@ namespace Lazpoly.Presentation.Texts
                         : F($"Oyun bitti! Kazanan: {NameOf(state, e.WinnerId)}");
                 case BuildingLevelChangedEvent e:
                     return $"{L(board[e.SquareIndex].Name)}: {LevelText(e.Level)}";
-                case AuctionStartedEvent e:
-                    return F($"{L(board[e.SquareIndex].Name)} açık artırmada");
-                case BankAuctionsQueuedEvent e:
-                    return F($"Bankaya dönen mülkler sırayla açık artırmaya çıkıyor: {SquareNames(board, e.Squares)}");
-                case BidPlacedEvent e:
-                    return F($"{NameOf(state, e.PlayerId)} teklif: {e.Amount}");
-                case BidPassedEvent e:
-                    return F($"{NameOf(state, e.PlayerId)} artırmadan çekildi");
-                case AuctionEndedEvent e:
-                    return e.WinnerId == GameState.NoOwner
-                        ? F($"{L(board[e.SquareIndex].Name)} satılmadı")
-                        : $"{L(board[e.SquareIndex].Name)} → {NameOf(state, e.WinnerId)} ({e.Price})";
                 case TradeProposedEvent e:
                     return F($"{NameOf(state, e.Offer.FromPlayerId)}, {NameOf(state, e.Offer.ToPlayerId)} oyuncusuna takas teklif etti");
                 case TradeResolvedEvent e:
@@ -151,7 +136,6 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Building: return L("inşaat");
                 case MoneyReason.BuildingSale: return L("bina satışı");
                 case MoneyReason.PropertySale: return L("mülk satışı");
-                case MoneyReason.Auction: return L("açık artırma");
                 case MoneyReason.Trade: return L("takas");
                 case MoneyReason.Card: return L("Sokak Haberi");
                 case MoneyReason.Pot: return L("çay kumbarası");
@@ -176,12 +160,5 @@ namespace Lazpoly.Presentation.Texts
 
         /// <summary>A player's name, or "#id" for one no longer at the table.</summary>
         public static string NameOf(GameState state, int playerId) => state.FindPlayer(playerId)?.Name ?? $"#{playerId}";
-
-        private static string SquareNames(BoardDefinition board, IReadOnlyList<int> squares)
-        {
-            var names = new List<string>(squares.Count);
-            foreach (int square in squares) names.Add(L(board[square].Name));
-            return string.Join(", ", names);
-        }
     }
 }

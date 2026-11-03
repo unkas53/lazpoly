@@ -60,19 +60,15 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void DecliningStartsAnAuctionThatEveryoneCanPass()
+        public void ADeclinedSquareStaysWithTheBankAndTheMoveGoesOn()
         {
             var engine = NewGame(new ScriptedDice(2, 3));
 
             Accept(engine, new RollDiceCommand(Alice));
-            Accept(engine, new DeclinePurchaseCommand(Alice));
-            Assert.AreEqual(GamePhase.AuctionInProgress, engine.State.Phase);
-            Assert.AreEqual(5, engine.State.Auction.SquareIndex);
+            CommandResult declined = Accept(engine, new DeclinePurchaseCommand(Alice));
 
-            Accept(engine, new PassBidCommand(Bob));
-            Accept(engine, new PassBidCommand(Alice));
-
-            Assert.IsNull(engine.State.Auction);
+            Assert.IsFalse(declined.Events.OfType<PropertyOwnerChangedEvent>().Any(), "Nobody gets the square.");
+            Assert.IsFalse(declined.Events.OfType<MoneyChangedEvent>().Any(), "Nothing is paid.");
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(5));
             Assert.AreEqual(1000, P(engine, Alice).Money);
             Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
@@ -140,24 +136,16 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(1000 - 80 + 200, P(engine, Alice).Money);
         }
 
-        /// <summary>Alice declines the square; nobody bids, so it stays with the bank and her move goes on.</summary>
-        private static void DeclineAndLetAuctionLapse(GameEngine engine)
-        {
-            Accept(engine, new DeclinePurchaseCommand(Alice));
-            Accept(engine, new PassBidCommand(Bob));
-            Accept(engine, new PassBidCommand(Alice));
-        }
-
         [Test]
         public void ThirdDoubleForfeitsTheMove()
         {
             var engine = NewGame(new ScriptedDice(1, 1, 2, 2, 3, 3));
 
             Accept(engine, new RollDiceCommand(Alice));
-            DeclineAndLetAuctionLapse(engine);
+            Accept(engine, new DeclinePurchaseCommand(Alice));
             Accept(engine, new RollDiceCommand(Alice));
             Assert.AreEqual(6, P(engine, Alice).Position);
-            DeclineAndLetAuctionLapse(engine);
+            Accept(engine, new DeclinePurchaseCommand(Alice));
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
 
             CommandResult third = Accept(engine, new RollDiceCommand(Alice));

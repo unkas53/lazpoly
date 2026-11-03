@@ -15,8 +15,6 @@ namespace Lazpoly.Presentation.Audio
         MoneyOut,
         Build,
         Sell,
-        Bid,
-        Gavel,
         UiClick,
         UiOpen,
         YourTurn,
@@ -46,8 +44,6 @@ namespace Lazpoly.Presentation.Audio
             switch (gameEvent)
             {
                 case MoneyChangedEvent e: return ForMoney(e);
-                case BidPlacedEvent _: return SoundCue.Bid;
-                case AuctionEndedEvent e: return e.WinnerId == GameState.NoOwner ? SoundCue.None : SoundCue.Gavel;
                 case TradeProposedEvent _: return SoundCue.UiOpen;
                 case TradeResolvedEvent e: return e.Outcome == TradeOutcome.Accepted ? SoundCue.Trade : SoundCue.None;
                 case PlayerBankruptedEvent _: return SoundCue.Bankrupt;
@@ -75,7 +71,7 @@ namespace Lazpoly.Presentation.Audio
                 case MoneyReason.Rent:
                     return e.Delta < 0 ? SoundCue.MoneyOut : SoundCue.None;
                 default:
-                    // Auction and trade payments sound with the gavel or the handshake; bankruptcy with its own cue.
+                    // Trade payments sound with the handshake; bankruptcy with its own cue.
                     return SoundCue.None;
             }
         }
@@ -112,8 +108,7 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.DiceShake:
                 case SoundCue.MoneyIn:
                 case SoundCue.MoneyOut:
-                case SoundCue.Build:
-                case SoundCue.Bid: return 2;
+                case SoundCue.Build: return 2;
                 default: return cue == SoundCue.None ? 0 : 1;
             }
         }
@@ -146,7 +141,6 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.PawnStep: return 0.08f;
                 case SoundCue.DiceShake:
                 case SoundCue.DiceLand:
-                case SoundCue.Bid:
                 case SoundCue.UiClick:
                     return 0.04f;
                 case SoundCue.MoneyIn:
@@ -167,7 +161,6 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.PawnStep: return 0.4f;
                 case SoundCue.UiClick: return 0.4f;
                 case SoundCue.UiOpen: return 0.4f;
-                case SoundCue.Bid: return 0.6f;
                 case SoundCue.TurnPass: return 0.45f;
                 default: return 0.75f;
             }

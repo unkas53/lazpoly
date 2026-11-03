@@ -63,22 +63,6 @@ namespace Lazpoly.Core.Commands
         public SellPropertyCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
     }
 
-    public sealed class PlaceBidCommand : GameCommand
-    {
-        public PlaceBidCommand(int playerId, int amount) : base(playerId)
-        {
-            Amount = amount;
-        }
-
-        public int Amount { get; }
-    }
-
-    /// <summary>Leaves the running auction for good.</summary>
-    public sealed class PassBidCommand : GameCommand
-    {
-        public PassBidCommand(int playerId) : base(playerId) { }
-    }
-
     public sealed class ProposeTradeCommand : GameCommand
     {
         public ProposeTradeCommand(State.TradeOffer offer) : base(offer?.FromPlayerId ?? -1)

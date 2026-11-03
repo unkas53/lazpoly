@@ -5,7 +5,7 @@ Every sound is generated here, so the files belong to the project and need no li
 changing a recipe:  python3 Tools/Audio/make_sfx.py   (numpy only; a fixed seed keeps the output identical).
 
 How the sounds are made (Faz 12e, "richer, more real, more in tune, fuller"):
-  * Real objects are modal: a struck die, a pawn, a gavel or a coin rings at a handful of its own resonant
+  * Real objects are modal: a struck die, a pawn or a coin rings at a handful of its own resonant
     frequencies, each dying away at its own rate. `modal` sums those damped sines under a short excitation,
     so wood sounds woody (low, inharmonic, quick) and brass coins sound like coins (high, sparse, longer).
   * Everything has a body: tonal sounds carry a soft sub-octave and a felt-mallet attack, knocks carry a low
@@ -218,14 +218,10 @@ def build():
     return place(0.8, (0.0, wood(1.0, 0.3)), (0.17, wood(0.92, 0.3) * 0.85), (0.02, mallet("G3", 0.2, 0.35)))
 
 
-def bid():
-    return mix(wood(0.8, 0.2, 0.9) * 0.7, mallet("B4", 0.15, 0.25))
-
-
 def recipes():
     takes = {"dice_shake": (dice_shake, 2), "dice_land": (dice_land, 3), "pawn_step": (pawn_step, 4),
              "ui_click": (ui_click, 3), "money_in": (money_in, 2), "money_out": (money_out, 2),
-             "build": (build, 2), "bid": (bid, 2)}
+             "build": (build, 2)}
     for name, (make, count) in takes.items():
         for i in range(count):
             yield (name if i == 0 else f"{name}_{i + 1}"), make()
@@ -233,8 +229,6 @@ def recipes():
     yield "buy", mix(place(1.2, *chime(["G4", "B4", "D5"], 0.07, 0.4)), place(1.2, (0.0, bass("G2", 1.0, 0.35)), *coins(5, 0.2, 0.15)))
     yield "sell", mix(place(0.8, (0.0, wood(0.9, 0.25) * 0.8), *chime(["D5", "A4"], 0.1, 0.25, 0.6)), place(0.8, *coins(3, 0.12, 0.12)))
     yield "property_sale", place(1.1, (0.0, wood(1.1, 0.3)), *[(0.1 + s, sig) for s, sig in chime(["D5", "B4", "G4", "D4"], 0.1, 0.3, 0.6)])
-    gavel = mix(wood(1.4, 0.5, 1.2) * 1.2, np.sin(2 * np.pi * 60 * t(0.5)) * env(0.5, 0.002, 0.05))
-    yield "gavel", place(1.3, (0.0, gavel), (0.03, mallet("G4", 0.45, 0.4)), (0.03, mallet("D5", 0.45, 0.3)), (0.0, bass("G2", 1.0, 0.3)))
     yield "ui_open", paper(0.26)
     yield "your_turn", place(1.2, *chime(["D4", "G4", "D5"], 0.11, 0.42, 0.85), (0.0, bass("G2", 1.0, 0.3) * 0.6))
     yield "achievement", place(1.6, *chime(["G4", "B4", "D5", "G5"], 0.085, 0.5), (0.0, bass("G2", 1.4, 0.45)))
@@ -257,7 +251,7 @@ def recipes():
 
 
 # Small, frequent sounds sit under the big moments already in the files, not only in the game's mix.
-QUIET = {"pawn_step": 0.38, "ui_click": 0.3, "ui_open": 0.32, "bid": 0.45, "dice_shake": 0.5, "dice_land": 0.6, "turn_pass": 0.4}
+QUIET = {"pawn_step": 0.38, "ui_click": 0.3, "ui_open": 0.32, "dice_shake": 0.5, "dice_land": 0.6, "turn_pass": 0.4}
 PEAK = 0.72
 
 

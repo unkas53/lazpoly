@@ -42,27 +42,6 @@ namespace Lazpoly.Presentation.Menu
                     UiTextStyle.Small, UiTheme.Muted);
             }
 
-            ui.Toggle(L("Alınmayan mülk açık artırmaya çıksın"), table.AuctionsEnabled, on => changed(table.WithAuctions(on)), canEdit);
-
-            ui.Eyebrow(L("İflas edenin bankaya dönen mülkleri"), UiTheme.Muted);
-            UiBuilder bank = ui.Row();
-            foreach (BankReturns choice in new[] { BankReturns.FirstComer, BankReturns.Auction })
-            {
-                BankReturns value = choice;
-                bool possible = value == BankReturns.FirstComer || table.AuctionsEnabled;
-                Choice(bank, TableSetup.BankReturnsText(value), table.BankReturns == value, canEdit && possible, () => changed(table.WithBankReturns(value)));
-            }
-
-            if (explain)
-            {
-                ui.Label(table.AuctionsBankReturns
-                        ? L("İflas edenin mülkleri sırayla açık artırmaya çıkar; kalan oyuncular teklif verir, sonra sıra devam eder.")
-                        : table.BankReturns == BankReturns.Auction
-                            ? L("Açık artırma kapalıyken bu seçenek çalışmaz; mülkler bankada kalır.")
-                            : L("Mülkler bankada kalır; üstüne gelen oyuncu liste fiyatından alabilir."),
-                    UiTextStyle.Small, UiTheme.Muted);
-            }
-
             ui.Eyebrow(L("Hamle süresi (çevrim içi)"), UiTheme.Muted);
             UiBuilder turn = ui.Row();
             foreach (int choice in TableSetup.TurnSecondsChoices)
@@ -75,7 +54,7 @@ namespace Lazpoly.Presentation.Menu
             {
                 ui.Label(table.TurnSeconds == 0
                         ? L("Saat yok: herkes istediği kadar düşünür. Yalnızca çevrim içi oyunlarda geçerli.")
-                        : L("Süre dolunca ev sahibi oyuncu adına en temkinli hamleyi yapar; açık artırma ve takas cevapları için en çok 30 sn. Son 10 saniyede ekran kenarı kızarır. Yalnızca çevrim içi oyunlarda geçerli."),
+                        : L("Süre dolunca ev sahibi oyuncu adına en temkinli hamleyi yapar; takas cevapları için en çok 30 sn. Son 10 saniyede ekran kenarı kızarır. Yalnızca çevrim içi oyunlarda geçerli."),
                     UiTextStyle.Small, UiTheme.Muted);
             }
         }

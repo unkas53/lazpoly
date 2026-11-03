@@ -8,7 +8,7 @@ namespace Lazpoly.PlayTests
 {
     /// <summary>
     /// Picks a legal command for whoever has to act next, so scene tests can drive a game
-    /// through every phase: buys when it can, lets auctions and trades lapse, settles debts.
+    /// through every phase: buys when it can, lets trades lapse, settles debts.
     /// </summary>
     internal static class PlayBot
     {
@@ -24,14 +24,6 @@ namespace Lazpoly.PlayTests
                 case GamePhase.AwaitingBuyDecision:
                     var buy = new BuyPropertyCommand(me);
                     return Legal(buy) ? buy : (GameCommand)new DeclinePurchaseCommand(me);
-                case GamePhase.AuctionInProgress:
-                    foreach (PlayerState player in state.Players)
-                    {
-                        var pass = new PassBidCommand(player.Id);
-                        if (Legal(pass)) return pass;
-                    }
-
-                    break;
                 case GamePhase.AwaitingTradeResponse:
                     return new RejectTradeCommand(state.PendingTrade.ToPlayerId);
                 case GamePhase.AwaitingTravelDecision:

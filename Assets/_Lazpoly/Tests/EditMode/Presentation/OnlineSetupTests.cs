@@ -207,7 +207,7 @@ namespace Lazpoly.Presentation.Tests
         {
             var lobby = new FakeLobby { LocalId = 1 };
             var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(1), () => { });
-            TableSetup.Chosen = TableRules.Default.WithRoundLimit(25).WithAuctions(false);
+            TableSetup.Chosen = TableRules.Default.WithRoundLimit(25).WithTurnSeconds(60);
 
             panel.Update();
 

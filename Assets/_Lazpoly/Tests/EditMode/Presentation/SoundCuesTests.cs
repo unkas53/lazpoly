@@ -56,12 +56,9 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void AuctionsTradesAndTheEndSound()
+        public void TradesAndTheEndSound()
         {
-            Assert.AreEqual(SoundCue.Bid, SoundCues.For(new BidPlacedEvent(1, 40)));
-            Assert.AreEqual(SoundCue.Gavel, SoundCues.For(new AuctionEndedEvent(3, 1, 40)));
-            Assert.AreEqual(SoundCue.None, SoundCues.For(new AuctionEndedEvent(3, GameState.NoOwner, 0)));
-            Assert.AreEqual(SoundCue.None, SoundCues.For(new MoneyChangedEvent(1, -40, MoneyReason.Auction)));
+            Assert.AreEqual(SoundCue.None, SoundCues.For(new MoneyChangedEvent(1, -40, MoneyReason.Trade)), "The handshake already sounds.");
             Assert.AreEqual(SoundCue.Trade, SoundCues.For(new TradeResolvedEvent(TradeOutcome.Accepted)));
             Assert.AreEqual(SoundCue.None, SoundCues.For(new TradeResolvedEvent(TradeOutcome.Rejected)));
             Assert.AreEqual(SoundCue.Bankrupt, SoundCues.For(new PlayerBankruptedEvent(2, 1)));

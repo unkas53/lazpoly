@@ -59,17 +59,6 @@ namespace Lazpoly.Core.Engine
                     return OnTurn(state, player, GamePhase.AwaitingDebtPayment)
                         .Then(() => RequireOwnProperty(board, state, player, c.SquareIndex));
 
-                case PlaceBidCommand c:
-                {
-                    RejectionReason open = CanTakePartInAuction(state, player);
-                    if (open != RejectionReason.None) return open;
-                    if (c.Amount <= state.Auction.HighestBid || c.Amount < 1) return RejectionReason.InvalidBid;
-                    return c.Amount <= player.Money ? RejectionReason.None : RejectionReason.InsufficientFunds;
-                }
-
-                case PassBidCommand _:
-                    return CanTakePartInAuction(state, player);
-
                 case ProposeTradeCommand c:
                     if (c.Offer == null) return RejectionReason.InvalidTrade;
                     return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd)
@@ -295,15 +284,6 @@ namespace Lazpoly.Core.Engine
             RejectionReason owned = RequireOwnProperty(board, state, player, squareIndex);
             if (owned != RejectionReason.None) return owned;
             return state.GetBuildingLevel(squareIndex) == 0 ? RejectionReason.CannotSell : RejectionReason.None;
-        }
-
-
-        private static RejectionReason CanTakePartInAuction(GameState state, PlayerState player)
-        {
-            if (state.Phase != GamePhase.AuctionInProgress) return RejectionReason.WrongPhase;
-            AuctionState auction = state.Auction;
-            if (auction.HasPassed(player.Id) || auction.HighestBidderId == player.Id) return RejectionReason.InvalidBid;
-            return RejectionReason.None;
         }
 
         private static RejectionReason ValidateTrade(BoardDefinition board, GameState state, TradeOffer offer)

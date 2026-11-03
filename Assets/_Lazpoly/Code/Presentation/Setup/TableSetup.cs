@@ -31,16 +31,11 @@ namespace Lazpoly.Presentation.Setup
         /// <summary>"60 sn", "90 sn"... or "Süresiz".</summary>
         public static string TurnSecondsText(int seconds) => seconds == 0 ? L("Süresiz") : F($"{seconds} sn");
 
-        /// <summary>What becomes of a bankrupt player's squares, as the rules window names the choice.</summary>
-        public static string BankReturnsText(BankReturns rule) =>
-            rule == BankReturns.Auction ? L("Hemen açık artırmaya çıkar") : L("Gelen alır");
-
-        /// <summary>One line for the menu, e.g. "1500 para · açık artırma var · sınırsız · 90 sn hamle".</summary>
+        /// <summary>One line for the menu, e.g. "1500 para · sınırsız · 90 sn hamle".</summary>
         public static string Summary(TableRules table, int boardMoney)
         {
-            string line = F($"{(table.StartingMoney == 0 ? boardMoney : table.StartingMoney)} para · {(table.AuctionsEnabled ? L("açık artırma var") : L("açık artırma yok"))} · {RoundLimitText(table.RoundLimit).ToLowerInvariant()}");
+            string line = F($"{(table.StartingMoney == 0 ? boardMoney : table.StartingMoney)} para · {RoundLimitText(table.RoundLimit).ToLowerInvariant()}");
             line += " · " + (table.TurnSeconds == 0 ? L("süresiz hamle") : F($"{table.TurnSeconds} sn hamle"));
-            if (table.AuctionsBankReturns) line += " · " + L("iflas mülkü açık artırmada");
             return line;
         }
 

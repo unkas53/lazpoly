@@ -7,8 +7,8 @@ namespace Lazpoly.App.Session
 {
     /// <summary>
     /// How long an online game has waited since the last accepted move. The table picks the turn
-    /// time (<see cref="TableRules.TurnSeconds"/>; 0 means no clock at all); answers to an auction
-    /// or a trade get at most <see cref="ResponseSeconds"/>. The time source is injected so tests
+    /// time (<see cref="TableRules.TurnSeconds"/>; 0 means no clock at all); answers to a trade
+    /// offer get at most <see cref="ResponseSeconds"/>. The time source is injected so tests
     /// need no waiting.
     /// </summary>
     public sealed class TurnClock
@@ -39,7 +39,7 @@ namespace Lazpoly.App.Session
         public static double LimitFor(GamePhase phase, int turnSeconds = TableRules.DefaultTurnSeconds)
         {
             if (turnSeconds <= 0) return double.PositiveInfinity;
-            bool answer = phase == GamePhase.AuctionInProgress || phase == GamePhase.AwaitingTradeResponse;
+            bool answer = phase == GamePhase.AwaitingTradeResponse;
             return answer ? Math.Min(ResponseSeconds, turnSeconds) : turnSeconds;
         }
 

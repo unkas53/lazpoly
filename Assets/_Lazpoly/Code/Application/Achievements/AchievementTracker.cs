@@ -56,9 +56,6 @@ namespace Lazpoly.App.Achievements
                         }
 
                         break;
-                    case AuctionEndedEvent e:
-                        if (IsMine(e.WinnerId)) Earn(AchievementCatalog.AuctionWin, earned);
-                        break;
                     case TradeProposedEvent e:
                         _openOffer = e.Offer;
                         break;

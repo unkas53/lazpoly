@@ -13,13 +13,12 @@ namespace Lazpoly.Net.Messages
     /// </summary>
     public static class MessageCodec
     {
-        public const int ProtocolVersion = 8;
+        public const int ProtocolVersion = 9;
 
         private enum CommandTag : byte
         {
             Roll = 1, Buy = 2, Decline = 3, EndTurn = 4,
             Build = 5, SellBuilding = 6, SellProperty = 7,
-            Bid = 9, PassBid = 10,
             ProposeTrade = 11, AcceptTrade = 12, RejectTrade = 13, CancelTrade = 14,
             PayDebt = 15, Bankruptcy = 16,
             Travel = 17, DeclineTravel = 18, ChooseDice = 19,
@@ -29,9 +28,9 @@ namespace Lazpoly.Net.Messages
         {
             TurnStarted = 1, DiceRolled = 2, PlayerMoved = 3, MoneyChanged = 4,
             OwnerChanged = 5, Bankrupted = 6, PhaseChanged = 7, GameEnded = 8,
-            BuildingLevel = 9, AuctionStarted = 11, BidPlaced = 12, BidPassed = 13, AuctionEnded = 14,
+            BuildingLevel = 9,
             TradeProposed = 15, TradeResolved = 16, DebtIncurred = 17, DebtCleared = 18,
-            PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22, TimedOut = 23, BankAuctionsQueued = 24,
+            PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22, TimedOut = 23,
         }
 
         public static byte[] Encode(NetMessage message)
@@ -168,8 +167,6 @@ namespace Lazpoly.Net.Messages
                 case BuildCommand _: w.WriteByte((byte)CommandTag.Build); break;
                 case SellBuildingCommand _: w.WriteByte((byte)CommandTag.SellBuilding); break;
                 case SellPropertyCommand _: w.WriteByte((byte)CommandTag.SellProperty); break;
-                case PlaceBidCommand _: w.WriteByte((byte)CommandTag.Bid); break;
-                case PassBidCommand _: w.WriteByte((byte)CommandTag.PassBid); break;
                 case ProposeTradeCommand c:
                     if (c.Offer == null) throw new ArgumentException("A trade command needs an offer.");
                     w.WriteByte((byte)CommandTag.ProposeTrade);
@@ -189,7 +186,6 @@ namespace Lazpoly.Net.Messages
             switch (command)
             {
                 case SquareCommand c: w.WriteInt(c.SquareIndex); break;
-                case PlaceBidCommand c: w.WriteInt(c.Amount); break;
                 case ChooseDiceCommand c: w.WriteInt(c.Option); break;
                 case ProposeTradeCommand c: WriteOffer(w, c.Offer); break;
             }
@@ -238,8 +234,6 @@ namespace Lazpoly.Net.Messages
                 case CommandTag.Build: return new BuildCommand(playerId, r.ReadInt());
                 case CommandTag.SellBuilding: return new SellBuildingCommand(playerId, r.ReadInt());
                 case CommandTag.SellProperty: return new SellPropertyCommand(playerId, r.ReadInt());
-                case CommandTag.Bid: return new PlaceBidCommand(playerId, r.ReadInt());
-                case CommandTag.PassBid: return new PassBidCommand(playerId);
                 case CommandTag.ProposeTrade:
                     TradeOffer offer = ReadOffer(r);
                     if (offer.FromPlayerId != playerId) throw new FormatException("Trade offer is not from the commanding player.");
@@ -289,18 +283,6 @@ namespace Lazpoly.Net.Messages
                 case BuildingLevelChangedEvent e:
                     w.WriteByte((byte)EventTag.BuildingLevel); w.WriteInt(e.SquareIndex); w.WriteInt(e.Level);
                     break;
-                case AuctionStartedEvent e:
-                    w.WriteByte((byte)EventTag.AuctionStarted); w.WriteInt(e.SquareIndex);
-                    break;
-                case BidPlacedEvent e:
-                    w.WriteByte((byte)EventTag.BidPlaced); w.WriteInt(e.PlayerId); w.WriteInt(e.Amount);
-                    break;
-                case BidPassedEvent e:
-                    w.WriteByte((byte)EventTag.BidPassed); w.WriteInt(e.PlayerId);
-                    break;
-                case AuctionEndedEvent e:
-                    w.WriteByte((byte)EventTag.AuctionEnded); w.WriteInt(e.SquareIndex); w.WriteInt(e.WinnerId); w.WriteInt(e.Price);
-                    break;
                 case TradeProposedEvent e:
                     w.WriteByte((byte)EventTag.TradeProposed); WriteOffer(w, e.Offer);
                     break;
@@ -330,10 +312,6 @@ namespace Lazpoly.Net.Messages
                 case PlayerTimedOutEvent e:
                     w.WriteByte((byte)EventTag.TimedOut); w.WriteInt(e.PlayerId); w.WriteBool(e.StandInTookOver);
                     break;
-                case BankAuctionsQueuedEvent e:
-                    w.WriteByte((byte)EventTag.BankAuctionsQueued); w.WriteInt(e.Squares.Count);
-                    foreach (int square in e.Squares) w.WriteInt(square);
-                    break;
                 default:
                     throw new ArgumentException($"Cannot encode event {gameEvent?.GetType().Name}.");
             }
@@ -353,10 +331,6 @@ namespace Lazpoly.Net.Messages
                 case EventTag.PhaseChanged: return new PhaseChangedEvent(ReadEnum<GamePhase>(r));
                 case EventTag.GameEnded: return new GameEndedEvent(r.ReadInt(), ReadEnum<GameEndReason>(r));
                 case EventTag.BuildingLevel: return new BuildingLevelChangedEvent(r.ReadInt(), r.ReadInt());
-                case EventTag.AuctionStarted: return new AuctionStartedEvent(r.ReadInt());
-                case EventTag.BidPlaced: return new BidPlacedEvent(r.ReadInt(), r.ReadInt());
-                case EventTag.BidPassed: return new BidPassedEvent(r.ReadInt());
-                case EventTag.AuctionEnded: return new AuctionEndedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.TradeProposed: return new TradeProposedEvent(ReadOffer(r));
                 case EventTag.TradeResolved: return new TradeResolvedEvent(ReadEnum<TradeOutcome>(r));
                 case EventTag.DebtIncurred: return new DebtIncurredEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), ReadEnum<MoneyReason>(r));
@@ -366,7 +340,6 @@ namespace Lazpoly.Net.Messages
                 case EventTag.Lookout: return new LookoutChangedEvent(r.ReadInt(), r.ReadBool());
                 case EventTag.DiceOptions: return new DiceOptionsEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.TimedOut: return new PlayerTimedOutEvent(r.ReadInt(), r.ReadBool());
-                case EventTag.BankAuctionsQueued: return new BankAuctionsQueuedEvent(ReadInts(r));
                 default: throw new FormatException($"Unknown event tag {(byte)tag}.");
             }
         }
@@ -411,20 +384,6 @@ namespace Lazpoly.Net.Messages
                 w.WriteInt(s.BuildingLevels[i]);
             }
 
-            w.WriteBool(s.Auction != null);
-            if (s.Auction != null)
-            {
-                w.WriteInt(s.Auction.SquareIndex);
-                w.WriteInt(s.Auction.HighestBid);
-                w.WriteInt(s.Auction.HighestBidderId);
-                w.WriteInt(s.Auction.PassedPlayerIds.Count);
-                foreach (int id in s.Auction.PassedPlayerIds) w.WriteInt(id);
-            }
-
-            int[] pending = s.PendingAuctions ?? Array.Empty<int>();
-            w.WriteInt(pending.Length);
-            foreach (int square in pending) w.WriteInt(square);
-
             w.WriteBool(s.PendingTrade != null);
             if (s.PendingTrade != null)
             {
@@ -442,8 +401,11 @@ namespace Lazpoly.Net.Messages
             }
         }
 
-        /// <summary>The snapshot layout written today (Faz 10c-2: adds the bank auctions still queued).</summary>
-        public const int SnapshotVersion = 6;
+        /// <summary>The snapshot layout written today (Faz 13b: no auctions any more).</summary>
+        public const int SnapshotVersion = 7;
+
+        /// <summary>Layout 6 (Faz 10c-2) carried a running auction and the bank auctions still queued.</summary>
+        public const int QueueSnapshotVersion = 6;
 
         /// <summary>Layout 5 (Faz 9) dropped the mortgage flags; it knows no auction queue.</summary>
         public const int SaleSnapshotVersion = 5;
@@ -521,16 +483,20 @@ namespace Lazpoly.Net.Messages
                 if (version < SaleSnapshotVersion) r.ReadBool();
             }
 
-            if (r.ReadBool())
+            if (version < SnapshotVersion)
             {
-                int square = r.ReadInt();
-                int bid = r.ReadInt();
-                int bidder = r.ReadInt();
-                if (bid < 0) throw new FormatException("Negative auction bid.");
-                s.Auction = new AuctionState(square, bid, bidder, ReadInts(r));
-            }
+                // Older layouts had room for an auction. A game saved mid-auction never gets this far (its
+                // phase no longer exists), so whatever is here is empty and is skipped.
+                if (r.ReadBool())
+                {
+                    r.ReadInt();
+                    r.ReadInt();
+                    r.ReadInt();
+                    ReadInts(r);
+                }
 
-            s.PendingAuctions = version >= SnapshotVersion ? ReadInts(r) : Array.Empty<int>();
+                if (version >= QueueSnapshotVersion) ReadInts(r);
+            }
 
             if (r.ReadBool())
             {
@@ -546,35 +512,43 @@ namespace Lazpoly.Net.Messages
             return s;
         }
 
+        /// <summary>The table layout written today (Faz 13b): starting money, round limit, turn time.</summary>
+        public const int TableVersion = 3;
+
+        /// <summary>Layout 2 (Faz 10c-2) also carried the auction switch and the bankrupt-squares rule.</summary>
+        public const int TimedTableVersion = 2;
+
+        /// <summary>Layout 1: starting money, the auction switch and the round limit.</summary>
+        public const int LegacyTableVersion = 1;
+
         /// <summary>Writes the table's house rules; also used for save files.</summary>
         public static void WriteTable(NetWriter w, TableRules table)
         {
             w.WriteInt(table.StartingMoney);
-            w.WriteBool(table.AuctionsEnabled);
             w.WriteInt(table.RoundLimit);
             w.WriteInt(table.TurnSeconds);
-            w.WriteByte((byte)table.BankReturns);
         }
 
         /// <summary>Reads the table as written today.</summary>
-        public static TableRules ReadTable(NetReader r) => ReadTable(r, withTiming: true);
+        public static TableRules ReadTable(NetReader r) => ReadTable(r, TableVersion);
 
         /// <summary>
-        /// Reads the table; saves older than Faz 10c-2 carry only money, auctions and the round limit
-        /// and get the default turn time and bank rule.
+        /// Reads a table in the given layout, so old saves still open: the auction switch and the bank
+        /// rule they carry are skipped, and layout 1 gets the default turn time.
         /// </summary>
-        public static TableRules ReadTable(NetReader r, bool withTiming)
+        public static TableRules ReadTable(NetReader r, int version)
         {
+            if (version < LegacyTableVersion || version > TableVersion) throw new FormatException($"Table layout {version} is not supported.");
             int money = r.ReadInt();
-            bool auctions = r.ReadBool();
+            if (version < TableVersion) r.ReadBool();
             int rounds = r.ReadInt();
             if (money < 0 || rounds < 0) throw new FormatException("Invalid table rules.");
-            if (!withTiming) return new TableRules(money, auctions, rounds);
+            if (version == LegacyTableVersion) return new TableRules(money, rounds);
 
             int turnSeconds = r.ReadInt();
-            byte bank = r.ReadByte();
-            if (turnSeconds < 0 || !Enum.IsDefined(typeof(BankReturns), (int)bank)) throw new FormatException("Invalid table rules.");
-            return new TableRules(money, auctions, rounds, turnSeconds, (BankReturns)bank);
+            if (version == TimedTableVersion && r.ReadByte() > 1) throw new FormatException("Invalid table rules.");
+            if (turnSeconds < 0) throw new FormatException("Invalid table rules.");
+            return new TableRules(money, rounds, turnSeconds);
         }
 
         /// <summary>Reads an int-backed enum and refuses values the enum does not define.</summary>

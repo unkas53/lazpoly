@@ -22,7 +22,6 @@ Steamworks > Stats & Achievements > Achievements. API adları koddakiyle birebir
 | LAZ_BEAT_COMPUTERS | Makineye Karşı | Bilgisayar oyuncularının da olduğu bir oyunu kazan. |
 | LAZ_FULL_GROUP | Tam Takım | Bir renk grubunun bütün mülklerine sahip ol. |
 | LAZ_FIRST_HOTEL | Otelci | İlk otelini kur. |
-| LAZ_AUCTION_WIN | Son Teklif | Bir açık artırmayı kazan. |
 | LAZ_TRADE_DONE | Pazarlıkçı | Bir takası tamamla. |
 | LAZ_BANKRUPT_RIVAL | Alacaklı | Bir rakibi sana olan borcu yüzünden iflas ettir. |
 | LAZ_TYCOON | Kodaman | Aynı anda 5000 paraya sahip ol. |

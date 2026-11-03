@@ -96,8 +96,8 @@ namespace Lazpoly.App.Tests
         public IGameSession SessionOf(int playerId) => playerId == 1 ? (IGameSession)Host : Clients[playerId];
 
         /// <summary>
-        /// A legal next command for whoever must act: buys most squares it can afford, auctions the rest with
-        /// small bids, rejects trades, and pays debts by selling a property or goes bankrupt.
+        /// A legal next command for whoever must act: buys most squares it can afford, leaves the rest with the bank,
+        /// rejects trades, and pays debts by selling a property or goes bankrupt.
         /// </summary>
         public GameCommand NextCommand()
         {
@@ -108,8 +108,8 @@ namespace Lazpoly.App.Tests
                 case GamePhase.WaitingForRoll: return new RollDiceCommand(me);
                 case GamePhase.TurnEnd: return new EndTurnCommand(me);
                 case GamePhase.AwaitingBuyDecision:
-                    // The first property of each group (squares 1, 4 and 7 on the test board) always goes
-                    // to auction, even when affordable, so auctions happen often.
+                    // The first property of each group (squares 1, 4 and 7 on the test board) is always
+                    // left with the bank, even when affordable, so declined squares happen often.
                     bool buy = state.CurrentPlayer.Position % 3 != 1 && Legal(new BuyPropertyCommand(me));
                     return buy ? new BuyPropertyCommand(me) : (GameCommand)new DeclinePurchaseCommand(me);
                 case GamePhase.AwaitingTradeResponse:
@@ -122,15 +122,6 @@ namespace Lazpoly.App.Tests
                     }
 
                     return new DeclareBankruptcyCommand(me);
-                case GamePhase.AuctionInProgress:
-                    foreach (PlayerState player in state.Players)
-                    {
-                        if (!Legal(new PassBidCommand(player.Id))) continue;
-                        var bid = new PlaceBidCommand(player.Id, state.Auction.HighestBid + 10);
-                        return bid.Amount <= Board[state.Auction.SquareIndex].Price / 2 && Legal(bid) ? bid : (GameCommand)new PassBidCommand(player.Id);
-                    }
-
-                    break;
             }
 
             return new EndTurnCommand(me);

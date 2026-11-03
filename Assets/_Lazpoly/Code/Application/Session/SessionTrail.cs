@@ -75,7 +75,6 @@ namespace Lazpoly.App.Session
             switch (command)
             {
                 case SquareCommand c: return $"{name}(p{c.PlayerId}, sq{c.SquareIndex})";
-                case PlaceBidCommand c: return $"{name}(p{c.PlayerId}, {c.Amount})";
                 case ChooseDiceCommand c: return $"{name}(p{c.PlayerId}, {c.Option})";
                 case ProposeTradeCommand c when c.Offer != null:
                     return $"{name}(p{c.Offer.FromPlayerId}->p{c.Offer.ToPlayerId}, give {c.Offer.GiveMoney}+{c.Offer.GiveSquares.Count}sq, take {c.Offer.TakeMoney}+{c.Offer.TakeSquares.Count}sq)";

@@ -12,7 +12,6 @@ namespace Lazpoly.Presentation.Texts
     {
         FirstRoll = 0,
         BuyOrDecline = 1,
-        Auction = 2,
         CanBuild = 3,
         ShortOfMoney = 4,
         Debt = 5,
@@ -61,11 +60,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,
                        L("Seyir Terası sayesinde iki kez attın. Düğmelerde her atışın seni nereye götüreceği yazıyor; birini seç."))
                    ?? Offer(TipId.BuyOrDecline, myTurn && state.Phase == GamePhase.AwaitingBuyDecision,
-                       rules.AuctionsEnabled
-                           ? L("Bu kare sahipsiz. Satın alabilirsin; almazsan açık artırmaya çıkar ve herkes teklif verebilir.")
-                           : L("Bu kare sahipsiz. Satın alabilirsin; almazsan bankada kalır."))
-                   ?? Offer(TipId.Auction, state.Phase == GamePhase.AuctionInProgress && state.Auction != null && !state.Auction.HasPassed(playerId),
-                       L("Açık artırma: teklif vererek fiyatı yükselt ya da pas geçip çekil. Son kalan teklifi veren kareyi alır."))
+                       L("Bu kare sahipsiz. Satın alabilirsin; almazsan bankada kalır."))
                    ?? Offer(TipId.RoundLimit, rules.RoundLimit > 0,
                        F($"Bu oyun {rules.RoundLimit} tur sürecek. Sonunda parası, mülkleri ve binaları en değerli olan kazanır."))
                    ?? Offer(TipId.FirstRoll, myTurn && state.Phase == GamePhase.WaitingForRoll,

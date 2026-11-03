@@ -24,7 +24,7 @@ namespace Lazpoly.App.Balance
             text.AppendLine("# Lazpoly denge raporu");
             text.AppendLine();
             text.AppendLine($"{result.Games} oyun, {settings.Players} bilgisayar oyuncu, ilk tohum {settings.FirstSeed}. " +
-                            $"Başlangıç parası {rules.StartingMoney}, açık artırma {(rules.AuctionsEnabled ? "açık" : "kapalı")}, " +
+                            $"Başlangıç parası {rules.StartingMoney}, " +
                             $"tur sınırı {(rules.RoundLimit > 0 ? rules.RoundLimit.ToString(Number) : "yok")}.");
             text.AppendLine();
 

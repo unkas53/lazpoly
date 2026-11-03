@@ -131,7 +131,6 @@ namespace Lazpoly.App.Tests
         [Test]
         public void AnswersGetLessTimeThanTurns()
         {
-            Assert.AreEqual(TurnClock.ResponseSeconds, TurnClock.LimitFor(GamePhase.AuctionInProgress));
             Assert.AreEqual(TurnClock.ResponseSeconds, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse));
             Assert.AreEqual(TurnClock.TurnSeconds, TurnClock.LimitFor(GamePhase.AwaitingBuyDecision));
             Assert.Less(TurnClock.ResponseSeconds, TurnClock.TurnSeconds);
@@ -139,9 +138,9 @@ namespace Lazpoly.App.Tests
             double now = 0;
             var clock = new TurnClock(() => now);
             now = 29;
-            Assert.IsFalse(clock.HasExpired(GamePhase.AuctionInProgress));
+            Assert.IsFalse(clock.HasExpired(GamePhase.AwaitingTradeResponse));
             now = 31;
-            Assert.IsTrue(clock.HasExpired(GamePhase.AuctionInProgress));
+            Assert.IsTrue(clock.HasExpired(GamePhase.AwaitingTradeResponse));
             Assert.IsFalse(clock.HasExpired(GamePhase.TurnEnd));
             clock.Restart();
             Assert.AreEqual(TurnClock.TurnSeconds, clock.Remaining(GamePhase.TurnEnd), 1e-9);
@@ -151,8 +150,8 @@ namespace Lazpoly.App.Tests
         public void TheTablePicksTheTurnTimeAndMayRunNoClockAtAll()
         {
             Assert.AreEqual(60, TurnClock.LimitFor(GamePhase.WaitingForRoll, 60));
-            Assert.AreEqual(30, TurnClock.LimitFor(GamePhase.AuctionInProgress, 60), "Answers keep their shorter limit.");
-            Assert.AreEqual(20, TurnClock.LimitFor(GamePhase.AuctionInProgress, 20), "...unless the turn itself is shorter.");
+            Assert.AreEqual(30, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse, 60), "Answers keep their shorter limit.");
+            Assert.AreEqual(20, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse, 20), "...unless the turn itself is shorter.");
             Assert.IsTrue(double.IsPositiveInfinity(TurnClock.LimitFor(GamePhase.WaitingForRoll, 0)));
             Assert.IsTrue(double.IsPositiveInfinity(TurnClock.LimitFor(GamePhase.AwaitingTradeResponse, 0)));
 
@@ -202,7 +201,6 @@ namespace Lazpoly.App.Tests
         public void TheCautiousMoveCommitsToNothing()
         {
             Assert.IsInstanceOf<DeclinePurchaseCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingBuyDecision), 1));
-            Assert.IsInstanceOf<PassBidCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AuctionInProgress), 1));
             Assert.IsInstanceOf<RejectTradeCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTradeResponse), 1));
             Assert.IsInstanceOf<DeclineTravelCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTravelDecision), 1));
             Assert.IsNull(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingDebtPayment), 1), "A debt needs the computer to decide what to sell.");
@@ -218,14 +216,14 @@ namespace Lazpoly.App.Tests
         [Test]
         public void ClientsPlayWithTheHostsTableRules()
         {
-            NetTable table = NetTable.Create(3, table: new Lazpoly.Core.Rules.TableRules(1600, false, 3));
+            NetTable table = NetTable.Create(3, table: new Lazpoly.Core.Rules.TableRules(1600, 3, 60));
             Assert.AreEqual(800, table.Clients[2].Rules.StartingMoney, "Before the game starts a client only has the board data.");
             table.StartAll();
 
             foreach (ClientSession client in table.Clients.Values)
             {
                 Assert.AreEqual(1600, client.Rules.StartingMoney);
-                Assert.IsFalse(client.Rules.AuctionsEnabled);
+                Assert.AreEqual(60, client.Rules.TurnSeconds);
                 Assert.AreEqual(3, client.Rules.RoundLimit);
                 Assert.AreEqual(1600, client.State.Players[0].Money);
             }
@@ -692,7 +690,7 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void EveryMachineBidsInAnAuction()
+        public void ADeclinedSquareStaysWithTheBankOnEveryMachine()
         {
             NetTable table = NetTable.Create(3, seed: 9UL);
             table.StartAll();
@@ -702,24 +700,19 @@ namespace Lazpoly.App.Tests
 
             table.SessionOf(decider).Submit(new DeclinePurchaseCommand(decider));
             table.Pump();
-            Assert.AreEqual(GamePhase.AuctionInProgress, table.Clients[2].State.Phase);
 
-            table.Host.Submit(new PlaceBidCommand(1, 10));
-            table.Pump();
-            table.Clients[2].Submit(new PlaceBidCommand(2, 20));
-            table.Pump();
-            table.Clients[3].Submit(new PassBidCommand(3));
-            table.Pump();
-            table.Host.Submit(new PassBidCommand(1));
-            table.Pump();
+            Assert.AreEqual(GameState.NoOwner, table.HostState.GetOwner(square));
+            foreach (ClientSession client in table.Clients.Values)
+            {
+                Assert.AreEqual(GameState.NoOwner, client.State.GetOwner(square));
+                Assert.AreNotEqual(GamePhase.AwaitingBuyDecision, client.State.Phase, "The decline moved every machine on.");
+            }
 
-            Assert.AreEqual(2, table.HostState.GetOwner(square));
-            Assert.IsNull(table.HostState.Auction);
             AssertAllInStep(table);
         }
 
         [Test]
-        public void LongGamesWithAuctionsStayInStep()
+        public void LongGamesStayInStep()
         {
             NetTable table = NetTable.Create(4, seed: 77UL);
             var seen = new HashSet<System.Type>();
@@ -734,8 +727,7 @@ namespace Lazpoly.App.Tests
             }
 
             AssertAllInStep(table);
-            Assert.IsTrue(seen.Contains(typeof(AuctionEndedEvent)), "No auction happened.");
-            Assert.IsTrue(seen.Contains(typeof(BidPlacedEvent)), "Nobody bid.");
+            Assert.IsTrue(seen.Contains(typeof(PropertyOwnerChangedEvent)), "Nobody bought anything.");
         }
 
         [Test]

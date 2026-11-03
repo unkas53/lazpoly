@@ -110,33 +110,6 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void BidsUpToItsCeilingThenPasses()
-        {
-            GameState state = NewState();
-            Apply(state, new AuctionStartedEvent(B1), new PhaseChangedEvent(GamePhase.AuctionInProgress));
-
-            var bid = Decide(state, Me, AiDifficulty.Normal) as PlaceBidCommand;
-            Assert.IsNotNull(bid);
-            Assert.AreEqual(20, bid.Amount, "Bids rise in steps of a tenth of the price.");
-
-            Apply(state, new BidPlacedEvent(Other, 190));
-            Assert.IsInstanceOf<PassBidCommand>(Decide(state, Me, AiDifficulty.Normal), "Normal pays at most the price.");
-
-            Assert.IsNull(Decide(state, Other, AiDifficulty.Normal), "The leader has nothing to do.");
-        }
-
-        [Test]
-        public void HardPaysMoreToCompleteAGroup()
-        {
-            GameState state = NewState();
-            Own(state, B2, Me);
-            Apply(state, new AuctionStartedEvent(B1), new PhaseChangedEvent(GamePhase.AuctionInProgress), new BidPlacedEvent(Other, 300));
-
-            Assert.IsInstanceOf<PlaceBidCommand>(Decide(state, Me, AiDifficulty.Hard));
-            Assert.IsInstanceOf<PassBidCommand>(Decide(state, Third, AiDifficulty.Normal));
-        }
-
-        [Test]
         public void PaysADebtItCanAfford()
         {
             GameState state = NewState();
@@ -261,13 +234,15 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void AuctionAsksBiddersInSeatOrderFromThePlayerOnTurn()
+        public void AnOpenTradeWaitsOnlyForItsAnswer()
         {
             GameState state = NewState(4);
-            Apply(state, new AuctionStartedEvent(B1), new PhaseChangedEvent(GamePhase.AuctionInProgress),
-                new BidPlacedEvent(2, 20), new BidPassedEvent(3));
+            CollectionAssert.AreEqual(new[] { Me }, AiTurnOrder.PlayersToAct(state), "Otherwise the player on turn acts.");
 
-            CollectionAssert.AreEqual(new[] { 1, 4 }, AiTurnOrder.PlayersToAct(state));
+            var offer = new TradeOffer(Me, Third, 10, 0, Array.Empty<int>(), Array.Empty<int>());
+            Apply(state, new TradeProposedEvent(offer), new PhaseChangedEvent(GamePhase.AwaitingTradeResponse));
+
+            CollectionAssert.AreEqual(new[] { Third }, AiTurnOrder.PlayersToAct(state));
         }
 
         [Test]
@@ -279,10 +254,11 @@ namespace Lazpoly.App.Tests
 
             Assert.IsNull(roster.NextCommand(Board, Rules, state), "Player 1 (a person) is on turn.");
 
-            Apply(state, new AuctionStartedEvent(B1), new PhaseChangedEvent(GamePhase.AuctionInProgress));
+            var offer = new TradeOffer(Me, Other, 10, 0, Array.Empty<int>(), Array.Empty<int>());
+            Apply(state, new TradeProposedEvent(offer), new PhaseChangedEvent(GamePhase.AwaitingTradeResponse));
             GameCommand command = roster.NextCommand(Board, Rules, state);
             Assert.IsNotNull(command);
-            Assert.AreEqual(Other, command.PlayerId, "The AI bids while the person still decides.");
+            Assert.AreEqual(Other, command.PlayerId, "The AI answers the person's offer although it is not its turn.");
             Assert.Throws<ArgumentException>(() => roster.Add(Other, AiDifficulty.Hard));
         }
     }

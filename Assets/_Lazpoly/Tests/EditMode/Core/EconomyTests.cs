@@ -9,7 +9,7 @@ using static Lazpoly.Core.Tests.TestData;
 
 namespace Lazpoly.Core.Tests
 {
-    /// <summary>Phase 4 rules: buildings, property sales, auctions, trades and debts.</summary>
+    /// <summary>Phase 4 rules: buildings, property sales, trades and debts.</summary>
     public class EconomyTests
     {
         // 0 Start, 1 A1 and 2 A2 (group 1, buildings cost 50), 3 Rest, 4 Solo (no group), 5 Rest.
@@ -222,49 +222,6 @@ namespace Lazpoly.Core.Tests
             Assert.IsTrue(result.Events.Any(e => e is BuildingLevelChangedEvent b && b.Level == 0), "The buildings come down before the town changes hands.");
         }
 
-        // ---- Auctions ----
-
-        [Test]
-        public void AuctionGoesToTheLastBidderStanding()
-        {
-            var engine = NewGame(players: 3, dice: new[] { 1, 3 });
-            Accept(engine, new RollDiceCommand(Alice)); // -> Solo
-            Accept(engine, new DeclinePurchaseCommand(Alice));
-
-            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new EndTurnCommand(Alice)));
-            Accept(engine, new PlaceBidCommand(Bob, 40));
-            Assert.AreEqual(RejectionReason.InvalidBid, Reason(engine, new PlaceBidCommand(Cem, 40)));
-            Assert.AreEqual(RejectionReason.InvalidBid, Reason(engine, new PassBidCommand(Bob)), "The leader cannot pass.");
-            Accept(engine, new PlaceBidCommand(Cem, 70));
-            Accept(engine, new PassBidCommand(Alice));
-            Assert.AreEqual(RejectionReason.InvalidBid, Reason(engine, new PlaceBidCommand(Alice, 90)), "Passing is final.");
-            CommandResult last = Accept(engine, new PassBidCommand(Bob));
-
-            AuctionEndedEvent ended = last.Events.OfType<AuctionEndedEvent>().Single();
-            Assert.AreEqual(Cem, ended.WinnerId);
-            Assert.AreEqual(Cem, engine.State.GetOwner(Solo));
-            Assert.AreEqual(930, Money(engine, Cem));
-            Assert.AreEqual(1000, Money(engine, Bob));
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
-            Assert.AreEqual(Alice, engine.State.CurrentPlayer.Id);
-        }
-
-        [Test]
-        public void BidsCannotExceedTheBiddersMoney()
-        {
-            var engine = NewGame(money: 100, dice: new[] { 1, 3 });
-            Accept(engine, new RollDiceCommand(Alice));
-            Accept(engine, new DeclinePurchaseCommand(Alice));
-
-            Assert.AreEqual(RejectionReason.InsufficientFunds, Reason(engine, new PlaceBidCommand(Bob, 101)));
-            Assert.AreEqual(RejectionReason.InvalidBid, Reason(engine, new PlaceBidCommand(Bob, 0)));
-            Accept(engine, new PlaceBidCommand(Bob, 100));
-            Accept(engine, new PassBidCommand(Alice));
-
-            Assert.AreEqual(Bob, engine.State.GetOwner(Solo));
-            Assert.AreEqual(0, Money(engine, Bob));
-        }
-
         // ---- Trades ----
 
         [Test]
@@ -400,10 +357,9 @@ namespace Lazpoly.Core.Tests
         }
 
         // Alice holds A1 and A2, has no money and owes the bank 50 on her own turn.
-        private static GameEngine AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns bankReturns, bool auctions = true)
+        private static GameEngine AliceOwesTheBank()
         {
-            var table = new Lazpoly.Core.Rules.TableRules(0, auctions, 0, bankReturns: bankReturns);
-            var engine = new GameEngine(Board(), TestRules(1000, passStartBonus: 0).WithTable(table), TestSeats(3), new ScriptedDice());
+            var engine = new GameEngine(Board(), TestRules(1000, passStartBonus: 0), TestSeats(3), new ScriptedDice());
             Give(engine, A1, Alice);
             Give(engine, A2, Alice);
             GameStateReducer.Apply(engine.State, new MoneyChangedEvent(Alice, -1000, MoneyReason.Tax));
@@ -413,53 +369,16 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void AtAnAuctionTableTheBankAuctionsABankruptPlayersSquaresOneAfterAnother()
+        public void ABankruptPlayersSquaresGoBackToTheBankForTheNextVisitor()
         {
-            GameEngine engine = AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns.Auction);
-            CommandResult result = Accept(engine, new DeclareBankruptcyCommand(Alice));
+            GameEngine engine = AliceOwesTheBank();
+            Accept(engine, new DeclareBankruptcyCommand(Alice));
 
             Assert.IsTrue(engine.State.FindPlayer(Alice).IsBankrupt);
-            Assert.IsTrue(result.Events.Any(e => e is BankAuctionsQueuedEvent q && q.Squares.SequenceEqual(new[] { A1, A2 })));
-            Assert.AreEqual(GamePhase.AuctionInProgress, engine.State.Phase);
-            Assert.AreEqual(A1, engine.State.Auction.SquareIndex, "The first square goes under the hammer at once.");
-            CollectionAssert.AreEqual(new[] { A2 }, engine.State.PendingAuctions);
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
-            Assert.AreEqual(Alice, engine.State.CurrentPlayer.Id, "The bankrupt player stays on turn while the bank sells.");
-            Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new PlaceBidCommand(Alice, 10)), "The bankrupt player cannot bid.");
-
-            Accept(engine, new PlaceBidCommand(Bob, 30));
-            Accept(engine, new PassBidCommand(Cem));
-            Assert.AreEqual(Bob, engine.State.GetOwner(A1));
-            Assert.AreEqual(970, Money(engine, Bob));
-            Assert.AreEqual(GamePhase.AuctionInProgress, engine.State.Phase, "The next queued square follows.");
-            Assert.AreEqual(A2, engine.State.Auction.SquareIndex);
-            Assert.IsEmpty(engine.State.PendingAuctions);
-
-            Accept(engine, new PassBidCommand(Bob));
-            Accept(engine, new PassBidCommand(Cem));
-            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A2), "Nobody bid: the square stays with the bank.");
-            Assert.IsNull(engine.State.Auction);
-            Assert.AreEqual(Bob, engine.State.CurrentPlayer.Id);
-            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "After the last sale the next player's turn begins.");
-        }
-
-        [Test]
-        public void AtAFirstComerTableOrWithoutAuctionsTheBankJustKeepsTheSquares()
-        {
-            foreach (GameEngine engine in new[]
-            {
-                AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns.FirstComer),
-                AliceOwesTheBank(Lazpoly.Core.Rules.BankReturns.Auction, auctions: false),
-            })
-            {
-                Accept(engine, new DeclareBankruptcyCommand(Alice));
-                Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
-                Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A2));
-                Assert.IsEmpty(engine.State.PendingAuctions);
-                Assert.IsNull(engine.State.Auction);
-                Assert.AreEqual(Bob, engine.State.CurrentPlayer.Id);
-                Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
-            }
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A2));
+            Assert.AreEqual(Bob, engine.State.CurrentPlayer.Id, "The next player's turn begins at once.");
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
         }
 
         [Test]
@@ -484,18 +403,15 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void PhaseFourStateSurvivesASnapshot()
         {
-            var auction = NewGame(players: 3, money: 2000, dice: new[] { 1, 3 });
-            Give(auction, A1, Alice);
-            Give(auction, A2, Alice);
-            Stand(auction, Alice, A1);
-            Accept(auction, new BuildCommand(Alice, A1));
-            Stand(auction, Alice, 0);
-            Accept(auction, new RollDiceCommand(Alice));
-            Accept(auction, new DeclinePurchaseCommand(Alice));
-            Accept(auction, new PlaceBidCommand(Bob, 30));
-            Accept(auction, new PassBidCommand(Cem));
-            AssertSnapshotRoundTrip(auction);
-            Assert.AreEqual(1, GameStateSnapshot.Capture(auction.State).Restore().GetBuildingLevel(A1));
+            var built = NewGame(players: 3, money: 2000, dice: new[] { 1, 3 });
+            Give(built, A1, Alice);
+            Give(built, A2, Alice);
+            Stand(built, Alice, A1);
+            Accept(built, new BuildCommand(Alice, A1));
+            Stand(built, Alice, 0);
+            Accept(built, new RollDiceCommand(Alice));
+            AssertSnapshotRoundTrip(built);
+            Assert.AreEqual(1, GameStateSnapshot.Capture(built.State).Restore().GetBuildingLevel(A1));
 
             var trade = NewGame();
             Give(trade, A1, Alice);

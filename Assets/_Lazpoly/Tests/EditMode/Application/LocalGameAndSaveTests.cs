@@ -72,7 +72,6 @@ namespace Lazpoly.App.Tests
             {
                 GameState state = session.State;
                 if (state.Phase == GamePhase.AwaitingBuyDecision) session.Submit(new DeclinePurchaseCommand(1));
-                else if (state.Phase == GamePhase.AuctionInProgress && !session.StepAi()) session.Submit(new PassBidCommand(1));
                 else if (state.Phase == GamePhase.TurnEnd) session.Submit(new EndTurnCommand(1));
                 else if (state.Phase == GamePhase.WaitingForRoll) session.Submit(new RollDiceCommand(1));
                 else if (state.Phase == GamePhase.AwaitingDebtPayment) session.Submit(new DeclareBankruptcyCommand(1));
@@ -134,7 +133,7 @@ namespace Lazpoly.App.Tests
         [Test]
         public void SaveKeepsTheTableRules()
         {
-            var table = new TableRules(1200, false, 18, 120, Lazpoly.Core.Rules.BankReturns.Auction);
+            var table = new TableRules(1200, 18, 120);
             LocalGame game = LocalGame.Create(Board, Rules.WithTable(table), Seats(2), new Dictionary<int, AiDifficulty>(), 4UL);
 
             SavedGame save = SavedGameCodec.Decode(SavedGameCodec.Encode(game.Save(Checksum)));
@@ -143,40 +142,43 @@ namespace Lazpoly.App.Tests
             // Resuming takes the board data's rules and puts the saved table on top.
             LocalGame resumed = LocalGame.Resume(Board, Rules, Checksum, save);
             Assert.AreEqual(1200, resumed.Session.Rules.StartingMoney);
-            Assert.IsFalse(resumed.Session.Rules.AuctionsEnabled);
             Assert.AreEqual(18, resumed.Session.Rules.RoundLimit);
             Assert.AreEqual(120, resumed.Session.Rules.TurnSeconds);
-            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.Auction, resumed.Session.Rules.BankReturns);
         }
 
         [Test]
-        public void ASaveFromTheVersionBeforeTableTimingStillOpensAndResumes()
+        public void SavesFromTheAuctionVersionsStillOpenAndResume()
         {
             LocalGame game = AllAi(3, 12UL);
             Steps(game, 30);
             SavedGame original = game.Save(Checksum);
 
-            SavedGame read = SavedGameCodec.Decode(SaleFormatSave(original));
+            foreach (int version in new[] { 5, 6 })
+            {
+                SavedGame read = SavedGameCodec.Decode(AuctionEraSave(original, version));
 
-            Assert.AreEqual(TableRules.DefaultTurnSeconds, read.Table.TurnSeconds, "A Faz 9 save gets the default turn time.");
-            Assert.AreEqual(Lazpoly.Core.Rules.BankReturns.FirstComer, read.Table.BankReturns);
-            Assert.AreEqual(original.Snapshot.TurnNumber, read.Snapshot.TurnNumber);
-            Assert.AreEqual(original.Snapshot.Players[2].Money, read.Snapshot.Players[2].Money);
-            Assert.AreEqual(original.Snapshot.Players[0].Laps, read.Snapshot.Players[0].Laps);
-            Assert.AreEqual(original.Snapshot.BuiltThisVisit, read.Snapshot.BuiltThisVisit);
-            Assert.IsEmpty(read.Snapshot.PendingAuctions);
-            Assert.AreEqual(original.Snapshot.Restore().ComputeHash(), read.Snapshot.Restore().ComputeHash());
+                Assert.AreEqual(version == 5 ? TableRules.DefaultTurnSeconds : 45, read.Table.TurnSeconds, $"Format {version}: turn time");
+                Assert.AreEqual(original.Table.RoundLimit, read.Table.RoundLimit);
+                Assert.AreEqual(original.Snapshot.TurnNumber, read.Snapshot.TurnNumber);
+                Assert.AreEqual(original.Snapshot.Players[2].Money, read.Snapshot.Players[2].Money);
+                Assert.AreEqual(original.Snapshot.Players[0].Laps, read.Snapshot.Players[0].Laps);
+                Assert.AreEqual(original.Snapshot.BuiltThisVisit, read.Snapshot.BuiltThisVisit);
+                Assert.AreEqual(original.Snapshot.Restore().ComputeHash(), read.Snapshot.Restore().ComputeHash());
 
-            LocalGame resumed = LocalGame.Resume(Board, Rules, Checksum, read);
-            Steps(resumed, 5);
+                LocalGame resumed = LocalGame.Resume(Board, Rules, Checksum, read);
+                Steps(resumed, 5);
+            }
         }
 
-        /// <summary>Save format 5 (Faz 9): a three-value table and a snapshot without the auction queue.</summary>
-        private static byte[] SaleFormatSave(SavedGame save)
+        /// <summary>
+        /// A save from before Faz 13b, when tables still had auctions: format 5 (Faz 9) wrote a three-value table,
+        /// format 6 (Faz 10c-2) added the turn time, the bank rule and the queue of bank auctions to the snapshot.
+        /// </summary>
+        private static byte[] AuctionEraSave(SavedGame save, int version)
         {
             var w = new NetWriter();
             w.WriteULong(0x4C415A504F4C5953UL);
-            w.WriteInt(5);
+            w.WriteInt(version);
             w.WriteULong(save.BoardChecksum);
             w.WriteULong(save.DiceState);
             w.WriteULong(save.DiceIncrement);
@@ -191,8 +193,13 @@ namespace Lazpoly.App.Tests
             }
 
             w.WriteInt(save.Table.StartingMoney);
-            w.WriteBool(save.Table.AuctionsEnabled);
+            w.WriteBool(true); // auctions on
             w.WriteInt(save.Table.RoundLimit);
+            if (version >= 6)
+            {
+                w.WriteInt(45);
+                w.WriteByte(1); // bankrupt players' squares auctioned
+            }
 
             GameStateSnapshot s = save.Snapshot;
             w.WriteInt((int)s.Phase);
@@ -226,15 +233,8 @@ namespace Lazpoly.App.Tests
                 w.WriteInt(s.BuildingLevels[i]);
             }
 
-            w.WriteBool(s.Auction != null);
-            if (s.Auction != null)
-            {
-                w.WriteInt(s.Auction.SquareIndex);
-                w.WriteInt(s.Auction.HighestBid);
-                w.WriteInt(s.Auction.HighestBidderId);
-                w.WriteInt(s.Auction.PassedPlayerIds.Count);
-                foreach (int id in s.Auction.PassedPlayerIds) w.WriteInt(id);
-            }
+            w.WriteBool(false); // no auction running
+            if (version >= 6) w.WriteInt(0); // no bank auctions queued
 
             w.WriteBool(s.PendingTrade != null);
             if (s.PendingTrade != null)

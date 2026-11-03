@@ -29,9 +29,6 @@ namespace Lazpoly.Core.Engine
         /// <summary>Nothing to sell.</summary>
         CannotSell = 12,
 
-        /// <summary>Bid too low, above the bidder's money, or the bidder already passed or leads.</summary>
-        InvalidBid = 14,
-
         /// <summary>The trade is empty, names squares the sides do not own, or squares with buildings.</summary>
         InvalidTrade = 15,
 

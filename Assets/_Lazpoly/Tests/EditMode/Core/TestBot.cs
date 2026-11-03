@@ -8,7 +8,7 @@ namespace Lazpoly.Core.Tests
 {
     /// <summary>
     /// Picks a random but legal command for whoever must act, touching every rule: buying,
-    /// auctions, building, property sales, trades and debts. Test-only; the real AI comes in Phase 5.
+    /// building, property sales, trades and debts. Test-only; the real AI comes in Phase 5.
     /// </summary>
     internal static class TestBot
     {
@@ -20,18 +20,6 @@ namespace Lazpoly.Core.Tests
 
             switch (state.Phase)
             {
-                case GamePhase.AuctionInProgress:
-                    foreach (PlayerState player in state.Players)
-                    {
-                        var pass = new PassBidCommand(player.Id);
-                        if (!Legal(engine, pass)) continue;
-                        var bid = new PlaceBidCommand(player.Id, state.Auction.HighestBid + 10);
-                        bool worthIt = bid.Amount <= board[state.Auction.SquareIndex].Price * 3 / 2;
-                        return worthIt && dice.NextInt(0, 3) != 0 && Legal(engine, bid) ? bid : (GameCommand)pass;
-                    }
-
-                    break;
-
                 case GamePhase.AwaitingTradeResponse:
                     int answerer = state.PendingTrade.ToPlayerId;
                     var accept = new AcceptTradeCommand(answerer);

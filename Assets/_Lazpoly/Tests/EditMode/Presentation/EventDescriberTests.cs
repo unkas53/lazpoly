@@ -48,10 +48,6 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("Lale Sokağı: 2 ev", EventDescriber.Describe(new BuildingLevelChangedEvent(1, 2), state, Board));
             Assert.AreEqual("Lale Sokağı: otel", EventDescriber.Describe(new BuildingLevelChangedEvent(1, 5), state, Board));
             Assert.AreEqual("Ayşe: +30 (mülk satışı)", EventDescriber.Describe(new MoneyChangedEvent(1, 30, MoneyReason.PropertySale), state, Board));
-            Assert.AreEqual("Lale Sokağı açık artırmada", EventDescriber.Describe(new AuctionStartedEvent(1), state, Board));
-            Assert.AreEqual("Can teklif: 70", EventDescriber.Describe(new BidPlacedEvent(2, 70), state, Board));
-            Assert.AreEqual("Lale Sokağı → Can (70)", EventDescriber.Describe(new AuctionEndedEvent(1, 2, 70), state, Board));
-            Assert.AreEqual("Lale Sokağı satılmadı", EventDescriber.Describe(new AuctionEndedEvent(1, GameState.NoOwner, 0), state, Board));
             Assert.AreEqual("Ayşe, Can oyuncusuna takas teklif etti",
                 EventDescriber.Describe(new TradeProposedEvent(new TradeOffer(1, 2, 50, 0, new int[0], new[] { 1 })), state, Board));
             Assert.AreEqual("Takas reddedildi", EventDescriber.Describe(new TradeResolvedEvent(TradeOutcome.Rejected), state, Board));

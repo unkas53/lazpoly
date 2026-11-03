@@ -47,26 +47,6 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void QueuedBankAuctionsTravelWithTheSnapshotAndCountInTheHash()
-        {
-            GameState state = PlayedEngine().State;
-            ulong before = state.ComputeHash();
-            GameStateReducer.Apply(state, new BankAuctionsQueuedEvent(new[] { 1, 2 }));
-            Assert.AreNotEqual(before, state.ComputeHash(), "The queue is part of the state.");
-
-            GameState restored = GameStateSnapshot.Capture(state).Restore();
-            CollectionAssert.AreEqual(new[] { 1, 2 }, restored.PendingAuctions);
-            Assert.AreEqual(state.ComputeHash(), restored.ComputeHash());
-
-            GameStateReducer.Apply(restored, new AuctionStartedEvent(1));
-            CollectionAssert.AreEqual(new[] { 2 }, restored.PendingAuctions, "Starting a queued auction takes it off the list.");
-
-            GameStateSnapshot broken = GameStateSnapshot.Capture(state);
-            broken.PendingAuctions = new[] { 99 };
-            Assert.Throws<System.ArgumentException>(() => broken.Restore());
-        }
-
-        [Test]
         public void SnapshotIsACopyNotAView()
         {
             GameState original = PlayedEngine().State;

@@ -68,6 +68,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>What the playback has shown so far of the turn: who last moved, which phase was reached, which trade is open; the bubbles' lines depend on them.</summary>
         private int _lastMover = GameState.NoOwner;
         private GamePhase _shownPhase;
+        private bool _boughtOnLanding;
         private TradeOffer _shownOffer;
 
         /// <summary>The bottom panel's height is rounded up to this many pixels before the camera makes room, so a line more or less in the panel does not nudge the view.</summary>
@@ -871,8 +872,12 @@ namespace Lazpoly.Presentation.Game
                         _board.PulseOwner(owner.SquareIndex);
                         _board.RaiseFlag(owner.SquareIndex);
                         Pawn(owner.NewOwnerId)?.Cheer();
-                        // Bought from the bank on landing; an auction win and a trade have their own lines.
-                        if (owner.PreviousOwnerId == GameState.NoOwner && _shownPhase == GamePhase.AwaitingBuyDecision) Say(owner.NewOwnerId, L("Aldım!"));
+                        // Bought from the bank on landing; a trade has its own lines.
+                        if (owner.PreviousOwnerId == GameState.NoOwner && _shownPhase == GamePhase.AwaitingBuyDecision)
+                        {
+                            _boughtOnLanding = true;
+                            Say(owner.NewOwnerId, L("Aldım!"));
+                        }
                         break;
                     case PlayerBankruptedEvent bankrupt:
                         Say(bankrupt.PlayerId, L("Battım..."));
@@ -889,20 +894,10 @@ namespace Lazpoly.Presentation.Game
                         if (building.Level >= SquareDefinition.MaxBuildingLevel) AudioPlayer.Play(SoundCue.Hotel);
                         break;
                     case PhaseChangedEvent phase:
+                        // Leaving the buy decision without a purchase: the player let the square go, it stays with the bank.
+                        if (_shownPhase == GamePhase.AwaitingBuyDecision && !_boughtOnLanding) Say(_lastMover, L("Almıyorum."));
+                        if (phase.Phase == GamePhase.AwaitingBuyDecision) _boughtOnLanding = false;
                         _shownPhase = phase.Phase;
-                        break;
-                    case AuctionStartedEvent _:
-                        // Straight after a buy decision the auction means the player who landed let the square go.
-                        if (_shownPhase == GamePhase.AwaitingBuyDecision) Say(_lastMover, L("Almıyorum, artırmaya."));
-                        break;
-                    case BidPlacedEvent bid:
-                        Say(bid.PlayerId, L("Artırıyorum!"));
-                        break;
-                    case BidPassedEvent passed:
-                        Say(passed.PlayerId, L("Ben yokum."));
-                        break;
-                    case AuctionEndedEvent ended:
-                        if (ended.WinnerId != GameState.NoOwner) Say(ended.WinnerId, L("Benim oldu!"));
                         break;
                     case TradeProposedEvent proposed:
                         _shownOffer = proposed.Offer;

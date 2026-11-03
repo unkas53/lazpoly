@@ -235,7 +235,7 @@ namespace Lazpoly.App.Session
                 if (!_standIns.Controls(playerId)) waiting.Add(playerId);
             }
 
-            // In an auction several bidders may be idle; each still asked is passed in turn.
+            // Everyone the game still waits on is moved for in turn.
             foreach (int playerId in waiting)
             {
                 if (_engine.State.Phase == GamePhase.GameOver) break;

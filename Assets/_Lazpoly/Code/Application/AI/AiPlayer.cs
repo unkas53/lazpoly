@@ -50,8 +50,6 @@ namespace Lazpoly.App.AI
             var view = new View(board, rules, state, me, Profile, random);
             switch (state.Phase)
             {
-                case GamePhase.AuctionInProgress:
-                    return view.Legal(new PassBidCommand(PlayerId)) ? DecideBid(view) : null;
                 case GamePhase.AwaitingTradeResponse:
                     return state.PendingTrade.ToPlayerId == PlayerId ? DecideTradeResponse(view) : null;
             }
@@ -126,25 +124,6 @@ namespace Lazpoly.App.AI
             int firstScore = view.LandingScore(first[0] + first[1]);
             int secondScore = view.LandingScore(second[0] + second[1]);
             return new ChooseDiceCommand(PlayerId, secondScore > firstScore ? 1 : 0);
-        }
-
-        private GameCommand DecideBid(View view)
-        {
-            var pass = new PassBidCommand(PlayerId);
-            AuctionState auction = view.State.Auction;
-            SquareDefinition square = view.Board[auction.SquareIndex];
-
-            int bidPercent = Profile.BidPercent;
-            if (view.CompletesGroup(auction.SquareIndex, PlayerId)) bidPercent += Profile.GroupBidBonusPercent;
-            else if (Profile.BlockBidBonusPercent > 0 && view.CompletesAnyoneElsesGroup(auction.SquareIndex)) bidPercent += Profile.BlockBidBonusPercent;
-
-            int ceiling = Math.Min(square.Price * bidPercent / 100, view.Me.Money - view.Reserve);
-            int step = Math.Max(10, square.Price / 100 * 10);
-            int bid = auction.HighestBid + step;
-            if (bid > ceiling || view.MakesMistake()) return pass;
-
-            var command = new PlaceBidCommand(PlayerId, bid);
-            return view.Legal(command) ? command : (GameCommand)pass;
         }
 
         private GameCommand DecideTradeResponse(View view)
@@ -282,16 +261,6 @@ namespace Lazpoly.App.AI
                 }
 
                 return true;
-            }
-
-            public bool CompletesAnyoneElsesGroup(int square)
-            {
-                foreach (PlayerState player in State.Players)
-                {
-                    if (player.Id != Me.Id && !player.IsBankrupt && CompletesGroup(square, player.Id)) return true;
-                }
-
-                return false;
             }
 
             /// <summary>Rough value of moving <paramref name="steps"/> squares: good squares and the start bonus count up, rent and taxes down.</summary>

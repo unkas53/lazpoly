@@ -69,14 +69,13 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void BuyHintSaysWhatHappensWhenAuctionsAreOff()
+        public void BuyHintSaysADeclinedSquareStaysWithTheBank()
         {
             GameState state = State();
             GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
-            string withAuctions = Tips.Next(Board, Rules, state, 1, _ => false).Value.Text;
-            string without = Tips.Next(Board, Rules.WithTable(TableRules.Default.WithAuctions(false)), state, 1, _ => false).Value.Text;
-            StringAssert.Contains("açık artırma", withAuctions);
-            StringAssert.Contains("bankada kalır", without);
+            string hint = Tips.Next(Board, Rules, state, 1, _ => false).Value.Text;
+            StringAssert.Contains("bankada kalır", hint);
+            StringAssert.DoesNotContain("artırma", hint);
         }
 
         [Test]

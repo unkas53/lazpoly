@@ -36,10 +36,6 @@ namespace Lazpoly.Core.State
         public List<PlayerEntry> Players = new List<PlayerEntry>();
         public int[] Owners = Array.Empty<int>();
         public int[] BuildingLevels = Array.Empty<int>();
-        public AuctionState Auction;
-
-        /// <summary>Squares still to be auctioned after a bankruptcy; empty when none.</summary>
-        public int[] PendingAuctions = Array.Empty<int>();
         public TradeOffer PendingTrade;
         public GamePhase TradeReturnPhase;
         public DebtState Debt;
@@ -63,8 +59,6 @@ namespace Lazpoly.Core.State
                 DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],
-                Auction = state.Auction?.Copy(),
-                PendingAuctions = new List<int>(state.PendingAuctions).ToArray(),
                 PendingTrade = state.PendingTrade,
                 TradeReturnPhase = state.TradeReturnPhase,
                 Debt = state.Debt,

@@ -28,7 +28,6 @@ namespace Lazpoly.App.Achievements
         public const string BeatComputers = "LAZ_BEAT_COMPUTERS";
         public const string FullGroup = "LAZ_FULL_GROUP";
         public const string FirstHotel = "LAZ_FIRST_HOTEL";
-        public const string AuctionWin = "LAZ_AUCTION_WIN";
         public const string TradeDone = "LAZ_TRADE_DONE";
         public const string BankruptRival = "LAZ_BANKRUPT_RIVAL";
         public const string Tycoon = "LAZ_TYCOON";
@@ -43,7 +42,6 @@ namespace Lazpoly.App.Achievements
             new AchievementDefinition(BeatComputers, "Makineye Karşı", "Bilgisayar oyuncularının da olduğu bir oyunu kazan."),
             new AchievementDefinition(FullGroup, "Tam Takım", "Bir renk grubunun bütün mülklerine sahip ol."),
             new AchievementDefinition(FirstHotel, "Otelci", "İlk otelini kur."),
-            new AchievementDefinition(AuctionWin, "Son Teklif", "Bir açık artırmayı kazan."),
             new AchievementDefinition(TradeDone, "Pazarlıkçı", "Bir takası tamamla."),
             new AchievementDefinition(BankruptRival, "Alacaklı", "Bir rakibi sana olan borcu yüzünden iflas ettir."),
             new AchievementDefinition(Tycoon, "Kodaman", $"Aynı anda {TycoonMoney} paraya sahip ol."),

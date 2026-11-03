@@ -81,8 +81,7 @@ namespace Lazpoly.Core.Engine
                     BuyCurrentSquare(player);
                     break;
                 case DeclinePurchaseCommand _:
-                    if (Rules.AuctionsEnabled) StartAuction(player.Position);
-                    else FinishMove();
+                    FinishMove();
                     break;
                 case EndTurnCommand _:
                     StartNextTurn();
@@ -101,14 +100,6 @@ namespace Lazpoly.Core.Engine
                     if (State.GetBuildingLevel(c.SquareIndex) > 0) Emit(new BuildingLevelChangedEvent(c.SquareIndex, 0));
                     Emit(new PropertyOwnerChangedEvent(c.SquareIndex, player.Id, GameState.NoOwner));
                     Emit(new MoneyChangedEvent(player.Id, proceeds, MoneyReason.PropertySale));
-                    break;
-                case PlaceBidCommand c:
-                    Emit(new BidPlacedEvent(player.Id, c.Amount));
-                    CloseAuctionIfDecided();
-                    break;
-                case PassBidCommand _:
-                    Emit(new BidPassedEvent(player.Id));
-                    CloseAuctionIfDecided();
                     break;
                 case ProposeTradeCommand c:
                     Emit(new TradeProposedEvent(c.Offer));
@@ -377,47 +368,6 @@ namespace Lazpoly.Core.Engine
             FinishMove();
         }
 
-        private void StartAuction(int squareIndex)
-        {
-            Emit(new AuctionStartedEvent(squareIndex));
-            Emit(new PhaseChangedEvent(GamePhase.AuctionInProgress));
-            CloseAuctionIfDecided();
-        }
-
-        /// <summary>
-        /// Ends the auction once it is decided: the leader is the only one left, or everyone passed
-        /// without a bid (the property then stays with the bank).
-        /// </summary>
-        private void CloseAuctionIfDecided()
-        {
-            AuctionState auction = State.Auction;
-            int stillIn = 0;
-            bool othersStillIn = false;
-            foreach (PlayerState candidate in State.Players)
-            {
-                if (candidate.IsBankrupt || auction.HasPassed(candidate.Id)) continue;
-                stillIn++;
-                if (candidate.Id != auction.HighestBidderId) othersStillIn = true;
-            }
-
-            bool hasLeader = auction.HighestBidderId != GameState.NoOwner;
-            if (hasLeader ? othersStillIn : stillIn > 0) return;
-
-            int square = auction.SquareIndex;
-            int winner = auction.HighestBidderId;
-            int price = auction.HighestBid;
-            Emit(new AuctionEndedEvent(square, winner, price));
-            if (hasLeader)
-            {
-                Emit(new MoneyChangedEvent(winner, -price, MoneyReason.Auction));
-                Emit(new PropertyOwnerChangedEvent(square, GameState.NoOwner, winner));
-            }
-
-            // A bankrupt player on turn means these are the bank's auctions after their exit, not a declined purchase.
-            if (State.CurrentPlayer.IsBankrupt) ContinueBankAuctions();
-            else FinishMove();
-        }
-
         private void CompleteTrade()
         {
             TradeOffer offer = State.PendingTrade;
@@ -469,12 +419,10 @@ namespace Lazpoly.Core.Engine
 
             // Properties go to a player creditor; owed to the bank or the pot, they return to the bank.
             int heir = GameState.IsPlayerId(creditorId) ? creditorId : GameState.NoOwner;
-            var returned = new List<int>();
             for (int square = 0; square < Board.Count; square++)
             {
                 if (State.GetOwner(square) != player.Id) continue;
                 Emit(new PropertyOwnerChangedEvent(square, player.Id, heir));
-                if (heir == GameState.NoOwner) returned.Add(square);
             }
 
             if (State.Debt != null) Emit(new DebtClearedEvent(player.Id));
@@ -493,27 +441,6 @@ namespace Lazpoly.Core.Engine
             }
 
             if (State.CurrentPlayer.Id != player.Id) return;
-
-            if (Rules.AuctionsBankReturns && returned.Count > 0)
-            {
-                // The squares the bank took back go under the hammer right away, one after the other,
-                // before the next player's turn. The bankrupt player stays "on turn" meanwhile and cannot bid.
-                Emit(new BankAuctionsQueuedEvent(returned));
-                StartAuction(returned[0]);
-                return;
-            }
-
-            StartNextTurn();
-        }
-
-        /// <summary>After one bank auction: the next queued square, or the next player's turn when the list is done.</summary>
-        private void ContinueBankAuctions()
-        {
-            if (State.PendingAuctions.Count > 0)
-            {
-                StartAuction(State.PendingAuctions[0]);
-                return;
-            }
 
             StartNextTurn();
         }

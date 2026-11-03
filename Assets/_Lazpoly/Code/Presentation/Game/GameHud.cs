@@ -800,7 +800,7 @@ namespace Lazpoly.Presentation.Game
         private bool CanOpenProperties(GameState state)
         {
             if (state == null || state.Phase == GamePhase.GameOver || _controller.IsBusy || _controller.EndReason.HasValue) return false;
-            if (state.Phase == GamePhase.AuctionInProgress || state.Phase == GamePhase.AwaitingTradeResponse || state.Phase == GamePhase.AwaitingBuyDecision) return false;
+            if (state.Phase == GamePhase.AwaitingTradeResponse || state.Phase == GamePhase.AwaitingBuyDecision) return false;
             int id = state.CurrentPlayer.Id;
             return _controller.Session.CanControl(id) && !_controller.Session.IsAiPlaying(id);
         }
@@ -947,9 +947,8 @@ namespace Lazpoly.Presentation.Game
 
             if (_controller.IsBusy) return;
 
-            // Auctions and trade answers involve players other than the one on turn.
-            if (state.Phase == GamePhase.AuctionInProgress) AuctionPanel.Render(ui, _controller, state);
-            else if (state.Phase == GamePhase.AwaitingTradeResponse) _trade.RenderResponse(ui, state);
+            // A trade answer comes from a player other than the one on turn.
+            if (state.Phase == GamePhase.AwaitingTradeResponse) _trade.RenderResponse(ui, state);
             else RenderTurnActions(ui, state);
 
             if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);

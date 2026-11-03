@@ -22,7 +22,6 @@ namespace Lazpoly.Core.Events
         BuildingSale = 6,
         /// <summary>A property (and its buildings) sold back to the bank.</summary>
         PropertySale = 7,
-        Auction = 9,
         Trade = 10,
 
         /// <summary>A drawn card paid or charged the player.</summary>
@@ -246,62 +245,6 @@ namespace Lazpoly.Core.Events
 
         public int SquareIndex { get; }
         public int Level { get; }
-    }
-
-    public sealed class AuctionStartedEvent : GameEvent
-    {
-        public AuctionStartedEvent(int squareIndex) { SquareIndex = squareIndex; }
-        public int SquareIndex { get; }
-    }
-
-    /// <summary>
-    /// A bankrupt player's squares went back to the bank and the table auctions them at once: these
-    /// squares wait their turn; each <see cref="AuctionStartedEvent"/> takes the next one off the list.
-    /// </summary>
-    public sealed class BankAuctionsQueuedEvent : GameEvent
-    {
-        public BankAuctionsQueuedEvent(IReadOnlyList<int> squares)
-        {
-            Squares = squares ?? throw new ArgumentNullException(nameof(squares));
-        }
-
-        public IReadOnlyList<int> Squares { get; }
-    }
-
-    public sealed class BidPlacedEvent : GameEvent
-    {
-        public BidPlacedEvent(int playerId, int amount)
-        {
-            PlayerId = playerId;
-            Amount = amount;
-        }
-
-        public int PlayerId { get; }
-        public int Amount { get; }
-    }
-
-    public sealed class BidPassedEvent : GameEvent
-    {
-        public BidPassedEvent(int playerId) { PlayerId = playerId; }
-        public int PlayerId { get; }
-    }
-
-    /// <summary>The auction closed. Payment and ownership follow as their own events.</summary>
-    public sealed class AuctionEndedEvent : GameEvent
-    {
-        public AuctionEndedEvent(int squareIndex, int winnerId, int price)
-        {
-            SquareIndex = squareIndex;
-            WinnerId = winnerId;
-            Price = price;
-        }
-
-        public int SquareIndex { get; }
-
-        /// <summary><see cref="State.GameState.NoOwner"/> when nobody bid.</summary>
-        public int WinnerId { get; }
-
-        public int Price { get; }
     }
 
     public sealed class TradeProposedEvent : GameEvent

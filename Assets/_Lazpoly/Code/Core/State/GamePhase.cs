@@ -5,7 +5,7 @@ namespace Lazpoly.Core.State
         /// <summary>The current player must roll the dice.</summary>
         WaitingForRoll = 0,
 
-        /// <summary>The current player landed on an unowned property and must buy it or send it to auction.</summary>
+        /// <summary>The current player landed on an unowned property and may buy it or leave it.</summary>
         AwaitingBuyDecision = 1,
 
         /// <summary>The current player has finished moving and may end the turn.</summary>
@@ -13,9 +13,6 @@ namespace Lazpoly.Core.State
 
         /// <summary>Only one player is left solvent.</summary>
         GameOver = 3,
-
-        /// <summary>A declined property is being auctioned; every solvent player may bid or pass.</summary>
-        AuctionInProgress = 4,
 
         /// <summary>The current player offered a trade and waits for the other player's answer.</summary>
         AwaitingTradeResponse = 5,

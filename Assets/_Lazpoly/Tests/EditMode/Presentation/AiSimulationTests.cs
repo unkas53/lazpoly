@@ -60,7 +60,7 @@ namespace Lazpoly.Presentation.Tests
 
             foreach (System.Type expected in new[]
                      {
-                         typeof(BuildingLevelChangedEvent), typeof(AuctionEndedEvent), typeof(BidPlacedEvent), typeof(TradeResolvedEvent),
+                         typeof(BuildingLevelChangedEvent), typeof(TradeResolvedEvent),
                          typeof(DebtIncurredEvent), typeof(PlayerBankruptedEvent),
                          typeof(CardDrawnEvent), typeof(PotChangedEvent), typeof(DiceOptionsEvent),
                      })
@@ -83,17 +83,15 @@ namespace Lazpoly.Presentation.Tests
                 ai.Add(i + 1, AiDifficulty.Normal);
             }
 
-            var table = new Core.Rules.TableRules(2000, auctionsEnabled: false, roundLimit: 8);
+            var table = new Core.Rules.TableRules(2000, roundLimit: 8);
             LocalGame game = LocalGame.Create(data.Board, data.Rules.WithTable(table), seats, ai, 7UL);
             LocalGameSession session = game.Session;
             GameEndedEvent ended = null;
-            bool auctioned = false;
             session.EventsPublished += events =>
             {
                 foreach (GameEvent gameEvent in events)
                 {
                     if (gameEvent is GameEndedEvent end) ended = end;
-                    if (gameEvent is AuctionStartedEvent) auctioned = true;
                 }
             };
 
@@ -104,7 +102,6 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsTrue(session.StepAi());
             }
 
-            Assert.IsFalse(auctioned, "An auction ran although the table turned auctions off.");
             Assert.IsNotNull(ended);
             if (ended.Reason == GameEndReason.RoundLimit)
             {
