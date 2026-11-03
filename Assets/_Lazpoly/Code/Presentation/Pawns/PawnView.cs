@@ -16,11 +16,11 @@ namespace Lazpoly.Presentation.Pawns
     public sealed class PawnView : MonoBehaviour
     {
         /// <summary>
-        /// The character's height on the board; the shapes are about 0.55. A person is slim, so he
-        /// stands taller than they did and still takes less of the square; at 0.7 his face and tablet
-        /// were too small to make out at 1080p.
+        /// The character's height on the board; the shapes are about 0.55. The owner asked for him
+        /// large (at 0.9 he was about 60 pixels at 1080p): he stands over one and a half tiles tall,
+        /// so the figure reads from across the room even though he may cover a name behind him.
         /// </summary>
-        public const float CharacterHeight = 0.9f;
+        public const float CharacterHeight = 1.8f;
 
         /// <summary>The child that holds the character or the shape.</summary>
         public const string ModelName = "Model";
