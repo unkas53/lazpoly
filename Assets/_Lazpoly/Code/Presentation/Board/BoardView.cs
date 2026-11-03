@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Lazpoly.Core.Board;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Effects;
+using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
@@ -41,6 +42,9 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
         public const float TitleOffset = 0.40f;
+
+        /// <summary>The logo's side in lawn widths: its lettering sits above the dice score and its corners stay on the lawn.</summary>
+        public const float TitleSize = 0.30f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;
@@ -710,12 +714,21 @@ namespace Lazpoly.Presentation.Tabletop
             return piece;
         }
 
-        /// <summary>The title lying on the far part of the lawn; <see cref="FaceCamera"/> places and turns it.</summary>
+        /// <summary>
+        /// The logo lying on the far part of the lawn (<see cref="FaceCamera"/> places and turns it); the name
+        /// in letters when the picture or its shader is not in the build.
+        /// </summary>
         private void CreateTitle(float inner)
         {
             var title = new GameObject("Title");
             title.transform.SetParent(transform, false);
             _title = title.transform;
+            if (MenuArt.HasLogo && PicturePlate.IsAvailable)
+            {
+                PicturePlate.Create("Logo", _title, MenuArt.Logo.texture, Vector2.one * (inner * TitleSize));
+                return;
+            }
+
             CreateText("Lettering", "LAZPOLY", _title, Vector3.zero, 192, inner * 0.005f, TitleColor);
         }
 

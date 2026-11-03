@@ -255,14 +255,18 @@ namespace Lazpoly.Presentation.Menu
             return online;
         }
 
-        /// <summary>The green band: the brand mark and name, Steam's state, the version, settings and the way out.</summary>
+        /// <summary>The green band: the logo and the tagline, Steam's state, the version, settings and the way out.</summary>
         private void RenderMasthead(UiBuilder ui)
         {
-            ui.Swatch(UiPalette.Ink.Gold, 56f, mark: "L");
+            if (MenuArt.HasLogo) Logo(ui, MenuLayout.LogoSize);
+            else ui.Swatch(UiPalette.Ink.Gold, 56f, mark: "L");
             UiBuilder name = ui.Column(0f);
             UiBuilder.Fix(name.Container.gameObject, -1f).flexibleWidth = 0f;
-            Text brand = name.Label("LAZPOLY", UiTextStyle.Heading, UiPalette.Ink.OnMasthead);
-            brand.horizontalOverflow = HorizontalWrapMode.Overflow;
+            if (!MenuArt.HasLogo)
+            {
+                name.Label("LAZPOLY", UiTextStyle.Heading, UiPalette.Ink.OnMasthead).horizontalOverflow = HorizontalWrapMode.Overflow;
+            }
+
             name.Eyebrow(L("Karadeniz Masası"), UiPalette.Ink.OnMastheadMuted).horizontalOverflow = HorizontalWrapMode.Overflow;
 
             UiBuilder.Fix(ui.Label("", UiTextStyle.Small), -1f).flexibleWidth = 1f;
@@ -288,19 +292,24 @@ namespace Lazpoly.Presentation.Menu
             foreach (Text caption in button.GetComponentsInChildren<Text>()) caption.color = UiPalette.Ink.OnMasthead;
         }
 
-        /// <summary>The greeting under the masthead, with the logo at the right when the picture is in the build.</summary>
+        /// <summary>The logo picture as a square of <paramref name="size"/> in a row.</summary>
+        private static Image Logo(UiBuilder ui, float size)
+        {
+            Image logo = ui.Swatch(Color.white, size);
+            logo.sprite = MenuArt.Logo;
+            logo.type = Image.Type.Simple;
+            logo.preserveAspect = true;
+            logo.raycastTarget = false;
+            return logo;
+        }
+
+        /// <summary>The greeting under the masthead.</summary>
         private void RenderTitle(UiBuilder ui)
         {
             UiBuilder words = ui.Column(4f);
             words.Eyebrow(L("Yol arkadaşların burada"), UiTheme.Gain);
             words.Label(L("Bugün hangi masaya oturuyoruz?"), UiTextStyle.Display);
             words.Label(L("Arkadaşlarınla ya da bilgisayara karşı Karadeniz'in şehirlerini topla, kirayı topla, son kalan sen ol."), UiTextStyle.Small, UiTheme.Muted);
-            if (!MenuArt.HasLogo) return;
-            Image logo = ui.Swatch(Color.white, MenuLayout.LogoSize);
-            logo.sprite = MenuArt.Logo;
-            logo.type = Image.Type.Simple;
-            logo.preserveAspect = true;
-            logo.raycastTarget = false;
         }
 
         /// <summary>The six ways in, three to a row: each a card with a coloured edge, a title, a line and a tag.</summary>

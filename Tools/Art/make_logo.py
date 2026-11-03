@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Turns the Lazpoly logo picture (Tools/Art/Logo/lazpoly-logo.jpg, on a white ground) into the menu's logo asset.
 
-The picture is a JPEG on plain white. The menu shows the logo over the green masthead and the paper window,
+The picture is a JPEG on plain white. Its top right held a photo-like portrait of a man with a cigarette in a
+gold medallion; the owner asked for the portrait to go (likeness and age-rating risk), so the medallion's inside
+is repainted first: a two-tone navy disc in the picture's own blues with a white "L" (Nunito Bold) on it. The menu shows the logo over the green masthead and the paper window,
 so the white ground has to go: every near-white pixel that connects to the picture's border is made transparent
 (a flood fill, so the white faces of the dice and the letters inside the picture stay), the edge gets one pixel
 of softening, and the result is written as a PNG whose bytes ship as a TextAsset:
@@ -12,12 +14,38 @@ import os
 import sys
 from collections import deque
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 SOURCE = os.path.join("Tools", "Art", "Logo", "lazpoly-logo.jpg")
 TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "logo.bytes")
 SIZE = 640          # The menu shows it 160 pixels tall at 1080p; 640 keeps it sharp on a 4K screen and in a bigger interface size.
 WHITE = 236         # A pixel whose darkest channel is at least this counts as the white ground.
+
+# The gold medallion round the portrait, measured on the 1254x1254 source (least-squares fit of the ring's gold pixels):
+# centre, the ring's inner radius and the radius of the disc painted over the portrait (a little under the ring).
+MEDALLION_CENTRE = (952, 520)
+MEDALLION_INNER = 100
+MEDALLION_FILL = 104
+NAVY_LIGHT = (28, 96, 160)    # The picture's lighter facet blue (top left of the disc).
+NAVY_DEEP = (10, 58, 106)     # Its deep blue (bottom right).
+MARK_FONT = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Fonts", "Nunito-Bold.ttf")
+
+
+def remove_portrait(image, root):
+    """Paints the medallion's inside over: a navy disc split light/deep along the diagonal, with a white L."""
+    cx, cy = MEDALLION_CENTRE
+    r = MEDALLION_FILL
+    box = (cx - r, cy - r, cx + r, cy + r)
+    draw = ImageDraw.Draw(image)
+    draw.ellipse(box, fill=NAVY_DEEP)
+    disc = Image.new("L", image.size, 0)
+    ImageDraw.Draw(disc).ellipse(box, fill=255)
+    upper_left = Image.new("L", image.size, 0)
+    ImageDraw.Draw(upper_left).polygon([(cx - r, cy - r), (cx + r, cy - r), (cx - r, cy + r)], fill=255)
+    image.paste(Image.new("RGB", image.size, NAVY_LIGHT), (0, 0), ImageChops.multiply(disc, upper_left))
+    font = ImageFont.truetype(os.path.join(root, MARK_FONT), int(MEDALLION_INNER * 1.35))
+    left, top, right, bottom = draw.textbbox((0, 0), "L", font=font)
+    draw.text((cx - (right - left) / 2 - left, cy - (bottom - top) / 2 - top + MEDALLION_INNER * 0.02), "L", font=font, fill=(252, 252, 250))
 
 
 def main():
@@ -26,6 +54,7 @@ def main():
     if not os.path.exists(source):
         sys.exit(f"missing {source}; run from the repository root")
     image = Image.open(source).convert("RGB")
+    remove_portrait(image, root)
     width, height = image.size
     pixels = image.load()
 

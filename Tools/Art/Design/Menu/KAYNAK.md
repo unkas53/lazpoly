@@ -1,7 +1,7 @@
 # Ana menü ve lobi tasarımı (yalnız başvuru)
 
 `lazpoly-main-menu.svg` ve `lazpoly-lobby.svg` proje sahibi **mami**'nin 2026-11-03'te verdiği konsept ekranlardır
-(bir yapay zekâ aracıyla üretilmiş; araç başvurudan önce sorulur). Oyunda doğrudan kullanılmazlar: oyun
+(proje sahibinin beyanına göre ChatGPT ile üretilmiş). Oyunda doğrudan kullanılmazlar: oyun
 arayüzünü kodla kurar (`UiBuilder`), tasarımın **düzeni ve tarzı** koda aktarıldı (Faz 11g, README).
 
 Verilen paketteki Unity demo projesi (`LazpolyDemoBootstrap.cs` ve yanındaki sahne / ayar dosyaları) depoya

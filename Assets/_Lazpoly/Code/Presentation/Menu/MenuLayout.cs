@@ -13,17 +13,17 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>Sky showing round the window.</summary>
         public const float WindowMargin = 40f;
 
-        /// <summary>The masthead band across the top of the window.</summary>
-        public const float MastheadHeight = 112f;
+        /// <summary>The masthead band across the top of the window, tall enough for the logo.</summary>
+        public const float MastheadHeight = 128f;
 
         /// <summary>Room between the window's edge and what is written on it.</summary>
         public const float Padding = 36f;
 
-        /// <summary>The title strip under the masthead: eyebrow, greeting and a line under it, with the logo at its right.</summary>
-        public const float TitleHeight = 176f;
+        /// <summary>The title strip under the masthead: eyebrow, greeting and a line under it.</summary>
+        public const float TitleHeight = 136f;
 
-        /// <summary>The logo picture in the title strip (it is square).</summary>
-        public const float LogoSize = 160f;
+        /// <summary>The logo picture at the left of the masthead (it is square).</summary>
+        public const float LogoSize = 116f;
 
         /// <summary>Between the title strip, the cards and the footer.</summary>
         public const float RowGap = 20f;

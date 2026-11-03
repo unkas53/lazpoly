@@ -71,7 +71,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.That(MenuLayout.MinScreenHeight, Is.LessThanOrEqualTo(UiTheme.ReferenceResolution.y), "the six cards, title and footer stack on 1080 rows");
             Assert.That(MenuLayout.CardHeight(UiTheme.ReferenceResolution.y), Is.GreaterThanOrEqualTo(MenuLayout.MinCardHeight));
             Assert.That(MenuLayout.CardWidth(UiTheme.ReferenceResolution.x), Is.GreaterThan(400f), "a card holds a heading and a line of text");
-            Assert.That(MenuLayout.TitleHeight, Is.GreaterThanOrEqualTo(MenuLayout.LogoSize), "the logo fits in the title strip");
+            Assert.That(MenuLayout.MastheadHeight, Is.GreaterThanOrEqualTo(MenuLayout.LogoSize + 8f), "the logo fits in the masthead with a margin");
             Assert.AreEqual(6, MenuLayout.CardCount);
             // At the smallest height the cards are exactly their minimum: the arithmetic and the minimum agree.
             Assert.That(MenuLayout.CardHeight(MenuLayout.MinScreenHeight), Is.EqualTo(MenuLayout.MinCardHeight).Within(0.01f));
@@ -91,6 +91,10 @@ namespace Lazpoly.Presentation.Tests
                 Assert.That(logo.GetPixel(2, 2).a, Is.LessThan(0.02f), "the corner is see-through");
                 Assert.That(logo.GetPixel(logo.width - 3, logo.height - 3).a, Is.LessThan(0.02f), "the other corner is see-through");
                 Assert.That(logo.GetPixel(logo.width / 2, logo.height / 2).a, Is.GreaterThan(0.98f), "the middle is painted");
+                // The medallion at the top right holds the navy mark now, not the portrait: no skin tones there.
+                Color medallion = logo.GetPixel(logo.width * 3 / 4, logo.height * 3 / 5);
+                Assert.That(medallion.a, Is.GreaterThan(0.98f), "the medallion is painted");
+                Assert.That(medallion.b, Is.GreaterThan(medallion.r), $"the medallion is blue, not a face: {medallion}");
             }
             finally
             {
