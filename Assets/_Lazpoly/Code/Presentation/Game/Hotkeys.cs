@@ -9,8 +9,6 @@ namespace Lazpoly.Presentation.Game
         None,
         /// <summary>Roll the dice (Space or Enter while the roll is offered).</summary>
         Roll,
-        /// <summary>End the turn (Space or Enter while the turn can end).</summary>
-        EndTurn,
         /// <summary>Open the building card (B).</summary>
         BuildCard,
         /// <summary>Open the trade editor (T).</summary>
@@ -35,7 +33,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>A text field has the keyboard, so letters are typed, not commands.</summary>
         public bool Typing;
 
-        /// <summary>A button holds the keyboard focus (Tab), so Enter and Space press it rather than roll or end the turn.</summary>
+        /// <summary>A button holds the keyboard focus (Tab), so Enter and Space press it rather than roll.</summary>
         public bool ButtonFocused;
 
         /// <summary>The pause menu is open.</summary>
@@ -97,8 +95,8 @@ namespace Lazpoly.Presentation.Game
                 case KeyCode.Return:
                 case KeyCode.KeypadEnter:
                     if (!context.Acting || context.ButtonFocused) return HotkeyAction.None;
-                    if (context.Phase == GamePhase.WaitingForRoll) return HotkeyAction.Roll;
-                    return context.Phase == GamePhase.TurnEnd ? HotkeyAction.EndTurn : HotkeyAction.None;
+                    // The turn ends by itself, so rolling is all these keys do.
+                    return context.Phase == GamePhase.WaitingForRoll ? HotkeyAction.Roll : HotkeyAction.None;
                 case KeyCode.B:
                     return context.Acting && context.CanBuild ? HotkeyAction.BuildCard : HotkeyAction.None;
                 case KeyCode.T:

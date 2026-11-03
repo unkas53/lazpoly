@@ -70,5 +70,14 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(GameState.NoOwner, EventDescriber.ActorOf(new PropertyOwnerChangedEvent(1, 1, GameState.NoOwner)), "A town back at the bank is nobody's.");
             Assert.AreEqual(GameState.NoOwner, EventDescriber.ActorOf(new PhaseChangedEvent(GamePhase.TurnEnd)));
         }
+
+        [Test]
+        public void ThePlayerWhoCannotPayIsNamedWithTheReason()
+        {
+            Assert.AreEqual("Unkas kirayı ödeyecek parası yok", EventDescriber.CannotPayText("Unkas", MoneyReason.Rent));
+            Assert.AreEqual("Ayşe vergiyi ödeyecek parası yok", EventDescriber.CannotPayText("Ayşe", MoneyReason.Tax));
+            Assert.AreEqual("Can cezayı ödeyecek parası yok", EventDescriber.CannotPayText("Can", MoneyReason.Card));
+            Assert.AreEqual("Can borcunu ödeyecek parası yok", EventDescriber.CannotPayText("Can", MoneyReason.Trade));
+        }
     }
 }

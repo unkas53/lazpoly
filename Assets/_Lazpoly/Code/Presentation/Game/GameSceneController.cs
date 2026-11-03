@@ -49,6 +49,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Pause after the dice settle, so the result is read before the pawn moves.</summary>
         public const float RollReadSeconds = 0.55f;
 
+        /// <summary>How long "X kirayı ödeyecek parası yok" stays up; the next turn waits most of it.</summary>
+        public const float AnnouncementSeconds = 3f;
+
         /// <summary>A payment of this much or more flies as several coins.</summary>
         private const int CoinStep = 120;
         private const int MaxCoins = 4;
@@ -122,12 +125,32 @@ namespace Lazpoly.Presentation.Game
         public double SecondsUntilGiveUp => _client?.SecondsUntilGiveUp ?? 0;
 
         /// <summary>
-        /// Seconds an online player has left before the host moves for them, counted from the last
-        /// moves this machine saw (the host keeps the real clock). Infinite in a local game.
+        /// Seconds the person on turn here has left before the game decides for them. Locally the
+        /// <see cref="DecisionClock"/> times it from the moment the board stopped moving. Online the host
+        /// keeps the real clock from its last accepted move, plus <see cref="HostSession.GraceSeconds"/> for
+        /// the animations; the count shown here stays full during that grace and then runs to the host's deadline.
+        /// Infinite at a table without a clock.
         /// </summary>
-        public float SecondsLeft => _isOnline && _session?.State != null
-            ? (float)TurnClock.LimitFor(_session.State.Phase, _session.Rules.TurnSeconds) - (Time.unscaledTime - _lastProgressTime)
-            : float.PositiveInfinity;
+        public float SecondsLeft
+        {
+            get
+            {
+                if (_session?.State == null) return float.PositiveInfinity;
+                if (!_isOnline) return (float)_decisionClock.Left;
+                float limit = (float)TurnClock.LimitFor(_session.State.Phase, _session.Rules.TurnSeconds);
+                return Mathf.Min(limit, limit + (float)HostSession.GraceSeconds - (Time.unscaledTime - _lastProgressTime));
+            }
+        }
+
+        private readonly DecisionClock _decisionClock = new DecisionClock();
+
+        /// <summary>The last reason each player fell into debt, for the line shown when they go bankrupt.</summary>
+        private readonly Dictionary<int, MoneyReason> _debtReasons = new Dictionary<int, MoneyReason>();
+
+        /// <summary>The big line over the table ("Unkas kirayı ödeyecek parası yok"), whose it is and when it went up.</summary>
+        public string Announcement { get; private set; }
+        public int AnnouncementPlayer { get; private set; } = GameState.NoOwner;
+        public float AnnouncementTime { get; private set; } = float.NegativeInfinity;
 
         /// <summary>The last moves and answers, for a problem report.</summary>
         private readonly SessionTrail _trail = new SessionTrail();
@@ -312,8 +335,39 @@ namespace Lazpoly.Presentation.Game
 
             UpdateDayLight();
             ShowNextBubble();
+            UpdateDecisionClock();
             if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
             if (_session.StepAi()) _nextAiMoveTime = Time.time + Settings.AiMoveDelaySeconds;
+        }
+
+        /// <summary>
+        /// A local game's decision clock: while it waits on a person at this screen it counts down (not while
+        /// the board animates or the game is paused) and, when the time is up, makes the decision for them as
+        /// <see cref="TimeoutPolicy"/> says. Online the host does this.
+        /// </summary>
+        private void UpdateDecisionClock()
+        {
+            GameState state = _session.State;
+            int person = _isOnline || _board == null || state == null || state.Phase == GamePhase.GameOver || EndReason.HasValue
+                ? GameState.NoOwner
+                : PersonToAct(state);
+            double limit = person == GameState.NoOwner ? double.PositiveInfinity : TurnClock.LimitFor(state.Phase, _session.Rules.TurnSeconds);
+            int key = HashCode.Combine(Revision, person, state?.Phase);
+            if (!_decisionClock.Tick(Time.unscaledDeltaTime, key, limit, Paused || IsBusy)) return;
+
+            AddLog(F($"{state.FindPlayer(person)?.Name} için süre doldu"), LogTone.Neutral, person);
+            foreach (GameCommand command in TimeoutPolicy.CommandsFor(_session.Board, _session.Rules, state, person)) Submit(command);
+        }
+
+        /// <summary>The first person at this screen (not the computer) the game waits on; none when it waits on nobody here.</summary>
+        private int PersonToAct(GameState state)
+        {
+            foreach (int id in AiTurnOrder.PlayersToAct(state))
+            {
+                if (_session.CanControl(id) && !_session.IsAiPlaying(id)) return id;
+            }
+
+            return GameState.NoOwner;
         }
 
         /// <summary>
@@ -879,9 +933,22 @@ namespace Lazpoly.Presentation.Game
                             Say(owner.NewOwnerId, L("Aldım!"));
                         }
                         break;
+                    case DebtIncurredEvent debt:
+                        _debtReasons[debt.PlayerId] = debt.Reason;
+                        break;
                     case PlayerBankruptedEvent bankrupt:
+                        if (_debtReasons.TryGetValue(bankrupt.PlayerId, out MoneyReason reason))
+                        {
+                            // Everyone at the table reads why the player is out; the next turn waits for most of it.
+                            Announcement = EventDescriber.CannotPayText(_session.State.FindPlayer(bankrupt.PlayerId)?.Name, reason);
+                            AnnouncementPlayer = bankrupt.PlayerId;
+                            AnnouncementTime = Time.unscaledTime;
+                            Revision++;
+                        }
+
                         Say(bankrupt.PlayerId, L("Battım..."));
                         yield return _pawns[bankrupt.PlayerId].Topple();
+                        if (Announcement != null && AnnouncementPlayer == bankrupt.PlayerId) yield return new WaitForSeconds(AnnouncementSeconds * 0.6f);
                         break;
                     case BuildingLevelChangedEvent building:
                         if (building.Level > _board.LevelOf(building.SquareIndex))

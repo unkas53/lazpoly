@@ -10,11 +10,11 @@ namespace Lazpoly.Presentation.Tests
         private static HotkeyContext OnTurn(GamePhase phase) => new HotkeyContext { Acting = true, Phase = phase, CanBuild = true, CanTrade = true };
 
         [Test]
-        public void SpaceAndEnterRollOrEndTheTurnOnlyWhenThatIsOffered()
+        public void SpaceAndEnterRollOnlyWhenThatIsOffered()
         {
             Assert.AreEqual(HotkeyAction.Roll, Hotkeys.Resolve(KeyCode.Space, OnTurn(GamePhase.WaitingForRoll)));
             Assert.AreEqual(HotkeyAction.Roll, Hotkeys.Resolve(KeyCode.Return, OnTurn(GamePhase.WaitingForRoll)));
-            Assert.AreEqual(HotkeyAction.EndTurn, Hotkeys.Resolve(KeyCode.KeypadEnter, OnTurn(GamePhase.TurnEnd)));
+            Assert.AreEqual(HotkeyAction.None, Hotkeys.Resolve(KeyCode.KeypadEnter, OnTurn(GamePhase.TurnEnd)), "The turn ends by itself.");
             Assert.AreEqual(HotkeyAction.None, Hotkeys.Resolve(KeyCode.Space, OnTurn(GamePhase.AwaitingDebtPayment)), "Paying a debt takes a decision.");
             Assert.AreEqual(HotkeyAction.None, Hotkeys.Resolve(KeyCode.Space, OnTurn(GamePhase.AwaitingBuyDecision)), "Buying is never done by reflex.");
         }

@@ -107,6 +107,13 @@ namespace Lazpoly.Presentation.Game
 
         private const int NoSquare = -1;
         private const float BannerSeconds = 1.8f;
+
+        /// <summary>How long the turn's end waits, once nothing is left to decide, before the turn passes on.</summary>
+        public const float AutoEndDelaySeconds = 0.6f;
+
+        private float _turnEndSince = -1f;
+        private int _autoEndedKey;
+        private float _announcedAt = float.NegativeInfinity;
         private const float RollSeconds = 1.5f;
         private const float CardButton = UiLayout.CardButtonHeight;
         private const float WindowListHeight = 420f;
@@ -449,8 +456,8 @@ namespace Lazpoly.Presentation.Game
 
         private const int NoPlayer = -1;
 
-        /// <summary>Seconds before the move clock runs out during which the screen edge glows red.</summary>
-        public const float EdgeWarningSeconds = 10f;
+        /// <summary>Seconds before the decision clock runs out during which the screen edge glows red.</summary>
+        public const float EdgeWarningSeconds = 5f;
 
         /// <summary>Four thin strips along the screen edges, invisible until the move clock nearly runs out.</summary>
         private void BuildTimeEdge()
@@ -475,14 +482,15 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
-        /// Online, while the game waits on the person here: how long until the host moves for them. In
-        /// the last <see cref="EdgeWarningSeconds"/> the screen edge pulses red as well, so the warning
-        /// reaches a player looking at the board rather than the clock. No clock at a table without one.
+        /// While the game waits on the person here: how long until the game decides for them (rolls, lets the
+        /// town go, ends the turn, sells). In the last <see cref="EdgeWarningSeconds"/> the screen edge pulses
+        /// red as well, so the warning reaches a player looking at the board rather than the clock. No clock
+        /// at a table without one.
         /// </summary>
         private void UpdateTimer(GameState state)
         {
             float seconds = _controller.SecondsLeft;
-            bool show = _controller.IsOnline && state != null && state.Phase != GamePhase.GameOver && !_controller.IsBusy &&
+            bool show = state != null && state.Phase != GamePhase.GameOver && !_controller.IsBusy && !_controller.Paused &&
                         !_controller.EndReason.HasValue && !float.IsInfinity(seconds) && WaitsOnSomeoneHere(state);
             if (!show)
             {
@@ -492,7 +500,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             int left = Mathf.Max(0, Mathf.CeilToInt(seconds));
-            _timer.text = F($"Hamle süresi: {left} sn");
+            _timer.text = F($"Kalan süre: {left} sn");
             bool urgent = seconds <= EdgeWarningSeconds;
             _timer.color = urgent ? UiTheme.Warning : UiTheme.Muted;
             _timeEdge.alpha = urgent ? 0.35f + 0.35f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * Mathf.PI)) : 0f;
@@ -571,6 +579,7 @@ namespace Lazpoly.Presentation.Game
             UpdateRollPopup();
             UpdateTip(state);
             UpdateTimer(state);
+            AutoEndTurn(state, tradeOpen);
 
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
@@ -680,10 +689,21 @@ namespace Lazpoly.Presentation.Game
         private void RenderSquareCard(UiBuilder ui) =>
             _squareCard.Render(ui, _pinnedSquare, () => _pinnedSquare = NoSquare, square => _pinnedSquare = square);
 
-        /// <summary>A short "your turn" banner whenever a new turn goes to someone at this screen.</summary>
+        /// <summary>
+        /// The banner: a player who could not pay even by selling everything (the board shows their
+        /// bankruptcy meanwhile) takes it first, for everyone at the table; then a short "your turn"
+        /// whenever a new turn goes to someone at this screen.
+        /// </summary>
         private void UpdateBanner(GameState state)
         {
-            if (state != null && !_controller.IsBusy && state.Phase != GamePhase.GameOver &&
+            if (_controller.AnnouncementTime > _announcedAt)
+            {
+                _announcedAt = _controller.AnnouncementTime;
+                ShowBanner(_controller.Announcement, _controller.ColorOf(_controller.AnnouncementPlayer), GameSceneController.AnnouncementSeconds);
+            }
+
+            bool announcing = Time.unscaledTime < _announcedAt + GameSceneController.AnnouncementSeconds;
+            if (state != null && !announcing && !_controller.IsBusy && state.Phase != GamePhase.GameOver &&
                 (state.CurrentPlayer.Id != _lastTurnPlayer || state.TurnNumber != _lastTurnNumber))
             {
                 _lastTurnPlayer = state.CurrentPlayer.Id;
@@ -692,17 +712,21 @@ namespace Lazpoly.Presentation.Game
                 if (_controller.Session.CanControl(player.Id))
                 {
                     AudioPlayer.Play(SoundCue.YourTurn);
-                    _banner.text = F($"Sıra sende, {player.Name}");
-                    // The band takes the player's colour and the words whichever ink reads on it.
-                    Color color = _controller.ColorOf(player.Id);
-                    _bannerFill.color = color;
-                    _banner.color = ColorVision.TextOn(color);
-                    _bannerUntil = Time.unscaledTime + BannerSeconds;
+                    ShowBanner(F($"Sıra sende, {player.Name}"), _controller.ColorOf(player.Id), BannerSeconds);
                 }
             }
 
             float left = _bannerUntil - Time.unscaledTime;
             _bannerGroup.alpha = Mathf.Clamp01(left / 0.4f);
+        }
+
+        /// <summary>The band takes the player's colour and the words whichever ink reads on it.</summary>
+        private void ShowBanner(string text, Color color, float seconds)
+        {
+            _banner.text = text;
+            _bannerFill.color = color;
+            _banner.color = ColorVision.TextOn(color);
+            _bannerUntil = Time.unscaledTime + seconds;
         }
 
         private static void SetLayer(GameObject layer, UiView view, bool open, int key)
@@ -769,8 +793,8 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
-        /// The dock: the turn's main button first (roll, or end the turn), then the building card, the
-        /// properties, trading, the log, help and the menu. Buttons the moment does not allow stay but go grey.
+        /// The dock: the roll button first (the turn ends by itself, see <see cref="AutoEndTurn"/>), then the
+        /// building card, the properties, trading, the log, help and the menu. Buttons the moment does not allow stay but go grey.
         /// </summary>
         private void RenderDock(UiBuilder ui)
         {
@@ -781,11 +805,7 @@ namespace Lazpoly.Presentation.Game
             if (!over)
             {
                 int id = state.CurrentPlayer.Id;
-                // While someone else plays, the first button rests as the die: their turn's end is not this person's to press.
-                if (state.Phase == GamePhase.TurnEnd && acting)
-                    ui.RoundButton(UiIcon.Next, L("Sırayı Bitir"), () => Submit(new EndTurnCommand(id)), true, UiButtonStyle.Primary);
-                else
-                    ui.RoundButton(UiIcon.Dice, L("Zar At"), () => Submit(new RollDiceCommand(id)), acting && state.Phase == GamePhase.WaitingForRoll, UiButtonStyle.Primary);
+                ui.RoundButton(UiIcon.Dice, L("Zar At"), () => Submit(new RollDiceCommand(id)), acting && state.Phase == GamePhase.WaitingForRoll, UiButtonStyle.Primary);
                 ui.RoundButton(UiIcon.Home, L("Bina (B)"), ReopenBuildCard, free && CanReopenBuildCard(state));
                 ui.RoundButton(UiIcon.Flag, L("Mülkler"), OpenProperties, CanOpenProperties(state));
                 ui.RoundButton(UiIcon.People, L("Takas (T)"), () => _trade.Open(id), free);
@@ -976,6 +996,30 @@ namespace Lazpoly.Presentation.Game
             }
         }
 
+        /// <summary>
+        /// The turn ends by itself once the person here has nothing left to decide on it: the board has
+        /// played the move and no building card, trade or property window is open. A short pause lets the
+        /// landing be seen first. With a card open, the decision clock ends the turn if nobody does.
+        /// </summary>
+        private void AutoEndTurn(GameState state, bool tradeOpen)
+        {
+            bool due = WaitsOnPersonHere(state, GamePhase.TurnEnd) && !_controller.Paused && !tradeOpen && !OffersBuildCard(state) &&
+                       !_propertiesLayer.activeSelf && !_pauseLayer.activeSelf;
+            if (!due)
+            {
+                _turnEndSince = -1f;
+                return;
+            }
+
+            if (_turnEndSince < 0f) _turnEndSince = Time.unscaledTime;
+            if (Time.unscaledTime - _turnEndSince < AutoEndDelaySeconds) return;
+            // Once per turn: online the state stays at the turn's end until the host answers.
+            int key = HashCode.Combine(state.TurnNumber, state.CurrentPlayer.Id);
+            if (key == _autoEndedKey) return;
+            _autoEndedKey = key;
+            Submit(new EndTurnCommand(state.CurrentPlayer.Id));
+        }
+
         /// <summary>The building card and trading are offered while the turn is at a free moment.</summary>
         private static bool OffersExtras(GameState state) => state.Phase == GamePhase.WaitingForRoll || state.Phase == GamePhase.TurnEnd;
 
@@ -1104,18 +1148,46 @@ namespace Lazpoly.Presentation.Game
             }
         }
 
+        /// <summary>
+        /// The sale screen of a debt: the player's towns with their sale buttons, the automatic sale (which
+        /// towns it would sell) and the payment. When the decision time runs out the automatic sale is made.
+        /// </summary>
         private void RenderDebt(UiBuilder ui, GameState state, PlayerState player)
         {
             DebtState debt = state.Debt;
+            BoardDefinition board = _controller.Session.Board;
             string creditor = EventDescriber.CreditorText(state, debt.CreditorId);
             UiBuilder card = ui.Card(UiTheme.NoticeFill);
             card.CardHeader(F($"Borç: {debt.Amount} → {creditor}"), EventDescriber.ReasonText(debt.Reason));
             card.Label(F($"Paran {player.Money}. Bina ya da mülk satarak para bul, sonra öde."), UiTextStyle.Small);
             PropertyPanel.RenderSales(card.Scroll(DebtSalesHeight), _controller, state, player.Id);
 
+            IReadOnlyList<GameCommand> plan = DebtSettlement.Plan(board, _controller.Session.Rules, state, player.Id);
             var pay = new PayDebtCommand(player.Id);
-            ui.Actions(L("İflas Et"), () => _controller.Submit(new DeclareBankruptcyCommand(player.Id)),
-                F($"Borcu Öde ({debt.Amount})"), () => _controller.Submit(pay), _controller.IsAllowed(pay), UiButtonStyle.Danger);
+            if (plan.Count == 1 && plan[0] is DeclareBankruptcyCommand giveUp)
+            {
+                // Only a game saved before insolvency ended games at once can stand here.
+                ui.Button(L("İflas Et"), () => _controller.Submit(giveUp), style: UiButtonStyle.Danger, height: CardButton);
+                return;
+            }
+
+            IReadOnlyList<int> sold = DebtSettlement.SquaresSold(plan);
+            if (sold.Count > 0)
+            {
+                var names = new List<string>();
+                foreach (int square in sold) names.Add(L(board[square].Name));
+                card.Label(F($"Otomatik satış: {string.Join(", ", names)}. Süre dolarsa bu yapılır."), UiTextStyle.Small, UiTheme.Muted);
+            }
+
+            // With the money already in hand there is nothing to sell: only the payment is offered.
+            ui.Actions(sold.Count > 0 ? L("Otomatik Sat") : null, () => SubmitAll(plan), F($"Borcu Öde ({debt.Amount})"), () => _controller.Submit(pay),
+                _controller.IsAllowed(pay));
+        }
+
+        /// <summary>Sends a whole plan (the automatic sale); the host takes the commands in order.</summary>
+        private void SubmitAll(IReadOnlyList<GameCommand> commands)
+        {
+            foreach (GameCommand command in commands) _controller.Submit(command);
         }
 
         /// <summary>
@@ -1254,7 +1326,7 @@ namespace Lazpoly.Presentation.Game
             bool over = _controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver);
             bool online = _controller.IsOnline;
             ui.Title(UiIcon.Pause, online || over ? L("Menü") : L("Oyun duraklatıldı"));
-            if (online && !over) ui.Label(L("Çevrim içi oyun arkada sürer; hamle süresi işlemeye devam eder."), UiTextStyle.Small, UiTheme.Muted);
+            if (online && !over) ui.Label(L("Çevrim içi oyun arkada sürer; karar süresi işlemeye devam eder."), UiTextStyle.Small, UiTheme.Muted);
 
             ui.Button(L("Devam Et (Esc)"), ClosePause, style: UiButtonStyle.Primary, height: CardButton);
             UiBuilder row = ui.Row();
@@ -1264,7 +1336,7 @@ namespace Lazpoly.Presentation.Game
 
             UiBuilder keys = ui.Card(UiTheme.Field, 10);
             keys.Label(L("Klavye"), UiTextStyle.Small, UiTheme.Muted);
-            Line(keys, L("Boşluk / Enter"), L("zar at, sırayı bitir"));
+            Line(keys, L("Boşluk / Enter"), L("zar at"));
             Line(keys, "B", L("bina kartı"));
             Line(keys, "T", L("takas teklif et"));
             Line(keys, "H", L("nasıl oynanır"));
@@ -1348,9 +1420,6 @@ namespace Lazpoly.Presentation.Game
             {
                 case HotkeyAction.Roll:
                     Submit(new RollDiceCommand(state.CurrentPlayer.Id));
-                    break;
-                case HotkeyAction.EndTurn:
-                    Submit(new EndTurnCommand(state.CurrentPlayer.Id));
                     break;
                 case HotkeyAction.BuildCard:
                     ReopenBuildCard();

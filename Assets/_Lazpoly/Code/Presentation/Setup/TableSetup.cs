@@ -1,3 +1,4 @@
+using Lazpoly.App.Session;
 using Lazpoly.Core.Rules;
 using UnityEngine;
 
@@ -17,8 +18,8 @@ namespace Lazpoly.Presentation.Setup
         /// <summary>Round limit choices: unlimited, a normal short game and a quick one.</summary>
         public static readonly int[] RoundLimitChoices = { 0, 25, 15 };
 
-        /// <summary>Online move time choices in seconds; 0 runs no clock.</summary>
-        public static readonly int[] TurnSecondsChoices = { 60, 90, 120, 0 };
+        /// <summary>Decision time choices in seconds (selling and trade answers get twice as long); 0 runs no clock.</summary>
+        public static readonly int[] TurnSecondsChoices = { 10, 15, 25, 0 };
 
         public static TableRules Chosen { get; set; } = TableRules.Default;
 
@@ -28,14 +29,14 @@ namespace Lazpoly.Presentation.Setup
 
         public static string StartingMoneyText(int money, int boardMoney) => money == 0 ? F($"{boardMoney} (normal)") : N(money);
 
-        /// <summary>"60 sn", "90 sn"... or "Süresiz".</summary>
+        /// <summary>"10 sn", "15 sn"... or "Süresiz".</summary>
         public static string TurnSecondsText(int seconds) => seconds == 0 ? L("Süresiz") : F($"{seconds} sn");
 
-        /// <summary>One line for the menu, e.g. "1500 para · sınırsız · 90 sn hamle".</summary>
+        /// <summary>One line for the menu, e.g. "1500 para · sınırsız · 15 sn karar".</summary>
         public static string Summary(TableRules table, int boardMoney)
         {
             string line = F($"{(table.StartingMoney == 0 ? boardMoney : table.StartingMoney)} para · {RoundLimitText(table.RoundLimit).ToLowerInvariant()}");
-            line += " · " + (table.TurnSeconds == 0 ? L("süresiz hamle") : F($"{table.TurnSeconds} sn hamle"));
+            line += " · " + (table.TurnSeconds == 0 ? L("süresiz") : F($"{System.Math.Min(table.TurnSeconds, TurnClock.MaxDecisionSeconds)} sn karar"));
             return line;
         }
 

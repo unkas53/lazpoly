@@ -144,6 +144,18 @@ namespace Lazpoly.Presentation.Texts
             }
         }
 
+        /// <summary>The line over the table when a debt ends a player's game: "Unkas kirayı ödeyecek parası yok".</summary>
+        public static string CannotPayText(string name, MoneyReason reason)
+        {
+            switch (reason)
+            {
+                case MoneyReason.Rent: return F($"{name} kirayı ödeyecek parası yok");
+                case MoneyReason.Tax: return F($"{name} vergiyi ödeyecek parası yok");
+                case MoneyReason.Card: return F($"{name} cezayı ödeyecek parası yok");
+                default: return F($"{name} borcunu ödeyecek parası yok");
+            }
+        }
+
         /// <summary>"bina yok", "2 ev" or "otel".</summary>
         public static string LevelText(int level)
         {

@@ -150,7 +150,7 @@ namespace Lazpoly.Presentation.Menu
             ui.Label(L("Erişilebilirlik"), UiTextStyle.Small, UiTheme.Muted);
             ui.Toggle(L("Renk körlüğü dostu renkler (gruplara harf eklenir)"), current.ColorBlind, on => Change(_settings.Current.WithColorBlind(on)));
             if (current.ColorBlind != ColorVision.Friendly) ui.Label(L("Tahta ve piyonlar bir sonraki masada yeni renkleri alır."), UiTextStyle.Small, UiTheme.Muted);
-            ui.Label(L("Klavye: Tab ile düğmeler arasında gez, Enter ile bas, Esc ile kapat. Oyunda Space/Enter zar atar ve sırayı bitirir."), UiTextStyle.Small, UiTheme.Muted);
+            ui.Label(L("Klavye: Tab ile düğmeler arasında gez, Enter ile bas, Esc ile kapat. Oyunda Space/Enter zar atar; sıra kendiliğinden biter."), UiTextStyle.Small, UiTheme.Muted);
             ui.Space(6f);
         }
 

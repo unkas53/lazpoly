@@ -329,7 +329,9 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>
         /// Moves money to the creditor (a player, the pot or the bank), or opens a debt the payer must
-        /// settle. Returns true when a debt was opened.
+        /// settle by selling. A debt larger than everything the payer could raise ends their game at
+        /// once: selling would not save them, so nothing is asked of them. Returns true when the move
+        /// does not go on (a debt was opened or the payer went bankrupt).
         /// </summary>
         private bool Charge(PlayerState payer, int creditorId, int amount, MoneyReason reason)
         {
@@ -342,6 +344,12 @@ namespace Lazpoly.Core.Engine
             }
 
             Emit(new DebtIncurredEvent(payer.Id, creditorId, amount, reason));
+            if (GameRules.MaxRaisableMoney(Board, Rules, State, payer.Id) < amount)
+            {
+                GoBankrupt(payer, creditorId);
+                return true;
+            }
+
             Emit(new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
             return true;
         }

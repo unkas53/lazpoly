@@ -42,7 +42,7 @@ namespace Lazpoly.Presentation.Menu
                     UiTextStyle.Small, UiTheme.Muted);
             }
 
-            ui.Eyebrow(L("Hamle süresi (çevrim içi)"), UiTheme.Muted);
+            ui.Eyebrow(L("Karar süresi"), UiTheme.Muted);
             UiBuilder turn = ui.Row();
             foreach (int choice in TableSetup.TurnSecondsChoices)
             {
@@ -53,8 +53,8 @@ namespace Lazpoly.Presentation.Menu
             if (explain)
             {
                 ui.Label(table.TurnSeconds == 0
-                        ? L("Saat yok: herkes istediği kadar düşünür. Yalnızca çevrim içi oyunlarda geçerli.")
-                        : L("Süre dolunca ev sahibi oyuncu adına en temkinli hamleyi yapar; takas cevapları için en çok 30 sn. Son 10 saniyede ekran kenarı kızarır. Yalnızca çevrim içi oyunlarda geçerli."),
+                        ? L("Saat yok: herkes istediği kadar düşünür.")
+                        : L("Zar atmak, satın almak ve bina kurmak için bu kadar süre var; borç için satış ve takas cevabı iki katı. Süre dolunca oyun karar verir: zarı atar, şehri almaz, sırayı bitirir, borcu otomatik satışla öder. Son 5 saniyede ekran kenarı kızarır."),
                     UiTextStyle.Small, UiTheme.Muted);
             }
         }

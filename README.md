@@ -748,6 +748,15 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Tahta verisi değiştiği için eski kayıtlı oyunlar (tahta özeti tutmaz) devam ettirilmez; çevrim içi masalar da yalnız aynı sürümle kurulur.
 - Testler: `BoardDataLoaderTests.EveryCityOnTheShippedBoardIsADifferentOne`, `SceneryTests.BoardTextIsPrintedInTheHeaviestCut`; Türkçe büyük harf testi "İstanbul ve Singapur" ile.
 
+## Faz 15a: sıra kendiliğinden biter, karar süresi, otomatik satış
+
+- "Sırayı Bitir" düğmesi ve kısayolu kalktı. Yapacak bir şey kalmayınca (bina kartı, takas ya da mülk penceresi açık değilken) sıra 0,6 sn sonra kendiliğinden geçer (`GameHud.AutoEndTurn`). Motor `TurnEnd` evresini ve `EndTurnCommand`'ı korur; sırayı ekran bitirir, protokol ve yapay zekâ değişmedi.
+- Karar süresi artık yerel oyunda da işler (`DecisionClock`, tahta oynarken ve duraklatılmışken durur): zar atmak, satın almak, bina kurmak, otogar yolculuğu ve Seyir Terası seçimi için masanın süresi (varsayılan 15 sn; seçenekler 10, 15, 25 sn ya da süresiz), borç için satış ve takas cevabı için iki katı. Eski masalardaki 60-120 sn'lik hamle süreleri 30 sn'ye indirilir (`TurnClock.MaxDecisionSeconds`). Süre dolunca `TimeoutPolicy` karar verir: zarı atar, şehri almaz, sırayı bitirir, takası reddeder, borcu otomatik satışla öder. Son 5 sn'de ekran kenarı kızarır; sayaç "Kalan süre: N sn".
+- Çevrim içi ev sahibi, istemcinin zar ve yürüyüş animasyonu için kararın üstüne 6 sn tanır (`HostSession.GraceSeconds`); süre dolan oyuncuya birden çok komut (satışlar ve ödeme) sırayla uygulanır. Protokol 10.
+- Borç ekranında "Otomatik Sat": borcu kapatacak kadar şehri, binasız olanlardan ve borcu tek başına kapatan en ucuz satıştan başlayarak satar, sonra öder (`DebtSettlement.Plan`). Hangi şehirlerin satılacağı ekranda yazar; süre dolunca aynısı yapılır.
+- Her şeyini satsa da ödemeye yetmeyen oyuncu satış ekranı açılmadan hemen iflas eder (`GameEngine.Charge`, `GameRules.MaxRaisableMoney`). Ekranda herkese oyuncunun renginde "Unkas kirayı ödeyecek parası yok" yazar (vergi, ceza ya da borç için de); sonraki sıra yazı okunana kadar bekler.
+- Testler: `EconomyTests` (otomatik satış seçimi, binalı şehirlerin korunması, anında iflas), `DecisionClockTests`, `EventDescriberTests.ThePlayerWhoCannotPayIsNamedWithTheReason`, `NetworkSessionTests` (karar süresi ve ek süre), PlayMode `TwoPeopleCanPlayTurnsWithTheHudButtons` artık sırayı bitirmeye basmadan oynar.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

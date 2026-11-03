@@ -87,10 +87,11 @@ namespace Lazpoly.PlayTests
             var hud = Object.FindAnyObjectByType<GameHud>();
             Assert.IsNotNull(hud, "The game has no HUD.");
 
-            // Roll, move on past every city (on its card) and end the turn: all through buttons.
+            // Roll and move on past every city (on its card) through buttons; the turn ends by itself.
             int soundsBefore = AudioPlayer.PlayedCount;
-            // Rides are declined; of the two lookout rolls the first is taken (its button starts with a die).
-            string[] order = { "Zar At", "Devam Et", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "İflas Et", "Sırayı Bitir" };
+            // Building is put off; rides are declined; of the two lookout rolls the first is taken (its
+            // button starts with a die); a debt is paid when the cash is there, else sold for automatically.
+            string[] order = { "Zar At", "Devam Et", "Şimdi Değil", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "Otomatik Sat" };
             float started = Time.realtimeSinceStartup;
             while (controller.Session.State.TurnNumber < 6 && controller.Session.State.Phase != GamePhase.GameOver)
             {

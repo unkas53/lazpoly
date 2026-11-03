@@ -203,7 +203,7 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void BankruptcyToAPlayerHandsOverMoneyAndPropertiesAndEndsTwoPlayerGame()
+        public void ARentNothingCouldCoverBankruptsAtOnceAndEndsTwoPlayerGame()
         {
             var board = new BoardDefinition(new[]
             {
@@ -220,11 +220,12 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new BuyPropertyCommand(Alice));
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new EndTurnCommand(Alice));
-            Accept(engine, new RollDiceCommand(Bob));
-            Assert.AreEqual(GamePhase.AwaitingDebtPayment, engine.State.Phase);
-            Assert.AreEqual(500, engine.State.Debt.Amount);
-            Assert.AreEqual(RejectionReason.InsufficientFunds, engine.Execute(new PayDebtCommand(Bob)).Reason);
-            CommandResult result = Accept(engine, new DeclareBankruptcyCommand(Bob));
+            // Bob holds 100 and nothing to sell: the rent of 500 ends his game on the roll, with no debt screen.
+            CommandResult result = Accept(engine, new RollDiceCommand(Bob));
+            DebtIncurredEvent debt = result.Events.OfType<DebtIncurredEvent>().Single();
+            Assert.AreEqual(500, debt.Amount);
+            Assert.AreEqual(MoneyReason.Rent, debt.Reason);
+            Assert.IsFalse(result.Events.OfType<PhaseChangedEvent>().Any(e => e.Phase == GamePhase.AwaitingDebtPayment));
 
             Assert.IsTrue(P(engine, Bob).IsBankrupt);
             Assert.IsNull(engine.State.Debt);
@@ -262,8 +263,7 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new EndTurnCommand(Cem));
             Accept(engine, new RollDiceCommand(Alice));      // 2+4 -> back to Rest 3
             Accept(engine, new EndTurnCommand(Alice));
-            Accept(engine, new RollDiceCommand(Bob));        // 1+3 -> Pricey, rent 500
-            Accept(engine, new DeclareBankruptcyCommand(Bob));
+            Accept(engine, new RollDiceCommand(Bob));        // 1+3 -> Pricey, rent 500: 60 and Cheap (20) cannot cover it
 
             Assert.IsTrue(P(engine, Bob).IsBankrupt);
             Assert.AreEqual(50 + 60, P(engine, Alice).Money);
@@ -291,8 +291,7 @@ namespace Lazpoly.Core.Tests
 
             Accept(engine, new RollDiceCommand(Alice));
             Accept(engine, new BuyPropertyCommand(Alice));
-            Accept(engine, new RollDiceCommand(Alice));
-            Accept(engine, new DeclareBankruptcyCommand(Alice));
+            Accept(engine, new RollDiceCommand(Alice));      // Ruin takes 500; 60 and Cheap (20) cannot cover it
 
             Assert.IsTrue(P(engine, Alice).IsBankrupt);
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(2));

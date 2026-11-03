@@ -82,9 +82,9 @@ namespace Lazpoly.App.Tests
                 }
             };
 
-            table.Now += TurnClock.TurnSeconds - 1;
+            table.Now += Deadline(GamePhase.WaitingForRoll) - 1;
             table.Pump();
-            Assert.AreEqual(0, rolls, "The host moved before the time was up.");
+            Assert.AreEqual(0, rolls, "The host moved before the time and the grace were up.");
 
             table.Now += 2;
             table.Pump();
@@ -94,7 +94,7 @@ namespace Lazpoly.App.Tests
             Assert.IsFalse(table.Host.IsAiPlaying(2));
             Assert.AreEqual(table.HostState.ComputeHash(), table.Clients[2].State.ComputeHash());
 
-            table.Now += TurnClock.TurnSeconds + 1;
+            table.Now += LongestDeadline + 1;
             table.Pump();
             Assert.AreEqual(2, notices.Count);
             Assert.IsTrue(notices[1].StandInTookOver);
@@ -117,41 +117,48 @@ namespace Lazpoly.App.Tests
             table.StartAll();
             PlayUntilTurnOf(table, 2);
 
-            table.Now += TurnClock.TurnSeconds + 1;
+            table.Now += LongestDeadline + 1;
             table.Pump();
             table.Clients[2].Submit(table.NextCommand());
             table.Pump();
 
-            table.Now += TurnClock.TurnSeconds + 1;
+            table.Now += LongestDeadline + 1;
             table.Pump();
             if (table.HostState.Phase == GamePhase.GameOver) return;
             Assert.IsFalse(table.Host.IsAiPlaying(table.HostState.CurrentPlayer.Id), "A single timeout after a move of one's own should not hand the seat over.");
         }
 
+        /// <summary>When the host acts for an idle person in a phase: the decision time plus the grace for animations.</summary>
+        private static double Deadline(GamePhase phase) => TurnClock.LimitFor(phase) + HostSession.GraceSeconds;
+
+        /// <summary>A wait past every phase's deadline, so the host has surely acted.</summary>
+        private static double LongestDeadline => Deadline(GamePhase.AwaitingDebtPayment);
+
         [Test]
-        public void AnswersGetLessTimeThanTurns()
+        public void SellingAndAnsweringGetTwiceTheDecisionTime()
         {
-            Assert.AreEqual(TurnClock.ResponseSeconds, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse));
-            Assert.AreEqual(TurnClock.TurnSeconds, TurnClock.LimitFor(GamePhase.AwaitingBuyDecision));
-            Assert.Less(TurnClock.ResponseSeconds, TurnClock.TurnSeconds);
+            Assert.AreEqual(TurnClock.DecisionSeconds, TurnClock.LimitFor(GamePhase.WaitingForRoll));
+            Assert.AreEqual(TurnClock.DecisionSeconds, TurnClock.LimitFor(GamePhase.AwaitingBuyDecision));
+            Assert.AreEqual(TurnClock.DecisionSeconds, TurnClock.LimitFor(GamePhase.TurnEnd));
+            Assert.AreEqual(TurnClock.DecisionSeconds * TurnClock.LongDecisionFactor, TurnClock.LimitFor(GamePhase.AwaitingDebtPayment));
+            Assert.AreEqual(TurnClock.DecisionSeconds * TurnClock.LongDecisionFactor, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse));
 
             double now = 0;
             var clock = new TurnClock(() => now);
-            now = 29;
-            Assert.IsFalse(clock.HasExpired(GamePhase.AwaitingTradeResponse));
-            now = 31;
-            Assert.IsTrue(clock.HasExpired(GamePhase.AwaitingTradeResponse));
-            Assert.IsFalse(clock.HasExpired(GamePhase.TurnEnd));
+            now = TurnClock.DecisionSeconds + 1;
+            Assert.IsTrue(clock.HasExpired(GamePhase.WaitingForRoll));
+            Assert.IsFalse(clock.HasExpired(GamePhase.WaitingForRoll, Lazpoly.Core.Rules.TableRules.DefaultTurnSeconds, grace: 2), "The grace holds the clock a little longer.");
+            Assert.IsFalse(clock.HasExpired(GamePhase.AwaitingDebtPayment));
             clock.Restart();
-            Assert.AreEqual(TurnClock.TurnSeconds, clock.Remaining(GamePhase.TurnEnd), 1e-9);
+            Assert.AreEqual(TurnClock.DecisionSeconds, clock.Remaining(GamePhase.TurnEnd), 1e-9);
         }
 
         [Test]
-        public void TheTablePicksTheTurnTimeAndMayRunNoClockAtAll()
+        public void TheTablePicksTheDecisionTimeAndMayRunNoClockAtAll()
         {
-            Assert.AreEqual(60, TurnClock.LimitFor(GamePhase.WaitingForRoll, 60));
-            Assert.AreEqual(30, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse, 60), "Answers keep their shorter limit.");
-            Assert.AreEqual(20, TurnClock.LimitFor(GamePhase.AwaitingTradeResponse, 20), "...unless the turn itself is shorter.");
+            Assert.AreEqual(10, TurnClock.LimitFor(GamePhase.WaitingForRoll, 10));
+            Assert.AreEqual(20, TurnClock.LimitFor(GamePhase.AwaitingDebtPayment, 10));
+            Assert.AreEqual(TurnClock.MaxDecisionSeconds, TurnClock.LimitFor(GamePhase.WaitingForRoll, 90), "Older tables stored a whole move's time; it is capped.");
             Assert.IsTrue(double.IsPositiveInfinity(TurnClock.LimitFor(GamePhase.WaitingForRoll, 0)));
             Assert.IsTrue(double.IsPositiveInfinity(TurnClock.LimitFor(GamePhase.AwaitingTradeResponse, 0)));
 
@@ -159,7 +166,7 @@ namespace Lazpoly.App.Tests
             var clock = new TurnClock(() => now);
             now = 1e6;
             Assert.IsFalse(clock.HasExpired(GamePhase.WaitingForRoll, 0), "No clock never runs out.");
-            Assert.IsTrue(clock.HasExpired(GamePhase.WaitingForRoll, 60));
+            Assert.IsTrue(clock.HasExpired(GamePhase.WaitingForRoll, 10));
         }
 
         [Test]
@@ -180,7 +187,7 @@ namespace Lazpoly.App.Tests
         [Test]
         public void AShortTurnTimeRunsOutSooner()
         {
-            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, 0, turnSeconds: 60));
+            NetTable table = NetTable.Create(2, table: new Lazpoly.Core.Rules.TableRules(0, 0, turnSeconds: 10));
             table.StartAll();
             PlayUntilTurnOf(table, 2);
             int rolls = 0;
@@ -189,12 +196,12 @@ namespace Lazpoly.App.Tests
                 foreach (GameEvent gameEvent in events) if (gameEvent is DiceRolledEvent) rolls++;
             };
 
-            table.Now += 59;
+            table.Now += 10 + HostSession.GraceSeconds - 1;
             table.Pump();
             Assert.AreEqual(0, rolls);
             table.Now += 2;
             table.Pump();
-            Assert.AreEqual(1, rolls, "At 61 seconds the host rolled for the idle player.");
+            Assert.AreEqual(1, rolls, "Past ten seconds and the grace the host rolled for the idle player.");
         }
 
         [Test]
@@ -203,7 +210,10 @@ namespace Lazpoly.App.Tests
             Assert.IsInstanceOf<DeclinePurchaseCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingBuyDecision), 1));
             Assert.IsInstanceOf<RejectTradeCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTradeResponse), 1));
             Assert.IsInstanceOf<DeclineTravelCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTravelDecision), 1));
-            Assert.IsNull(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingDebtPayment), 1), "A debt needs the computer to decide what to sell.");
+            Assert.IsInstanceOf<EndTurnCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.TurnEnd), 1), "Nothing is built when time runs out.");
+            Assert.IsNull(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingDebtPayment), 1), "A debt takes the automatic sale, not one move.");
+            GameState noDebt = StateIn(GamePhase.AwaitingDebtPayment);
+            Assert.AreEqual(0, TimeoutPolicy.CommandsFor(NetTestData.Board(), NetTestData.Rules(), noDebt, 1).Count, "Without a debt there is nothing to sell.");
         }
 
         private static GameState StateIn(GamePhase phase)

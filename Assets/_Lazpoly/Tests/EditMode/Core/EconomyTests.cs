@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
@@ -393,6 +394,106 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(Cem, engine.State.GetOwner(A1));
         }
 
+        // ---- Automatic sale ----
+
+        // Alice holds the money and the towns given (with house counts) and owes the bank on her own turn.
+        private static GameEngine AliceOwesTheBank(int money, int debt, params (int square, int houses)[] towns)
+        {
+            var engine = new GameEngine(Board(), TestRules(1000, passStartBonus: 0), TestSeats(3), new ScriptedDice());
+            foreach ((int square, int houses) in towns)
+            {
+                Give(engine, square, Alice);
+                if (houses > 0) GameStateReducer.Apply(engine.State, new BuildingLevelChangedEvent(square, houses));
+            }
+
+            GameStateReducer.Apply(engine.State, new MoneyChangedEvent(Alice, money - 1000, MoneyReason.Tax));
+            GameStateReducer.Apply(engine.State, new DebtIncurredEvent(Alice, GameState.NoOwner, debt, MoneyReason.Tax));
+            GameStateReducer.Apply(engine.State, new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
+            return engine;
+        }
+
+        private static IReadOnlyList<GameCommand> Plan(GameEngine engine) =>
+            DebtSettlement.Plan(engine.Board, engine.Rules, engine.State, Alice);
+
+        private static void Run(GameEngine engine, IReadOnlyList<GameCommand> plan)
+        {
+            foreach (GameCommand command in plan) Accept(engine, command);
+        }
+
+        [Test]
+        public void TheAutomaticSaleSellsTheCheapestTownThatCoversTheDebt()
+        {
+            // Missing 35: A1 brings 30 (too little), A2 brings 40, Solo 50.
+            GameEngine engine = AliceOwesTheBank(0, 35, (A1, 0), (A2, 0), (Solo, 0));
+            IReadOnlyList<GameCommand> plan = Plan(engine);
+
+            CollectionAssert.AreEqual(new[] { A2 }, DebtSettlement.SquaresSold(plan));
+            Assert.IsInstanceOf<PayDebtCommand>(plan.Last(), "The plan ends by paying.");
+            Run(engine, plan);
+            Assert.IsNull(engine.State.Debt);
+            Assert.AreEqual(5, Money(engine, Alice));
+            Assert.AreEqual(Alice, engine.State.GetOwner(A1));
+            Assert.AreEqual(Alice, engine.State.GetOwner(Solo));
+        }
+
+        [Test]
+        public void WhenNoSingleTownCoversItTheSmallestGoFirst()
+        {
+            // Missing 80: nothing covers it alone, so A1 (30) goes, then Solo (50) covers the remaining 50.
+            GameEngine engine = AliceOwesTheBank(0, 80, (A1, 0), (A2, 0), (Solo, 0));
+            IReadOnlyList<GameCommand> plan = Plan(engine);
+
+            CollectionAssert.AreEqual(new[] { A1, Solo }, DebtSettlement.SquaresSold(plan));
+            Run(engine, plan);
+            Assert.IsNull(engine.State.Debt);
+            Assert.AreEqual(0, Money(engine, Alice));
+            Assert.AreEqual(Alice, engine.State.GetOwner(A2), "A2 is kept.");
+        }
+
+        [Test]
+        public void TheAutomaticSaleKeepsTheTownsWithBuildings()
+        {
+            // A1 with a house brings 55, Solo brings 50; both cover 50, the unbuilt one goes.
+            GameEngine engine = AliceOwesTheBank(0, 50, (A1, 1), (Solo, 0));
+            CollectionAssert.AreEqual(new[] { Solo }, DebtSettlement.SquaresSold(Plan(engine)));
+            Run(engine, Plan(engine));
+            Assert.AreEqual(1, engine.State.GetBuildingLevel(A1));
+        }
+
+        [Test]
+        public void TheAutomaticSaleSellsNothingWhenTheCashIsEnoughOrNothingIsOwed()
+        {
+            GameEngine rich = AliceOwesTheBank(100, 50, (A1, 0));
+            IReadOnlyList<GameCommand> plan = Plan(rich);
+            Assert.AreEqual(1, plan.Count);
+            Assert.IsInstanceOf<PayDebtCommand>(plan[0]);
+
+            Assert.AreEqual(0, DebtSettlement.Plan(Board(), TestRules(1000), NewGame().State, Alice).Count, "No debt, no sale.");
+            Assert.AreEqual(0, DebtSettlement.Plan(rich.Board, rich.Rules, rich.State, Bob).Count, "Only the debtor sells.");
+        }
+
+        [Test]
+        public void ADebtNothingCouldCoverIsGivenUp()
+        {
+            GameEngine engine = AliceOwesTheBank(0, 9000, (A1, 0));
+            IReadOnlyList<GameCommand> plan = Plan(engine);
+            Assert.AreEqual(1, plan.Count);
+            Assert.IsInstanceOf<DeclareBankruptcyCommand>(plan[0]);
+        }
+
+        [Test]
+        public void ARentNothingCouldCoverBankruptsThePlayerAtOnce()
+        {
+            GameEngine engine = AliceOwesCem(); // 10 in cash, nothing to sell, rent 20.
+            CommandResult result = Accept(engine, new RollDiceCommand(Alice));
+
+            Assert.IsTrue(result.Events.Any(e => e is DebtIncurredEvent d && d.Amount == 20), "The debt is still told, so the screen can say why.");
+            Assert.IsTrue(result.Events.Any(e => e is PlayerBankruptedEvent));
+            Assert.IsFalse(result.Events.Any(e => e is PhaseChangedEvent p && p.Phase == GamePhase.AwaitingDebtPayment), "No selling screen.");
+            Assert.IsTrue(engine.State.FindPlayer(Alice).IsBankrupt);
+            Assert.AreEqual(1000 + 10, Money(engine, Cem), "The creditor gets what there was.");
+        }
+
         private static void AssertSnapshotRoundTrip(GameEngine engine)
         {
             GameState copy = GameStateSnapshot.Capture(engine.State).Restore();
@@ -419,6 +520,7 @@ namespace Lazpoly.Core.Tests
             AssertSnapshotRoundTrip(trade);
 
             GameEngine debt = AliceOwesCem();
+            Give(debt, A1, Alice); // Something to sell, or the rent would bankrupt her at once.
             Accept(debt, new RollDiceCommand(Alice));
             AssertSnapshotRoundTrip(debt);
             Assert.AreEqual(20, GameStateSnapshot.Capture(debt.State).Restore().Debt.Amount);

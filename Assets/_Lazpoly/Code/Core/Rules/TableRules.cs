@@ -8,15 +8,15 @@ namespace Lazpoly.Core.Rules
     /// </summary>
     public sealed class TableRules
     {
-        /// <summary>The turn time an online table gets when nobody picks one.</summary>
-        public const int DefaultTurnSeconds = 90;
+        /// <summary>The decision time a table gets when nobody picks one.</summary>
+        public const int DefaultTurnSeconds = 15;
 
-        /// <summary>Board starting money, no round limit, 90-second turns.</summary>
+        /// <summary>Board starting money, no round limit, 15 seconds a decision.</summary>
         public static readonly TableRules Default = new TableRules(0, 0);
 
         /// <param name="startingMoney">0 keeps the board's starting money.</param>
         /// <param name="roundLimit">0 plays until one player is left.</param>
-        /// <param name="turnSeconds">Online: seconds a player has for a move before the host moves for them; 0 means no clock.</param>
+        /// <param name="turnSeconds">Seconds a player has for a decision (roll, buy, build) before the game makes it for them; 0 means no clock.</param>
         public TableRules(int startingMoney, int roundLimit, int turnSeconds = DefaultTurnSeconds)
         {
             if (startingMoney < 0) throw new ArgumentOutOfRangeException(nameof(startingMoney));
@@ -30,7 +30,11 @@ namespace Lazpoly.Core.Rules
         public int StartingMoney { get; }
         public int RoundLimit { get; }
 
-        /// <summary>Seconds per move in an online game; 0 means unlimited. Local games never run a clock.</summary>
+        /// <summary>
+        /// Seconds a person has for a decision, in local and online games alike; selling to pay a debt and
+        /// answering a trade get twice as long (see TurnClock). 0 means no clock. Tables saved before the
+        /// decision clock kept a whole move's time here (60-120 s); the clock caps those.
+        /// </summary>
         public int TurnSeconds { get; }
 
         public TableRules WithStartingMoney(int value) => new TableRules(value, RoundLimit, TurnSeconds);

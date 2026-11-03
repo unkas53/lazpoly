@@ -13,7 +13,8 @@ namespace Lazpoly.Net.Messages
     /// </summary>
     public static class MessageCodec
     {
-        public const int ProtocolVersion = 9;
+        /// <summary>10: the engine ends an insolvent player's game at once and the turn ends by itself, so mixed builds must not share a table.</summary>
+        public const int ProtocolVersion = 10;
 
         private enum CommandTag : byte
         {

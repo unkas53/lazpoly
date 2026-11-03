@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Rules;
+using Lazpoly.Core.State;
 
 using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Texts
@@ -21,12 +23,19 @@ namespace Lazpoly.Presentation.Texts
                 Section(L("Amaç"), rules.RoundLimit > 0
                     ? F($"Mülk topla, kira al. {rules.RoundLimit} tur sonunda parası, mülkleri ve binaları en değerli olan kazanır; ondan önce herkes iflas ederse son kalan kazanır.")
                     : L("Mülk topla, kira al ve diğerlerini iflas ettir. Son kalan oyuncu kazanır.")),
-                Section(L("Sıra"), F($"Zar at, piyonun o kadar ilerler. Başlangıçtan her geçişte {rules.PassStartBonus} alırsın. Çift atarsan bir kez daha atarsın; üst üste {rules.MaxConsecutiveDoubles} çift atarsan hamlen yanar.")),
+                Section(L("Sıra"), F($"Zar at, piyonun o kadar ilerler. Başlangıçtan her geçişte {rules.PassStartBonus} alırsın. Çift atarsan bir kez daha atarsın; üst üste {rules.MaxConsecutiveDoubles} çift atarsan hamlen yanar. Yapacak bir şey kalmayınca sıra kendiliğinden geçer.")),
                 Section(L("Mülkler"), L("Sahipsiz bir kareye gelince satın alabilirsin; almazsan bankada kalır. Başkasının karesine gelen sahibine kira öder.")),
                 Section(L("Şehirler ve evler"), F($"Satın aldığın şehre yeniden gelince ev kurabilirsin: başlangıçtan ilk geçişine kadar bir ev, sonra dörde kadar. Dört evli şehre bir daha gelince otel kurulur. Bir rengin bütün kareleri sendeyse boş kirası {rules.FullGroupRentMultiplier} katına çıkar.")),
-                Section(L("Para sıkıntısı"), F($"Mülk yalnız bir ödemeye (çoğunlukla kiraya) para yetmediğinde satılır; o an satış listesi açılır. Banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{rules.BuildingSellbackPercent} değerine geri satılır. Borcunu ödeyemeyen iflas eder.")),
+                Section(L("Para sıkıntısı"), F($"Mülk yalnız bir ödemeye (çoğunlukla kiraya) para yetmediğinde satılır; o an satış listesi açılır. Banka fiyatın yarısını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{rules.BuildingSellbackPercent} değerine geri satılır. Otomatik Sat düğmesi borcu kapatacak kadar şehri, binasız ve ucuz olanlardan başlayarak satar. Her şeyini satsa da borcunu ödeyemeyen hemen iflas eder.")),
                 Section(L("Takas"), L("Kendi sıranda başka bir oyuncuya para ve mülk karşılığında takas teklif edebilirsin. Binalı şehirler takas edilemez.")),
             };
+
+            if (rules.TurnSeconds > 0)
+            {
+                int decision = (int)TurnClock.LimitFor(GamePhase.WaitingForRoll, rules.TurnSeconds);
+                int sale = (int)TurnClock.LimitFor(GamePhase.AwaitingDebtPayment, rules.TurnSeconds);
+                sections.Insert(2, Section(L("Süre"), F($"Zar atmak, satın almak ve bina kurmak için {decision} sn, borç için satışa ve takas cevabına {sale} sn var. Süre dolunca oyun senin yerine karar verir: zarı atar, şehri almaz, sırayı bitirir, borcunu otomatik satışla öder.")));
+            }
 
             if (HasType(board, SquareType.Card)) sections.Add(Section(L("Sokak Haberi"), L("Bu kareye gelen bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));
             if (board.HasPot) sections.Add(Section(L("Çay Molası"), L("Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır.")));

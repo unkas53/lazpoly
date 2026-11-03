@@ -18,7 +18,8 @@ namespace Lazpoly.App.Session
     /// peer that owns the player, and broadcasts numbered events with the resulting state hash.
     /// When a player's connection drops, or they never arrive within <see cref="NoShowSeconds"/> of the
     /// start, the computer plays for them until they come (back). When a player lets their time run out
-    /// (<see cref="TurnClock"/>), the host makes the most cautious move for them; after
+    /// (<see cref="TurnClock"/>, plus <see cref="GraceSeconds"/> while their screen still plays the last
+    /// move), the host decides for them as <see cref="TimeoutPolicy"/> says; after
     /// <see cref="StrikesBeforeStandIn"/> timeouts in a row the computer takes their seat until they act
     /// again. Every <see cref="PresenceSeconds"/> the host tells the clients who is connected, who the
     /// computer plays and everyone's latency.
@@ -42,6 +43,12 @@ namespace Lazpoly.App.Session
         private bool _noShowsSeated;
         private double _nextPresenceAt;
         private bool _left;
+
+        /// <summary>
+        /// The clock starts when the host accepts a move, but a guest can act only once their screen has
+        /// played it (dice, the pawn's walk); this much longer is waited before deciding for them.
+        /// </summary>
+        public const double GraceSeconds = 6;
 
         /// <summary>Timeouts in a row after which the computer plays for an idle player.</summary>
         public const int StrikesBeforeStandIn = 2;
@@ -227,7 +234,7 @@ namespace Lazpoly.App.Session
         private void CheckTimeouts()
         {
             GameState state = _engine.State;
-            if (state.Phase == GamePhase.GameOver || !_clock.HasExpired(state.Phase, _engine.Rules.TurnSeconds)) return;
+            if (state.Phase == GamePhase.GameOver || !_clock.HasExpired(state.Phase, _engine.Rules.TurnSeconds, GraceSeconds)) return;
 
             var waiting = new List<int>();
             foreach (int playerId in AiTurnOrder.PlayersToAct(state))
@@ -251,17 +258,24 @@ namespace Lazpoly.App.Session
             int strikes = (_strikes.TryGetValue(playerId, out int before) ? before : 0) + 1;
             _strikes[playerId] = strikes;
 
-            GameCommand command = strikes < StrikesBeforeStandIn ? TimeoutPolicy.CommandFor(_engine.State, playerId) : null;
-            CommandResult result = command != null ? _engine.Execute(command) : null;
-            if (result != null && result.IsAccepted)
+            IReadOnlyList<GameCommand> commands = strikes < StrikesBeforeStandIn
+                ? TimeoutPolicy.CommandsFor(_engine.Board, _engine.Rules, _engine.State, playerId)
+                : new GameCommand[0];
+            var events = new List<GameEvent> { new PlayerTimedOutEvent(playerId, standInTookOver: false) };
+            foreach (GameCommand command in commands)
             {
-                var events = new List<GameEvent> { new PlayerTimedOutEvent(playerId, standInTookOver: false) };
+                CommandResult result = _engine.Execute(command);
+                if (!result.IsAccepted) break;
                 events.AddRange(result.Events);
+            }
+
+            if (events.Count > 1)
+            {
                 Broadcast(events);
                 return;
             }
 
-            // No cautious move fits (an open debt) or the player keeps missing turns: the computer plays for them.
+            // Nothing could be done for them or the player keeps missing turns: the computer plays for them.
             _idle.Add(playerId);
             if (!_standIns.Controls(playerId)) _standIns.Add(playerId, StandInDifficulty);
             Broadcast(new GameEvent[] { new PlayerTimedOutEvent(playerId, standInTookOver: true) });
