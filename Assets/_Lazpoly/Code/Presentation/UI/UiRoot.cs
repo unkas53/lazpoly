@@ -134,7 +134,7 @@ namespace Lazpoly.Presentation.UI
         private static Scrollbar AddScrollbar(RectTransform panel, int padding)
         {
             RectTransform track = Rect(panel, "Scrollbar", new Vector2(1f, 0f), Vector2.one, new Vector2(-padding - ScrollbarWidth, padding), new Vector2(-padding, -padding));
-            Background(track, new Color(1f, 1f, 1f, 0.07f));
+            Background(track, UiTheme.ScrollTrack);
             var scrollbar = track.gameObject.AddComponent<Scrollbar>();
             scrollbar.direction = Scrollbar.Direction.BottomToTop;
 

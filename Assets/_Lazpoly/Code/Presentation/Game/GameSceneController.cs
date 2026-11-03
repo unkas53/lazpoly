@@ -244,6 +244,7 @@ namespace Lazpoly.Presentation.Game
 
         private void Start()
         {
+            UiTheme.Use(UiPalette.Dusk); // The table keeps its dusk colours; the menu before it used paper.
             AudioPlayer.Ensure();
             MusicPlayer.Ensure();
             _data = BoardDataLoader.LoadFromResources();

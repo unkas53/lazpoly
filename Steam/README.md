@@ -80,6 +80,8 @@ beyan edilecek içerik:
 |---|---|---|
 | Kamp çadırı modeli (sahipli şehir işareti) | `Tools/Art/Models/CampTent`, oyunda `camp_tent.txt` | Proje sahibi ChatGPT ve Higgsfield ile üretti; ayrıntı `KAYNAK.md` |
 | İş adamı karakteri (piyon) | `Tools/Art/Models/BusinessMan`, oyunda `business_man.txt` | Proje sahibi yapay zekâ aracıyla üretti (araç başvurudan önce sorulur); ayrıntı `KAYNAK.md` |
+| Logo (ana menü başlık şeridi) | `Tools/Art/Logo`, oyunda `logo.bytes` | Proje sahibi yapay zekâ aracıyla üretti (araç sorulur); portre ve sigara uyarısı `KAYNAK.md`'de, mağazaya çıkmadan portresiz yeniden üretilmeli |
+| Ana menü / lobi konsept ekranları | `Tools/Art/Design/Menu` | Yalnız başvuru; oyunda yalnızca düzen ve tarz kodla kuruldu, görsel kullanılmadı |
 
 Başvurudan önce üretim araçlarının (ChatGPT, Higgsfield) kullanım koşullarının ticari kullanıma izin verdiği kontrol
 edilir. Listeye yeni üretilmiş içerik eklendikçe bu tablo güncellenir.

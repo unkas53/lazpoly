@@ -10,6 +10,7 @@ namespace Lazpoly.Presentation.UI
 
         private static Sprite _rounded;
         private static Sprite _circle;
+        private static Sprite _pill;
 
         /// <summary>A filled circle, drawn simple (not sliced) so it stays round at any size.</summary>
         public static Sprite Circle
@@ -68,12 +69,28 @@ namespace Lazpoly.Presentation.UI
         }
 
         /// <summary>How much of pixel (x, y) lies inside the rounded rectangle, with one pixel of anti-aliasing.</summary>
-        public static float Coverage(int x, int y)
+        public static float Coverage(int x, int y) => Coverage(x, y, Radius);
+
+        private static float Coverage(int x, int y, float radius)
         {
-            float cx = Mathf.Clamp(x + 0.5f, Radius, Size - Radius);
-            float cy = Mathf.Clamp(y + 0.5f, Radius, Size - Radius);
+            float cx = Mathf.Clamp(x + 0.5f, radius, Size - radius);
+            float cy = Mathf.Clamp(y + 0.5f, radius, Size - radius);
             float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy));
-            return Mathf.Clamp01(Radius - distance + 0.5f);
+            return Mathf.Clamp01(radius - distance + 0.5f);
         }
+
+        /// <summary>A rounded rectangle whose short sides are half circles: sliced, it stretches into a pill of any length.</summary>
+        public static Sprite Pill
+        {
+            get
+            {
+                if (_pill != null) return _pill;
+                _pill = Make("Lazpoly Pill", PillCoverage, new Vector4(Size / 2f, Size / 2f, Size / 2f, Size / 2f));
+                return _pill;
+            }
+        }
+
+        /// <summary>How much of pixel (x, y) lies inside the pill shape, with one pixel of anti-aliasing.</summary>
+        public static float PillCoverage(int x, int y) => Coverage(x, y, Size / 2f);
     }
 }

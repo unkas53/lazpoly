@@ -6,6 +6,8 @@ namespace Lazpoly.Presentation.UI
     public enum UiTextStyle
     {
         Title,
+        /// <summary>A screen's one-line greeting, between the title and a heading.</summary>
+        Display,
         Heading,
         Body,
         Small,
@@ -19,7 +21,11 @@ namespace Lazpoly.Presentation.UI
         Selected,
     }
 
-    /// <summary>Colours, font and sizes of the interface, in pixels of the 1920x1080 reference screen.</summary>
+    /// <summary>
+    /// Colours, font and sizes of the interface, in pixels of the 1920x1080 reference screen. The colours
+    /// come from the <see cref="UiPalette"/> in force: <see cref="UiPalette.Dusk"/> for the game screen,
+    /// <see cref="UiPalette.Paper"/> for the main menu and lobby (see <see cref="Use"/>).
+    /// </summary>
     public static class UiTheme
     {
         public static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
@@ -27,29 +33,31 @@ namespace Lazpoly.Presentation.UI
         /// <summary>The smallest a button label shrinks to before it is allowed to wrap (see <see cref="UiBuilder.ShrinkToFit"/>).</summary>
         public const int MinButtonFontSize = 12;
 
-        // Palette of a seaside town at dusk: deep sea blues for the panels, sand for the text,
-        // sunset amber as the accent and a teal for anything selected.
-        public static readonly Color Backdrop = new Color(0.05f, 0.09f, 0.13f, 1f);
-        public static readonly Color Dim = new Color(0.01f, 0.03f, 0.06f, 0.62f);
-        /// <summary>A thinner veil than <see cref="Dim"/>, over the 3D scene behind the main menu.</summary>
-        public static readonly Color Veil = new Color(0.02f, 0.04f, 0.07f, 0.38f);
-        public static readonly Color Panel = new Color(0.09f, 0.15f, 0.21f, 0.94f);
-        public static readonly Color Card = new Color(0.14f, 0.22f, 0.30f, 1f);
-        public static readonly Color Field = new Color(0.06f, 0.11f, 0.16f, 1f);
-        public static readonly Color Text = new Color(0.96f, 0.93f, 0.86f);
-        public static readonly Color Muted = new Color(0.66f, 0.72f, 0.76f);
-        public static readonly Color Accent = new Color(0.98f, 0.70f, 0.24f);
-        public static readonly Color Warning = new Color(0.96f, 0.47f, 0.40f);
-        public static readonly Color Gain = new Color(0.48f, 0.84f, 0.56f);
-        public static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.38f);
+        private static UiPalette _palette = UiPalette.Dusk;
 
-        private static readonly Color PrimaryFill = Accent;
-        private static readonly Color SecondaryFill = new Color(0.22f, 0.33f, 0.42f);
-        private static readonly Color DangerFill = new Color(0.70f, 0.26f, 0.24f);
-        private static readonly Color SelectedFill = new Color(0.16f, 0.58f, 0.60f);
+        /// <summary>The colours in force; elements built from now on take them.</summary>
+        public static UiPalette Palette => _palette;
+
+        /// <summary>Switches the colours: a scene calls this before it builds its interface.</summary>
+        public static void Use(UiPalette palette) => _palette = palette ?? throw new System.ArgumentNullException(nameof(palette));
+
+        public static Color Backdrop => _palette.Backdrop;
+        public static Color Dim => _palette.Dim;
+        public static Color Veil => _palette.Veil;
+        public static Color Panel => _palette.Panel;
+        public static Color Card => _palette.Card;
+        public static Color Field => _palette.Field;
+        public static Color Text => _palette.Text;
+        public static Color Muted => _palette.Muted;
+        public static Color Accent => _palette.Accent;
+        public static Color Warning => _palette.Warning;
+        public static Color Gain => _palette.Gain;
+        public static Color ShadowColor => _palette.ShadowColor;
+        public static Color NoticeFill => _palette.NoticeFill;
+        public static Color ScrollTrack => _palette.ScrollTrack;
+
         /// <summary>A disc that cannot be pressed right now: a step up from the panel, so the button keeps its shape.</summary>
-        public static readonly Color RestingFill = new Color(0.18f, 0.26f, 0.33f);
-        private static readonly Color DarkText = new Color(0.12f, 0.08f, 0.03f);
+        public static Color RestingFill => _palette.RestingFill;
 
         public const float Spacing = 8f;
         public const int Padding = 16;
@@ -77,13 +85,14 @@ namespace Lazpoly.Presentation.UI
             return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         }
 
-        public static bool IsBold(UiTextStyle style) => style == UiTextStyle.Title || style == UiTextStyle.Heading;
+        public static bool IsBold(UiTextStyle style) => style == UiTextStyle.Title || style == UiTextStyle.Display || style == UiTextStyle.Heading;
 
         public static int FontSize(UiTextStyle style)
         {
             switch (style)
             {
                 case UiTextStyle.Title: return 64;
+                case UiTextStyle.Display: return 40;
                 case UiTextStyle.Heading: return 26;
                 case UiTextStyle.Small: return 17;
                 default: return 20;
@@ -106,13 +115,22 @@ namespace Lazpoly.Presentation.UI
         {
             switch (style)
             {
-                case UiButtonStyle.Primary: return PrimaryFill;
-                case UiButtonStyle.Danger: return DangerFill;
-                case UiButtonStyle.Selected: return SelectedFill;
-                default: return SecondaryFill;
+                case UiButtonStyle.Primary: return _palette.PrimaryFill;
+                case UiButtonStyle.Danger: return _palette.DangerFill;
+                case UiButtonStyle.Selected: return _palette.SelectedFill;
+                default: return _palette.SecondaryFill;
             }
         }
 
-        public static Color Label(UiButtonStyle style) => style == UiButtonStyle.Primary ? DarkText : Text;
+        public static Color Label(UiButtonStyle style)
+        {
+            switch (style)
+            {
+                case UiButtonStyle.Primary: return _palette.PrimaryLabel;
+                case UiButtonStyle.Danger:
+                case UiButtonStyle.Selected: return _palette.StrongLabel;
+                default: return _palette.SecondaryLabel;
+            }
+        }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using Lazpoly.Presentation.Texts;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -310,6 +311,38 @@ namespace Lazpoly.Presentation.UI
 
         public void Space(float height = 12f) => Fix(NewChild("Space"), height: height);
 
+        /// <summary>A short bold line in small capitals above a heading, in a colour of its own.</summary>
+        public Text Eyebrow(string text, Color color, TextAnchor alignment = TextAnchor.MiddleLeft)
+        {
+            Text label = Label(Lang.Upper(text), UiTextStyle.Small, color, alignment);
+            label.font = UiTheme.BoldFont;
+            return label;
+        }
+
+        /// <summary>A pill with a few bold words in capitals on a tinted ground: a tag on a card, a status beside a name. It keeps its own width inside a row that does not share out the width.</summary>
+        public Text Chip(string text, Color fill, Color ink, float height = 30f)
+        {
+            text = Lang.Upper(text);
+            GameObject element = NewChild($"Chip {text}");
+            Image image = UiRoot.Background((RectTransform)element.transform, fill);
+            image.sprite = UiSprites.Pill;
+            image.raycastTarget = false;
+            Fix(element, height: height);
+            var row = element.AddComponent<HorizontalLayoutGroup>();
+            row.padding = new RectOffset(14, 14, 0, 0);
+            row.childAlignment = TextAnchor.MiddleCenter;
+            row.childControlWidth = true;
+            row.childControlHeight = true;
+            row.childForceExpandWidth = false;
+            row.childForceExpandHeight = false;
+            Text label = TextChild(element.transform, text, UiTextStyle.Small, stretch: false);
+            label.font = UiTheme.BoldFont;
+            label.color = ink;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.horizontalOverflow = HorizontalWrapMode.Overflow;
+            return label;
+        }
+
         /// <summary>Elements added to the returned builder sit side by side and share the width.</summary>
         /// <param name="expand">False keeps fixed-size elements (swatches) at their size instead of sharing out the width.</param>
         public UiBuilder Row(float spacing = UiTheme.Spacing, bool expand = true)
@@ -397,7 +430,7 @@ namespace Lazpoly.Presentation.UI
         /// </summary>
         public UiBuilder Notice(string text, string actionLabel = null, Action action = null)
         {
-            UiBuilder card = Card(new Color(0.34f, 0.19f, 0.16f), 12);
+            UiBuilder card = Card(UiTheme.NoticeFill, 12);
             UiBuilder row = card.Row(10f, expand: false);
             row.Icon(UiIcon.Warning, 24f, UiTheme.Warning);
             Fix(row.Label(text, UiTextStyle.Small, UiTheme.Text), -1f).flexibleWidth = 1f;

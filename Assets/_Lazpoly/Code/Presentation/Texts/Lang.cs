@@ -54,6 +54,13 @@ namespace Lazpoly.Presentation.Texts
 
         public static string N(long value) => value.ToString("N0", _numbers);
 
+        /// <summary>A text in capitals the way the current language writes them: Turkish keeps the dot on a capital İ.</summary>
+        public static string Upper(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            return _current == Language.Turkish ? text.Replace('i', 'İ').ToUpperInvariant() : text.ToUpperInvariant();
+        }
+
         private static NumberFormatInfo NumbersFor(Language language)
         {
             // Built by hand rather than from a culture, so builds without culture data write the same thing as the editor.
