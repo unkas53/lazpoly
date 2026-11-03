@@ -11,8 +11,8 @@ namespace Lazpoly.Presentation.Effects
     {
         public const float Seconds = 2.6f;
 
-        /// <summary>How far above the followed point the bubble's tail ends.</summary>
-        public const float Lift = 0.8f;
+        /// <summary>How far above the followed point the bubble's tail ends: a little over the character's head (<see cref="Lazpoly.Presentation.Pawns.PawnView.CharacterHeight"/>).</summary>
+        public const float Lift = 0.95f;
 
         /// <summary>Paper round the text, in world units each side.</summary>
         public const float Padding = 0.1f;

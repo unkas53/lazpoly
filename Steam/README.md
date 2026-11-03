@@ -79,6 +79,7 @@ beyan edilecek içerik:
 | İçerik | Nerede | Not |
 |---|---|---|
 | Kamp çadırı modeli (sahipli şehir işareti) | `Tools/Art/Models/CampTent`, oyunda `camp_tent.txt` | Proje sahibi ChatGPT ve Higgsfield ile üretti; ayrıntı `KAYNAK.md` |
+| İş adamı karakteri (piyon) | `Tools/Art/Models/BusinessMan`, oyunda `business_man.txt` | Proje sahibi yapay zekâ aracıyla üretti (araç başvurudan önce sorulur); ayrıntı `KAYNAK.md` |
 
 Başvurudan önce üretim araçlarının (ChatGPT, Higgsfield) kullanım koşullarının ticari kullanıma izin verdiği kontrol
 edilir. Listeye yeni üretilmiş içerik eklendikçe bu tablo güncellenir.

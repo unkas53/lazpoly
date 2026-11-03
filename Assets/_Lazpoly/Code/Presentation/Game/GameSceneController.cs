@@ -336,6 +336,7 @@ namespace Lazpoly.Presentation.Game
             {
                 _labelYaw = CameraRig.Yaw;
                 _board.FaceCamera(_labelYaw);
+                foreach (PawnView pawn in _pawns.Values) pawn.FaceCamera(_labelYaw);
             }
 
             float reserved = _hud.ReservedSidePixels;

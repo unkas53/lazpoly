@@ -7,9 +7,20 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Pawns
 {
-    /// <summary>A player's piece: one of the town's shapes from <see cref="PawnShapes"/>, in the player's colour.</summary>
+    /// <summary>
+    /// A player's piece: the business man from <see cref="CharacterParts"/> with his jacket in the
+    /// player's colour, standing on the square and facing the camera; or, when the character model is
+    /// not in the build, one of the town's shapes from <see cref="PawnShapes"/> painted whole. The
+    /// model is a child of the pawn so the hop's squash and stretch scale the pawn, not the model's size.
+    /// </summary>
     public sealed class PawnView : MonoBehaviour
     {
+        /// <summary>The character's height on the board; the shapes are about 0.55.</summary>
+        public const float CharacterHeight = 0.7f;
+
+        /// <summary>The child that holds the character or the shape.</summary>
+        public const string ModelName = "Model";
+
         private const float StepSeconds = 0.18f;
         private const float HopHeight = 0.35f;
         private const float SquashSeconds = 0.07f;
@@ -23,6 +34,10 @@ namespace Lazpoly.Presentation.Pawns
         private int _playerId;
         private int _slot;
         private int _square;
+        private Transform _model;
+
+        /// <summary>True when the pawn is the character; false when it is one of the shapes.</summary>
+        public bool IsCharacter { get; private set; }
 
         /// <summary>Animation speed multiplier from the settings (1 = normal).</summary>
         public float Speed { get; set; } = 1f;
@@ -41,14 +56,39 @@ namespace Lazpoly.Presentation.Pawns
         public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId)
         {
             if (crowd == null) throw new ArgumentNullException(nameof(crowd));
-            GameObject body = ModelParts.Create($"Pawn {seatIndex + 1} {PawnShapes.NameOf(seatIndex)}", parent, PawnShapes.For(seatIndex), color, 0.55f);
+            GameObject model = CharacterParts.Character(ModelName, null);
+            bool character = model != null;
+            var root = new GameObject($"Pawn {seatIndex + 1} {(character ? CharacterParts.Name : PawnShapes.NameOf(seatIndex))}");
+            root.transform.SetParent(parent, false);
+            if (character)
+            {
+                model.transform.SetParent(root.transform, false);
+                model.transform.localScale = Vector3.one * CharacterHeight;
+                model.transform.localRotation = Facing(BoardCameraRig.BaseYaw);
+                CharacterParts.Paint(model, color);
+            }
+            else
+            {
+                model = ModelParts.Create(ModelName, root.transform, PawnShapes.For(seatIndex), color, 0.55f);
+            }
 
-            var pawn = body.AddComponent<PawnView>();
+            var pawn = root.AddComponent<PawnView>();
+            pawn._model = model.transform;
+            pawn.IsCharacter = character;
             pawn._board = board;
             pawn._crowd = crowd;
             pawn._playerId = playerId;
             pawn.PlaceOn(0);
             return pawn;
+        }
+
+        /// <summary>The character's turn to look at a camera at <paramref name="yaw"/>: straight at it, across the board.</summary>
+        public static Quaternion Facing(float yaw) => Quaternion.LookRotation(-BoardView.ScreenUp(yaw));
+
+        /// <summary>Turns the character to a camera at <paramref name="yaw"/> (the shapes look the same from every side).</summary>
+        public void FaceCamera(float yaw)
+        {
+            if (IsCharacter && _model != null) _model.localRotation = Facing(yaw);
         }
 
         public void PlaceOn(int square)
