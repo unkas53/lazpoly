@@ -24,7 +24,8 @@ namespace Lazpoly.Presentation.Audio
         private static bool _quitting;
 
         private readonly AudioSource[] _sources = new AudioSource[Voices];
-        private readonly Dictionary<SoundCue, AudioClip> _clips = new Dictionary<SoundCue, AudioClip>();
+        private readonly Dictionary<SoundCue, AudioClip[]> _clips = new Dictionary<SoundCue, AudioClip[]>();
+        private readonly Dictionary<SoundCue, int> _lastVariant = new Dictionary<SoundCue, int>();
         private readonly Dictionary<SoundCue, float> _lastPlayed = new Dictionary<SoundCue, float>();
         private readonly HashSet<SoundCue> _missing = new HashSet<SoundCue>();
         private int _next;
@@ -113,9 +114,13 @@ namespace Lazpoly.Presentation.Audio
             float now = Time.unscaledTime;
             if (_lastPlayed.TryGetValue(cue, out float last) && now - last < RepeatGapSeconds) return;
 
-            AudioClip clip = ClipFor(cue);
-            if (clip == null) return;
+            AudioClip[] takes = ClipsFor(cue);
+            if (takes == null) return;
             _lastPlayed[cue] = now;
+            int last = _lastVariant.TryGetValue(cue, out int previous) ? previous : -1;
+            int variant = SoundCues.PickVariant(takes.Length, last, Random.value);
+            _lastVariant[cue] = variant;
+            AudioClip clip = takes[variant];
 
             AudioSource source = FreeSource();
             float jitter = SoundCues.PitchJitter(cue);
@@ -143,21 +148,30 @@ namespace Lazpoly.Presentation.Audio
             return oldest;
         }
 
-        private AudioClip ClipFor(SoundCue cue)
+        /// <summary>Every take of a cue that is in the build (the first one must be); null when the cue has no clip.</summary>
+        private AudioClip[] ClipsFor(SoundCue cue)
         {
-            if (_clips.TryGetValue(cue, out AudioClip clip)) return clip;
+            if (_clips.TryGetValue(cue, out AudioClip[] takes)) return takes;
             if (_missing.Contains(cue)) return null;
 
-            clip = Resources.Load<AudioClip>(SoundCues.ResourcePath(cue));
-            if (clip == null)
+            AudioClip first = Resources.Load<AudioClip>(SoundCues.ResourcePath(cue));
+            if (first == null)
             {
                 _missing.Add(cue);
                 Debug.LogWarning($"[Lazpoly] Sound '{SoundCues.ResourcePath(cue)}' is missing; run Tools/Audio/make_sfx.py.");
                 return null;
             }
 
-            _clips[cue] = clip;
-            return clip;
+            var found = new List<AudioClip> { first };
+            for (int i = 1; i < SoundCues.Variants(cue); i++)
+            {
+                AudioClip take = Resources.Load<AudioClip>(SoundCues.VariantPath(cue, i));
+                if (take != null) found.Add(take);
+            }
+
+            takes = found.ToArray();
+            _clips[cue] = takes;
+            return takes;
         }
     }
 }

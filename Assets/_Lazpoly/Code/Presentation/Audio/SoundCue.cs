@@ -99,6 +99,43 @@ namespace Lazpoly.Presentation.Audio
         }
 
         /// <summary>
+        /// How many takes of a cue Tools/Audio/make_sfx.py writes: the first is <see cref="FileName"/>, the
+        /// others add "_2", "_3"... The frequent sounds have several, so a long game does not repeat one sample.
+        /// </summary>
+        public static int Variants(SoundCue cue)
+        {
+            switch (cue)
+            {
+                case SoundCue.PawnStep: return 4;
+                case SoundCue.DiceLand:
+                case SoundCue.UiClick: return 3;
+                case SoundCue.DiceShake:
+                case SoundCue.MoneyIn:
+                case SoundCue.MoneyOut:
+                case SoundCue.Build:
+                case SoundCue.Bid: return 2;
+                default: return cue == SoundCue.None ? 0 : 1;
+            }
+        }
+
+        /// <summary>The resource path of a cue's take <paramref name="index"/> (0 = the first, <see cref="ResourcePath"/>).</summary>
+        public static string VariantPath(SoundCue cue, int index) =>
+            cue == SoundCue.None ? null : index <= 0 ? ResourcePath(cue) : ResourcePath(cue) + "_" + (index + 1);
+
+        /// <summary>
+        /// Which take plays next, from a random number in [0, 1): any take but the one that played last,
+        /// so two steps in a row never sound the same.
+        /// </summary>
+        public static int PickVariant(int count, int last, float random01)
+        {
+            if (count <= 1) return 0;
+            bool hasLast = last >= 0 && last < count;
+            int choices = hasLast ? count - 1 : count;
+            int pick = System.Math.Min((int)(random01 * choices), choices - 1);
+            return hasLast && pick >= last ? pick + 1 : pick;
+        }
+
+        /// <summary>
         /// How much a cue's pitch may wander each time it plays, so repeated sounds (steps, clicks,
         /// coins) do not sound mechanical. Musical cues stay in tune.
         /// </summary>
@@ -116,7 +153,7 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.MoneyOut:
                 case SoundCue.Build:
                 case SoundCue.Sell:
-                    return 0.02f;
+                    return 0.015f; // In tune with the music: a cent or two of colour, not a different note.
                 default:
                     return 0f;
             }

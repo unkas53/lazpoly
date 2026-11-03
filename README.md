@@ -710,6 +710,17 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Menü ile masa arasındaki geçiş artık siyah perde değil, açılış ekranının aynısı (`LoadingScreen`: krem kağıt, logo, "Karadeniz Masası", dolan çubuk, "Masa kuruluyor..." / "Menüye dönülüyor..."). Sahne arka planda yüklenir (`LoadSceneAsync`), çubuk yüklemeyi izler; ekran en az 0,9 sn görünür, sonra yeni sahne açılır. Masa yüklenir yüklenmez başlar, ölçülen yükleme süresi şişmez.
 - `Editor/Branding.Apply` adı ve rengi de yazar. Testler: `MenuTests.ThePlayerCarriesOurIconAndNoUnitySplash` (ad, şirket, renk), `SceneChangesShowTheLoadingScreenLongEnoughAndFillTheBar`.
 
+## Faz 12e: daha zengin, tok ve uyumlu sesler
+
+`Tools/Audio/make_sfx.py` baştan yazıldı (yine yalnız numpy, sabit tohum, lisanssız):
+
+- Gerçek nesneler kendi titreşimleriyle çalar (modal sentez): zar, piyon, tokmak ve tahta tıkırtısı alçak, uyumsuz ahşap modlarıyla; bozuk paralar büyük pirinç para gibi seyrek, alçak tonlarla; kart ve pencere sesi kâğıt hışırtısı.
+- Her sesin gövdesi var: notalar keçe tokmakla çalınan bir gül ağacı çubuk gibi, altında yumuşak bir alt oktav; vuruşların altında alçak bir gümbürtü; hafif bir bant doygunluğu katmanları birleştirir. Büyük anlarda (satın alma, tur, kazanma, iflas, otel, Başlangıç) alçak bir bas notası.
+- Hepsi tek tonda: Sol majör (müziğin tonu). Kazanç gamda yukarı, kayıp aşağı iner; kazanmak kısa bir kadansla (Do, Re, Sol) biter, iflas gamda yavaşça düşer.
+- Aynı küçük ahşap oda hepsine aynı yankıyı verir.
+- Sık sesler birkaç çekim: adım 4, zarın düşüşü 3, tık 3, zar sallama, para gelişi/gidişi, inşaat ve teklif 2'şer (`ad_2.wav`, `ad_3.wav`...). Oyun her seferinde rastgele birini, bir önceki dışında, seçer (`SoundCues.Variants`, `PickVariant`); perde oynaması ezgili seslerde yarıya indi, müzikle akort kayması duyulmaz.
+- Testler: `SoundCuesTests.FrequentSoundsHaveSeveralTakesInTheBuild`, `TheSameTakeNeverPlaysTwiceInARow`. Müzik (`make_music.py`) değişmedi.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

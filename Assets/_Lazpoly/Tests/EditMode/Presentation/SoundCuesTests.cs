@@ -84,5 +84,49 @@ namespace Lazpoly.Presentation.Tests
                 Assert.That(SoundCues.PitchJitter(cue), Is.InRange(0f, 0.1f), cue.ToString());
             }
         }
+
+        [Test]
+        public void FrequentSoundsHaveSeveralTakesInTheBuild()
+        {
+            Assert.That(SoundCues.Variants(SoundCue.PawnStep), Is.GreaterThanOrEqualTo(3), "steps are the most repeated sound");
+            Assert.That(SoundCues.Variants(SoundCue.DiceLand), Is.GreaterThanOrEqualTo(2));
+            Assert.That(SoundCues.Variants(SoundCue.UiClick), Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(0, SoundCues.Variants(SoundCue.None));
+            Assert.AreEqual("Lazpoly/Sfx/pawn_step", SoundCues.VariantPath(SoundCue.PawnStep, 0));
+            Assert.AreEqual("Lazpoly/Sfx/pawn_step_2", SoundCues.VariantPath(SoundCue.PawnStep, 1));
+            foreach (SoundCue cue in Enum.GetValues(typeof(SoundCue)))
+            {
+                for (int i = 0; i < SoundCues.Variants(cue); i++)
+                {
+                    AudioClip clip = Resources.Load<AudioClip>(SoundCues.VariantPath(cue, i));
+                    Assert.IsNotNull(clip, $"missing take {i + 1} of {cue}; run Tools/Audio/make_sfx.py");
+                    Assert.That(clip.length, Is.InRange(0.1f, 3.5f), $"{cue} take {i + 1}");
+                }
+            }
+        }
+
+        [Test]
+        public void TheSameTakeNeverPlaysTwiceInARow()
+        {
+            Assert.AreEqual(0, SoundCues.PickVariant(1, 0, 0.7f), "a single take is the only choice");
+            Assert.AreEqual(0, SoundCues.PickVariant(0, -1, 0.3f));
+            for (int count = 2; count <= 4; count++)
+            {
+                var seen = new System.Collections.Generic.HashSet<int>();
+                for (int last = -1; last < count; last++)
+                {
+                    for (float r = 0f; r < 1f; r += 0.01f)
+                    {
+                        int pick = SoundCues.PickVariant(count, last, r);
+                        Assert.That(pick, Is.InRange(0, count - 1));
+                        Assert.AreNotEqual(last, pick, $"take {last} again out of {count}");
+                        seen.Add(pick);
+                    }
+                }
+
+                Assert.AreEqual(count, seen.Count, "every take gets its turn");
+                Assert.That(SoundCues.PickVariant(count, count - 1, 0.9999f), Is.InRange(0, count - 2), "the top of the range is not the last take");
+            }
+        }
     }
 }
