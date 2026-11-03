@@ -205,6 +205,16 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void BoardTextIsPrintedInTheHeaviestCut()
+        {
+            Font black = Lazpoly.Presentation.UI.UiTheme.BlackFont;
+            Assert.AreEqual("Nunito-Black", black.name, "the heavy cut is missing from Resources");
+            Assert.AreNotSame(Lazpoly.Presentation.UI.UiTheme.BoldFont, black);
+            Assert.IsTrue(PrintMaterial.IsPrinting(black), "the print shader is missing from Resources");
+            Assert.AreSame(black.material.mainTexture, PrintMaterial.For(black).mainTexture, "the print uses the heavy cut's own atlas");
+        }
+
+        [Test]
         public void ASpeechBubbleWrapsItsLineInPaperOverThePawn()
         {
             var root = new GameObject("Scene");

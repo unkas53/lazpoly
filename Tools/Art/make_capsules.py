@@ -194,7 +194,7 @@ def title(img, cx, cy, size, tagline=True, align="center"):
     d.rounded_rectangle([x, y + th + size * 0.12, x + tw, y + th + size * 0.12 + size * 0.07], radius=size * 0.03, fill=AMBER)
     if tagline:
         f2 = font(size * 0.3)
-        tag = "Karadeniz kıyısında mülk oyunu"
+        tag = "Dünya şehirlerinde mülk oyunu"
         b2 = d.textbbox((0, 0), tag, font=f2)
         tx = cx - (b2[2] - b2[0]) / 2 if align == "center" else cx
         d.text((tx - b2[0], y + th + size * 0.32), tag, font=f2, fill=SAND)

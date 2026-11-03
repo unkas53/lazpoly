@@ -102,7 +102,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float PriceDepth = 0.12f;
 
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
-        public const float NameSize = 0.02f;
+        public const float NameSize = 0.022f;
         public const float PriceSize = 0.014f;
 
         /// <summary>
@@ -848,13 +848,14 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.fontSize = 128;
             mesh.fontStyle = FontStyle.Normal;
             mesh.color = color;
-            mesh.font = UiTheme.BoldFont;
+            // The heaviest cut: thin strokes fade when the board is small on screen or the far row is read at a slant.
+            mesh.font = UiTheme.BlackFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
             FitLabel(mesh, characterSize, maxSize, outward);
             return mesh;
         }
 
-        /// <summary>Long names ("Liman Caddesi") shrink to the tile's width and tall lines to their room instead of running off.</summary>
+        /// <summary>Long names ("Rio de Janeiro") shrink to the tile's width and tall lines to their room instead of running off.</summary>
         private static void FitLabel(TextMesh mesh, float characterSize, Vector2 maxSize, Vector3 outward)
         {
             mesh.characterSize = characterSize;
@@ -881,7 +882,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = _width * 0.012f;
             mesh.color = ColorVision.TextOn(band);
-            mesh.font = UiTheme.BoldFont;
+            mesh.font = UiTheme.BlackFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
         }
 

@@ -52,7 +52,7 @@ namespace Lazpoly.Presentation.Effects
                 logo.raycastTarget = false;
             }
 
-            ui.Eyebrow(Texts.Lang.L("Karadeniz Masası"), paper.Muted, TextAnchor.MiddleCenter);
+            ui.Eyebrow(Texts.Lang.L("Dünya Masası"), paper.Muted, TextAnchor.MiddleCenter);
 
             Image track = ui.Swatch(paper.Field, BarWidth);
             track.sprite = UiSprites.Pill;

@@ -246,7 +246,7 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   bir ada, fener, kayık. Hepsi koddan üretilir; Blender modelleri sonraya kaldı.
 - **Ortam:** ahşap masa ve zemin (`RoomDressing`), sıcak güneş + soğuk dolgu ışığı, yumuşak gölgeler, kamerada
   HDR, SMAA, bloom, renk düzeltme (ACES) ve vinyet. Ana menünün arkasında gerçek tahta yavaşça döner (`MenuBackdrop`).
-- **Yazı tipi ve palet:** Nunito Regular/Bold (OFL, `UI/Resources/Lazpoly/Fonts`), akşam kıyısı paleti (`UiTheme`).
+- **Yazı tipi ve palet:** Nunito Regular/Bold (tahta yazısı için 14a'dan beri Black) (OFL, `UI/Resources/Lazpoly/Fonts`), akşam kıyısı paleti (`UiTheme`).
 - **Mağaza görselleri:** `python Tools/Art/make_capsules.py` logo ve Steam kapaklarını `Steam/Art` altına çizer
   (bkz. `Steam/README.md`).
 - **Ayarlar:** Ses (genel, efektler, müzik ayrı), Görüntü (kalite Düşük/Orta/Yüksek: Düşük post-processing'i ve
@@ -739,6 +739,14 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Sentezlenen sesler (12e) beğenilmedi; yerlerine Kenney'nin CC0 kayıtları geldi (`Tools/Audio/Kenney`, lisanslar ve kaynak `KAYNAK.md`). `Tools/Audio/make_sfx.py` silindi; `Tools/Audio/make_sfx_kenney.py` her olayın sesini bir ya da birkaç kayıttan kurar (ffmpeg + numpy), aynı duyulur yüksekliğe getirir, sık seslerde kısar.
 - Zar: kupada sallanan zarlar (3 çekim, zar animasyonu kadar 0,8 sn) ve masaya düşen zarlar (3 çekim). Piyon adımı: tahtaya konan tahta piyon (4 çekim). Para: bozuk para şıngırtısı (gelir) ve masaya konan fişler (gider). Satın alma: tapu kartı + para + kısa pizzicato. Ev: iki çekiç vuruşu; otel: ağır vuruşlar ve yükselen pizzicato. Satış, takas, kart ve pencere: kart kayması / bırakılması. Sıra sende, başarım, başlangıçtan geçiş ve iflas: aynı pizzicato çalgısından kısa ezgiler; kazanma: çelik davul.
 - Testler: `SoundCuesTests` her çekimin yüklendiğini denetliyor; tıklama gerçekte birkaç yüzde bir saniye sürdüğü için alt sınır 0,1 sn'den 0,03 sn'ye indi. Zar sallama artık 3 çekim.
+
+## Faz 14a: dünya şehirleri ve kalın tahta yazısı
+
+- Tahtanın 17 mülkü artık dünyanın tanınmış şehirleri, gruplar da bölgeler (`board.json`; fiyat, kira ve sıra aynı): Kuzey Afrika (Kahire, Marakeş), Güney Amerika (Rio de Janeiro, Buenos Aires), Güneydoğu Asya (Bangkok, Kuala Lumpur, Singapur), Orta Avrupa (Prag, Viyana), Akdeniz (Barselona, Roma), Doğu Asya (Seul, Tokyo), Batı Avrupa (Paris, Londra), Metropoller (New York, İstanbul). En pahalı şehir İstanbul. İngilizcede yazılışı farklı olanlar `en.json`'da (Cairo, Prague, London, Istanbul...).
+- Şehir adı geçen kartlar ve kasaba kartları yeni temaya göre yazıldı (Rio'da karnaval, Singapur'da iş görüşmesi, İstanbul'da Boğaz daveti, şehir festivali). Logo altındaki yazı "Dünya Masası", menü sloganı "dünyanın şehirlerini topla"; Steam kapaklarının alt yazısı "Dünya şehirlerinde mülk oyunu" (`make_capsules.py` yeniden çalıştırıldı). Köşe kareleri (Başlangıç, Çay Molası, Otogar, Seyir Terası) ve ortadaki deniz aynı kaldı.
+- Tahtadaki şehir adı, fiyat ve grup harfi Nunito Black ile basılır (`UiTheme.BlackFont`; Nunito'nun değişken dosyasından fontTools ile 900 ağırlığında çıkarıldı, OFL). Ad satırı %10 büyüdü (`NameSize` 0,022); uzun adlar yine karenin genişliğine sığacak kadar küçülür.
+- Tahta verisi değiştiği için eski kayıtlı oyunlar (tahta özeti tutmaz) devam ettirilmez; çevrim içi masalar da yalnız aynı sürümle kurulur.
+- Testler: `BoardDataLoaderTests.EveryCityOnTheShippedBoardIsADifferentOne`, `SceneryTests.BoardTextIsPrintedInTheHeaviestCut`; Türkçe büyük harf testi "İstanbul ve Singapur" ile.
 
 ## Kurallar
 
