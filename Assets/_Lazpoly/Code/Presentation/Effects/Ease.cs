@@ -19,6 +19,13 @@ namespace Lazpoly.Presentation.Effects
             return t * t * t;
         }
 
+        /// <summary>Slow at both ends, quick in the middle.</summary>
+        public static float InOutCubic(float t)
+        {
+            t = Clamp(t);
+            return t < 0.5f ? 4f * t * t * t : 1f - 4f * (1f - t) * (1f - t) * (1f - t);
+        }
+
         /// <summary>Goes a little past 1 and settles back, like something pressed into place.</summary>
         public static float OutBack(float t)
         {

@@ -858,6 +858,7 @@ namespace Lazpoly.Presentation.Game
                         _shownMoney[money.PlayerId] = ShownMoneyOf(money.PlayerId) + money.Delta;
                         Revision++;
                         ShowMoney(money);
+                        React(money.PlayerId, money.Delta);
                         break;
                     case PropertyOwnerChangedEvent owner:
                         if (owner.NewOwnerId == GameState.NoOwner)
@@ -869,6 +870,7 @@ namespace Lazpoly.Presentation.Game
                         _board.SetOwner(owner.SquareIndex, ColorOf(owner.NewOwnerId));
                         _board.PulseOwner(owner.SquareIndex);
                         _board.RaiseFlag(owner.SquareIndex);
+                        Pawn(owner.NewOwnerId)?.Cheer();
                         // Bought from the bank on landing; an auction win and a trade have their own lines.
                         if (owner.PreviousOwnerId == GameState.NoOwner && _shownPhase == GamePhase.AwaitingBuyDecision) Say(owner.NewOwnerId, L("Aldım!"));
                         break;
@@ -882,6 +884,7 @@ namespace Lazpoly.Presentation.Game
                             Say(_session.State.GetOwner(building.SquareIndex), L(building.Level >= SquareDefinition.MaxBuildingLevel ? "Otel vakti!" : "Bir ev daha!"));
                         }
 
+                        if (building.Level > _board.LevelOf(building.SquareIndex)) Pawn(_session.State.GetOwner(building.SquareIndex))?.Cheer();
                         _board.SetBuildingLevel(building.SquareIndex, building.Level, animate: true);
                         if (building.Level >= SquareDefinition.MaxBuildingLevel) AudioPlayer.Play(SoundCue.Hotel);
                         break;
@@ -914,6 +917,7 @@ namespace Lazpoly.Presentation.Game
                         _shownOffer = null;
                         break;
                     case GameEndedEvent _:
+                        Pawn(_session.State.WinnerId)?.Cheer();
                         Confetti.Burst(transform, _board.transform.position + Vector3.up * 0.5f, _board.SurfaceY + 0.01f,
                             new List<Color>(_playerColors.Values));
                         break;
@@ -1029,6 +1033,24 @@ namespace Lazpoly.Presentation.Game
 
             return total;
         }
+
+        /// <summary>A sum worth reacting to: from this much on a figure cheers at money coming in or sulks at money going out.</summary>
+        public const int CheerFrom = 150;
+        public const int SulkFrom = 100;
+
+        /// <summary>The figure's reaction to a change of money: a cheer for a good sum coming in, a sulk for rent or tax going out.</summary>
+        public static int Reaction(int delta) => delta >= CheerFrom ? 1 : delta <= -SulkFrom ? -1 : 0;
+
+        private void React(int playerId, int delta)
+        {
+            PawnView pawn = Pawn(playerId);
+            if (pawn == null) return;
+            int reaction = Reaction(delta);
+            if (reaction > 0) pawn.Cheer();
+            else if (reaction < 0) pawn.Sulk();
+        }
+
+        private PawnView Pawn(int playerId) => playerId != GameState.NoOwner && _pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null;
 
         /// <summary>
         /// "+200" or "-60" rising beside the player's figure, at chest height and a little to the screen's

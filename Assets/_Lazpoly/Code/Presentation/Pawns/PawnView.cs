@@ -8,10 +8,12 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Pawns
 {
     /// <summary>
-    /// A player's piece: the business man from <see cref="CharacterParts"/> with his jacket in the
-    /// player's colour, standing on the square and facing the camera; or, when the character model is
-    /// not in the build, one of the town's shapes from <see cref="PawnShapes"/> painted whole. The
-    /// model is a child of the pawn so the hop's squash and stretch scale the pawn, not the model's size.
+    /// A player's piece: the business man or the business woman from <see cref="CharacterParts"/> (seats
+    /// alternate) with the jacket in the player's colour, standing on the square and facing the camera; or,
+    /// when no character model is in the build, one of the town's shapes from <see cref="PawnShapes"/> painted
+    /// whole. The model is a child of the pawn so the hop's squash and stretch scale the pawn, not the model's
+    /// size; the character's own body language (breathing, leaning into a walk, cheering, sulking) is
+    /// <see cref="CharacterMotion"/> on that child.
     /// </summary>
     public sealed class PawnView : MonoBehaviour
     {
@@ -39,12 +41,25 @@ namespace Lazpoly.Presentation.Pawns
         private int _slot;
         private int _square;
         private Transform _model;
+        private CharacterMotion _motion;
+        private float _speed = 1f;
 
         /// <summary>True when the pawn is the character; false when it is one of the shapes.</summary>
         public bool IsCharacter { get; private set; }
 
+        /// <summary>Which figure the pawn is, when <see cref="IsCharacter"/>.</summary>
+        public CharacterKind Kind { get; private set; }
+
         /// <summary>Animation speed multiplier from the settings (1 = normal).</summary>
-        public float Speed { get; set; } = 1f;
+        public float Speed
+        {
+            get => _speed;
+            set
+            {
+                _speed = value;
+                if (_motion != null) _motion.Speed = value;
+            }
+        }
 
         /// <summary>Raised each time the pawn lands on a square while walking; the scene plays a step sound.</summary>
         public event Action<int> Stepped;
@@ -60,16 +75,19 @@ namespace Lazpoly.Presentation.Pawns
         public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId)
         {
             if (crowd == null) throw new ArgumentNullException(nameof(crowd));
-            GameObject model = CharacterParts.Character(ModelName, null);
+            CharacterKind kind = CharacterParts.KindFor(seatIndex);
+            GameObject model = CharacterParts.Character(kind, ModelName, null);
             bool character = model != null;
-            var root = new GameObject($"Pawn {seatIndex + 1} {(character ? CharacterParts.Name : PawnShapes.NameOf(seatIndex))}");
+            var root = new GameObject($"Pawn {seatIndex + 1} {(character ? CharacterParts.NameOf(kind) : PawnShapes.NameOf(seatIndex))}");
             root.transform.SetParent(parent, false);
+            CharacterMotion motion = null;
             if (character)
             {
                 model.transform.SetParent(root.transform, false);
                 model.transform.localScale = Vector3.one * CharacterHeight;
                 model.transform.localRotation = Facing(BoardCameraRig.BaseYaw);
                 CharacterParts.Paint(model, color);
+                motion = CharacterMotion.Attach(model.transform, Vector3.one * CharacterHeight, seatIndex * 0.37f);
             }
             else
             {
@@ -79,6 +97,8 @@ namespace Lazpoly.Presentation.Pawns
             var pawn = root.AddComponent<PawnView>();
             pawn._model = model.transform;
             pawn.IsCharacter = character;
+            pawn.Kind = kind;
+            pawn._motion = motion;
             pawn._board = board;
             pawn._crowd = crowd;
             pawn._playerId = playerId;
@@ -92,7 +112,20 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>Turns the character to a camera at <paramref name="yaw"/> (the shapes look the same from every side).</summary>
         public void FaceCamera(float yaw)
         {
-            if (IsCharacter && _model != null) _model.localRotation = Facing(yaw);
+            if (_motion != null) _motion.SetFacing(Facing(yaw));
+            else if (IsCharacter && _model != null) _model.localRotation = Facing(yaw);
+        }
+
+        /// <summary>A happy jump with a full turn (a purchase, a new house, money coming in); nothing for the shapes.</summary>
+        public void Cheer()
+        {
+            if (_motion != null && gameObject.activeInHierarchy) _motion.Cheer();
+        }
+
+        /// <summary>A slump and a shake of the head (rent, tax); nothing for the shapes.</summary>
+        public void Sulk()
+        {
+            if (_motion != null && gameObject.activeInHierarchy) _motion.Sulk();
         }
 
         public void PlaceOn(int square)
@@ -114,6 +147,7 @@ namespace Lazpoly.Presentation.Pawns
             int count = _board.Layout.SquareCount;
             int steps = backward ? (_square - destination + count) % count : (destination - _square + count) % count;
             float speed = Mathf.Max(Speed, 0.1f) * Mathf.Max(1f, steps * (StepSeconds + SquashSeconds) / MaxWalkSeconds);
+            if (_motion != null) _motion.Walking = steps > 0;
             while (_square != destination)
             {
                 int next = (_square + (backward ? count - 1 : 1)) % count;
@@ -142,6 +176,8 @@ namespace Lazpoly.Presentation.Pawns
 
                 SetStretch(1f);
             }
+
+            if (_motion != null) _motion.Walking = false;
         }
 
         /// <summary>One high arc straight to <paramref name="destination"/> (a ride from a travel square).</summary>

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Turns the business man model (Tools/Art/Models/BusinessMan/BusinessMan.obj) into the game's pawn asset.
+"""Turns a character model into the game's pawn asset: the business man (Tools/Art/Models/BusinessMan/BusinessMan.obj)
+by default, the business woman with the argument "woman" (made by Tools/Art/make_businesswoman.py).
 
 The source is a real-size figure (2.03 m) in Z-up metres facing -Y, split into 112 named parts that share
 28 flat-coloured materials. On the board one figure is a pawn, so this script:
@@ -11,14 +12,19 @@ The source is a real-size figure (2.03 m) in Z-up metres facing -Y, split into 1
   * gives every face its own flat normal (the model has none; smooth normals over its boxes and wedges
     would look melted), written once per distinct normal,
   * writes the result as a TextAsset: Assets/_Lazpoly/Data/Resources/Lazpoly/Models/business_man.txt
+    (business_woman.txt for the woman)
 
-The game reads it with ObjModel/CharacterParts. Run from the repository root: python3 Tools/Art/make_character.py
+The game reads it with ObjModel/CharacterParts. Run from the repository root:
+    python3 Tools/Art/make_character.py [man|woman]
 """
 import os
 import sys
 
-SOURCE = os.path.join("Tools", "Art", "Models", "BusinessMan", "BusinessMan.obj")
-TARGET = os.path.join("Assets", "_Lazpoly", "Data", "Resources", "Lazpoly", "Models", "business_man.txt")
+MODELS = os.path.join("Assets", "_Lazpoly", "Data", "Resources", "Lazpoly", "Models")
+KINDS = {
+    "man": (os.path.join("Tools", "Art", "Models", "BusinessMan", "BusinessMan.obj"), os.path.join(MODELS, "business_man.txt")),
+    "woman": (os.path.join("Tools", "Art", "Models", "BusinessWoman", "BusinessWoman.obj"), os.path.join(MODELS, "business_woman.txt")),
+}
 FOOT_PARTS = {"L_Shoe_sole", "R_Shoe_sole"}
 
 
@@ -54,6 +60,10 @@ def face_normal(a, b, c):
 
 
 def main():
+    kind = sys.argv[1] if len(sys.argv) > 1 else "man"
+    if kind not in KINDS:
+        sys.exit(f"unknown character '{kind}'; one of: {', '.join(KINDS)}")
+    SOURCE, TARGET = KINDS[kind]
     root = os.getcwd()
     source = os.path.join(root, SOURCE)
     if not os.path.exists(source):
@@ -94,7 +104,7 @@ def main():
                 normals.append(normal)
 
     lines = [
-        "# Lazpoly pawn character, made by Tools/Art/make_character.py from Tools/Art/Models/BusinessMan/BusinessMan.obj",
+        f"# Lazpoly pawn character, made by Tools/Art/make_character.py from {SOURCE.replace(os.sep, '/')}",
         f"# one unit tall, soles at y = 0, feet centred, faces +z; {sum(len(g['faces']) for g in merged)} triangles",
     ]
     for v in used:

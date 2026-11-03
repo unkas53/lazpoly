@@ -80,6 +80,7 @@ beyan edilecek içerik:
 |---|---|---|
 | Kamp çadırı modeli (sahipli şehir işareti) | `Tools/Art/Models/CampTent`, oyunda `camp_tent.txt` | Proje sahibi ChatGPT ve Higgsfield ile üretti; ayrıntı `KAYNAK.md` |
 | İş adamı karakteri (piyon) | `Tools/Art/Models/BusinessMan`, oyunda `business_man.txt` | Proje sahibi yapay zekâ aracıyla üretti (araç başvurudan önce sorulur); ayrıntı `KAYNAK.md` |
+| İş kadını karakteri (piyon) | `Tools/Art/Models/BusinessWoman`, oyunda `business_woman.txt` | İş adamından betikle türetildi (`Tools/Art/make_businesswoman.py`); beyan iş adamıyla aynı |
 | Logo (ana menü bandı, tahtanın çimenliği, açılış ekranı, exe simgesi) | `Tools/Art/Logo`, oyunda `logo.bytes` | Proje sahibi ChatGPT ile üretti; kaynaktaki portre oyun kopyasında boyanarak kaldırıldı (`KAYNAK.md`) |
 | Ana menü / lobi konsept ekranları | `Tools/Art/Design/Menu` | Yalnız başvuru (ChatGPT); oyunda yalnızca düzen ve tarz kodla kuruldu, görsel kullanılmadı |
 

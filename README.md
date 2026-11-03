@@ -696,6 +696,13 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Aynı karedeki karakterler ızgara yerine ekranın yatayında yan yana dizilir (`PawnSlots.Line`, kameranın açısıyla çevrilir; kare kenarı ekranda çapraz durduğu için kenar boyunca dizmek figürleri yine arka arkaya koyuyordu): ilki ortaya yakın, sonrakiler sola sağa; her ikinciden biri biraz geride durur. Komşular arası 4 kişide 0,46, 8 kişide 0,30 birim. Arkadaki figür öndekinin arkasında kaybolmaz. Küçük şekil piyonlar (karakter modeli yoksa) eski ızgarayı kullanır.
 - Testler: `BubbleQueueTests` (sıra, okuma süresi, yer değiştirme, kısa kuyruk, para yazısı yığını), `PawnSlotsTests.StandingFiguresLineUpSideBySide`.
 
+## Faz 12c: iş kadını ve hareketler
+
+- İkinci figür: iş kadını. `Tools/Art/make_businesswoman.py` iş adamı modelinden türetir (sakal, bıyık, perçem gider; uzun saç, yan perçem, küpe, diz boyu etek, ince bel ve bacak, koyu çorap ve ayakkabı, referanstaki gibi mürdüm bluz). `python3 Tools/Art/make_character.py woman` oyundaki kopyayı yazar (`business_woman.txt`, 11.734 üçgen). Kaynak notu `Tools/Art/Models/BusinessWoman/KAYNAK.md`, Steam beyanı §6.
+- Koltuklar sırayla adam, kadın (`CharacterParts.KindFor`); ceket ve etek oyuncunun renginde (etek bir ton koyu, `CharacterParts.Skirt`). Bir model eksikse öteki, ikisi de yoksa kasaba şekilleri durur.
+- Hareketler (`CharacterMotion`, iskelet olmadan modelin tamamıyla): durunca hafif nefes (her oyuncu ayrı fazda), yürürken öne eğilip sağa sola sallanma, sevinç (satın alma, yeni ev/otel, 150 ve üstü para gelişi, kazanan): zıplayıp bir tam dönüş; üzülme (100 ve üstü kira/vergi): çöküp başını sallama.
+- Testler: `CharacterPartsTests.TheWomanStandsInTheSameStyleWithASkirtAndLongHair`, `SeatsAlternateBetweenTheTwoFigures`, `TheFiguresMovesStartAndEndAtRest`.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

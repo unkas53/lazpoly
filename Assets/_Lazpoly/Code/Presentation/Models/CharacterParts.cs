@@ -3,20 +3,29 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Models
 {
+    /// <summary>The two figures a player can be; seats alternate between them.</summary>
+    public enum CharacterKind
+    {
+        Man = 0,
+        Woman = 1,
+    }
+
     /// <summary>
-    /// The playing piece: the business man model from Tools/Art/Models/BusinessMan, turned, merged
-    /// and scaled by Tools/Art/make_character.py to one unit tall with his soles at y = 0, facing +Z.
-    /// He has no skeleton, so he moves as one piece (the pawn's hops and squashes). One part per
-    /// material; the jacket's four materials take the player's colour, everything else keeps the
-    /// colours of the model's own palette. When the asset is missing the pawns fall back to the
-    /// town's shapes (<see cref="PawnShapes"/>).
+    /// The playing pieces: the business man from Tools/Art/Models/BusinessMan and the business woman made
+    /// from him by Tools/Art/make_businesswoman.py, turned, merged and scaled by Tools/Art/make_character.py
+    /// to one unit tall with the soles at y = 0, facing +Z. They have no skeleton; <see cref="Pawns.CharacterMotion"/>
+    /// moves them as one piece. One part per material; the jacket's four materials (and the woman's skirt)
+    /// take the player's colour, everything else keeps the model's own palette. When a model is missing the
+    /// other one stands in, and when both are, the pawns fall back to the town's shapes (<see cref="PawnShapes"/>).
     /// </summary>
     public static class CharacterParts
     {
         public const string Resource = "Lazpoly/Models/business_man";
+        public const string WomanResource = "Lazpoly/Models/business_woman";
 
-        /// <summary>What the piece is called where a pawn is named.</summary>
+        /// <summary>What the man is called where a pawn is named.</summary>
         public const string Name = "İş Adamı";
+        public const string WomanName = "İş Kadını";
 
         /// <summary>Material names in the model that are painted in the player's colour.</summary>
         public const string JacketPart = "jacket";
@@ -24,67 +33,94 @@ namespace Lazpoly.Presentation.Models
         public const string JacketDarkPart = "jacket_dark";
         public const string LapelPart = "lapel";
 
+        /// <summary>The woman's skirt, painted a shade darker than the jacket like the other half of a suit.</summary>
+        public const string SkirtPart = "skirt";
+
+        /// <summary>The parts every figure has and the game paints.</summary>
         public static readonly string[] PaintedParts = { JacketPart, JacketLightPart, JacketDarkPart, LapelPart };
 
-        /// <summary>How far the lit parts of the jacket go towards white, and the pockets and lapels towards black.</summary>
+        /// <summary>How far the lit parts of the jacket go towards white, and the pockets, lapels and skirt towards black.</summary>
         public const float LightTint = 0.18f;
         public const float DarkShade = 0.30f;
         public const float LapelShade = 0.14f;
+        public const float SkirtShade = 0.22f;
 
-        private static ObjModel _model;
-        private static List<Mesh> _meshes;
-        private static bool _loaded;
+        private static readonly ObjModel[] Models = new ObjModel[2];
+        private static readonly List<Mesh>[] Meshes = new List<Mesh>[2];
+        private static readonly bool[] Loaded = new bool[2];
         private static bool _reportedMissing;
 
-        /// <summary>Whether the character model is in the build; false means the pawns are the town's shapes.</summary>
-        public static bool IsAvailable => Load() != null;
+        /// <summary>Whether a character model is in the build; false means the pawns are the town's shapes.</summary>
+        public static bool IsAvailable => Load(CharacterKind.Man) != null || Load(CharacterKind.Woman) != null;
 
-        /// <summary>The parsed model, loaded once; null when the asset is missing or unreadable.</summary>
-        public static ObjModel Load()
+        /// <summary>The figure at a seat: men and women take turns round the table.</summary>
+        public static CharacterKind KindFor(int seatIndex) => (seatIndex % 2 + 2) % 2 == 0 ? CharacterKind.Man : CharacterKind.Woman;
+
+        public static string ResourceOf(CharacterKind kind) => kind == CharacterKind.Woman ? WomanResource : Resource;
+
+        public static string NameOf(CharacterKind kind) => kind == CharacterKind.Woman ? WomanName : Name;
+
+        /// <summary>The man's parsed model.</summary>
+        public static ObjModel Load() => Load(CharacterKind.Man);
+
+        /// <summary>The parsed model of a figure, loaded once; null when the asset is missing or unreadable.</summary>
+        public static ObjModel Load(CharacterKind kind)
         {
-            if (_loaded) return _model;
-            _loaded = true;
-            var asset = Resources.Load<TextAsset>(Resource);
+            int index = (int)kind;
+            if (Loaded[index]) return Models[index];
+            Loaded[index] = true;
+            string resource = ResourceOf(kind);
+            var asset = Resources.Load<TextAsset>(resource);
             if (asset == null)
             {
-                Report("is missing");
+                Report(resource, "is missing");
                 return null;
             }
 
+            ObjModel model;
             try
             {
-                _model = ObjModel.Parse(asset.text);
+                model = ObjModel.Parse(asset.text);
             }
             catch (System.FormatException exception)
             {
-                Report($"could not be read: {exception.Message}");
+                Report(resource, $"could not be read: {exception.Message}");
                 return null;
             }
 
-            if (_model.Find(JacketPart) == null)
+            if (model.Find(JacketPart) == null)
             {
-                Report($"has no '{JacketPart}' part to paint");
-                _model = null;
+                Report(resource, $"has no '{JacketPart}' part to paint");
                 return null;
             }
 
-            _meshes = new List<Mesh>(_model.Groups.Count);
-            foreach (ObjGroup group in _model.Groups) _meshes.Add(group.ToMesh($"character-{group.Material}"));
-            return _model;
+            var meshes = new List<Mesh>(model.Groups.Count);
+            foreach (ObjGroup group in model.Groups) meshes.Add(group.ToMesh($"character-{kind}-{group.Material}"));
+            Models[index] = model;
+            Meshes[index] = meshes;
+            return model;
         }
 
-        /// <summary>The character as a parent object with one part per material, or null when the model is missing.</summary>
-        public static GameObject Character(string name, Transform parent)
+        /// <summary>The man as a parent object with one part per material, or null when no model is there.</summary>
+        public static GameObject Character(string name, Transform parent) => Character(CharacterKind.Man, name, parent);
+
+        /// <summary>
+        /// A figure as a parent object with one part per material; the other figure when this one's model is
+        /// missing; null when neither is there.
+        /// </summary>
+        public static GameObject Character(CharacterKind kind, string name, Transform parent)
         {
-            ObjModel model = Load();
+            if (Load(kind) == null) kind = kind == CharacterKind.Man ? CharacterKind.Woman : CharacterKind.Man;
+            ObjModel model = Load(kind);
             if (model == null) return null;
 
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
+            List<Mesh> meshes = Meshes[(int)kind];
             for (int i = 0; i < model.Groups.Count; i++)
             {
                 ObjGroup group = model.Groups[i];
-                ModelParts.Create(group.Material, root.transform, _meshes[i], ColorFor(group.Material), SmoothnessFor(group.Material));
+                ModelParts.Create(group.Material, root.transform, meshes[i], ColorFor(group.Material), SmoothnessFor(group.Material));
             }
 
             return root;
@@ -97,6 +133,7 @@ namespace Lazpoly.Presentation.Models
             PaintPart(character, JacketLightPart, Light(player));
             PaintPart(character, JacketDarkPart, Dark(player));
             PaintPart(character, LapelPart, Lapel(player));
+            PaintPart(character, SkirtPart, Skirt(player));
         }
 
         private static void PaintPart(GameObject character, string material, Color color)
@@ -114,6 +151,9 @@ namespace Lazpoly.Presentation.Models
         /// <summary>The lapel colour for a player colour: a little darker than the jacket.</summary>
         public static Color Lapel(Color player) => Towards(player, Color.black, LapelShade);
 
+        /// <summary>The skirt colour for a player colour: darker than the jacket and the lapels.</summary>
+        public static Color Skirt(Color player) => Towards(player, Color.black, SkirtShade);
+
         private static Color Towards(Color color, Color target, float amount)
         {
             Color mixed = Color.Lerp(color, target, amount);
@@ -122,7 +162,7 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>Whether a material of the model is painted in the player's colour.</summary>
-        public static bool IsPainted(string material) => System.Array.IndexOf(PaintedParts, material) >= 0;
+        public static bool IsPainted(string material) => material == SkirtPart || System.Array.IndexOf(PaintedParts, material) >= 0;
 
         /// <summary>The colour a part is made with: the model's own palette (BusinessMan.mtl); the painted parts start white.</summary>
         public static Color ColorFor(string material)
@@ -132,7 +172,8 @@ namespace Lazpoly.Presentation.Models
                 case JacketPart:
                 case JacketLightPart:
                 case JacketDarkPart:
-                case LapelPart: return Color.white;
+                case LapelPart:
+                case SkirtPart: return Color.white;
                 case "skin": return new Color(0.866f, 0.572f, 0.392f);
                 case "skin_light": return new Color(0.937f, 0.670f, 0.482f);
                 case "skin_shadow": return new Color(0.709f, 0.427f, 0.298f);
@@ -160,6 +201,16 @@ namespace Lazpoly.Presentation.Models
                 case "tablet_dark": return new Color(0.215f, 0.262f, 0.305f);
                 case "tablet_light": return new Color(0.556f, 0.619f, 0.650f);
                 case "screen": return new Color(0.160f, 0.207f, 0.266f);
+                // The woman's own (Tools/Art/make_businesswoman.py): auburn hair, a plum blouse as in the reference, dark tights and shoes.
+                case "hair_w": return new Color(0.400f, 0.215f, 0.150f);
+                case "hair_w_light": return new Color(0.520f, 0.300f, 0.200f);
+                case "hair_w_dark": return new Color(0.270f, 0.145f, 0.110f);
+                case "blouse": return new Color(0.560f, 0.330f, 0.520f);
+                case "blouse_shadow": return new Color(0.440f, 0.240f, 0.410f);
+                case "lips": return new Color(0.760f, 0.310f, 0.360f);
+                case "tights": return new Color(0.230f, 0.205f, 0.225f);
+                case "pump": return new Color(0.330f, 0.130f, 0.200f);
+                case "pump_sole": return new Color(0.160f, 0.120f, 0.130f);
                 default: return Color.magenta; // A part the palette does not know stands out, so the palette gets fixed.
             }
         }
@@ -173,9 +224,11 @@ namespace Lazpoly.Presentation.Models
                 case "iris":
                 case "pupil":
                 case "screen":
-                case "accent": return 0.6f;
+                case "accent":
+                case "lips": return 0.6f;
                 case "shoe":
                 case "shoe_s":
+                case "pump":
                 case "tablet":
                 case "tablet_dark":
                 case "tablet_light": return 0.35f;
@@ -183,19 +236,23 @@ namespace Lazpoly.Presentation.Models
             }
         }
 
-        private static void Report(string problem)
+        private static void Report(string resource, string problem)
         {
             if (_reportedMissing) return;
             _reportedMissing = true;
-            Debug.LogWarning($"[Lazpoly] Character model '{Resource}' {problem}; the town's shapes are the pawns instead. Run Tools/Art/make_character.py.");
+            Debug.LogWarning($"[Lazpoly] Character model '{resource}' {problem}; the other figure or the town's shapes stand in. Run Tools/Art/make_character.py.");
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            _model = null;
-            _meshes = null;
-            _loaded = false;
+            for (int i = 0; i < Models.Length; i++)
+            {
+                Models[i] = null;
+                Meshes[i] = null;
+                Loaded[i] = false;
+            }
+
             _reportedMissing = false;
         }
     }

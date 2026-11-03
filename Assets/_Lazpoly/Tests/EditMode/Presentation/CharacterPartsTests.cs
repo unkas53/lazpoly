@@ -1,4 +1,5 @@
 using System.IO;
+using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Pawns;
 using Lazpoly.Presentation.Tabletop;
@@ -75,6 +76,101 @@ namespace Lazpoly.Presentation.Tests
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        [Test]
+        public void TheWomanStandsInTheSameStyleWithASkirtAndLongHair()
+        {
+            string path = Path.Combine(Application.dataPath, "_Lazpoly", "Data", "Resources", "Lazpoly", "Models", "business_woman.txt");
+            Assert.IsTrue(File.Exists(path), "run Tools/Art/make_businesswoman.py and Tools/Art/make_character.py woman");
+            ObjModel woman = ObjModel.Parse(File.ReadAllText(path));
+
+            var materials = new System.Collections.Generic.HashSet<string>();
+            foreach (ObjGroup group in woman.Groups)
+            {
+                Assert.IsTrue(materials.Add(group.Material), $"material {group.Material} is split over several groups");
+                Assert.AreNotEqual(Color.magenta, CharacterParts.ColorFor(group.Material), $"{group.Material} is not in the palette");
+            }
+
+            foreach (string painted in CharacterParts.PaintedParts) Assert.IsNotNull(woman.Find(painted), $"no '{painted}' part to paint");
+            Assert.IsNotNull(woman.Find(CharacterParts.SkirtPart), "the woman wears a skirt");
+            Assert.IsNull(woman.Find("beard"), "no beard");
+            Assert.IsNull(woman.Find("jeans"), "tights and a skirt, not jeans");
+            Assert.That(woman.TriangleCount, Is.InRange(10000, 14000));
+
+            Bounds bounds = woman.Bounds;
+            Assert.That(bounds.size.y, Is.EqualTo(1f).Within(0.01f), "one unit tall like the man");
+            Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f));
+            Assert.That(bounds.size.x, Is.InRange(0.3f, 0.5f));
+            Assert.Less(bounds.size.x, CharacterParts.Load().Bounds.size.x, "slimmer than the man");
+            Bounds skirt = woman.Find(CharacterParts.SkirtPart).Bounds;
+            Assert.That(skirt.min.y, Is.InRange(0.22f, 0.34f), "the skirt ends near the knee");
+            Assert.That(skirt.max.y, Is.InRange(0.42f, 0.52f), "and starts at the waist");
+            Bounds hair = woman.Find("hair_w").Bounds;
+            Assert.Less(hair.min.y, 0.73f, "the hair falls to the shoulders");
+            Assert.Less(hair.center.z, 0f, "behind the head, the face stays open");
+            Assert.Greater(woman.Find("tablet").Bounds.center.z, 0.05f, "she holds the tablet in front too");
+        }
+
+        [Test]
+        public void SeatsAlternateBetweenTheTwoFigures()
+        {
+            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(0));
+            Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(1));
+            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(6));
+            Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(7));
+            Assert.AreNotEqual(CharacterParts.ResourceOf(CharacterKind.Man), CharacterParts.ResourceOf(CharacterKind.Woman));
+
+            var root = new GameObject("Woman Test");
+            try
+            {
+                GameObject woman = CharacterParts.Character(CharacterKind.Woman, "Model", root.transform);
+                Assert.IsNotNull(woman);
+                Assert.AreEqual(CharacterParts.Load(CharacterKind.Woman).Groups.Count, woman.transform.childCount);
+                var player = new Color(0.2f, 0.45f, 0.85f);
+                CharacterParts.Paint(woman, player);
+                AssertColor(player, PartColor(woman, CharacterParts.JacketPart));
+                AssertColor(CharacterParts.Skirt(player), PartColor(woman, CharacterParts.SkirtPart));
+                Assert.Less(CharacterParts.Skirt(player).grayscale, CharacterParts.Lapel(player).grayscale, "the skirt is darker than the lapels");
+                Assert.IsTrue(CharacterParts.IsPainted(CharacterParts.SkirtPart));
+                AssertColor(CharacterParts.ColorFor("blouse"), PartColor(woman, "blouse"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void TheFiguresMovesStartAndEndAtRest()
+        {
+            (float height, float spin) = CharacterMotion.CheerPose(0f);
+            Assert.That(height, Is.EqualTo(0f).Within(1e-4f));
+            Assert.That(spin, Is.EqualTo(0f).Within(1e-3f));
+            (height, spin) = CharacterMotion.CheerPose(1f);
+            Assert.That(height, Is.EqualTo(0f).Within(1e-4f), "lands again");
+            Assert.That(spin, Is.EqualTo(360f).Within(1e-3f), "a full turn, so the figure faces the camera again");
+            float highest = 0f;
+            for (float t = 0f; t <= 1f; t += 0.01f) highest = Mathf.Max(highest, CharacterMotion.CheerPose(t).Height);
+            Assert.That(highest, Is.EqualTo(CharacterMotion.CheerHeight).Within(0.01f));
+
+            (float slump, float shake) = CharacterMotion.SulkPose(0f);
+            Assert.That(slump, Is.EqualTo(0f).Within(1e-4f));
+            Assert.That(CharacterMotion.SulkPose(0.5f).Slump, Is.EqualTo(1f).Within(1e-4f), "slumped in the middle");
+            (slump, shake) = CharacterMotion.SulkPose(1f);
+            Assert.That(slump, Is.EqualTo(0f).Within(1e-4f), "and standing up again");
+            Assert.That(shake, Is.EqualTo(0f).Within(1e-4f));
+            float widest = 0f;
+            for (float t = 0f; t <= 1f; t += 0.005f) widest = Mathf.Max(widest, Mathf.Abs(CharacterMotion.SulkPose(t).Shake));
+            Assert.That(widest, Is.InRange(CharacterMotion.SulkShakeDegrees * 0.6f, CharacterMotion.SulkShakeDegrees + 0.01f), "a visible shake of the head");
+
+            for (float time = 0f; time < 4f; time += 0.1f) Assert.That(CharacterMotion.Breath(time, 0.3f), Is.InRange(1f - CharacterMotion.BreathDepth, 1f + CharacterMotion.BreathDepth));
+            Assert.AreEqual((0f, 0f), CharacterMotion.WalkPose(0f, 1.3f), "no lean when standing");
+            Assert.That(CharacterMotion.WalkPose(1f, 0f).Lean, Is.EqualTo(CharacterMotion.WalkLeanDegrees));
+
+            Assert.AreEqual(1, GameSceneController.Reaction(200), "passing start is worth a cheer");
+            Assert.AreEqual(-1, GameSceneController.Reaction(-120), "rent is worth a sulk");
+            Assert.AreEqual(0, GameSceneController.Reaction(-20), "small change is not");
         }
 
         [TestCase(BoardCameraRig.BaseYaw)]
