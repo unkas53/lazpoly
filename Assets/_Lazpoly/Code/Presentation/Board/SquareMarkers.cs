@@ -5,10 +5,9 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
-    /// Marks on the board's squares, drawn flat on the tiles: the square a pawn is about to walk to (a
-    /// bold ring in the mover's colour, shown from the moment the dice settle), and
-    /// the squares the person here may click now (rings that breathe: where a ride may go, which towns
-    /// may be sold for a debt). Only looks; the HUD decides what is marked.
+    /// Marks on the board's squares: the square a pawn is about to walk to (it glows in the mover's
+    /// colour from the moment the dice settle until the pawn arrives), and rings that breathe on the
+    /// towns that may be sold for a debt. Only looks; the HUD decides what is marked.
     /// </summary>
     public sealed class SquareMarkers : MonoBehaviour
     {
@@ -24,18 +23,9 @@ namespace Lazpoly.Presentation.Tabletop
         private const float RingInner = 0.74f;
         private const float RingThickness = 0.035f;
 
-        /// <summary>
-        /// The target ring is wider and bolder than a choice ring. It lies flat on the tile: anything
-        /// standing above the square (an arrow was tried) falls on a neighbouring square on screen,
-        /// because the camera looks down at a slant.
-        /// </summary>
-        public const float TargetScale = 1.1f;
-        private const float TargetInner = 0.55f;
 
         private BoardView _board;
         private float _radius;
-        private GameObject _target;
-        private GameObject _targetRing;
         private readonly List<GameObject> _choices = new List<GameObject>();
         private readonly List<int> _choiceSquares = new List<int>();
 
@@ -55,25 +45,20 @@ namespace Lazpoly.Presentation.Tabletop
             return markers;
         }
 
-        /// <summary>Marks where a pawn will stop, in its player's colour; a new target replaces the old one.</summary>
+        /// <summary>
+        /// Marks where a pawn will stop: the square glows and fades in a beat, tinted with its player's
+        /// colour (<see cref="BoardView.Glow"/>); a new target replaces the old one. A ring and an arrow
+        /// were tried first; the owner preferred the square itself lighting up.
+        /// </summary>
         public void ShowTarget(int square, Color color)
         {
-            if (_target == null)
-            {
-                _target = new GameObject("Target");
-                _target.transform.SetParent(transform, false);
-                _targetRing = ModelParts.Create("Target ring", _target.transform, MeshFactory.Ring(TargetInner, RingThickness * 1.5f), color, 0.4f);
-            }
-
-            ModelParts.Paint(_targetRing, color, 0.4f);
-            Place(_target, square);
-            _target.SetActive(true);
+            _board.Glow(square, color);
             Target = square;
         }
 
         public void HideTarget()
         {
-            if (_target != null) _target.SetActive(false);
+            _board.StopGlow();
             Target = -1;
         }
 
@@ -94,12 +79,6 @@ namespace Lazpoly.Presentation.Tabletop
         private void Update()
         {
             float time = Time.unscaledTime;
-            if (_target != null && _target.activeSelf)
-            {
-                float size = _radius * TargetScale * (1f + 0.05f * Mathf.Sin(time * 5f));
-                _targetRing.transform.localScale = new Vector3(size, 1f, size);
-            }
-
             float breath = 1f + 0.06f * Mathf.Sin(time * 3.5f);
             foreach (GameObject ring in _choices)
             {

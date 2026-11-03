@@ -153,14 +153,16 @@ namespace Lazpoly.PlayTests
             Assert.IsNotNull(Find(hud.transform, "ZAR AT"), "Rolling keeps its big button.");
             Assert.IsNull(hud.BoardChoices(controller.Session.State), "Nothing is chosen on the board at the start of a turn.");
 
-            // The rings over the squares: one target at a time, and any number of choices.
+            // The target square glows (one at a time); the sale's choices are ringed.
             Lazpoly.Presentation.Tabletop.SquareMarkers markers = controller.Markers;
             markers.ShowTarget(5, Color.red);
             Assert.AreEqual(5, markers.Target);
+            Assert.AreEqual(5, controller.Board.GlowingSquare, "The square itself lights up.");
             markers.ShowTarget(7, Color.blue);
-            Assert.AreEqual(7, markers.Target, "A new target replaces the old one.");
+            Assert.AreEqual(7, controller.Board.GlowingSquare, "A new target replaces the old one.");
             markers.HideTarget();
             Assert.AreEqual(-1, markers.Target);
+            Assert.AreEqual(-1, controller.Board.GlowingSquare);
             markers.ShowChoices(new[] { 1, 2, 3 });
             Assert.AreEqual(3, markers.Choices.Count);
             markers.ShowChoices(null);

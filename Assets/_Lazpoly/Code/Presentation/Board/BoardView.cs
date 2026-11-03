@@ -191,17 +191,64 @@ namespace Lazpoly.Presentation.Tabletop
             return Physics.Raycast(ray, out RaycastHit hit, 500f) && _squareOfCollider.TryGetValue(hit.collider, out squareIndex);
         }
 
-        /// <summary>Lights up these squares and dims the rest; null or empty shows the board normally.</summary>
-        public void Highlight(ICollection<int> squares)
+        /// <summary>How far the squares outside a choice darken towards black (<see cref="Highlight"/> with dimOthers).</summary>
+        public const float DimAmount = 0.55f;
+
+        /// <summary>How bright a glowing square gets at the top of its pulse, and how many pulses a second.</summary>
+        public const float GlowAmount = 0.75f;
+        public const float GlowPulsesPerSecond = 1.6f;
+
+        private bool _dimOthers;
+        private int _glowSquare = -1;
+        private Color _glowColor;
+
+        /// <summary>The square that glows now (<see cref="Glow"/>); -1 when none does.</summary>
+        public int GlowingSquare => _glowSquare;
+
+        /// <summary>
+        /// Lights up these squares; null or empty shows the board normally. With <paramref name="dimOthers"/>
+        /// the rest of the board goes dark, for a choice where only the lit squares may be picked (a ride).
+        /// Otherwise the rest keeps its colour: a hovered group darkening the board reads as a mistake.
+        /// </summary>
+        public void Highlight(ICollection<int> squares, bool dimOthers = false)
         {
             _highlighted = squares == null || squares.Count == 0 ? null : new HashSet<int>(squares);
-            for (int i = 0; i < _tiles.Length; i++)
-            {
-                Color color = _tileColors[i];
-                // Only the group lights up; the rest of the board keeps its colour (fading it reads as a mistake).
-                if (_highlighted != null && _highlighted.Contains(i)) color = Color.Lerp(color, Color.white, 0.25f);
-                PaintTile(_tiles[i], color);
-            }
+            _dimOthers = dimOthers && _highlighted != null;
+            for (int i = 0; i < _tiles.Length; i++) PaintTile(_tiles[i], ShownTileColor(i));
+        }
+
+        /// <summary>
+        /// Makes a square swell bright and fade again, over and over, tinted towards <paramref name="color"/>
+        /// (where a pawn is about to stop). One square glows at a time; <see cref="StopGlow"/> ends it.
+        /// </summary>
+        public void Glow(int square, Color color)
+        {
+            if (_glowSquare >= 0 && _glowSquare != square) PaintTile(_tiles[_glowSquare], ShownTileColor(_glowSquare));
+            _glowSquare = square >= 0 && square < _tiles.Length ? square : -1;
+            _glowColor = Color.Lerp(Color.white, color, 0.35f);
+        }
+
+        public void StopGlow()
+        {
+            if (_glowSquare >= 0) PaintTile(_tiles[_glowSquare], ShownTileColor(_glowSquare));
+            _glowSquare = -1;
+        }
+
+        /// <summary>A tile's colour with the current highlight: lit when chosen, dark when a choice leaves it out.</summary>
+        private Color ShownTileColor(int square)
+        {
+            Color color = _tileColors[square];
+            if (_highlighted == null) return color;
+            if (_highlighted.Contains(square)) return Color.Lerp(color, Color.white, _dimOthers ? 0.35f : 0.25f);
+            return _dimOthers ? Color.Lerp(color, Color.black, DimAmount) : color;
+        }
+
+        private void Update()
+        {
+            if (_glowSquare < 0) return;
+            // A soft beat: up to full brightness and back to the tile's own colour, never below it.
+            float beat = 0.5f - 0.5f * Mathf.Cos(Time.unscaledTime * GlowPulsesPerSecond * 2f * Mathf.PI);
+            PaintTile(_tiles[_glowSquare], Color.Lerp(ShownTileColor(_glowSquare), _glowColor, GlowAmount * beat));
         }
 
         /// <summary>Shows what the pot holds under the dice score (boards without a pot show nothing).</summary>

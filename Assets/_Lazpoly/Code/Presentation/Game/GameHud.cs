@@ -707,7 +707,10 @@ namespace Lazpoly.Presentation.Game
             return _choices;
         }
 
-        /// <summary>Rings and lights the squares of the board's choice, redrawn only when they change.</summary>
+        /// <summary>
+        /// Shows the board's choice, redrawn only when it changes: for a ride the reachable squares light
+        /// up and the rest of the board goes dark; for a debt the person's towns light up and are ringed.
+        /// </summary>
         private void UpdateBoardChoices(GameState state)
         {
             List<int> choices = state == null ? null : BoardChoices(state);
@@ -720,10 +723,11 @@ namespace Lazpoly.Presentation.Game
 
             if (key == _choicesKey) return;
             _choicesKey = key;
-            _controller.Markers?.ShowChoices(choices);
+            bool ride = choices != null && ChoosingRide(state);
+            _controller.Markers?.ShowChoices(ride ? null : choices);
             // The group light under the mouse is drawn again from scratch once the choice is over.
             _highlightedFor = ChoiceHighlight;
-            _controller.Board?.Highlight(choices);
+            _controller.Board?.Highlight(choices, dimOthers: ride);
         }
 
         /// <summary>Stands in <see cref="_highlightedFor"/> while the board lights a choice rather than a group.</summary>
@@ -1184,7 +1188,7 @@ namespace Lazpoly.Presentation.Game
             int fee = board[player.Position].Fee;
             UiBuilder card = ui.Card();
             card.Label(F($"{board[player.Position].Name}: {fee} ödeyip istediğin kareye gidebilirsin."));
-            card.Label(L("Tahtada halkalı karelerden gitmek istediğine tıkla; piyon oraya yürür."), UiTextStyle.Small, UiTheme.Muted);
+            card.Label(L("Tahtada parlayan karelerden gitmek istediğine tıkla; piyon oraya yürür."), UiTextStyle.Small, UiTheme.Muted);
 
             int target = _pinnedSquare;
             var travel = new TravelCommand(player.Id, target);
