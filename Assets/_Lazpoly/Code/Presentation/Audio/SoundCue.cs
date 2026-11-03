@@ -79,7 +79,7 @@ namespace Lazpoly.Presentation.Audio
         /// <summary>The clip's path under a Resources folder, e.g. "Lazpoly/Sfx/dice_shake"; null for <see cref="SoundCue.None"/>.</summary>
         public static string ResourcePath(SoundCue cue) => cue == SoundCue.None ? null : Folder + FileName(cue);
 
-        /// <summary>File name without extension: the cue's name in snake_case, as Tools/Audio/make_sfx.py writes it.</summary>
+        /// <summary>File name without extension: the cue's name in snake_case, as Tools/Audio/make_sfx_kenney.py writes it.</summary>
         public static string FileName(SoundCue cue)
         {
             string name = cue.ToString();
@@ -95,7 +95,7 @@ namespace Lazpoly.Presentation.Audio
         }
 
         /// <summary>
-        /// How many takes of a cue Tools/Audio/make_sfx.py writes: the first is <see cref="FileName"/>, the
+        /// How many takes of a cue Tools/Audio/make_sfx_kenney.py writes: the first is <see cref="FileName"/>, the
         /// others add "_2", "_3"... The frequent sounds have several, so a long game does not repeat one sample.
         /// </summary>
         public static int Variants(SoundCue cue)
@@ -103,9 +103,9 @@ namespace Lazpoly.Presentation.Audio
             switch (cue)
             {
                 case SoundCue.PawnStep: return 4;
+                case SoundCue.DiceShake:
                 case SoundCue.DiceLand:
                 case SoundCue.UiClick: return 3;
-                case SoundCue.DiceShake:
                 case SoundCue.MoneyIn:
                 case SoundCue.MoneyOut:
                 case SoundCue.Build: return 2;

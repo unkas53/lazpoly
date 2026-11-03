@@ -83,5 +83,7 @@ beyan edilecek içerik:
 | Logo (ana menü bandı, tahtanın çimenliği, açılış ekranı, exe simgesi) | `Tools/Art/Logo`, oyunda `logo.bytes` | Proje sahibi ChatGPT ile üretti; kaynaktaki portre oyun kopyasında boyanarak kaldırıldı (`KAYNAK.md`) |
 | Ana menü / lobi konsept ekranları | `Tools/Art/Design/Menu` | Yalnız başvuru (ChatGPT); oyunda yalnızca düzen ve tarz kodla kuruldu, görsel kullanılmadı |
 
+Ses efektleri yapay zekâ ürünü değildir: Kenney'nin CC0 kayıtlarından kurulur (`Tools/Audio/Kenney/KAYNAK.md`), beyan gerekmez.
+
 Başvurudan önce üretim araçlarının (ChatGPT, Higgsfield) kullanım koşullarının ticari kullanıma izin verdiği kontrol
 edilir. Listeye yeni üretilmiş içerik eklendikçe bu tablo güncellenir.

@@ -158,7 +158,7 @@ namespace Lazpoly.Presentation.Audio
             if (first == null)
             {
                 _missing.Add(cue);
-                Debug.LogWarning($"[Lazpoly] Sound '{SoundCues.ResourcePath(cue)}' is missing; run Tools/Audio/make_sfx.py.");
+                Debug.LogWarning($"[Lazpoly] Sound '{SoundCues.ResourcePath(cue)}' is missing; run Tools/Audio/make_sfx_kenney.py.");
                 return null;
             }
 

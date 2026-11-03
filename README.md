@@ -209,8 +209,7 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
 ## Faz 7b: ses ve animasyon
 
 - **Sesler:** 18 kısa efekt (zar, adım, satın alma, para, inşaat, ipotek, açık artırma, takas, sıra, başarım,
-  kazanma, iflas, tıklama). Hepsi `Tools/Audio/make_sfx.py` ile koddan üretildi, yani tamamen bizim; dış paket yok.
-  Yeniden üretmek için: `python Tools/Audio/make_sfx.py` (numpy gerekir). Müzik daha sonra.
+  kazanma, iflas, tıklama). (Faz 13c'den beri Kenney CC0 kayıtları, `Tools/Audio/make_sfx_kenney.py`; önceden `make_sfx.py` ile sentezleniyordu.) Müzik daha sonra.
 - **Hangi olay hangi ses:** `Audio/SoundCues.For` tek yerde karar verir ve test edilir. Bir eylem birden çok olay
   üretse de bir kez ses çıkar (satın alma ödemede çalar, kira ödeyen tarafta).
 - **Çalıcı:** `AudioPlayer` oyun boyunca yaşar, 10 sesli bir havuzdan çalar, tekrarlanan seslerin perdesini biraz
@@ -734,6 +733,12 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Ağ protokolü 9: eski sürümle aynı odada oynanamaz. Durum özeti 7, masa düzeni 3, kayıt biçimi 7. Eski kayıtlar (biçim 1-6) yine açılır: açık artırma alanları okunup atılır. Açık artırma sürerken kaydedilmiş bir oyun ise açılmaz (o evre artık yok). Steam lobisi kuralları "para,tur,süre" olarak yazar.
 - Testler: `GameEngineTests.ADeclinedSquareStaysWithTheBankAndTheMoveGoesOn`, `EconomyTests.ABankruptPlayersSquaresGoBackToTheBankForTheNextVisitor`, `NetworkSessionTests.ADeclinedSquareStaysWithTheBankOnEveryMachine`, `LocalGameAndSaveTests.SavesFromTheAuctionVersionsStillOpenAndResume` (biçim 5 ve 6), `MessageCodecTests.TheTableTravelsWithItsTimingAndOldLayoutsStillRead`, `AiPlayerTests.AnOpenTradeWaitsOnlyForItsAnswer`. Açık artırmayı deneyen testler kaldırıldı.
 - `Reports/Balance` altındaki eski denge raporları açık artırmalı kurallarla üretildi; bir sonraki denge koşusunda yenilenecek.
+
+## Faz 13c: gerçek kayıtlarla sesler
+
+- Sentezlenen sesler (12e) beğenilmedi; yerlerine Kenney'nin CC0 kayıtları geldi (`Tools/Audio/Kenney`, lisanslar ve kaynak `KAYNAK.md`). `Tools/Audio/make_sfx.py` silindi; `Tools/Audio/make_sfx_kenney.py` her olayın sesini bir ya da birkaç kayıttan kurar (ffmpeg + numpy), aynı duyulur yüksekliğe getirir, sık seslerde kısar.
+- Zar: kupada sallanan zarlar (3 çekim, zar animasyonu kadar 0,8 sn) ve masaya düşen zarlar (3 çekim). Piyon adımı: tahtaya konan tahta piyon (4 çekim). Para: bozuk para şıngırtısı (gelir) ve masaya konan fişler (gider). Satın alma: tapu kartı + para + kısa pizzicato. Ev: iki çekiç vuruşu; otel: ağır vuruşlar ve yükselen pizzicato. Satış, takas, kart ve pencere: kart kayması / bırakılması. Sıra sende, başarım, başlangıçtan geçiş ve iflas: aynı pizzicato çalgısından kısa ezgiler; kazanma: çelik davul.
+- Testler: `SoundCuesTests` her çekimin yüklendiğini denetliyor; tıklama gerçekte birkaç yüzde bir saniye sürdüğü için alt sınır 0,1 sn'den 0,03 sn'ye indi. Zar sallama artık 3 çekim.
 
 ## Kurallar
 

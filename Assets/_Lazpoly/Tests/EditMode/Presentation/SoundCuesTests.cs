@@ -96,8 +96,9 @@ namespace Lazpoly.Presentation.Tests
                 for (int i = 0; i < SoundCues.Variants(cue); i++)
                 {
                     AudioClip clip = Resources.Load<AudioClip>(SoundCues.VariantPath(cue, i));
-                    Assert.IsNotNull(clip, $"missing take {i + 1} of {cue}; run Tools/Audio/make_sfx.py");
-                    Assert.That(clip.length, Is.InRange(0.1f, 3.5f), $"{cue} take {i + 1}");
+                    Assert.IsNotNull(clip, $"missing take {i + 1} of {cue}; run Tools/Audio/make_sfx_kenney.py");
+                    // A real click lasts a few hundredths of a second; anything shorter is an empty or broken file.
+                    Assert.That(clip.length, Is.InRange(0.03f, 3.5f), $"{cue} take {i + 1}");
                 }
             }
         }
