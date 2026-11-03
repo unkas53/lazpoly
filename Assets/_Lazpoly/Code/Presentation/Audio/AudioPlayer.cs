@@ -117,8 +117,8 @@ namespace Lazpoly.Presentation.Audio
             AudioClip[] takes = ClipsFor(cue);
             if (takes == null) return;
             _lastPlayed[cue] = now;
-            int last = _lastVariant.TryGetValue(cue, out int previous) ? previous : -1;
-            int variant = SoundCues.PickVariant(takes.Length, last, Random.value);
+            int lastTake = _lastVariant.TryGetValue(cue, out int previous) ? previous : -1;
+            int variant = SoundCues.PickVariant(takes.Length, lastTake, Random.value);
             _lastVariant[cue] = variant;
             AudioClip clip = takes[variant];
 
