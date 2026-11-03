@@ -177,7 +177,7 @@ namespace Lazpoly.Core.Tests
         // ---- Rides ----
 
         [Test]
-        public void ARidePaysTheFareAndLandsOnTheChosenSquare()
+        public void ARidePaysTheFareAndWalksToTheChosenSquare()
         {
             GameEngine engine = NewGame(Board(), 3, 4);
             Accept(engine, new RollDiceCommand(Alice));
@@ -189,13 +189,42 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new TravelCommand(Bob, P3)));
             Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new EndTurnCommand(Alice)));
 
-            CommandResult result = Accept(engine, new TravelCommand(Alice, P1));
+            CommandResult result = Accept(engine, new TravelCommand(Alice, P3));
             PlayerMovedEvent move = result.Events.OfType<PlayerMovedEvent>().Single();
-            Assert.AreEqual(MoveKind.Jump, move.Kind);
-            Assert.IsFalse(move.PassedStart, "A ride does not count as passing start.");
+            Assert.AreEqual(MoveKind.Walk, move.Kind, "The pawn walks there square by square, as after a roll.");
+            Assert.AreEqual(Ride, move.FromSquare);
+            Assert.IsFalse(move.PassedStart);
             Assert.AreEqual(950, Player(engine, Alice).Money);
-            Assert.AreEqual(P1, Player(engine, Alice).Position);
+            Assert.AreEqual(P3, Player(engine, Alice).Position);
             Assert.AreEqual(GamePhase.AwaitingBuyDecision, engine.State.Phase);
+        }
+
+        [Test]
+        public void ARideRoundPastStartCollectsTheBonus()
+        {
+            GameEngine engine = NewGame(Board(), 3, 4);
+            Accept(engine, new RollDiceCommand(Alice));
+
+            CommandResult result = Accept(engine, new TravelCommand(Alice, P1));
+            Assert.IsTrue(result.Events.OfType<PlayerMovedEvent>().Single().PassedStart);
+            Assert.IsTrue(result.Events.OfType<MoneyChangedEvent>().Any(e => e.Reason == MoneyReason.PassedStart && e.Delta == 200));
+            Assert.AreEqual(1000 - 50 + 200, Player(engine, Alice).Money);
+        }
+
+        [Test]
+        public void ARideNeverEndsOnAnotherPlayersTown()
+        {
+            GameEngine engine = NewGame(Board(), 3, 4);
+            GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(P3, GameState.NoOwner, Bob));
+            GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(P2, GameState.NoOwner, Alice));
+            Accept(engine, new RollDiceCommand(Alice));
+
+            Assert.AreEqual(RejectionReason.InvalidSquare, Reason(engine, new TravelCommand(Alice, P3)), "Bob's town is off the ride map.");
+            Assert.IsTrue(GameRules.IsRideDestination(engine.Board, engine.State, Player(engine, Alice), P2), "Her own town is fine.");
+            Assert.IsTrue(GameRules.IsRideDestination(engine.Board, engine.State, Player(engine, Alice), PotSquare), "So are the special squares.");
+            Assert.IsTrue(GameRules.IsRideDestination(engine.Board, engine.State, Player(engine, Alice), P1), "And free towns.");
+            Accept(engine, new TravelCommand(Alice, P2));
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
         }
 
         [Test]

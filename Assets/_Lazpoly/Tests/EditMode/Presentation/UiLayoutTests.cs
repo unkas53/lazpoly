@@ -7,7 +7,7 @@ namespace Lazpoly.Presentation.Tests
 {
     /// <summary>
     /// The screen sizes the game is meant to run on, at every interface size: the board must keep
-    /// room beside the dock and every window must fit with a margin.
+    /// room at its sides and every window must fit with a margin.
     /// </summary>
     public class UiLayoutTests
     {
@@ -38,9 +38,9 @@ namespace Lazpoly.Presentation.Tests
         {
             Assert.AreEqual(1f, UiLayout.CanvasScale(1920, 1080), 0.001f);
             Assert.AreEqual(2f, UiLayout.CanvasScale(3840, 2160), 0.001f);
-            Assert.AreEqual(UiLayout.DockWidth + 2f * UiLayout.Margin, UiLayout.ReservedSidePixels(1f));
-            Assert.Less(UiLayout.DockWidth, UiLayout.CornerWidth, "the dock is slimmer than a corner card");
-            Assert.AreEqual(UiLayout.ReservedSidePixels(1f), UiLayout.RightInset, "the right-hand cards start where the board's reserve ends");
+            Assert.AreEqual(UiLayout.SideReserve, UiLayout.ReservedSidePixels(1f));
+            Assert.AreEqual(2f * UiLayout.SideReserve, UiLayout.ReservedSidePixels(2f));
+            Assert.AreEqual(UiLayout.Margin, UiLayout.RightInset, "without the dock the right-hand cards sit at the same margin as the left-hand ones");
         }
 
         [Test]

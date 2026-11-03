@@ -163,7 +163,10 @@ namespace Lazpoly.App.Balance
                         case PlayerMovedEvent moved:
                             _positions[moved.PlayerId] = moved.ToSquare;
                             _result.Landings[moved.ToSquare]++;
-                            if (moved.Kind == MoveKind.Jump) _result.Rides++;
+                            break;
+
+                        case MoneyChangedEvent money when money.Reason == MoneyReason.Travel:
+                            _result.Rides++;
                             break;
 
                         case MoneyChangedEvent money when money.Reason == MoneyReason.Rent && money.Delta < 0:

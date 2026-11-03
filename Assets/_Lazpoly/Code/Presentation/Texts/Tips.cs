@@ -56,7 +56,7 @@ namespace Lazpoly.Presentation.Texts
             return Offer(TipId.Debt, myTurn && state.Phase == GamePhase.AwaitingDebtPayment,
                        L("Borcunu ödeyecek kadar paran yok. Bina ya da mülk satarak para bul; bulamazsan iflas edersin."))
                    ?? Offer(TipId.Travel, myTurn && state.Phase == GamePhase.AwaitingTravelDecision,
-                       F($"Otogardasın. Tahtada bir kareye tıkla ve {board[me.Position].Fee} ödeyerek oraya git. İstemezsen \"Burada kal\"."))
+                       F($"Otogardasın. Tahtada halkalı karelerden birine tıkla ve {board[me.Position].Fee} ödeyerek oraya yürü. İstemezsen \"Burada kal\"."))
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,
                        L("Seyir Terası sayesinde iki kez attın. Düğmelerde her atışın seni nereye götüreceği yazıyor; birini seç."))
                    ?? Offer(TipId.BuyOrDecline, myTurn && state.Phase == GamePhase.AwaitingBuyDecision,
@@ -68,7 +68,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
                        F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
                    ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasSellable(board, state, playerId),
-                       L("Paran azaldı. Bir ödemeye yetmezse satış listesi açılır: mülkünü bankaya satabilirsin, banka fiyatın yarısını öder."))
+                       L("Paran azaldı. Bir ödemeye yetmezse şehirlerin haritada halkalanır: tıkladığını bankaya satarsın, banka fiyatın yarısını öder."))
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
                        F($"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır."))
                    ?? Offer(TipId.Trade, myTurn && state.Phase == GamePhase.WaitingForRoll && state.Round >= 3,

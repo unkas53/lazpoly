@@ -91,7 +91,7 @@ namespace Lazpoly.Core.Engine
                 {
                     RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingTravelDecision);
                     if (turn != RejectionReason.None) return turn;
-                    if (c.SquareIndex < 0 || c.SquareIndex >= board.Count || c.SquareIndex == player.Position) return RejectionReason.InvalidSquare;
+                    if (!IsRideDestination(board, state, player, c.SquareIndex)) return RejectionReason.InvalidSquare;
                     return player.Money >= board[player.Position].Fee ? RejectionReason.None : RejectionReason.InsufficientFunds;
                 }
 
@@ -153,6 +153,18 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>Whether the square carries houses or a hotel; such a town cannot be traded.</summary>
         public static bool HasBuildings(GameState state, int squareIndex) => state.GetBuildingLevel(squareIndex) > 0;
+
+        /// <summary>
+        /// Where a ride from the bus station may go: any other square on the board but a town another
+        /// player owns (the ride is not a way to pay someone's rent on purpose, nor to land on their
+        /// buildings). Free towns, one's own towns and the special squares are all fine.
+        /// </summary>
+        public static bool IsRideDestination(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
+        {
+            if (squareIndex < 0 || squareIndex >= board.Count || squareIndex == player.Position) return false;
+            int owner = state.GetOwner(squareIndex);
+            return board[squareIndex].Type != SquareType.Property || owner == GameState.NoOwner || owner == player.Id;
+        }
 
         /// <summary>
         /// What a player is worth when a round-limited game is scored: money, plus each property at

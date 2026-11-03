@@ -43,7 +43,10 @@ namespace Lazpoly.Core.Events
         /// <summary>Backward square by square; never passes start.</summary>
         Back = 1,
 
-        /// <summary>Straight to the square (a ride from a travel square).</summary>
+        /// <summary>
+        /// Straight to the square. Rides used this until they became walks (Faz 15b); the engine no longer
+        /// emits it, and it keeps its number so events stay readable on the wire.
+        /// </summary>
         Jump = 2,
     }
 

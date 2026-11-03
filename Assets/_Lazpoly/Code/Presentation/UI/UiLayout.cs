@@ -13,14 +13,15 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Width of a player's card in a corner of the game screen.</summary>
         public const float CornerWidth = 300f;
 
-        /// <summary>Diameter of the round buttons in the dock at the right edge of the game screen.</summary>
+        /// <summary>Diameter of a big round button with a caption under it.</summary>
         public const float DockButton = 64f;
 
-        /// <summary>Padding inside the dock's panel.</summary>
-        public const float DockPadding = 8f;
-
-        /// <summary>Width of the dock: a round button with room for its caption, inside the panel's padding.</summary>
-        public const float DockWidth = DockButton + 36f + 2f * DockPadding;
+        /// <summary>
+        /// Reference pixels kept clear of the board at each side edge. The game screen once had a dock of
+        /// buttons on the right that took this much (with its margins); the board keeps the framing it had
+        /// then, so it stays clear of the corner cards at every supported screen.
+        /// </summary>
+        public const float SideReserve = 148f;
 
         /// <summary>Gap between the screen edge and a panel, and between panels.</summary>
         public const float Margin = 16f;
@@ -43,13 +44,13 @@ namespace Lazpoly.Presentation.UI
         public const float RollPromptDrop = 170f;
 
         /// <summary>
-        /// Screen pixels kept clear of the board at each side edge: the dock's width with its margins. The
-        /// corner cards sit in the empty triangles beside the diamond-shaped board, so they reserve nothing.
+        /// Screen pixels kept clear of the board at each side edge (<see cref="SideReserve"/>). The corner
+        /// cards sit in the empty triangles beside the diamond-shaped board, so they reserve nothing more.
         /// </summary>
-        public static float ReservedSidePixels(float canvasScale) => RightInset * canvasScale;
+        public static float ReservedSidePixels(float canvasScale) => SideReserve * canvasScale;
 
-        /// <summary>Where the right-hand corner cards and windows end: left of the dock and its margins, so nothing stacks on the buttons.</summary>
-        public const float RightInset = DockWidth + 2f * Margin;
+        /// <summary>How far in from the right edge the right-hand corner cards sit: the same margin as on the left.</summary>
+        public const float RightInset = Margin;
 
         /// <summary>
         /// The factor the canvas scaler applies for a screen of this size: the geometric mean of

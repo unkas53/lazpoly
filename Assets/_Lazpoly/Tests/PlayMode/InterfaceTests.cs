@@ -91,12 +91,14 @@ namespace Lazpoly.PlayTests
             int soundsBefore = AudioPlayer.PlayedCount;
             // Building is put off; rides are declined; of the two lookout rolls the first is taken (its
             // button starts with a die); a debt is paid when the cash is there, else sold for automatically.
-            string[] order = { "Zar At", "Devam Et", "Şimdi Değil", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "Otomatik Sat" };
+            string[] order = { "ZAR AT", "Devam Et", "Şimdi Değil", "Burada kal", "1 +", "2 +", "3 +", "4 +", "5 +", "6 +", "Borcu Öde", "Otomatik Sat" };
             float started = Time.realtimeSinceStartup;
+            bool sawTarget = false;
             while (controller.Session.State.TurnNumber < 6 && controller.Session.State.Phase != GamePhase.GameOver)
             {
                 Assert.Less(Time.realtimeSinceStartup - started, 120f, "The HUD stopped offering a way forward.");
                 yield return null; // Let the HUD redraw for the latest state.
+                sawTarget |= controller.Markers.Target >= 0;
                 if (controller.IsBusy) continue;
 
                 foreach (string label in order)
@@ -108,6 +110,7 @@ namespace Lazpoly.PlayTests
             }
 
             Assert.That(controller.Session.State.TurnNumber, Is.GreaterThanOrEqualTo(6));
+            Assert.IsTrue(sawTarget, "No roll marked the square the pawn was walking to.");
             Assert.Greater(AudioPlayer.PlayedCount, soundsBefore, "Playing turns made no sound.");
 
             // Once every event is shown, the money on screen is the real money.
@@ -130,6 +133,42 @@ namespace Lazpoly.PlayTests
             }
 
             Assert.IsTrue(shown, $"The card for '{name}' is not on screen.");
+        }
+
+        [UnityTest]
+        public IEnumerator TheSideDockIsGoneAndTheBottomStripKeepsTheMenu()
+        {
+            LocalGameSetup.SetSeats(LocalGameSetup.DefaultSeats(2));
+            SceneManager.LoadScene("Game");
+            yield return null;
+            yield return null;
+
+            var controller = Object.FindAnyObjectByType<GameSceneController>();
+            var hud = controller.GetComponent<GameHud>();
+            while (controller.IsBusy) yield return null;
+
+            Assert.IsNull(GameObject.Find("Dock"), "The round buttons at the right edge are gone.");
+            AssertMouseReaches("Menü");
+            AssertMouseReaches("Mülkler");
+            Assert.IsNotNull(Find(hud.transform, "ZAR AT"), "Rolling keeps its big button.");
+            Assert.IsNull(hud.BoardChoices(controller.Session.State), "Nothing is chosen on the board at the start of a turn.");
+
+            // The rings over the squares: one target at a time, and any number of choices.
+            Lazpoly.Presentation.Tabletop.SquareMarkers markers = controller.Markers;
+            markers.ShowTarget(5, Color.red);
+            Assert.AreEqual(5, markers.Target);
+            markers.ShowTarget(7, Color.blue);
+            Assert.AreEqual(7, markers.Target, "A new target replaces the old one.");
+            markers.HideTarget();
+            Assert.AreEqual(-1, markers.Target);
+            markers.ShowChoices(new[] { 1, 2, 3 });
+            Assert.AreEqual(3, markers.Choices.Count);
+            markers.ShowChoices(null);
+            Assert.AreEqual(0, markers.Choices.Count);
+
+            Assert.IsTrue(Press(hud.transform, "Menü"));
+            yield return null;
+            Assert.IsTrue(hud.PauseOpen, "The menu button opens the menu.");
         }
 
         [UnityTest]

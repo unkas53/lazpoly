@@ -84,7 +84,7 @@ namespace Lazpoly.Presentation.Texts
                 {
                     var info = new SquareInfo(L(square.Name), L("Yolculuk"));
                     info.Rows.Add(new SquareInfoRow(L("Bilet"), square.Fee.ToString()));
-                    info.Notes.Add(L("Buraya gelen isterse bileti ödeyip tahtadaki herhangi bir kareye gider."));
+                    info.Notes.Add(L("Buraya gelen isterse bileti ödeyip başka oyuncuların şehirleri dışındaki bir kareye yürüyerek gider."));
                     info.Notes.Add(L("Başlangıçtan geçmiş sayılmaz."));
                     return info;
                 }

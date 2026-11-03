@@ -22,9 +22,9 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
-    /// The game screen's interface around the diamond-shaped board: a player card in each corner, a
-    /// dock of round buttons at the right edge, decisions in a panel at the bottom, the newest event in
-    /// a strip under it, and windows for the log, properties, trading, settings, pausing and the end of
+    /// The game screen's interface around the diamond-shaped board: a player card in each corner, the
+    /// big roll button over the lawn, decisions in a panel at the bottom, the newest event and a few small
+    /// buttons in a strip under it, and windows for the log, properties, trading, settings, pausing and the end of
     /// the game. It offers only actions <see cref="GameSceneController.IsAllowed"/> approves; the host
     /// still validates them. Keyboard shortcuts (<see cref="Hotkeys"/>) press the same buttons.
     /// </summary>
@@ -34,14 +34,13 @@ namespace Lazpoly.Presentation.Game
         private const float Margin = UiLayout.Margin;
 
         /// <summary>Width of the stack at the bottom centre: the hint, the decision panel and the event strip.</summary>
-        public const float BottomWidth = 600f;
+        public const float BottomWidth = 700f;
 
         private GameSceneController _controller;
         private TradePanel _trade;
         private SettingsPanel _settings;
         private Canvas _canvas;
         private readonly UiView[] _corners = new UiView[4];
-        private UiView _dock;
         private UiView _turn;
         private RectTransform _turnPanel;
         private RectTransform _bottom;
@@ -119,11 +118,10 @@ namespace Lazpoly.Presentation.Game
         private const float WindowListHeight = 420f;
 
         /// <summary>The debt card's sale list: about five properties before it scrolls.</summary>
-        private const float DebtSalesHeight = 200f;
         /// <summary>The corner card of the player on turn: a wash of the masthead green, clearly greener than the cream cards and still light enough for dark ink.</summary>
         public static readonly Color CurrentCardColor = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.56f);
 
-        /// <summary>Screen pixels the dock covers at each side edge, margins included; the camera keeps the board clear of them.</summary>
+        /// <summary>Screen pixels kept clear of the board at each side edge (see <see cref="UiLayout.ReservedSidePixels"/>).</summary>
         public float ReservedSidePixels => UiLayout.ReservedSidePixels(_canvas != null ? _canvas.scaleFactor : 1f);
 
         /// <summary>Whether the decision panel at the bottom has something to show.</summary>
@@ -185,7 +183,6 @@ namespace Lazpoly.Presentation.Game
             _canvas = UiRoot.CreateCanvas(transform, "Game UI", 0);
 
             // A player card in each corner: 0 top left, 1 top right, 2 bottom left, 3 bottom right; seats 5-8 stack on 1-4.
-            // The right-hand cards stop short of the dock, so tall stacks never run under the buttons.
             for (int corner = 0; corner < 4; corner++)
             {
                 var anchor = new Vector2(corner % 2, corner < 2 ? 1f : 0f);
@@ -198,17 +195,6 @@ namespace Lazpoly.Presentation.Game
                 int index = corner;
                 _corners[corner] = new UiView(new UiBuilder(rect), ui => RenderCorner(ui, index));
             }
-
-            // The dock: round buttons down the right edge, centred on the board's right corner.
-            RectTransform dock = UiRoot.Rect(_canvas.transform, "Dock", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), Vector2.zero, Vector2.zero);
-            dock.pivot = new Vector2(1f, 0.5f);
-            dock.anchoredPosition = new Vector2(-Margin, 0f);
-            dock.sizeDelta = new Vector2(UiLayout.DockWidth, 0f);
-            // A dark panel behind the buttons, so their captions read on the light sky.
-            UiRoot.Background(dock, UiTheme.Panel, shadow: true);
-            UiBuilder.AddColumnLayout(dock.gameObject, (int)UiLayout.DockPadding, 6f);
-            dock.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            _dock = new UiView(new UiBuilder(dock), RenderDock);
 
             // The stack at the bottom centre: the hint on top, the decision panel, and the event strip at the very bottom.
             RectTransform bottom = UiRoot.Rect(_canvas.transform, "Bottom", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, Vector2.zero);
@@ -353,7 +339,7 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>
         /// The big "roll" button over the lawn: it pops up when the roll is this person's and goes the
-        /// moment it is pressed. The dock's die and the Space key still roll too.
+        /// moment it is pressed. Space and Enter roll too.
         /// </summary>
         private void BuildRollPrompt()
         {
@@ -554,21 +540,22 @@ namespace Lazpoly.Presentation.Game
 
         private void LateUpdate()
         {
-            if (_controller?.Session == null || _dock == null) return;
+            if (_controller?.Session == null || _ticker == null) return;
             GameState state = _controller.Session.State;
             ReadHotkeys(state);
             int revision = _controller.Revision;
 
             bool tradeOpen = state != null && !_controller.EndReason.HasValue && _trade.KeepOpen(state);
             // The pinned square is the destination of a ride, so the decision panel follows it too.
-            int key = HashCode.Combine(revision, _controller.IsBusy, _controller.EndReason, tradeOpen, _pinnedSquare);
+            // While a debt is sold on the board, the town under the mouse is named with its price on the panel.
+            int key = HashCode.Combine(revision, _controller.IsBusy, _controller.EndReason, tradeOpen, _pinnedSquare,
+                SellingOnBoard(state) ? _hoveredSquare : NoSquare);
             foreach (UiView corner in _corners) corner.Refresh(key);
-            _dock.Refresh(key);
             _turn.Refresh(key);
             // The panel shows only while there is something to decide or to say.
             bool turnShown = _turnPanel.childCount > 0;
             if (_turnPanel.gameObject.activeSelf != turnShown) _turnPanel.gameObject.SetActive(turnShown);
-            _ticker.Refresh(revision);
+            _ticker.Refresh(key);
 
             UpdateMoney();
             UpdatePointer(state);
@@ -649,7 +636,8 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>
         /// The square under the mouse (not over the interface) lights up its colour group; a left click
-        /// opens its card, or picks it as the destination while a ride is being chosen.
+        /// opens its card. While the board is a choice (<see cref="BoardChoices"/>) only the ringed squares
+        /// answer: a click picks a ride's destination, or sells the clicked town for a debt.
         /// </summary>
         private void UpdatePointer(GameState state)
         {
@@ -659,19 +647,95 @@ namespace Lazpoly.Presentation.Game
 
             bool overInterface = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             _hoveredSquare = !overInterface && board.TryGetSquare(camera.ScreenPointToRay(Input.mousePosition), out int square) ? square : NoSquare;
-            if (!overInterface && Input.GetMouseButtonDown(0)) _pinnedSquare = _hoveredSquare == _pinnedSquare ? NoSquare : _hoveredSquare;
+            if (!overInterface && Input.GetMouseButtonDown(0)) ClickSquare(state, _hoveredSquare);
             // While a ride's destination is being chosen the view leans a little towards the chosen square.
             bool choosing = ChoosingRide(state);
             _controller.CameraRig?.Peek(choosing && _pinnedSquare != NoSquare ? board.SquarePosition(_pinnedSquare) : (Vector3?)null);
         }
 
+        /// <summary>What a click on a square (or on the empty table, <see cref="NoSquare"/>) does now.</summary>
+        public void ClickSquare(GameState state, int square)
+        {
+            if (SellingOnBoard(state))
+            {
+                // Each click on one of their towns sells it to the bank; the rest of the board does nothing.
+                if (square != NoSquare && BoardChoices(state).Contains(square)) Submit(new SellPropertyCommand(state.CurrentPlayer.Id, square));
+                return;
+            }
+
+            if (ChoosingRide(state))
+            {
+                if (square == NoSquare || BoardChoices(state).Contains(square)) _pinnedSquare = square;
+                return;
+            }
+
+            _pinnedSquare = square == _pinnedSquare ? NoSquare : square;
+        }
+
         /// <summary>True while the person here picks where to ride: a click then chooses the square instead of opening its card.</summary>
         private bool ChoosingRide(GameState state) => WaitsOnPersonHere(state, GamePhase.AwaitingTravelDecision);
 
+        /// <summary>True while the person here covers a debt: their towns are ringed on the board and a click sells one.</summary>
+        public bool SellingOnBoard(GameState state) =>
+            WaitsOnPersonHere(state, GamePhase.AwaitingDebtPayment) && state.Debt != null && state.Debt.PlayerId == state.CurrentPlayer.Id;
+
+        private readonly List<int> _choices = new List<int>();
+        private int _choicesKey;
+
+        /// <summary>
+        /// The squares the person here may click on the board now: where a ride may go
+        /// (<see cref="GameRules.IsRideDestination"/>), or their own towns while a debt is sold. Null when
+        /// the board is not a choice. The list is reused; read it, don't keep it.
+        /// </summary>
+        public List<int> BoardChoices(GameState state)
+        {
+            bool ride = ChoosingRide(state);
+            bool sale = !ride && SellingOnBoard(state);
+            if (!ride && !sale) return null;
+
+            _choices.Clear();
+            BoardDefinition board = _controller.Session.Board;
+            PlayerState player = state.CurrentPlayer;
+            for (int i = 0; i < board.Count; i++)
+            {
+                bool choice = ride
+                    ? GameRules.IsRideDestination(board, state, player, i)
+                    : board[i].Type == SquareType.Property && state.GetOwner(i) == player.Id;
+                if (choice) _choices.Add(i);
+            }
+
+            return _choices;
+        }
+
+        /// <summary>Rings and lights the squares of the board's choice, redrawn only when they change.</summary>
+        private void UpdateBoardChoices(GameState state)
+        {
+            List<int> choices = state == null ? null : BoardChoices(state);
+            int key = 0;
+            if (choices != null)
+            {
+                key = HashCode.Combine(state.Phase, choices.Count) | 1;
+                foreach (int square in choices) key = HashCode.Combine(key, square);
+            }
+
+            if (key == _choicesKey) return;
+            _choicesKey = key;
+            _controller.Markers?.ShowChoices(choices);
+            // The group light under the mouse is drawn again from scratch once the choice is over.
+            _highlightedFor = ChoiceHighlight;
+            _controller.Board?.Highlight(choices);
+        }
+
+        /// <summary>Stands in <see cref="_highlightedFor"/> while the board lights a choice rather than a group.</summary>
+        private const int ChoiceHighlight = -2;
+
         private void UpdateSquareCard(GameState state, int revision)
         {
-            bool open = state != null && _pinnedSquare != NoSquare && !ChoosingRide(state);
+            bool choosing = state != null && BoardChoices(state) != null;
+            bool open = state != null && _pinnedSquare != NoSquare && !choosing;
             SetLayer(_squareLayer, _squareWindow, open, HashCode.Combine(revision, _pinnedSquare));
+            UpdateBoardChoices(state);
+            if (choosing) return;
 
             int shown = state == null ? NoSquare : _pinnedSquare != NoSquare ? _pinnedSquare : _hoveredSquare;
             if (shown == _highlightedFor || _controller.Board == null) return;
@@ -764,7 +828,11 @@ namespace Lazpoly.Presentation.Game
             RenderActions(ui, state);
         }
 
-        /// <summary>The strip at the very bottom: the round and the newest event; a click opens the whole log.</summary>
+        /// <summary>
+        /// The strip at the very bottom: the round and the newest event (a click opens the whole log), and
+        /// at its end the small buttons for the properties, a trade offer and the menu (help, settings and
+        /// the way out are there).
+        /// </summary>
         private void RenderTicker(UiBuilder ui)
         {
             GameState state = _controller.Session.State;
@@ -782,38 +850,36 @@ namespace Lazpoly.Presentation.Game
             if (entries.Count == 0)
             {
                 UiBuilder.Fix(row.Label(L("Oyun başlıyor..."), UiTextStyle.Small, UiTheme.Muted), -1f).flexibleWidth = 1f;
-                return;
+            }
+            else
+            {
+                LogEntry last = entries[entries.Count - 1];
+                Color dot = last.PlayerId == GameState.NoOwner ? Color.clear : _controller.ColorOf(last.PlayerId);
+                row.Swatch(dot, 10f, round: true).raycastTarget = false;
+                Color color = last.Tone == LogTone.Gain ? UiTheme.Gain : last.Tone == LogTone.Loss ? UiTheme.Warning : UiTheme.Text;
+                UiBuilder.Fix(row.Label(last.Text, UiTextStyle.Small, color), -1f).flexibleWidth = 1f;
             }
 
-            LogEntry last = entries[entries.Count - 1];
-            Color dot = last.PlayerId == GameState.NoOwner ? Color.clear : _controller.ColorOf(last.PlayerId);
-            row.Swatch(dot, 10f, round: true).raycastTarget = false;
-            Color color = last.Tone == LogTone.Gain ? UiTheme.Gain : last.Tone == LogTone.Loss ? UiTheme.Warning : UiTheme.Text;
-            UiBuilder.Fix(row.Label(last.Text, UiTextStyle.Small, color), -1f).flexibleWidth = 1f;
+            RenderToolbar(row, state);
         }
 
-        /// <summary>
-        /// The dock: the roll button first (the turn ends by itself, see <see cref="AutoEndTurn"/>), then the
-        /// building card, the properties, trading, the log, help and the menu. Buttons the moment does not allow stay but go grey.
-        /// </summary>
-        private void RenderDock(UiBuilder ui)
-        {
-            GameState state = _controller.Session.State;
-            bool over = state == null || state.Phase == GamePhase.GameOver || _controller.EndReason.HasValue;
-            bool acting = !over && WaitsOnPersonHere(state, state.Phase);
-            bool free = acting && OffersExtras(state);
-            if (!over)
-            {
-                int id = state.CurrentPlayer.Id;
-                ui.RoundButton(UiIcon.Dice, L("Zar At"), () => Submit(new RollDiceCommand(id)), acting && state.Phase == GamePhase.WaitingForRoll, UiButtonStyle.Primary);
-                ui.RoundButton(UiIcon.Home, L("Bina (B)"), ReopenBuildCard, free && CanReopenBuildCard(state));
-                ui.RoundButton(UiIcon.Flag, L("Mülkler"), OpenProperties, CanOpenProperties(state));
-                ui.RoundButton(UiIcon.People, L("Takas (T)"), () => _trade.Open(id), free);
-            }
+        /// <summary>Width of each small button at the end of the bottom strip.</summary>
+        public const float ToolbarButtonWidth = 104f;
 
-            ui.RoundButton(UiIcon.List, L("Olaylar"), ToggleLog);
-            ui.RoundButton(UiIcon.Book, L("Yardım (H)"), OpenHowToPlay);
-            ui.RoundButton(UiIcon.Pause, L("Menü (Esc)"), OpenPause);
+        /// <summary>
+        /// The few buttons the game screen keeps (the side dock is gone): the properties and a trade offer
+        /// while the turn is this person's to use, and the menu. Rolling has its own big button and Space;
+        /// the building card opens by itself and comes back with B.
+        /// </summary>
+        private void RenderToolbar(UiBuilder row, GameState state)
+        {
+            bool over = state == null || state.Phase == GamePhase.GameOver || _controller.EndReason.HasValue;
+            bool free = !over && WaitsOnPersonHere(state, state.Phase) && OffersExtras(state);
+            int id = over ? GameState.NoOwner : state.CurrentPlayer.Id;
+            UiBuilder.Fix(row.IconButton(UiIcon.Flag, L("Mülkler"), OpenProperties, !over && CanOpenProperties(state), height: UiTheme.SmallButtonHeight),
+                ToolbarButtonWidth);
+            UiBuilder.Fix(row.IconButton(UiIcon.People, L("Takas"), () => _trade.Open(id), free, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
+            UiBuilder.Fix(row.IconButton(UiIcon.Pause, L("Menü"), OpenPause, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
         }
 
         /// <summary>The properties window (build and sell) is for the person on turn here, at any moment that is theirs to act in.</summary>
@@ -920,7 +986,7 @@ namespace Lazpoly.Presentation.Game
             IGameSession session = _controller.Session;
             bool ai = session.IsAiPlaying(player.Id);
             bool connected = session.IsConnected(player.Id);
-            // Whose move it is shows on their card: the person here sees the dock, the others see who they wait for.
+            // Whose move it is shows on their card: the person here sees the roll button, the others see who they wait for.
             if (current && !player.IsBankrupt && !session.CanControl(player.Id)) card.Label(ai ? L("düşünüyor...") : L("oynuyor..."), UiTextStyle.Small, UiTheme.Accent);
             string tag = !_controller.IsOnline ? (ai ? L("Bilgisayar") : null)
                 : !connected ? (ai ? L("Bağlantı yok, bilgisayar oynuyor") : L("Bağlantı yok"))
@@ -974,7 +1040,7 @@ namespace Lazpoly.Presentation.Game
             if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);
         }
 
-        /// <summary>The decisions that are not a card of their own; rolling and ending the turn are on the dock, buying is on the city card.</summary>
+        /// <summary>The decisions that are not a card of their own; rolling has the big button (the turn ends by itself), buying is on the city card.</summary>
         private void RenderTurnActions(UiBuilder ui, GameState state)
         {
             PlayerState player = state.CurrentPlayer;
@@ -1111,7 +1177,7 @@ namespace Lazpoly.Presentation.Game
             int fee = board[player.Position].Fee;
             UiBuilder card = ui.Card();
             card.Label(F($"{board[player.Position].Name}: {fee} ödeyip istediğin kareye gidebilirsin."));
-            card.Label(L("Tahtada gitmek istediğin kareye tıkla."), UiTextStyle.Small, UiTheme.Muted);
+            card.Label(L("Tahtada halkalı karelerden gitmek istediğine tıkla; piyon oraya yürür."), UiTextStyle.Small, UiTheme.Muted);
 
             int target = _pinnedSquare;
             var travel = new TravelCommand(player.Id, target);
@@ -1159,8 +1225,13 @@ namespace Lazpoly.Presentation.Game
             string creditor = EventDescriber.CreditorText(state, debt.CreditorId);
             UiBuilder card = ui.Card(UiTheme.NoticeFill);
             card.CardHeader(F($"Borç: {debt.Amount} → {creditor}"), EventDescriber.ReasonText(debt.Reason));
-            card.Label(F($"Paran {player.Money}. Bina ya da mülk satarak para bul, sonra öde."), UiTextStyle.Small);
-            PropertyPanel.RenderSales(card.Scroll(DebtSalesHeight), _controller, state, player.Id);
+            card.Label(F($"Paran {player.Money}. Haritada halkalı şehirler senin: satmak istediğine tıkla, sonra öde."), UiTextStyle.Small);
+            // The town under the mouse, with what the bank pays for it (buildings included).
+            if (_hoveredSquare != NoSquare && state.GetOwner(_hoveredSquare) == player.Id && board[_hoveredSquare].Type == SquareType.Property)
+            {
+                int proceeds = GameRules.PropertySaleProceeds(board, _controller.Session.Rules, state, _hoveredSquare);
+                card.Label(F($"{L(board[_hoveredSquare].Name)}: tıklarsan bankaya +{proceeds} satılır."), UiTextStyle.Small, UiTheme.Gain);
+            }
 
             IReadOnlyList<GameCommand> plan = DebtSettlement.Plan(board, _controller.Session.Rules, state, player.Id);
             var pay = new PayDebtCommand(player.Id);
@@ -1447,7 +1518,7 @@ namespace Lazpoly.Presentation.Game
                     break;
             }
 
-            _dock.Invalidate();
+            _ticker.Invalidate();
             _turn.Invalidate();
         }
 

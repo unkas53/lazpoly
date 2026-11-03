@@ -757,6 +757,14 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Her şeyini satsa da ödemeye yetmeyen oyuncu satış ekranı açılmadan hemen iflas eder (`GameEngine.Charge`, `GameRules.MaxRaisableMoney`). Ekranda herkese oyuncunun renginde "Unkas kirayı ödeyecek parası yok" yazar (vergi, ceza ya da borç için de); sonraki sıra yazı okunana kadar bekler.
 - Testler: `EconomyTests` (otomatik satış seçimi, binalı şehirlerin korunması, anında iflas), `DecisionClockTests`, `EventDescriberTests.ThePlayerWhoCannotPayIsNamedWithTheReason`, `NetworkSessionTests` (karar süresi ve ek süre), PlayMode `TwoPeopleCanPlayTurnsWithTheHudButtons` artık sırayı bitirmeye basmadan oynar.
 
+## Faz 15b: hedef kare, yürüyen otogar, sağ menü yok, haritadan satış
+
+- Zar düşünce piyonun varacağı kare oyuncunun renginde bir halka ve üstünde sallanan bir okla işaretlenir; piyon varınca kalkar (`SquareMarkers`, kartla ilerlemede de).
+- Otogar yolculuğu artık uçarak değil zar atılmış gibi kare kare yürüyerek yapılır; Başlangıç'tan geçen parasını alır. Başka bir oyuncunun şehrine gidilemez (`GameRules.IsRideDestination`; boş şehirler, kendi şehirleri ve özel kareler serbest). Gidilebilecek kareler tahtada sarı halkayla gösterilir, yalnız onlara tıklanır. Protokol 11.
+- Sağdaki dikey düğme sütunu kalktı. Zar için ortadaki büyük ZAR AT düğmesi ve Space/Enter; alttaki olay şeridinin sonunda küçük Mülkler, Takas ve Menü düğmeleri var (yardım, ayarlar ve çıkış menüde; B, T, H ve Esc tuşları aynı). Tahta, yerleşimi bozulmasın diye eski kenar payını korur (`UiLayout.SideReserve`); sağ köşe kartları kenara yaslandı.
+- Borç ekranında şehir listesi yok: oyuncunun şehirleri haritada sarı halkayla işaretlenir, tıklanan şehir bankaya satılır. Fare bir şehrin üstündeyken kart o şehrin satış fiyatını yazar. Otomatik Sat ve süre aynen duruyor.
+- Testler: `SpecialSquaresTests` (yürüyen yolculuk, Başlangıç parası, başkasının şehri yasak), PlayMode `TheSideDockIsGoneAndTheBottomStripKeepsTheMenu`, düğmeli tur testi hedef halkasını da arar; `UiLayoutTests` yeni kenar payına göre.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

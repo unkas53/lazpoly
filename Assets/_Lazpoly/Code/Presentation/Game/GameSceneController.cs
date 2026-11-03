@@ -199,6 +199,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The board on the table, once the game state is known.</summary>
         public BoardView Board => _board;
 
+        /// <summary>The rings over the squares: where a pawn is going, and what the person here may click.</summary>
+        public SquareMarkers Markers { get; private set; }
+
         /// <summary>Goes up whenever something the HUD shows may have changed, so it knows when to redraw.</summary>
         public int Revision { get; private set; }
 
@@ -672,6 +675,7 @@ namespace Lazpoly.Presentation.Game
 
             GameState state = _session.State;
             _board = BoardView.Create(transform, _data);
+            Markers = SquareMarkers.Create(_board);
             // The dice land on the lawn, below the middle of the screen so they stay clear of the score.
             _dice = DiceView.Create(transform, BoardView.ScreenUp(BoardCameraRig.BaseYaw) * -1.5f + Vector3.up * (BoardView.LawnHeight + 0.02f));
             _dice.Speed = Settings.AnimationSpeed;
@@ -833,6 +837,7 @@ namespace Lazpoly.Presentation.Game
             _playback = null;
             _playing = false;
             _pendingEvents.Clear();
+            Markers?.HideTarget();
             SyncViewsToState();
             AddLog(L("Oyun durumu ev sahibinden yeniden alındı."));
         }
@@ -884,14 +889,19 @@ namespace Lazpoly.Presentation.Game
                         yield return _dice.Roll(rolled.Die1, rolled.Die2, CameraRig != null ? CameraRig.Yaw : 0f);
                         AudioPlayer.Play(SoundCue.DiceLand);
                         ShowRoll(rolled);
+                        // Where the roll takes the pawn shows the moment the dice settle, before it starts walking.
+                        if (_pendingEvents.Count > 0 && _pendingEvents.Peek() is PlayerMovedEvent upcoming && upcoming.PlayerId == rolled.PlayerId)
+                            Markers.ShowTarget(upcoming.ToSquare, ColorOf(rolled.PlayerId));
                         if (rolled.Die1 == rolled.Die2) Say(rolled.PlayerId, L("Çift!"));
                         yield return new WaitForSeconds(RollReadSeconds / Speed);
                         break;
                     case PlayerMovedEvent moved:
                         _lastMover = moved.PlayerId;
                         PawnView pawn = _pawns[moved.PlayerId];
+                        Markers.ShowTarget(moved.ToSquare, ColorOf(moved.PlayerId));
                         if (moved.Kind == MoveKind.Jump) yield return pawn.JumpTo(moved.ToSquare);
                         else yield return pawn.WalkTo(moved.ToSquare, backward: moved.Kind == MoveKind.Back);
+                        Markers.HideTarget();
                         if (moved.PassedStart) _board.PulseTile(0);
                         break;
                     case PotChangedEvent pot:

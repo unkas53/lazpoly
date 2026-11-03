@@ -304,12 +304,15 @@ namespace Lazpoly.Core.Engine
             }
         }
 
-        /// <summary>Pays the fare and jumps to the chosen square, then lands there as after a roll.</summary>
+        /// <summary>
+        /// Pays the fare and walks forward to the chosen square as after a roll (passing Start pays the
+        /// bonus), then lands there.
+        /// </summary>
         private void Travel(PlayerState player, int target)
         {
             int fee = Board[player.Position].Fee;
             if (fee > 0) Emit(new MoneyChangedEvent(player.Id, -fee, MoneyReason.Travel));
-            Emit(new PlayerMovedEvent(player.Id, player.Position, target, false, MoveKind.Jump));
+            MovePlayer(player, (target - player.Position + Board.Count) % Board.Count);
             if (!ResolveLanding(player, drawCards: true)) FinishMove();
         }
 
