@@ -58,7 +58,8 @@ namespace Lazpoly.Presentation.Texts
         public static string Upper(string text)
         {
             if (string.IsNullOrEmpty(text)) return text;
-            return _current == Language.Turkish ? text.Replace('i', 'İ').ToUpperInvariant() : text.ToUpperInvariant();
+            // Both Turkish i's are mapped by hand: Mono's invariant upper-casing leaves the dotless ı as it is.
+            return _current == Language.Turkish ? text.Replace('i', 'İ').Replace('ı', 'I').ToUpperInvariant() : text.ToUpperInvariant();
         }
 
         private static NumberFormatInfo NumbersFor(Language language)
