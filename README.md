@@ -759,7 +759,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 
 ## Faz 15b: hedef kare, yürüyen otogar, sağ menü yok, haritadan satış
 
-- Zar düşünce piyonun varacağı kare oyuncunun renginde bir halka ve üstünde sallanan bir okla işaretlenir; piyon varınca kalkar (`SquareMarkers`, kartla ilerlemede de; ok karenin hemen üstünde durur).
+- Zar düşünce piyonun varacağı kare oyuncunun renginde, karenin üstüne düz yatan kalın bir halkayla işaretlenir; piyon varınca kalkar (`SquareMarkers`, kartla ilerlemede de). Havada duran ok denendi ama eğik kamerada komşu karenin üstüne düştüğü için kaldırıldı.
 - Otogar yolculuğu artık uçarak değil zar atılmış gibi kare kare yürüyerek yapılır; Başlangıç'tan geçen parasını alır. Başka bir oyuncunun şehrine gidilemez (`GameRules.IsRideDestination`; boş şehirler, kendi şehirleri ve özel kareler serbest). Gidilebilecek kareler tahtada sarı halkayla gösterilir, yalnız onlara tıklanır. Protokol 11.
 - Sağdaki dikey düğme sütunu kalktı. Zar için ortadaki büyük ZAR AT düğmesi ve Space/Enter; alttaki olay şeridinin sonunda küçük Mülkler, Takas ve Menü düğmeleri var (şerit 760 px; en yeni olay tek satırda kalır) (yardım, ayarlar ve çıkış menüde; B, T, H ve Esc tuşları aynı). Tahta, yerleşimi bozulmasın diye eski kenar payını korur (`UiLayout.SideReserve`); sağ köşe kartları kenara yaslandı.
 - Borç ekranında şehir listesi yok: oyuncunun şehirleri haritada sarı halkayla işaretlenir, tıklanan şehir bankaya satılır. Fare bir şehrin üstündeyken kart o şehrin satış fiyatını yazar. Otomatik Sat ve süre aynen duruyor.
