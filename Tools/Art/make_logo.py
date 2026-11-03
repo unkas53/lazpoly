@@ -20,6 +20,9 @@ SOURCE = os.path.join("Tools", "Art", "Logo", "lazpoly-logo.jpg")
 TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "logo.bytes")
 SIZE = 640          # The menu shows it 160 pixels tall at 1080p; 640 keeps it sharp on a 4K screen and in a bigger interface size.
 WHITE = 236         # A pixel whose darkest channel is at least this counts as the white ground.
+SHADOW_TOP = 850    # Rows from here down (under the lettering) may hold the picture's drop shadow.
+SHADOW_MIN = 150    # A shadow pixel is at least this bright...
+SHADOW_SPREAD = 20  # ...and grey: its channels no further apart than this.
 
 # The gold medallion round the portrait, measured on the 1254x1254 source (least-squares fit of the ring's gold pixels):
 # centre, the ring's inner radius and the radius of the disc painted over the portrait (a little under the ring).
@@ -77,6 +80,24 @@ def main():
         queue.append((x - 1, y))
         queue.append((x, y + 1))
         queue.append((x, y - 1))
+
+    # The picture's own soft drop shadow lies on the white below and beside the board: grey, fading into
+    # the ground. On the menu's green band and the lawn it would show as a pale smear, so a second fill
+    # takes it too, from the ground into grey pixels, below the lettering only (the letters' pale facets stay).
+    for x in range(width):
+        for y in range(SHADOW_TOP, height):
+            if ground[y * width + x]:
+                queue.append((x, y))
+    while queue:
+        x, y = queue.popleft()
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if nx < 0 or ny < SHADOW_TOP or nx >= width or ny >= height or ground[ny * width + nx]:
+                continue
+            p = pixels[nx, ny]
+            if min(p) < SHADOW_MIN or max(p) - min(p) > SHADOW_SPREAD:
+                continue
+            ground[ny * width + nx] = 1
+            queue.append((nx, ny))
 
     alpha = Image.frombytes("L", (width, height), bytes(255 - 255 * g for g in ground))
     alpha = alpha.filter(ImageFilter.GaussianBlur(0.6))
