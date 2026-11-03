@@ -117,7 +117,8 @@ namespace Lazpoly.Presentation.Tests
         public void ThePlayerCarriesOurIconAndNoUnitySplash()
         {
             string project = Path.GetDirectoryName(Application.dataPath);
-            string settings = File.ReadAllText(Path.Combine(project, "ProjectSettings", "ProjectSettings.asset"));
+            // Read as checked out on any machine: Windows clones carry CRLF line ends.
+            string settings = File.ReadAllText(Path.Combine(project, "ProjectSettings", "ProjectSettings.asset")).Replace("\r\n", "\n");
             Assert.That(settings, Does.Contain("m_ShowUnitySplashScreen: 0"), "the Unity splash is off");
             Assert.That(settings, Does.Contain("m_ShowUnitySplashLogo: 0"));
 
