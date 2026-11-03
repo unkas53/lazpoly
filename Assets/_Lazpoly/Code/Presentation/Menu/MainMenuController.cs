@@ -267,7 +267,7 @@ namespace Lazpoly.Presentation.Menu
                 name.Label("LAZPOLY", UiTextStyle.Heading, UiPalette.Ink.OnMasthead).horizontalOverflow = HorizontalWrapMode.Overflow;
             }
 
-            name.Eyebrow(L("Karadeniz Masası"), UiPalette.Ink.OnMastheadMuted).horizontalOverflow = HorizontalWrapMode.Overflow;
+            name.Eyebrow(L("Dünya Masası"), UiPalette.Ink.OnMastheadMuted).horizontalOverflow = HorizontalWrapMode.Overflow;
 
             UiBuilder.Fix(ui.Label("", UiTextStyle.Small), -1f).flexibleWidth = 1f;
             if (_lobbyPanel.IsAvailable)
@@ -309,7 +309,7 @@ namespace Lazpoly.Presentation.Menu
             UiBuilder words = ui.Column(4f);
             words.Eyebrow(L("Yol arkadaşların burada"), UiTheme.Gain);
             words.Label(L("Bugün hangi masaya oturuyoruz?"), UiTextStyle.Display);
-            words.Label(L("Arkadaşlarınla ya da bilgisayara karşı Karadeniz'in şehirlerini topla, kirayı topla, son kalan sen ol."), UiTextStyle.Small, UiTheme.Muted);
+            words.Label(L("Arkadaşlarınla ya da bilgisayara karşı dünyanın şehirlerini topla, kirayı topla, son kalan sen ol."), UiTextStyle.Small, UiTheme.Muted);
         }
 
         /// <summary>The six ways in, three to a row: each a card with a coloured edge, a title, a line and a tag.</summary>

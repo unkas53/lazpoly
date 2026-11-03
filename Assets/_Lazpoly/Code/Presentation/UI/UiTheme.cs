@@ -69,14 +69,19 @@ namespace Lazpoly.Presentation.UI
 
         private const string RegularFontResource = "Lazpoly/Fonts/Nunito-Regular";
         private const string BoldFontResource = "Lazpoly/Fonts/Nunito-Bold";
+        private const string BlackFontResource = "Lazpoly/Fonts/Nunito-Black";
 
         private static Font _font;
         private static Font _boldFont;
+        private static Font _blackFont;
 
         /// <summary>The game's typeface (Nunito, SIL OFL); falls back to Unity's built-in font if the asset is missing.</summary>
         public static Font Font => _font != null ? _font : _font = Load(RegularFontResource);
 
         public static Font BoldFont => _boldFont != null ? _boldFont : _boldFont = Load(BoldFontResource);
+
+        /// <summary>The heaviest cut (Nunito Black), for text printed on the board that must read from across the table.</summary>
+        public static Font BlackFont => _blackFont != null ? _blackFont : _blackFont = Load(BlackFontResource);
 
         private static Font Load(string resource)
         {

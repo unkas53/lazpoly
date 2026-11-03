@@ -127,7 +127,7 @@ namespace Lazpoly.Presentation.Tests
 
             string report = BalanceReport.Markdown(data.Board, data.Rules, settings, first, id => data.GroupName(id));
             StringAssert.Contains("## Renk grupları", report);
-            StringAssert.Contains("Yalı Konağı", report);
+            StringAssert.Contains("İstanbul", report);
             TestContext.WriteLine(report);
         }
 

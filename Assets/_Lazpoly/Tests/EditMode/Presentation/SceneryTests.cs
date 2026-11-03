@@ -65,6 +65,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f, "the band lies beyond the price");
             Assert.Less(BoardView.BandOffset + BoardView.BandDepth / 2f, 0.5f, "the band stays on the tile");
             Assert.Greater(BoardView.NameSize, BoardView.PriceSize, "the name is the larger line");
+            Assert.LessOrEqual(BoardView.NameFill, 0.88f, "a long name keeps a margin at both ends of its tile");
 
             // On a corner the scene stands towards the board's corner and the pawns step the other way; neither reaches the other.
             Assert.LessOrEqual(BoardView.SceneOffset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner along the edge");
@@ -202,6 +203,16 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreSame(font.material.mainTexture, print.mainTexture, "the print uses the font's own atlas");
             Assert.AreSame(print, PrintMaterial.For(font), "one material per font");
             Assert.AreNotSame(font.material, print, "the font's draw-through material is left alone");
+        }
+
+        [Test]
+        public void BoardTextIsPrintedInTheHeaviestCut()
+        {
+            Font black = Lazpoly.Presentation.UI.UiTheme.BlackFont;
+            Assert.AreEqual("Nunito-Black", black.name, "the heavy cut is missing from Resources");
+            Assert.AreNotSame(Lazpoly.Presentation.UI.UiTheme.BoldFont, black);
+            Assert.IsTrue(PrintMaterial.IsPrinting(black), "the print shader is missing from Resources");
+            Assert.AreSame(black.material.mainTexture, PrintMaterial.For(black).mainTexture, "the print uses the heavy cut's own atlas");
         }
 
         [Test]

@@ -30,6 +30,20 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void EveryCityOnTheShippedBoardIsADifferentOne()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var seen = new System.Collections.Generic.HashSet<string>();
+            for (int i = 0; i < data.Board.Count; i++)
+            {
+                if (data.Board[i].Type != SquareType.Property) continue;
+                Assert.IsTrue(seen.Add(data.Board[i].Name), $"{data.Board[i].Name} is on the board twice.");
+                Assert.IsFalse(string.IsNullOrWhiteSpace(data.GroupName(data.Board[i].GroupId)), $"{data.Board[i].Name} has no region.");
+            }
+            Assert.AreEqual("İstanbul", data.Board[data.Board.Count - 2].Name, "the dearest city closes the lap");
+        }
+
+        [Test]
         public void ShippedBoardHasTheSpecialSquaresAndADeck()
         {
             BoardData data = BoardDataLoader.LoadFromResources();

@@ -190,7 +190,8 @@ namespace Lazpoly.Presentation.Tests
         {
             Lang.Set(Language.Turkish);
             Assert.AreEqual("ÇEVRİM İÇİ", Lang.Upper("Çevrim içi"));
-            Assert.AreEqual("KARADENİZ MASASI", Lang.Upper("Karadeniz Masası"));
+            Assert.AreEqual("DÜNYA MASASI", Lang.Upper("Dünya Masası"));
+            Assert.AreEqual("İSTANBUL VE SİNGAPUR", Lang.Upper("İstanbul ve Singapur"));
             Assert.AreEqual("", Lang.Upper(""));
             Assert.IsNull(Lang.Upper(null));
             Lang.Set(Language.English);
