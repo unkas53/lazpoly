@@ -28,7 +28,7 @@ namespace Lazpoly.Presentation.Game
         public const float TagHeight = 44f;
 
         /// <summary>The side of the square that, turned on its corner, makes the tag's point; and how far that point reaches below the tag.</summary>
-        public const float PointerSize = 16f;
+        public const float PointerSize = 24f;
         public static readonly float PointerReach = PointerSize * 0.7071f;
 
         /// <summary>The tick box's outline, so it reads as something to click on the white tag.</summary>
@@ -232,7 +232,7 @@ namespace Lazpoly.Presentation.Game
             pointer.sizeDelta = new Vector2(PointerSize, PointerSize);
             pointer.anchoredPosition = Vector2.zero;
             pointer.localRotation = Quaternion.Euler(0f, 0f, 45f);
-            UiRoot.Background(pointer, fill, rounded: false).raycastTarget = false;
+            UiRoot.Background(pointer, fill, rounded: false, shadow: true).raycastTarget = false; // The shadow sets it off from the board.
             pointer.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             pointer.SetAsFirstSibling(); // Under the tick box.
         }
