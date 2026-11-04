@@ -73,28 +73,32 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
         private static readonly Color PriceColor = new Color(0.21f, 0.19f, 0.17f);
 
-        // Where things sit across a square, from its inner edge (-0.5) to its outer edge (+0.5), in tile depths:
-        // buildings and the plot along the inner edge, pawns inside them, then the name, the price and the group band.
-        // The camera looks down at 35 degrees, so a piece's height falls up the screen over the ground behind it:
-        // on the rows that face away from the camera the pawns' room is kept short of the name so they never cover it.
-        /// <summary>The building row's centre, inward from the square's centre.</summary>
-        public const float BuildingOffset = 0.385f;
+        // Where things sit across a square, in tile depths from its centre towards the edge that lies lower on the
+        // screen (+0.5; the outer edge on the rows near the camera, the inner edge on the far rows): the price at the
+        // bottom with the pawns walking over it, the name on its group-coloured strip above, and the buildings on the
+        // top part. The camera looks down at 35 degrees, so a piece's height rises up the screen, away from the writing.
+        /// <summary>The building row's centre, towards the screen's top edge of the square (negative: up the screen).</summary>
+        public const float BuildingOffset = -0.27f;
 
-        /// <summary>Where pawns stand, inward from the square's centre.</summary>
-        public const float PawnOffset = 0.22f;
+        /// <summary>Where pawns stand: on the price line.</summary>
+        public const float PawnOffset = 0.31f;
+
+        /// <summary>The name's line and the group strip under it.</summary>
+        public const float NameOffset = 0.07f;
+        public const float StripDepth = 0.17f;
+
+        /// <summary>The price line, at the bottom of the square.</summary>
+        public const float PriceOffset = 0.31f;
+
+        /// <summary>
+        /// On a corner, which has no price: the name's line and where pawns stand, from the square's centre towards
+        /// its outer edge (the name) and inner edge (the pawns); a corner that faces away swaps them (<see cref="SceneInset"/>).
+        /// </summary>
+        public const float CornerNameOffset = 0.19f;
+        public const float CornerPawnOffset = 0.22f;
 
         /// <summary>On a corner, pawns also step this far along the edge away from the corner's scene.</summary>
         public const float CornerPawnShift = 0.25f;
-
-        /// <summary>The name's line, outward from the square's centre.</summary>
-        public const float NameOffset = 0.19f;
-
-        /// <summary>The price line, outward from the square's centre.</summary>
-        public const float PriceOffset = 0.335f;
-
-        /// <summary>The group band's centre, outward from the square's centre, and its depth.</summary>
-        public const float BandOffset = 0.445f;
-        public const float BandDepth = 0.09f;
 
         /// <summary>
         /// How much of the tile's width the name may use, and how tall its line and the price's line may be, in tile depths.
@@ -102,12 +106,18 @@ namespace Lazpoly.Presentation.Tabletop
         /// not help: the name's room is low and wide, so two lines would each come out smaller than the shrunk single line.
         /// </summary>
         public const float NameFill = 0.86f;
-        public const float NameDepth = 0.16f;
-        public const float PriceDepth = 0.12f;
+        public const float NameDepth = 0.13f;
+        public const float PriceDepth = 0.24f;
+
+        /// <summary>How much of the tile's width the name leaves free when the group's letter sits at the strip's end.</summary>
+        public const float MarkedNameFill = 0.66f;
+
+        /// <summary>A corner's name line, which has the room a price line would take elsewhere.</summary>
+        public const float CornerNameDepth = 0.16f;
 
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
-        public const float NameSize = 0.022f;
-        public const float PriceSize = 0.014f;
+        public const float NameSize = 0.02f;
+        public const float PriceSize = 0.034f;
 
         /// <summary>
         /// A corner's scene: how far along the edge and how far across the corner it stands, and its size, in corner sides.
@@ -129,6 +139,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Color[] _tileColors;
         private TextMesh[] _names;
         private TextMesh[] _prices;
+        private int?[] _rents;
         private readonly List<KeyValuePair<Transform, Vector3>> _marks = new List<KeyValuePair<Transform, Vector3>>();
         private BoardData _data;
         private readonly Dictionary<Collider, int> _squareOfCollider = new Dictionary<Collider, int>();
@@ -163,16 +174,16 @@ namespace Lazpoly.Presentation.Tabletop
 
         public Vector3 SquarePosition(int index) => transform.TransformPoint(Layout.SquareCenter(index)) + Vector3.up * SurfaceY;
 
-        /// <summary>Where pawns stand on a square: its inner part, so the name and price on the outer part stay readable; on a corner, beside the scene.</summary>
+        /// <summary>Where pawns stand on a square: on its price line at the bottom, below the name and the buildings; on a corner, beside the scene.</summary>
         public Vector3 PawnSpot(int index)
         {
             Vector3 center = Layout.SquareCenter(index);
             Vector3 outward = Outward(center);
-            Vector3 spot = center - outward * (_depth * PawnOffset);
+            Vector3 spot = center + ScreenDown(outward) * (_depth * PawnOffset);
             if (Layout.IsCorner(index))
             {
                 bool far = FacesAway(outward);
-                spot = center + outward * (_depth * PawnOffset * (far ? 1f : -1f)) - SceneSide(index, far) * (_depth * CornerPawnShift);
+                spot = center + outward * (_depth * CornerPawnOffset * (far ? 1f : -1f)) - SceneSide(index, far) * (_depth * CornerPawnShift);
             }
 
             return transform.TransformPoint(spot) + Vector3.up * SurfaceY;
@@ -180,6 +191,9 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Whether a square's outer edge faces away from the game's camera: its pieces' height falls over its outer part.</summary>
         public static bool FacesAway(Vector3 outward) => Vector3.Dot(outward, ScreenUp(BoardCameraRig.BaseYaw)) > 0f;
+
+        /// <summary>Across a square whose outer edge faces <paramref name="outward"/>, the way that runs down the game's screen: out on the near rows, in on the far ones.</summary>
+        public static Vector3 ScreenDown(Vector3 outward) => FacesAway(outward) ? -outward : outward;
 
         /// <summary>Which way along the edge a corner's scene stands: towards the board's corner when the corner faces away, else away from it.</summary>
         private Vector3 SceneSide(int index, bool far) => Layout.Cornerward(index) * (far ? 1f : -1f);
@@ -364,6 +378,7 @@ namespace Lazpoly.Presentation.Tabletop
 
             _ownerColors[squareIndex] = ownerColor;
             RefreshOwnerMarker(squareIndex);
+            if (_rents[squareIndex].HasValue) ShowPrice(squareIndex);
         }
 
         /// <summary>
@@ -595,6 +610,7 @@ namespace Lazpoly.Presentation.Tabletop
             _tileColors = new Color[board.Count];
             _names = new TextMesh[board.Count];
             _prices = new TextMesh[board.Count];
+            _rents = new int?[board.Count];
             _data = data;
             Texture2D paper = TileSkin.Paper();
             for (int i = 0; i < board.Count; i++)
@@ -606,7 +622,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // A tile's size: along the edge, and from its inner edge to its outer edge (its local Z, turned outward).
                 Vector2 size = Layout.SquareSize(i) - Vector2.one * Gap;
 
-                // The printed tile: its colour washed to a pastel over the paper grain, the group's full colour kept for the band.
+                // The printed tile: its colour washed to a pastel over the paper grain, the group's full colour kept for the name's strip.
                 Color body = Color.Lerp(TileColor(square, data), PaperColor, Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
@@ -618,18 +634,28 @@ namespace Lazpoly.Presentation.Tabletop
                 _squareOfCollider[tileObject.AddComponent<BoxCollider>()] = i;
 
                 bool property = square.Type == SquareType.Property;
+                bool corner = Layout.IsCorner(i);
+                Vector3 down = ScreenDown(outward);
+                float top = TileHeight + 0.012f;
                 if (property)
                 {
-                    // The group colour runs as a raised band along the tile's outer edge.
-                    GameObject band = ModelParts.Create("Group band", transform,
-                        MeshFactory.RoundedBox(new Vector3(size.x * 0.96f, 0.07f, _depth * BandDepth), 0.03f, 3), TileColor(square, data));
-                    band.transform.localPosition = center + outward * (_depth * BandOffset) + Vector3.up * (TileHeight + 0.025f);
-                    band.transform.localRotation = facing;
-                    // With colour-blind friendly colours on, the group's letter sits on the band as well.
+                    // The name lies on a strip of the group's full colour across the tile, above the price.
+                    Color group = TileColor(square, data);
+                    GameObject strip = ModelParts.Create("Group strip", transform,
+                        MeshFactory.RoundedBox(new Vector3(size.x * 0.96f, 0.02f, _depth * StripDepth), 0.008f, 2), group);
+                    strip.transform.localPosition = center + down * (_depth * NameOffset) + Vector3.up * (TileHeight + 0.01f);
+                    strip.transform.localRotation = facing;
+                    top = TileHeight + 0.024f;
+                    // With colour-blind friendly colours on, the group's letter sits at the strip's left end and the name keeps clear of it.
                     string mark = data.GroupMark(square.GroupId);
-                    if (mark != null) CreateBandMark(mark, band.transform.localPosition + Vector3.up * 0.04f, outward, TileColor(square, data));
+                    if (mark != null)
+                    {
+                        Vector3 along = Vector3.Cross(Vector3.up, outward);
+                        if (Vector3.Dot(along, ScreenRight(BoardCameraRig.BaseYaw)) > 0f) along = -along;
+                        CreateBandMark(mark, strip.transform.localPosition + along * (size.x * 0.4f) + Vector3.up * 0.014f, outward, group);
+                    }
                 }
-                else if (Layout.IsCorner(i) && CornerParts.Has(square.Type))
+                else if (corner && CornerParts.Has(square.Type))
                 {
                     CreateScene(square.Type, i, center, outward, size.y);
                 }
@@ -638,22 +664,25 @@ namespace Lazpoly.Presentation.Tabletop
                     CreateIcon(square.Type, center, outward);
                 }
 
-                // The name and, under it, the price lie on the tile's outer part; pawns stand on the inner part (PawnSpot).
-                // A corner facing away from the camera keeps its name on the inner edge, clear of its scene and pawns.
-                float top = TileHeight + 0.012f;
-                float textSide = Layout.IsCorner(i) && FacesAway(outward) ? -1f : 1f;
-                _names[i] = CreateLabel("Name", L(square.Name), center + outward * (textSide * _depth * NameOffset) + Vector3.up * top, outward,
-                    _width * NameSize, new Vector2(size.x * NameFill, _depth * NameDepth), InkColor);
+                // Price at the bottom, name above it (on its strip on a town), buildings or the sign on the top part.
+                // A corner has no price: its name lies on the outer part, or the inner edge when the corner faces away,
+                // clear of its scene and pawns.
+                Vector3 namePlace = corner
+                    ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
+                    : center + down * (_depth * NameOffset);
+                Color ink = property ? ColorVision.TextOn(TileColor(square, data)) : InkColor;
+                _names[i] = CreateLabel("Name", L(square.Name), namePlace + Vector3.up * top, outward,
+                    _width * NameSize, NameRoom(i, size), ink);
                 string subtitle = Subtitle(square);
                 if (subtitle != null)
                 {
-                    _prices[i] = CreateLabel("Price", subtitle, center + outward * (textSide * _depth * PriceOffset) + Vector3.up * top, outward,
+                    _prices[i] = CreateLabel("Price", subtitle, center + down * (_depth * PriceOffset) + Vector3.up * (TileHeight + 0.012f), outward,
                         _width * PriceSize, new Vector2(size.x * NameFill, _depth * PriceDepth), PriceColor);
                 }
 
                 if (property)
                 {
-                    // Owner marker: the owner's plot (or the flag) on the tile's inner part, where the buildings will stand.
+                    // Owner marker: the owner's plot (or the flag) on the tile's top part, where the buildings will stand.
                     OwnerMarker marker = OwnerMarker.Create("Owner marker", transform, i * 0.9f);
                     marker.Place(outward, BuildingRowCenter(center), _yaw);
                     _flagScale[i] = marker.RestScale(_width);
@@ -740,7 +769,16 @@ namespace Lazpoly.Presentation.Tabletop
         private static Vector3 Outward(Vector3 center) => BoardLayout.Outward(center);
 
         /// <summary>Middle of the building row on a square: along its inner edge, on the tile's top.</summary>
-        private Vector3 BuildingRowCenter(Vector3 center) => center - Outward(center) * (_depth * BuildingOffset) + Vector3.up * TileHeight;
+        private Vector3 BuildingRowCenter(Vector3 center) => center + ScreenDown(Outward(center)) * (_depth * BuildingOffset) + Vector3.up * TileHeight;
+
+        /// <summary>The room a square's name may fill: the tile's width less a margin (and the group's letter, when shown), and its line's depth.</summary>
+        private Vector2 NameRoom(int index, Vector2 size)
+        {
+            if (Layout.IsCorner(index)) return new Vector2(size.x * NameFill, _depth * CornerNameDepth);
+            SquareDefinition square = _data.Board[index];
+            bool marked = square.Type == SquareType.Property && _data.GroupMark(square.GroupId) != null;
+            return new Vector2(size.x * (marked ? MarkedNameFill : NameFill), _depth * NameDepth);
+        }
 
         /// <summary>
         /// A building model's size: one model unit is this many tile widths, so its footprint
@@ -832,15 +870,15 @@ namespace Lazpoly.Presentation.Tabletop
             return mesh;
         }
 
-        /// <summary>The sign of a special square, standing on the tile's outer edge where properties have their band.</summary>
+        /// <summary>The sign of a special square, standing on the tile's top part where towns have their buildings.</summary>
         private void CreateIcon(SquareType type, Vector3 center, Vector3 outward)
         {
             Mesh mesh = SquareIcons.For(type);
             if (mesh == null) return;
             GameObject icon = ModelParts.Create($"Sign {type}", transform, mesh, SquareIcons.ColorFor(type), 0.3f);
-            icon.transform.localPosition = center + outward * (_depth * BandOffset) + Vector3.up * TileHeight;
-            // The sign's front (+Z) faces the player looking at the square from outside the board.
-            icon.transform.localRotation = Quaternion.LookRotation(outward);
+            icon.transform.localPosition = BuildingRowCenter(center);
+            // The sign's front (+Z) faces the camera, like the buildings'.
+            icon.transform.localRotation = Quaternion.LookRotation(ScreenDown(outward));
             icon.transform.localScale = Vector3.one * (_width * 0.22f);
         }
 
@@ -914,6 +952,39 @@ namespace Lazpoly.Presentation.Tabletop
             }
         }
 
+        /// <summary>
+        /// What a town's price line says: its price while it is for sale, or, once owned, the rent a visitor pays
+        /// (<paramref name="rent"/>), printed in the owner's colour. Null puts the price back.
+        /// </summary>
+        public void SetRent(int squareIndex, int? rent)
+        {
+            if (_rents == null || _rents[squareIndex] == rent) return;
+            _rents[squareIndex] = rent;
+            ShowPrice(squareIndex);
+        }
+
+        /// <summary>A square's name line and its price line (null where it has none).</summary>
+        public TextMesh NameLabel(int squareIndex) => _names[squareIndex];
+        public TextMesh PriceLabel(int squareIndex) => _prices[squareIndex];
+
+        /// <summary>The rent a town's price line shows now; null while it shows the price.</summary>
+        public int? RentShown(int squareIndex) => _rents?[squareIndex];
+
+        /// <summary>The colour of a rent: the owner's, darkened enough to read on the paper.</summary>
+        public static Color RentColor(Color owner) => Color.Lerp(owner, Color.black, 0.3f);
+
+        private void ShowPrice(int index)
+        {
+            TextMesh price = _prices[index];
+            if (price == null) return;
+            int? rent = _rents[index];
+            Color? owner = _ownerColors[index];
+            price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]);
+            price.color = rent.HasValue && owner.HasValue ? RentColor(owner.Value) : PriceColor;
+            Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
+            FitLabel(price, _width * PriceSize, new Vector2(size.x * NameFill, _depth * PriceDepth), Outward(Layout.SquareCenter(index)));
+        }
+
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>
         public void Relabel()
         {
@@ -926,13 +997,12 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_names[i] != null)
                 {
                     _names[i].text = L(square.Name);
-                    FitLabel(_names[i], _width * NameSize, new Vector2(size.x * NameFill, _depth * NameDepth), outward);
+                    FitLabel(_names[i], _width * NameSize, NameRoom(i, size), outward);
                 }
 
                 if (_prices[i] != null)
                 {
-                    _prices[i].text = Subtitle(square);
-                    FitLabel(_prices[i], _width * PriceSize, new Vector2(size.x * NameFill, _depth * PriceDepth), outward);
+                    ShowPrice(i);
                 }
             }
         }
