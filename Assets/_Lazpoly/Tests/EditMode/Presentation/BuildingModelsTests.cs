@@ -42,8 +42,8 @@ namespace Lazpoly.Presentation.Tests
             return bounds;
         }
 
-        /// <summary>The Blender file's triangles per model (all its slots): the whole copies keep every one.</summary>
-        private static readonly int[] SourceTriangles = { 2156, 7272, 14236, 19856, 25668, 51776 };
+        /// <summary>The Blender file's triangles per model (all its slots, less the few with no area): the whole copies keep every one.</summary>
+        private static readonly int[] SourceTriangles = { 2060, 7223, 14200, 19820, 25632, 51526 };
 
         [Test]
         public void ThePackHoldsEachLevelWholeAndAsALightCopy()

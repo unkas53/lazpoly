@@ -79,7 +79,16 @@ def part_triangles(obj, origin):
     loops = np.array([t.loops[:] for t in tris])
     verts = np.array([t.vertices[:] for t in tris])
     polys = np.array([t.polygon_index for t in tris])
-    return co[verts], corner[loops], polys
+    positions, normals = co[verts], corner[loops]
+    # A few source faces have no area: they draw nothing and Blender gives them no normal, so they are left out.
+    # Any other corner without a normal takes its triangle's.
+    face = np.cross(positions[:, 1] - positions[:, 0], positions[:, 2] - positions[:, 0])
+    length = np.linalg.norm(face, axis=1)
+    whole = length > 1e-12
+    positions, normals, polys, face = positions[whole], normals[whole], polys[whole], face[whole] / length[whole, None]
+    missing = np.linalg.norm(normals, axis=2) < 0.5
+    normals[missing] = np.repeat(face[:, None, :], 3, axis=1)[missing]
+    return positions, normals, polys
 
 
 def bounds(points):
