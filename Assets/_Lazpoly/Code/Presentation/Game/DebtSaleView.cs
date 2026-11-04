@@ -24,11 +24,18 @@ namespace Lazpoly.Presentation.Game
     {
         /// <summary>The card's width and a tag's size, in reference pixels.</summary>
         public const float CardWidth = 470f;
-        public const float TagWidth = 150f;
+        public const float TagWidth = 118f;
         public const float TagHeight = 44f;
 
-        /// <summary>How far above a town's tile its tag points, in world units.</summary>
-        public const float TagLift = 0.25f;
+        /// <summary>The side of the square that, turned on its corner, makes the tag's point; and how far that point reaches below the tag.</summary>
+        public const float PointerSize = 16f;
+        public static readonly float PointerReach = PointerSize * 0.7071f;
+
+        /// <summary>The tick box's outline, so it reads as something to click on the white tag.</summary>
+        public const float BoxOutline = 2f;
+
+        /// <summary>How far above a town's tile surface its tag points, in world units.</summary>
+        public const float TagLift = 0.02f;
 
         /// <summary>The red of the card's heading.</summary>
         public static readonly Color HeadingColor = new Color(0.86f, 0.22f, 0.22f);
@@ -199,19 +206,54 @@ namespace Lazpoly.Presentation.Game
             BoardDefinition board = _controller.Session.Board;
             foreach (int square in _choices)
             {
+                bool picked = _sale.IsPicked(square);
                 RectTransform tag = UiRoot.Rect(_tagLayer, $"Sale tag {square}", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
                 tag.pivot = new Vector2(0.5f, 0f);
                 tag.sizeDelta = new Vector2(TagWidth, TagHeight);
-                UiRoot.Background(tag, UiTheme.Card, shadow: true);
+                Color fill = picked ? PickedFill : UiTheme.Card;
+                UiRoot.Background(tag, fill, shadow: true);
+                AddPointer(tag, fill);
                 UiBuilder.AddColumnLayout(tag.gameObject, 6, 0f);
                 int proceeds = GameRules.PropertySaleProceeds(board, _controller.Session.Rules, state, square);
                 int town = square;
-                new UiBuilder(tag).Toggle(F($"+{proceeds}"), _sale.IsPicked(square), on => _sale.Set(town, on));
+                Toggle toggle = new UiBuilder(tag).Toggle(F($"+{proceeds}"), picked, on => _sale.Set(town, on));
+                StyleBox(toggle);
                 _tags[square] = tag;
             }
         }
 
-        /// <summary>Keeps each tag over its town as the camera moves.</summary>
+        /// <summary>The fill of a ticked town's tag: a pale green, so the towns going up for sale stand out.</summary>
+        public static readonly Color PickedFill = new Color(0.86f, 0.96f, 0.86f);
+
+        /// <summary>A square turned on its corner under the tag's middle, its tip on the town, so each tag plainly belongs to one town.</summary>
+        private static void AddPointer(RectTransform tag, Color fill)
+        {
+            RectTransform pointer = UiRoot.Rect(tag, "Pointer", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, Vector2.zero);
+            pointer.sizeDelta = new Vector2(PointerSize, PointerSize);
+            pointer.anchoredPosition = Vector2.zero;
+            pointer.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            UiRoot.Background(pointer, fill, rounded: false).raycastTarget = false;
+            pointer.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            pointer.SetAsFirstSibling(); // Under the tick box.
+        }
+
+        /// <summary>A white box with a dark outline and a green tick, instead of the faint form box, so it reads as clickable on the tag.</summary>
+        private static void StyleBox(Toggle toggle)
+        {
+            if (toggle == null) return;
+            if (toggle.targetGraphic is Image box)
+            {
+                box.color = Color.white;
+                var outline = box.gameObject.AddComponent<Outline>();
+                outline.effectColor = UiTheme.Text;
+                outline.effectDistance = new Vector2(BoxOutline, -BoxOutline);
+                outline.useGraphicAlpha = false;
+            }
+
+            if (toggle.graphic != null) toggle.graphic.color = UiTheme.Gain;
+        }
+
+        /// <summary>Keeps each tag over its town as the camera moves, its point on the town.</summary>
         private void PlaceTags()
         {
             BoardView board = _controller.Board;
@@ -224,7 +266,7 @@ namespace Lazpoly.Presentation.Game
                 if (pair.Value.gameObject.activeSelf != front) pair.Value.gameObject.SetActive(front);
                 if (front && RectTransformUtility.ScreenPointToLocalPointInRectangle(_tagLayer, screen, null, out Vector2 local))
                 {
-                    pair.Value.anchoredPosition = local;
+                    pair.Value.anchoredPosition = local + new Vector2(0f, PointerReach);
                 }
             }
         }
