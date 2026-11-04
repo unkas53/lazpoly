@@ -49,15 +49,12 @@ namespace Lazpoly.Presentation.Tabletop
             transform.localRotation = Quaternion.LookRotation(IsPlot ? outward : -outward); // The flag's +X, the pennant, flies along the row.
         }
 
-        /// <summary>Colours the marker for its owner: the whole plot (lightened like the buildings), or the pennant.</summary>
+        /// <summary>Colours the marker for its owner: the plot's paving and sign face (lightened like the buildings' walls), or the pennant.</summary>
         public void Paint(Color color)
         {
             if (IsPlot)
             {
-                foreach (Renderer part in GetComponentsInChildren<Renderer>(true))
-                {
-                    ModelParts.Paint(part.gameObject, Color.Lerp(color, Color.white, BoardView.BuildingLightening), 0.2f);
-                }
+                BuildingModels.PaintOwner(gameObject, color);
             }
             else if (_pennant != null)
             {

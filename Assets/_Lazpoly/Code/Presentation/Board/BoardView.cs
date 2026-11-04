@@ -487,37 +487,33 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// A building model takes the owner's colour, a little lightened so its windows and balconies still
-        /// read; the drawn stand-ins have walls in it and roofs a darker shade. Unowned, each keeps its own colours.
+        /// A building model's walls take the owner's colour, a little lightened, while its doors, frames,
+        /// glass and roof keep their own (<see cref="BuildingModels.PaintOwner"/>); the drawn stand-ins have
+        /// walls in it and roofs a darker shade. Unowned, each keeps its own colours.
         /// </summary>
         private void PaintBuildings(int squareIndex)
         {
             GameObject[] pieces = _buildings[squareIndex];
             Color? owner = _ownerColors[squareIndex];
+            bool models = BuildingModels.IsAvailable;
             foreach (GameObject piece in pieces)
             {
+                if (models)
+                {
+                    BuildingModels.PaintOwner(piece, owner);
+                    continue;
+                }
+
                 foreach (Renderer part in piece.GetComponentsInChildren<Renderer>(true))
                 {
-                    Color color;
-                    if (part.name == BuildingModels.PartName)
-                    {
-                        color = owner.HasValue ? Color.Lerp(owner.Value, Color.white, BuildingLightening) : BuildingModels.White;
-                    }
-                    else
-                    {
-                        bool roof = part.name == "Roof" || part.name == "Chimney";
-                        color = owner.HasValue
-                            ? (roof ? Color.Lerp(owner.Value, Color.black, 0.4f) : owner.Value)
-                            : (roof ? BuildingParts.Tile : part.name == "Ground floor" ? BuildingParts.Whitewash : BuildingParts.Timber);
-                    }
-
+                    bool roof = part.name == "Roof" || part.name == "Chimney";
+                    Color color = owner.HasValue
+                        ? (roof ? Color.Lerp(owner.Value, Color.black, 0.4f) : owner.Value)
+                        : (roof ? BuildingParts.Tile : part.name == "Ground floor" ? BuildingParts.Whitewash : BuildingParts.Timber);
                     ModelParts.Paint(part.gameObject, color, 0.2f);
                 }
             }
         }
-
-        /// <summary>How far towards white the owner's colour is taken on a building model.</summary>
-        public const float BuildingLightening = 0.15f;
 
         /// <summary>A short swell of a square's owner frame, when it is bought or changes hands.</summary>
         public void PulseOwner(int squareIndex)

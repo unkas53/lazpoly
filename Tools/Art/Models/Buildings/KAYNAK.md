@@ -8,8 +8,9 @@ hakkı proje sahibine aittir.
 zekâyla üretilmiş içerik olarak beyan edilir (`Steam/README.md` §6); OpenAI çıktıların kullanım hakkını kullanıcıya
 bırakır, başvurudan önce güncel koşullara bakılır.
 
-Oyundaki kopya: `Tools/Art/make_buildings.py` her modeli olduğu gibi ve üçgenlerinin yaklaşık %30'una indirilmiş hafif
+Oyundaki kopya: `Tools/Art/make_buildings.py` `Lazpoly_Buildings.blend` dosyasını okur, parçaları adlarına göre
+renk gruplarına (duvar, çerçeve, cam, kapı, çatı, taban, metal) ayırır, arsanın tabelasını 1,7 kat büyütür ve her modeli olduğu gibi ve üçgenlerinin yaklaşık %30'una indirilmiş hafif
 bir kopyası olarak `Assets/_Lazpoly/Data/Resources/Lazpoly/Models/buildings.bytes` paketine yazar (oyun Yüksek
 grafik kalitesinde tam modelleri, Orta ve Düşükte hafif kopyaları gösterir) (araç yalnızca
-`pip install fast-simplification` ister; oyun paketi değildir). `README_TR.md` model paketinin kendi
+`pip install bpy fast-simplification` ister; oyun paketi değildir). `README_TR.md` model paketinin kendi
 açıklamasıdır; oradaki Unity kurulum adımları (LazpolyBuildingsSetup, prefablar) bu projede kullanılmaz.
