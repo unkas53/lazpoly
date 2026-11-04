@@ -146,6 +146,7 @@ namespace Lazpoly.PlayTests
             var controller = Object.FindAnyObjectByType<GameSceneController>();
             var hud = controller.GetComponent<GameHud>();
             while (controller.IsBusy) yield return null;
+            yield return null; // The table may only now have shown the draw for the first roll; let the HUD redraw.
 
             Assert.IsNull(GameObject.Find("Dock"), "The round buttons at the right edge are gone.");
             AssertMouseReaches("Menü");
@@ -184,6 +185,7 @@ namespace Lazpoly.PlayTests
             var controller = Object.FindAnyObjectByType<GameSceneController>();
             var hud = controller.GetComponent<GameHud>();
             while (controller.IsBusy) yield return null;
+            yield return null; // The table may only now have shown the draw for the first roll; let the HUD redraw.
             Assert.AreEqual(GamePhase.WaitingForRoll, controller.Session.State.Phase);
 
             // Esc opens the menu and holds the game; the menu offers the way out and a second Esc closes it.
