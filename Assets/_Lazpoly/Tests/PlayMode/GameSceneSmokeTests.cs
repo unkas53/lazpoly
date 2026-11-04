@@ -113,6 +113,13 @@ namespace Lazpoly.PlayTests
             Assert.IsNotNull(controller);
             Assert.IsFalse(controller.Session.CanControl(1), "Nobody at the screen plays a computer seat.");
 
+            // A drawn player rolls first, whoever it is: the turn order starts with them and the table says so.
+            GameState start = controller.Session.State;
+            Assert.AreEqual(start.Players[0].Id, start.CurrentPlayer.Id, "The game starts with the first seat of the turn order.");
+            Assert.AreEqual(1, start.TurnNumber, "The computer waits while the draw is shown.");
+            Assert.IsTrue(controller.Log.Any(entry => entry.Text == GameSceneController.FirstRollText(start.CurrentPlayer.Name)),
+                "The log does not say who the draw picked.");
+
             float started = Time.realtimeSinceStartup;
             while (controller.Session.State.TurnNumber < 8 && controller.Session.State.Phase != GamePhase.GameOver)
             {
@@ -135,6 +142,9 @@ namespace Lazpoly.PlayTests
             Assert.That(controller.Session.State.TurnNumber, Is.GreaterThanOrEqualTo(savedTurn), "The saved game did not resume.");
             Assert.IsTrue(controller.Session.IsAiPlaying(3));
             Assert.IsTrue(controller.Log.Any(entry => entry.Text == "Kayıtlı oyun yüklendi."), "The log does not say the save was loaded.");
+            CollectionAssert.AreEqual(save.Snapshot.Players.Select(player => player.Id).ToArray(),
+                controller.Session.State.Players.Select(player => player.Id).ToArray(), "A resumed game keeps its turn order.");
+            Assert.IsFalse(controller.Log.Any(entry => entry.Text.StartsWith("Kura:")), "A resumed game draws nobody.");
         }
     }
 }

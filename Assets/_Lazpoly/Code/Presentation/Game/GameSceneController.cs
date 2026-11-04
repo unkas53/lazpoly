@@ -88,6 +88,9 @@ namespace Lazpoly.Presentation.Game
         private float _nextPresenceRefresh;
         private LocalGame _localGame;
         private float _nextAiMoveTime;
+
+        /// <summary>A new game's draw for who rolls first waits to be shown until the loading screen has gone.</summary>
+        private bool _drawToAnnounce;
         private SettingsService _settings;
         private IAchievementService _achievements;
         private IPresenceService _presence;
@@ -209,7 +212,7 @@ namespace Lazpoly.Presentation.Game
         public SessionEndReason? EndReason { get; private set; }
 
         /// <summary>True while events are still being animated; the HUD waits before offering actions.</summary>
-        public bool IsBusy => _playing || _pendingEvents.Count > 0;
+        public bool IsBusy => _playing || _pendingEvents.Count > 0 || _drawToAnnounce;
 
         /// <summary>
         /// True while the pause menu holds a local game still: the computer does not move and the
@@ -338,6 +341,7 @@ namespace Lazpoly.Presentation.Game
 
             UpdateDayLight();
             ShowNextBubble();
+            AnnounceDraw();
             UpdateDecisionClock();
             if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
             if (_session.StepAi()) _nextAiMoveTime = Time.time + Settings.AiMoveDelaySeconds;
@@ -623,7 +627,9 @@ namespace Lazpoly.Presentation.Game
             }
 
             OnlineSeatPlan plan = online.HostPlan;
-            var engine = new GameEngine(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), plan.Seats, NewRandom());
+            // The host draws who rolls first; the others get the order with the game.
+            IReadOnlyList<PlayerSeat> seats = FirstPlayerDraw.Draw(plan.Seats, DrawRandom());
+            var engine = new GameEngine(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), seats, NewRandom());
             _host = new HostSession(engine, online.Transport, plan.HostPlayerId, plan.RemotePlayers, _data.Checksum, NewSeed());
             return _host;
         }
@@ -646,11 +652,15 @@ namespace Lazpoly.Presentation.Game
                 }
             }
 
-            return LocalGame.Create(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), LocalGameSetup.TakeSeats(),
+            IReadOnlyList<PlayerSeat> seats = FirstPlayerDraw.Draw(LocalGameSetup.TakeSeats(), DrawRandom());
+            return LocalGame.Create(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), seats,
                 LocalGameSetup.TakeAiPlayers(), NewSeed());
         }
 
         private static Pcg32Random NewRandom() => new Pcg32Random(NewSeed());
+
+        /// <summary>The draw for the first roll, on its own stream so it never shares numbers with the dice.</summary>
+        private static Pcg32Random DrawRandom() => new Pcg32Random(NewSeed(), stream: 91UL);
 
         private static ulong NewSeed() => unchecked((ulong)DateTime.UtcNow.Ticks);
 
@@ -684,9 +694,11 @@ namespace Lazpoly.Presentation.Game
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
-                Color color = PlayerPalette.ForSeat(i);
+                // Colour and character follow the lobby's seats, not the turn order the draw picked.
+                int seat = FirstPlayerDraw.LobbySeat(state.Players, player.Id);
+                Color color = PlayerPalette.ForSeat(seat);
                 _playerColors[player.Id] = color;
-                PawnView pawn = PawnView.Create(transform, _board, i, color, _crowd, player.Id);
+                PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id);
                 pawn.Speed = Settings.AnimationSpeed;
                 pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
                 PawnTrail trail = PawnTrail.Create(transform, color);
@@ -695,9 +707,33 @@ namespace Lazpoly.Presentation.Game
             }
 
             SyncViewsToState();
+            _drawToAnnounce = IsFirstRoll(state);
+            if (_drawToAnnounce) AddLog(FirstRollText(state.CurrentPlayer.Name), LogTone.Neutral, state.CurrentPlayer.Id);
             AddLog(F($"Sıra: {state.CurrentPlayer.Name}"), LogTone.Neutral, state.CurrentPlayer.Id, turnStart: true);
             ShowPresence();
             NoteLoadTime(state.Players.Count);
+        }
+
+        /// <summary>The game has not begun: the first player, still on Start, waits to roll for the first time.</summary>
+        public static bool IsFirstRoll(GameState state) =>
+            state != null && state.TurnNumber == 1 && state.Phase == GamePhase.WaitingForRoll && state.CurrentPlayer.Position == 0;
+
+        public static string FirstRollText(string name) => F($"Kura: ilk zarı {name} atar");
+
+        /// <summary>
+        /// Puts the draw over the table once the loading screen has gone, and lets the computer wait while it
+        /// is read; the "your turn" line comes after it.
+        /// </summary>
+        private void AnnounceDraw()
+        {
+            if (!_drawToAnnounce || SceneFader.IsLoading) return;
+            _drawToAnnounce = false;
+            PlayerState first = _session.State.CurrentPlayer;
+            Announcement = FirstRollText(first.Name);
+            AnnouncementPlayer = first.Id;
+            AnnouncementTime = Time.unscaledTime;
+            _nextAiMoveTime = Time.time + AnnouncementSeconds;
+            Revision++;
         }
 
         /// <summary>Records how long the table took from the menu's button, and starts the -perf measurement when asked for.</summary>

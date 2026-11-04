@@ -765,6 +765,14 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Borç ekranında şehir listesi yok: oyuncunun şehirleri haritada sarı halkayla işaretlenir, tıklanan şehir bankaya satılır. Fare bir şehrin üstündeyken kart o şehrin satış fiyatını yazar. Otomatik Sat ve süre aynen duruyor.
 - Testler: `SpecialSquaresTests` (yürüyen yolculuk, Başlangıç parası, başkasının şehri yasak), PlayMode `TheSideDockIsGoneAndTheBottomStripKeepsTheMenu`, düğmeli tur testi hedef halkasını da arar; `UiLayoutTests` yeni kenar payına göre.
 
+## Faz 15c: ilk zarı kura belirler
+
+- Yeni oyunda ilk zarı kimin atacağı rastgele seçilir (`FirstPlayerDraw`). Oyuncular masadaki sıralarını korur; liste yalnızca çekilen oyuncu başa gelecek şekilde döndürülür, böylece tur sayımı ve tur sınırı aynen çalışır. Çekiliş zardan ayrı bir rastgele akışla yapılır.
+- Online oyunda kurayı yalnızca ev sahibi çeker; herkes aynı sırayı oyunla birlikte alır (protokol değişmedi). Kayıttan devam eden oyun kurasız açılır ve sırasını korur; "Tekrar oyna" yeni oyun sayılır, kura yeniden çekilir.
+- Renkler ve karakterler artık sıradan değil lobideki koltuktan gelir (`FirstPlayerDraw.LobbySeat`), yani kura kimi seçerse seçsin herkes lobideki rengini korur.
+- Yükleme ekranı kalkınca tahtanın üstünde çekilen oyuncunun rengiyle "Kura: ilk zarı X atar" yazar ve günlüğe de düşer; bilgisayar oyuncusu bu yazı okunurken bekler, ardından sıra kimdeyse "Sıra sende" gelir.
+- Testler: `FirstPlayerDrawTests` (döndürme, her koltuk çıkabilir, renk lobiden, tur sayımı çekilen oyuncuya göre), PlayMode `ComputerPlayersPlayOnTheirOwnAndTheGameResumes` kurayı ve kayıttan devamda sıranın korunduğunu da denetler.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
