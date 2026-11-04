@@ -786,6 +786,15 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 
 - Arsa, evler ve otel tahtada yaklaşık %22 daha büyük (`BoardView.BuildingScale` 0,36 → 0,44): bina artık karenin genişliğinin beşte ikisini kaplar, otel bir kare genişliğinin onda yedisi kadar yükselir. Bina sırası biraz içeri alındı (`BuildingOffset` 0,40 → 0,385), böylece taban karenin iç kenarında kalır; `SceneryTests` bunu denetler.
 
+## Faz 16c: kare düzeni (fiyat altta, ad üstünde, binalar en üstte)
+
+- Şehir karelerinde ekranın altından üstüne doğru: büyük ve kalın fiyat satırı, grup renginde bir şerit üstünde şehir adı, en üstteki boş alanda arsa, ev ve otel. Düzen ekrana göredir (`BoardView.ScreenDown`): kameraya yakın kenarlarda fiyat dış kenarda, uzak kenarlarda tahtanın ortasına bakan kenardadır; böylece binaların yüksekliği hep yazılardan uzağa, ekranın yukarısına doğru yükselir.
+- Piyonlar yürürken ve dururken fiyat satırının üstünde durur (`PawnOffset` = `PriceOffset`). Köşeler eskisi gibi.
+- Satılık şehirde fiyat yazar; sahibi olunca aynı satırda o anki kira bedeli sahibin renginde yazar ve ev, otel ya da grubun tamamlanmasıyla güncellenir (`BoardView.SetRent`, `GameRules.CalculateRent`).
+- Vergi ve şans karelerinin işareti de en üstteki alana geçti; yazıları aynı sırada. Otogar köşesinin "bilet" satırı adının ötesinde küçük kalır. Piyonların yürürken bıraktığı izler fiyat yazısının altında kalır (`PawnTrail.Top` < `BoardView.PrintHeight`).
+- Renk körü modunda grup harfi şeridin sol ucunda durur, ad ona yer bırakır.
+- Testler: `SceneryTests` şeritlerin sırasını ve kareye sığmasını, gerçek tahtada her şehirde fiyatın adın altında ve piyonların fiyat satırında olduğunu, kiranın sahibin renginde yazıp satılınca fiyatın geri geldiğini denetler.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

@@ -790,6 +790,22 @@ namespace Lazpoly.Presentation.Game
                 _board.SetOwner(i, owner == GameState.NoOwner ? (Color?)null : ColorOf(owner));
                 _board.SetBuildingLevel(i, state.GetBuildingLevel(i));
             }
+
+            ShowRents();
+        }
+
+        /// <summary>
+        /// Prints on every owned town the rent a visitor pays now (it changes with buildings and with a whole
+        /// group, so every town is asked again); towns for sale show their price.
+        /// </summary>
+        private void ShowRents()
+        {
+            GameState state = _session.State;
+            for (int i = 0; i < state.SquareCount; i++)
+            {
+                bool owned = _session.Board[i].Type == SquareType.Property && state.GetOwner(i) != GameState.NoOwner;
+                _board.SetRent(i, owned ? GameRules.CalculateRent(_session.Board, _session.Rules, state, i) : (int?)null);
+            }
         }
 
         private void OnEventsPublished(IReadOnlyList<GameEvent> events)
@@ -971,10 +987,12 @@ namespace Lazpoly.Presentation.Game
                         if (owner.NewOwnerId == GameState.NoOwner)
                         {
                             _board.ClearOwner(owner.SquareIndex, animate: true);
+                            ShowRents();
                             break;
                         }
 
                         _board.SetOwner(owner.SquareIndex, ColorOf(owner.NewOwnerId));
+                        ShowRents();
                         _board.PulseOwner(owner.SquareIndex);
                         _board.RaiseFlag(owner.SquareIndex);
                         Pawn(owner.NewOwnerId)?.Cheer();
@@ -1010,6 +1028,7 @@ namespace Lazpoly.Presentation.Game
 
                         if (building.Level > _board.LevelOf(building.SquareIndex)) Pawn(_session.State.GetOwner(building.SquareIndex))?.Cheer();
                         _board.SetBuildingLevel(building.SquareIndex, building.Level, animate: true);
+                        ShowRents();
                         if (building.Level >= SquareDefinition.MaxBuildingLevel) AudioPlayer.Play(SoundCue.Hotel);
                         break;
                     case PhaseChangedEvent phase:

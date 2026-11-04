@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Lazpoly.Core.Board;
+using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Dice;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Models;
@@ -53,29 +55,87 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void EverythingOnASquareHasItsOwnStripFromTheInnerEdgeToTheOuter()
+        public void ATownShowsItsPriceUnderItsNameAndItsRentOnceOwned()
+        {
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardData data = BoardDataLoader.LoadFromResources();
+                BoardView board = BoardView.Create(holder.transform, data);
+                int towns = 0;
+                for (int i = 0; i < data.Board.Count; i++)
+                {
+                    if (data.Board[i].Type != SquareType.Property) continue;
+                    towns++;
+                    Vector3 center = board.SquarePosition(i);
+                    Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(board.Layout.SquareCenter(i)));
+                    Vector3 name = board.NameLabel(i).transform.position;
+                    Vector3 price = board.PriceLabel(i).transform.position;
+                    Assert.Greater(Vector3.Dot(price - name, down), 0f, $"square {i}: the price lies under the name on the screen");
+                    Assert.That(Vector3.Dot(board.PawnSpot(i) - price, down), Is.EqualTo(0f).Within(1e-3f), $"square {i}: the pawns stand on the price line");
+                    Assert.Greater(Vector3.Dot(price - center, down), 0f, $"square {i}: the price is on the bottom part");
+                }
+
+                Assert.Greater(towns, 0);
+                const int town = 1;
+                Assert.AreEqual(BoardView.Subtitle(data.Board[town]), board.PriceLabel(town).text, "for sale, the town shows its price");
+                Assert.IsNull(board.RentShown(town));
+
+                var owner = new Color(0.2f, 0.5f, 0.9f);
+                board.SetOwner(town, owner);
+                board.SetRent(town, 7);
+                Assert.AreEqual(7, board.RentShown(town));
+                Assert.AreEqual(Lazpoly.Presentation.Texts.Lang.F($"{7}"), board.PriceLabel(town).text, "owned, it shows the rent");
+                // A TextMesh keeps its colour in bytes, so compare it that way.
+                Assert.AreEqual((Color32)BoardView.RentColor(owner), (Color32)board.PriceLabel(town).color, "in the owner's colour");
+
+                board.SetRent(town, null);
+                Assert.AreEqual(BoardView.Subtitle(data.Board[town]), board.PriceLabel(town).text, "back on sale, the price returns");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void EverythingOnASquareHasItsOwnStripFromTheScreensTopToItsBottom()
         {
             var layout = new BoardLayout(24, 6f, BoardView.DepthRatio);
             float widthInDepths = layout.Width / layout.Depth;
             float pawnReach = PawnSlots.Pitch * widthInDepths; // Half the 3x3 slot grid, in tile depths.
+            float buildingHalf = BuildingModels.Depth * BoardView.BuildingScale * widthInDepths / 2f;
 
-            Assert.Greater(BoardView.BuildingOffset, BoardView.PawnOffset, "the building row lies behind the pawns");
-            Assert.Less(BoardView.BuildingOffset + BuildingModels.Depth * BoardView.BuildingScale * widthInDepths / 2f, 0.5f, "the building stays on the tile");
+            // From the top of the screen down: buildings, the name on its strip, the price with the pawns on it.
+            Assert.Less(BoardView.BuildingOffset, BoardView.NameOffset, "the buildings stand above the name");
+            Assert.GreaterOrEqual(BoardView.BuildingOffset - buildingHalf, -0.5f, "the building stays on the tile");
+            Assert.LessOrEqual(BoardView.BuildingOffset + buildingHalf, BoardView.NameOffset - BoardView.StripDepth / 2f, "the building ends before the name's strip");
             Assert.Less(BuildingModels.Width * BoardView.BuildingScale, 0.5f, "the building leaves most of the tile's width free");
-            Assert.Less(-BoardView.PawnOffset + pawnReach, BoardView.NameOffset - BoardView.NameDepth / 2f, "the back row of pawns stops short of the name");
-            Assert.LessOrEqual(BoardView.NameOffset + BoardView.NameDepth / 2f, BoardView.PriceOffset - BoardView.PriceDepth / 2f, "the price sits under the name");
-            Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f, "the band lies beyond the price");
-            Assert.Less(BoardView.BandOffset + BoardView.BandDepth / 2f, 0.5f, "the band stays on the tile");
-            Assert.Greater(BoardView.NameSize, BoardView.PriceSize, "the name is the larger line");
+            Assert.LessOrEqual(BoardView.NameDepth, BoardView.StripDepth, "the name fits on its strip");
+            Assert.LessOrEqual(BoardView.NameOffset + BoardView.StripDepth / 2f, BoardView.PriceOffset - BoardView.PriceDepth / 2f, "the price sits under the name's strip");
+            Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, 0.5f, "the price stays on the tile");
+            Assert.AreEqual(BoardView.PriceOffset, BoardView.PawnOffset, "the pawns walk on the price line");
+            Assert.LessOrEqual(BoardView.PawnOffset + pawnReach, 0.5f, "the pawns' bottom row stays on the tile");
+            Assert.Greater(BoardView.PriceSize, BoardView.NameSize, "the price is the big line");
             Assert.LessOrEqual(BoardView.NameFill, 0.88f, "a long name keeps a margin at both ends of its tile");
+            Assert.Less(BoardView.MarkedNameFill, BoardView.NameFill, "the group's letter keeps its room");
+            Assert.Less(Lazpoly.Presentation.Pawns.PawnTrail.Top, BoardView.PrintHeight, "a pawn's trail lies under the price it walks over");
 
             // On a corner the scene stands towards the board's corner and the pawns step the other way; neither reaches the other.
             Assert.LessOrEqual(BoardView.SceneOffset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner along the edge");
             Assert.LessOrEqual(BoardView.SceneInset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner across it");
             Assert.Less(-BoardView.CornerPawnShift + pawnReach, BoardView.SceneOffset - BoardView.SceneSize / 2f, "the pawns stay clear of the scene");
-            Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.NameOffset - BoardView.NameDepth / 2f, "the scene ends before the corner's name");
-            Assert.LessOrEqual(BoardView.PawnOffset + pawnReach, 0.5f, "on a far corner the pawns' outer row stays on the tile");
-            Assert.Less(-BoardView.PawnOffset + pawnReach, BoardView.NameOffset - BoardView.NameDepth / 2f, "on a near corner the pawns stop short of the name");
+            Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "the scene ends before the corner's name");
+            Assert.LessOrEqual(BoardView.CornerPawnOffset + pawnReach, 0.5f, "on a far corner the pawns' outer row stays on the tile");
+            Assert.LessOrEqual(BoardView.CornerNameOffset + BoardView.CornerNameDepth / 2f, BoardView.CornerPriceOffset - BoardView.CornerPriceDepth / 2f, "a corner's ticket line lies beyond its name");
+            Assert.LessOrEqual(BoardView.CornerPriceOffset + BoardView.CornerPriceDepth / 2f, 0.5f, "and stays on the tile");
+            Assert.Less(-BoardView.CornerPawnOffset + pawnReach, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "on a near corner the pawns stop short of the name");
+
+            // Down the screen is out over the edge on the near rows and in towards the lawn on the far ones.
+            Assert.AreEqual(Vector3.back, BoardView.ScreenDown(Vector3.back));
+            Assert.AreEqual(Vector3.right, BoardView.ScreenDown(Vector3.right));
+            Assert.AreEqual(Vector3.back, BoardView.ScreenDown(Vector3.forward));
+            Assert.AreEqual(Vector3.right, BoardView.ScreenDown(Vector3.left));
 
             // The camera sits at the +x, -z corner: the far rows face +z and -x, the near rows -z and +x.
             Assert.IsTrue(BoardView.FacesAway(Vector3.forward));
