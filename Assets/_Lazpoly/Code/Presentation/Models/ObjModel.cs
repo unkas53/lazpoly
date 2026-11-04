@@ -20,7 +20,7 @@ namespace Lazpoly.Presentation.Models
         /// <summary>The "o"/"g" name in the file.</summary>
         public string Name { get; }
 
-        /// <summary>The "usemtl" name; the game tells parts apart by it (e.g. the tent's canvas).</summary>
+        /// <summary>The "usemtl" name; the game tells parts apart by it (e.g. a character's clothes).</summary>
         public string Material { get; }
 
         public Vector3[] Vertices { get; }

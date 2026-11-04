@@ -5,30 +5,25 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
-    /// The piece that shows who owns a town before any house stands on it: the owner's tent
-    /// (<see cref="TentParts"/>), or the flag when the tent model is not in the build. The board
-    /// places, scales, raises and lowers it the same way either way.
+    /// The piece that shows who owns a town before any house stands on it: the plot with its sign
+    /// (<see cref="BuildingModels"/>, level 0) in the owner's colour, standing where the buildings will
+    /// stand and at their size, or the flag when the models are not in the build. The board places,
+    /// scales, raises and lowers it the same way either way; the first house takes its place.
     /// </summary>
     public sealed class OwnerMarker : MonoBehaviour
     {
-        /// <summary>The tent's length along the building row, in tile widths.</summary>
-        public const float TentLength = 0.30f;
-
-        /// <summary>Where the tent's centre sits, inward from the square's centre, in tile depths: on the building row, behind the pawns.</summary>
-        public const float TentOffset = 0.38f;
-
         private GameObject _pennant;
 
-        /// <summary>True when the marker is the tent; false when it is the flag.</summary>
-        public bool IsTent { get; private set; }
+        /// <summary>True when the marker is the plot; false when it is the flag.</summary>
+        public bool IsPlot { get; private set; }
 
-        /// <summary>Makes the tent, or the flag when the model is missing; <paramref name="wavePhase"/> staggers the flags' flutter.</summary>
+        /// <summary>Makes the plot, or the flag when the models are missing; <paramref name="wavePhase"/> staggers the flags' flutter.</summary>
         public static OwnerMarker Create(string name, Transform parent, float wavePhase)
         {
-            GameObject root = TentParts.Tent(name, parent);
-            bool tent = root != null;
+            GameObject root = BuildingModels.Create(0, name, parent);
+            bool plot = root != null;
             GameObject pennant = null;
-            if (!tent)
+            if (!plot)
             {
                 root = BuildingParts.Flag(name, parent);
                 pennant = root.transform.Find(BuildingParts.PennantName).gameObject;
@@ -36,38 +31,38 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             var marker = root.AddComponent<OwnerMarker>();
-            marker.IsTent = tent;
+            marker.IsPlot = plot;
             marker._pennant = pennant;
             return marker;
         }
 
-        /// <summary>The marker's size on a square <paramref name="width"/> wide, in local scale.</summary>
-        public Vector3 RestScale(float width) => IsTent ? Vector3.one * (width * TentLength) : new Vector3(width * 0.5f, width * 0.62f, width * 0.5f);
+        /// <summary>The marker's size on a square <paramref name="width"/> wide, in local scale: the plot as big as the buildings.</summary>
+        public Vector3 RestScale(float width) => IsPlot ? Vector3.one * (width * BoardView.BuildingScale) : new Vector3(width * 0.5f, width * 0.62f, width * 0.5f);
 
         /// <summary>
-        /// Where the marker stands and which way it turns on a square whose outer edge faces <paramref name="outward"/>;
-        /// <paramref name="size"/> is the square's width along the edge and its depth from inner edge to outer.
+        /// Where the marker stands and which way it turns on a square whose outer edge faces <paramref name="outward"/>:
+        /// on the buildings' spot, the plot's sign facing out like the buildings' fronts.
         /// </summary>
-        public void Place(Vector3 squareCenter, Vector3 outward, Vector2 size, float surfaceY, Vector3 buildingRowCenter)
+        public void Place(Vector3 outward, Vector3 buildingSpot)
         {
-            if (IsTent)
-            {
-                // The tent lies along the row, its door towards the next square, just inside the tile's inner edge.
-                transform.localPosition = squareCenter - outward * (size.y * TentOffset) + Vector3.up * surfaceY;
-                transform.localRotation = Quaternion.LookRotation(Vector3.Cross(outward, Vector3.up));
-            }
-            else
-            {
-                transform.localPosition = buildingRowCenter;
-                transform.localRotation = Quaternion.LookRotation(-outward); // Its +X, the pennant, flies along the row.
-            }
+            transform.localPosition = buildingSpot;
+            transform.localRotation = Quaternion.LookRotation(IsPlot ? outward : -outward); // The flag's +X, the pennant, flies along the row.
         }
 
-        /// <summary>Colours the marker for its owner: the canvas and seams, or the pennant.</summary>
+        /// <summary>Colours the marker for its owner: the whole plot (lightened like the buildings), or the pennant.</summary>
         public void Paint(Color color)
         {
-            if (IsTent) TentParts.Paint(gameObject, color);
-            else if (_pennant != null) ModelParts.Paint(_pennant, color);
+            if (IsPlot)
+            {
+                foreach (Renderer part in GetComponentsInChildren<Renderer>(true))
+                {
+                    ModelParts.Paint(part.gameObject, Color.Lerp(color, Color.white, BoardView.BuildingLightening), 0.2f);
+                }
+            }
+            else if (_pennant != null)
+            {
+                ModelParts.Paint(_pennant, color);
+            }
         }
     }
 }

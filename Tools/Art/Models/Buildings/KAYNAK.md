@@ -4,11 +4,12 @@ Bu bina modelleri (arsa, Ev 1-4, otel; `.glb`, `Lazpoly_Buildings.blend`, `Previ
 2026-11-04'te proje sahibi **mami** tarafından projeye yüklendi. Lazpoly içinde ve Steam yayınında kullanım
 hakkı proje sahibine aittir.
 
-Steam notu (cila planı 10d): modeller bir üretim aracıyla yapıldıysa (çadır, karakterler ve logo gibi), aracın
-adı buraya ve Steamworks içerik anketindeki yapay zekâ beyanına yazılır. Araç adı proje sahibinden
-bekleniyor.
+Üretim aracı (proje sahibinin beyanı, 2026-11-04): **ChatGPT** (OpenAI). Steamworks içerik anketinde yapay
+zekâyla üretilmiş içerik olarak beyan edilir (`Steam/README.md` §6); OpenAI çıktıların kullanım hakkını kullanıcıya
+bırakır, başvurudan önce güncel koşullara bakılır.
 
-Oyundaki kopya: `Tools/Art/make_buildings.py` her modeli üçgenlerinin yaklaşık %30'una indirip
-`Assets/_Lazpoly/Data/Resources/Lazpoly/Models/buildings.bytes` paketine yazar (araç yalnızca
+Oyundaki kopya: `Tools/Art/make_buildings.py` her modeli olduğu gibi ve üçgenlerinin yaklaşık %30'una indirilmiş hafif
+bir kopyası olarak `Assets/_Lazpoly/Data/Resources/Lazpoly/Models/buildings.bytes` paketine yazar (oyun Yüksek
+grafik kalitesinde tam modelleri, Orta ve Düşükte hafif kopyaları gösterir) (araç yalnızca
 `pip install fast-simplification` ister; oyun paketi değildir). `README_TR.md` model paketinin kendi
 açıklamasıdır; oradaki Unity kurulum adımları (LazpolyBuildingsSetup, prefablar) bu projede kullanılmaz.

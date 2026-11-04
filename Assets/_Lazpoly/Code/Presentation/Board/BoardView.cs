@@ -74,7 +74,7 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color PriceColor = new Color(0.21f, 0.19f, 0.17f);
 
         // Where things sit across a square, from its inner edge (-0.5) to its outer edge (+0.5), in tile depths:
-        // buildings and the tent along the inner edge, pawns inside them, then the name, the price and the group band.
+        // buildings and the plot along the inner edge, pawns inside them, then the name, the price and the group band.
         // The camera looks down at 35 degrees, so a piece's height falls up the screen over the ground behind it:
         // on the rows that face away from the camera the pawns' room is kept short of the name so they never cover it.
         /// <summary>The building row's centre, inward from the square's centre.</summary>
@@ -424,7 +424,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>
         /// Shows the one building of a level: a house of one to four storeys, or the hotel at the top level.
         /// With <paramref name="animate"/>, the new building drops onto the tile and bounces while the old one
-        /// shrinks away, and the tent folds down when the first building takes its place.
+        /// shrinks away, and the plot folds down when the first building takes its place.
         /// </summary>
         public void SetBuildingLevel(int squareIndex, int level, bool animate = false)
         {
@@ -450,7 +450,7 @@ namespace Lazpoly.Presentation.Tabletop
                 if (appears && animate) StartCoroutine(Drop(piece, _buildingRest[squareIndex][i]));
             }
 
-            // The tent (or flag) gives way to the first building and returns when the last one is sold.
+            // The plot (or flag) gives way to the first building and returns when the last one is sold.
             OwnerMarker flag = _ownerMarkers[squareIndex];
             if (flag == null) return;
             bool flagWasUp = flag.gameObject.activeSelf;
@@ -656,9 +656,9 @@ namespace Lazpoly.Presentation.Tabletop
 
                 if (property)
                 {
-                    // Owner marker: the owner's tent (or the flag) pitched on the tile's inner part, where the buildings will stand.
+                    // Owner marker: the owner's plot (or the flag) on the tile's inner part, where the buildings will stand.
                     OwnerMarker marker = OwnerMarker.Create("Owner marker", transform, i * 0.9f);
-                    marker.Place(center, outward, size, TileHeight, BuildingRowCenter(center));
+                    marker.Place(outward, BuildingRowCenter(center));
                     _flagScale[i] = marker.RestScale(_width);
                     marker.transform.localScale = _flagScale[i];
                     marker.gameObject.SetActive(false);

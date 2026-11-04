@@ -3,17 +3,17 @@
 
 The six models (the empty plot, houses of one to four storeys and the hotel) share one white material and
 stand on a 0.90 x 0.72 footprint with their pivot at the middle of the ground; +Z is the front (the door).
-The full models carry 2,000-51,000 triangles each, far more than a building a few dozen pixels wide on the
-board needs, so this script:
-  * reads each .glb (glTF is right-handed: x is mirrored and the winding flipped for Unity),
+Each model goes into the pack twice: whole, as the owner made it (the game shows these at the High graphics
+quality), and a light copy for Medium and Low, named <model>_Low. For the light copy this script:
   * welds the vertices and reduces the mesh to about 30% of its triangles with quadric edge collapse
     (the fast-simplification package: pip install fast-simplification; only this tool needs it),
-  * gives it normals again, smooth across faces that bend less than CREASE degrees and split where they bend more,
-  * writes all six into one binary TextAsset the game reads with BuildingPack:
-    Assets/_Lazpoly/Data/Resources/Lazpoly/Models/buildings.bytes
+  * gives it normals again, smooth across faces that bend less than CREASE degrees and split where they bend more.
+glTF is right-handed: x is mirrored and the winding flipped for Unity. All twelve meshes go into one binary
+TextAsset the game reads with BuildingPack: Assets/_Lazpoly/Data/Resources/Lazpoly/Models/buildings.bytes
 
-Format (little-endian): "LZB1", int32 mesh count, then per mesh: uint8 name length, ASCII name, int32 vertex
-count, float32 x/y/z per vertex, int16 normal x/y/z per vertex (x 1/32767), int32 index count, uint16 indices.
+Format (little-endian): "LZB2", int32 mesh count, then per mesh: uint8 name length, ASCII name, int32 vertex
+count, float32 x/y/z per vertex, int16 normal x/y/z per vertex (x 1/32767), uint8 index size (2 or 4), int32
+index count, the indices (uint16 or uint32).
 Run from the repository root: python3 Tools/Art/make_buildings.py
 """
 import json
@@ -29,6 +29,7 @@ MODELS = ["Plot_00", "House_01", "House_02", "House_03", "House_04", "Hotel_05"]
 KEEP = 0.3      # share of the triangles kept
 AGGRESSION = 3  # fast-simplification's agg: low keeps the shape (windows, the H sign) at the cost of reaching KEEP
 CREASE = 40.0   # degrees
+LOW_SUFFIX = "_Low"
 
 
 def load_glb(path):
@@ -50,8 +51,9 @@ def load_glb(path):
 
     primitive = gltf["meshes"][0]["primitives"][0]
     positions = accessor(primitive["attributes"]["POSITION"]).astype(np.float64) * [-1.0, 1.0, 1.0]
+    normals = accessor(primitive["attributes"]["NORMAL"]).astype(np.float64) * [-1.0, 1.0, 1.0]
     triangles = accessor(primitive["indices"]).astype(np.int64).reshape(-1, 3)[:, [0, 2, 1]]
-    return positions, triangles
+    return positions, normals, triangles
 
 
 def weld(positions, triangles, step=1e-5):
@@ -96,6 +98,15 @@ def crease_normals(positions, triangles, crease):
     return np.array(out_positions), np.array(out_normals), out_triangles
 
 
+def mesh_bytes(name, positions, normals, triangles):
+    wide = len(positions) > 65535
+    out = struct.pack("<B", len(name)) + name.encode("ascii")
+    out += struct.pack("<i", len(positions)) + positions.astype("<f4").tobytes()
+    out += np.clip(np.round(normals * 32767), -32767, 32767).astype("<i2").tobytes()
+    out += struct.pack("<Bi", 4 if wide else 2, triangles.size) + triangles.astype("<u4" if wide else "<u2").tobytes()
+    return out
+
+
 def main():
     try:
         import fast_simplification
@@ -103,27 +114,23 @@ def main():
         sys.exit("needs the fast-simplification package: pip install fast-simplification")
 
     root = os.getcwd()
-    chunks = [b"LZB1", struct.pack("<i", len(MODELS))]
+    chunks = [b"LZB2", struct.pack("<i", 2 * len(MODELS))]
     for name in MODELS:
         source = os.path.join(root, SOURCE, name + ".glb")
         if not os.path.exists(source):
             sys.exit(f"missing {source}; run from the repository root")
-        positions, triangles = load_glb(source)
+        positions, normals, triangles = load_glb(source)
+        chunks.append(mesh_bytes(name, positions, normals, triangles))
         original = len(triangles)
-        positions, triangles = weld(positions, triangles)
-        reduced, faces = fast_simplification.simplify(positions, triangles.astype(np.int32),
-                                                      target_count=int(original * KEEP), agg=AGGRESSION)
-        positions, normals, triangles = crease_normals(np.asarray(reduced, np.float64), np.asarray(faces, np.int64), CREASE)
-        if len(positions) > 65535:
-            sys.exit(f"{name}: {len(positions)} vertices do not fit 16-bit indices")
 
-        chunks.append(struct.pack("<B", len(name)) + name.encode("ascii"))
-        chunks.append(struct.pack("<i", len(positions)) + positions.astype("<f4").tobytes())
-        chunks.append(np.clip(np.round(normals * 32767), -32767, 32767).astype("<i2").tobytes())
-        chunks.append(struct.pack("<i", triangles.size) + triangles.astype("<u2").tobytes())
+        welded, faces = weld(positions, triangles)
+        reduced, faces = fast_simplification.simplify(welded, faces.astype(np.int32),
+                                                      target_count=int(original * KEEP), agg=AGGRESSION)
+        light, light_normals, light_triangles = crease_normals(np.asarray(reduced, np.float64), np.asarray(faces, np.int64), CREASE)
+        chunks.append(mesh_bytes(name + LOW_SUFFIX, light, light_normals, light_triangles))
         low, high = positions.min(axis=0), positions.max(axis=0)
-        print(f"{name:9s} {original:6d} -> {len(triangles):6d} triangles, {len(positions):6d} vertices, "
-              f"x {low[0]:+.3f}..{high[0]:+.3f} y {low[1]:.3f}..{high[1]:.3f} z {low[2]:+.3f}..{high[2]:+.3f}")
+        print(f"{name:9s} {original:6d} triangles ({len(positions):6d} vertices), light copy {len(light_triangles):6d} "
+              f"({len(light):6d}); x {low[0]:+.3f}..{high[0]:+.3f} y {low[1]:.3f}..{high[1]:.3f} z {low[2]:+.3f}..{high[2]:+.3f}")
 
     target = os.path.join(root, TARGET)
     os.makedirs(os.path.dirname(target), exist_ok=True)

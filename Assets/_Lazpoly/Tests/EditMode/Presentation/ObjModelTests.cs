@@ -1,7 +1,5 @@
 using System;
-using System.IO;
 using Lazpoly.Presentation.Models;
-using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -9,9 +7,6 @@ namespace Lazpoly.Presentation.Tests
 {
     public class ObjModelTests
     {
-        private static void AssertColor(Color expected, Color actual) =>
-            Assert.That(Vector4.Distance(expected, actual), Is.LessThan(1e-4f), $"expected {expected}, got {actual}");
-
         private const string Sample =
             "# a square floor and a post\n" +
             "o Floor\nusemtl Boards\n" +
@@ -56,63 +51,6 @@ namespace Lazpoly.Presentation.Tests
             Assert.Throws<FormatException>(() => ObjModel.Parse("v 0 0 0\nf 1 2 3\n"));
             Assert.Throws<FormatException>(() => ObjModel.Parse("v a b c\n"));
             Assert.AreEqual(0, ObjModel.Parse("# nothing here\n").Groups.Count);
-        }
-
-        [Test]
-        public void TheTentAssetIsTrimmedToTheCanvasAndUnitSized()
-        {
-            string path = Path.Combine(Application.dataPath, "_Lazpoly", "Data", "Resources", "Lazpoly", "Models", "camp_tent.txt");
-            Assert.IsTrue(File.Exists(path), "run Tools/Art/make_tent.py");
-            ObjModel tent = ObjModel.Parse(File.ReadAllText(path));
-
-            Assert.AreEqual(5, tent.Groups.Count, "guy lines are left out");
-            Assert.IsNull(tent.Find("Guyline_Sand"));
-            Assert.IsNotNull(tent.Find(TentParts.CanvasPart));
-            Assert.IsNotNull(tent.Find(TentParts.SeamsPart));
-            Assert.That(tent.TriangleCount, Is.InRange(1000, 1200));
-
-            Bounds bounds = tent.Bounds;
-            Assert.That(bounds.size.z, Is.EqualTo(1f).Within(0.01f), "the tent is one unit long");
-            Assert.That(bounds.center.x, Is.EqualTo(0f).Within(0.01f));
-            Assert.That(bounds.center.z, Is.EqualTo(0f).Within(0.01f));
-            Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), "the groundsheet lies on the tile");
-            Assert.Less(bounds.size.x, 0.9f, "pegs and line tags are cut away");
-            Assert.That(bounds.size.y, Is.InRange(0.4f, 0.7f));
-        }
-
-        [Test]
-        public void TheOwnerMarkerIsTheTentPaintedInTheOwnersColour()
-        {
-            var root = new GameObject("Marker Test");
-            try
-            {
-                Assert.IsTrue(TentParts.IsAvailable, "the tent model is not in Resources");
-                OwnerMarker marker = OwnerMarker.Create("Owner marker", root.transform, 0f);
-                Assert.IsTrue(marker.IsTent);
-                Assert.AreEqual(5, marker.transform.childCount, "one part per material");
-
-                var owner = new Color(0.2f, 0.4f, 0.9f);
-                marker.Paint(owner);
-                Material canvas = marker.transform.Find(TentParts.CanvasPart).GetComponent<Renderer>().sharedMaterial;
-                Material seams = marker.transform.Find(TentParts.SeamsPart).GetComponent<Renderer>().sharedMaterial;
-                Material poles = marker.transform.Find("Poles_Aluminum").GetComponent<Renderer>().sharedMaterial;
-                AssertColor(owner, canvas.color);
-                AssertColor(TentParts.Shade(owner), seams.color);
-                Assert.Less(seams.color.grayscale, canvas.color.grayscale, "seams are darker than the canvas");
-                AssertColor(TentParts.Aluminium, poles.color);
-
-                marker.Place(new Vector3(0f, 0f, -6f), Vector3.back, new Vector2(2f, 2.8f), 0.2f, Vector3.zero);
-                Vector3 scale = marker.RestScale(2f);
-                Assert.That(scale.x, Is.EqualTo(scale.z).Within(1e-5f), "the tent scales uniformly");
-                Assert.Less(marker.transform.localPosition.z, -6f + 2.8f * 0.5f - scale.z / 2f, "the tent stays inside the tile");
-                Assert.Greater(marker.transform.localPosition.z, -6f);
-                Vector3 along = marker.transform.localRotation * Vector3.forward;
-                Assert.That(Mathf.Abs(along.x), Is.EqualTo(1f).Within(1e-4f), "the tent lies along the row");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(root);
-            }
         }
     }
 }

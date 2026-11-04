@@ -1,5 +1,6 @@
 using Lazpoly.Infra;
 using Lazpoly.Infra.Settings;
+using Lazpoly.Presentation.Models;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -39,6 +40,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Re-applies a quality level to the scene that is up now: the main camera, the sun and the pipeline.</summary>
         public static void ApplyQuality(GraphicsQuality quality)
         {
+            BuildingModels.SetFullDetail(FullBuildingsFor(quality));
             Camera camera = Camera.main;
             if (camera != null && camera.GetComponent<Volume>() != null) DressCamera(camera, quality);
             GameObject sun = GameObject.Find("Sun");
@@ -60,6 +62,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Shadow map size per quality; the single cascade keeps even the small one sharp over the board.</summary>
         public static int ShadowResolutionFor(GraphicsQuality quality) =>
             quality == GraphicsQuality.High ? 4096 : quality == GraphicsQuality.Medium ? 2048 : 1024;
+
+        /// <summary>The buildings stand whole, as their maker made them, on High; Medium and Low show their light copies.</summary>
+        public static bool FullBuildingsFor(GraphicsQuality quality) => quality == GraphicsQuality.High;
 
         /// <summary>Post-processing runs on Medium and High; Low draws the plain picture.</summary>
         public static bool PostProcessingOn(GraphicsQuality quality) => quality != GraphicsQuality.Low;
@@ -123,6 +128,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public static void DressCamera(Camera camera, GraphicsQuality quality)
         {
+            BuildingModels.SetFullDetail(FullBuildingsFor(quality));
             bool postProcessing = PostProcessingOn(quality);
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = SkyDay;

@@ -37,13 +37,13 @@ namespace Lazpoly.Presentation.Models
     }
 
     /// <summary>
-    /// Reads the building pack Tools/Art/make_buildings.py writes (buildings.bytes): "LZB1", the number of
-    /// models, then for each its name, vertex positions (float), normals (16-bit, in 1/32767) and
-    /// 16-bit triangle indices, all little-endian.
+    /// Reads the building pack Tools/Art/make_buildings.py writes (buildings.bytes): "LZB2", the number of
+    /// meshes, then for each its name, vertex positions (float), normals (16-bit, in 1/32767), the index size
+    /// (2 or 4 bytes) and the triangle indices, all little-endian.
     /// </summary>
     public static class BuildingPack
     {
-        public static readonly byte[] Magic = Encoding.ASCII.GetBytes("LZB1");
+        public static readonly byte[] Magic = Encoding.ASCII.GetBytes("LZB2");
 
         /// <exception cref="FormatException">The data is not a whole, valid pack.</exception>
         public static IReadOnlyList<BuildingMesh> Parse(byte[] data)
@@ -78,27 +78,47 @@ namespace Lazpoly.Presentation.Models
             int nameLength = reader.ReadByte();
             string name = Encoding.ASCII.GetString(reader.ReadBytes(nameLength));
             int vertices = reader.ReadInt32();
-            if (vertices <= 0 || vertices > ushort.MaxValue + 1) throw new FormatException($"{name}: {vertices} vertices");
+            if (vertices <= 0 || vertices > 1 << 22) throw new FormatException($"{name}: {vertices} vertices");
 
+            var coordinates = new float[vertices * 3];
+            Buffer.BlockCopy(Read(reader, coordinates.Length * 4), 0, coordinates, 0, coordinates.Length * 4);
             var positions = new Vector3[vertices];
-            for (int i = 0; i < vertices; i++) positions[i] = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+            for (int i = 0; i < vertices; i++) positions[i] = new Vector3(coordinates[3 * i], coordinates[3 * i + 1], coordinates[3 * i + 2]);
+
+            var packed = new short[vertices * 3];
+            Buffer.BlockCopy(Read(reader, packed.Length * 2), 0, packed, 0, packed.Length * 2);
             var normals = new Vector3[vertices];
-            for (int i = 0; i < vertices; i++)
+            for (int i = 0; i < vertices; i++) normals[i] = new Vector3(packed[3 * i], packed[3 * i + 1], packed[3 * i + 2]) / 32767f;
+
+            int indexSize = reader.ReadByte();
+            if (indexSize != 2 && indexSize != 4) throw new FormatException($"{name}: {indexSize}-byte indices");
+            int indices = reader.ReadInt32();
+            if (indices <= 0 || indices % 3 != 0 || indices > 1 << 24) throw new FormatException($"{name}: {indices} indices");
+            var triangles = new int[indices];
+            if (indexSize == 4)
             {
-                normals[i] = new Vector3(reader.ReadInt16(), reader.ReadInt16(), reader.ReadInt16()) / 32767f;
+                Buffer.BlockCopy(Read(reader, indices * 4), 0, triangles, 0, indices * 4);
+            }
+            else
+            {
+                var narrow = new ushort[indices];
+                Buffer.BlockCopy(Read(reader, indices * 2), 0, narrow, 0, indices * 2);
+                for (int i = 0; i < indices; i++) triangles[i] = narrow[i];
             }
 
-            int indices = reader.ReadInt32();
-            if (indices <= 0 || indices % 3 != 0) throw new FormatException($"{name}: {indices} indices");
-            var triangles = new int[indices];
-            for (int i = 0; i < indices; i++)
+            foreach (int index in triangles)
             {
-                int index = reader.ReadUInt16();
-                if (index >= vertices) throw new FormatException($"{name}: index {index} past {vertices} vertices");
-                triangles[i] = index;
+                if (index < 0 || index >= vertices) throw new FormatException($"{name}: index {index} past {vertices} vertices");
             }
 
             return new BuildingMesh(name, positions, normals, triangles);
+        }
+
+        private static byte[] Read(BinaryReader reader, int count)
+        {
+            byte[] bytes = reader.ReadBytes(count);
+            if (bytes.Length != count) throw new EndOfStreamException();
+            return bytes;
         }
     }
 }

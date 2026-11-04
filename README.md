@@ -773,13 +773,14 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Yükleme ekranı kalkınca tahtanın üstünde çekilen oyuncunun rengiyle "Kura: ilk zarı X atar" yazar ve günlüğe de düşer; bilgisayar oyuncusu bu yazı okunurken bekler, ardından sıra kimdeyse "Sıra sende" gelir.
 - Testler: `FirstPlayerDrawTests` (döndürme, her koltuk çıkabilir, renk lobiden, tur sayımı çekilen oyuncuya göre), PlayMode `ComputerPlayersPlayOnTheirOwnAndTheGameResumes` kurayı ve kayıttan devamda sıranın korunduğunu da denetler.
 
-## Faz 16a: ev ve otel modelleri
+## Faz 16a: ev ve otel modelleri, çadırın yerine arsa
 
-- Bir şehirde artık her seviyede tek bina durur: 1 ev tek katlı ev, 2-3 ev iki ve üç katlı konut, 4 ev dört katlı apartman, otel kanatlı otel. Modeller proje sahibinin verdiği paketten (`Tools/Art/Models/Buildings`); bina sahibinin rengine boyanır (biraz açılarak, pencereler okunsun diye) ve kapısı karenin dış kenarına, piyonların yürüdüğü yola bakar. Seviye değişince eski bina küçülüp kaybolur, yenisi düşüp sekerek gelir.
-- Modeller 2.000-51.000 üçgenliydi; `Tools/Art/make_buildings.py` her birini üçgenlerinin ~%30'una indirip (görünüş aynı kalacak şekilde) tek bir ikili pakete yazar (`Resources/Lazpoly/Models/buildings.bytes`, 0,9 MB; altısı toplam ~39 bin üçgen). Oyun paketi okur (`BuildingPack`, `BuildingModels`); paket yoksa eski çizilmiş ev ve konak gösterilir.
-- Mülk kartındaki küçük resimler de yeni modelleri kullanır; boş şehirde (seviye 0) tabelalı boş arsa görünür.
+- Bir şehirde artık her seviyede tek bina durur: 1 ev tek katlı ev, 2-3 ev iki ve üç katlı konut, 4 ev dört katlı apartman, otel kanatlı otel. Modeller proje sahibinin ChatGPT ile yaptırdığı paketten (`Tools/Art/Models/Buildings`, `KAYNAK.md`); bina sahibinin rengine boyanır (biraz açılarak, pencereler okunsun diye) ve ön yüzü karenin dış kenarına, piyonların yürüdüğü yola bakar. Seviye değişince eski bina küçülüp kaybolur, yenisi düşüp sekerek gelir.
+- Çadır kaldırıldı: satın alınmış ama yapısız şehirde paketteki tabelalı arsa (`Plot_00`) durur, sahibinin renginde ve binalarla aynı ölçüde; ilk ev onun yerini alır (`OwnerMarker`). Paket yoksa eski bayrak gösterilir.
+- Kalite: Yüksek grafik kalitesinde modeller olduğu gibi (otel 51 bin üçgen), Orta ve Düşükte üçgenlerinin ~%30'u kadar hafif kopyaları gösterilir (`RoomDressing.FullBuildingsFor`); ayar oyun içinde değişince duran binalar da yerinde değişir (`BuildingModels.SetFullDetail`). `Tools/Art/make_buildings.py` iki kopyayı tek ikili pakete yazar (`Resources/Lazpoly/Models/buildings.bytes`, 4,8 MB; hafif kopya `fast-simplification` ile).
+- Mülk kartındaki küçük resimler de yeni modelleri kullanır; boş şehirde (seviye 0) tabelalı arsa görünür.
 - `Lazpoly.exe -perf -built`: ölçüm masası her şehri sahipli ve yapılı başlatır (seviyeler otelden 1 eve sırayla, herkes 100.000 parayla iflas etmeden), böylece bütün binalar görülür ve en ağır tahta ölçülür.
-- Testler: `BuildingModelsTests` (paket altı seviyeyi taşır, taban 0,90 x 0,72, her seviye daha yüksek, bozuk paket reddedilir, her seviyede tek bina), `SceneryTests` binanın kareye sığdığını ve kart sahnesinde tek modelin durduğunu denetler.
+- Testler: `BuildingModelsTests` (paket her seviyeyi tam ve hafif taşır, taban 0,90 x 0,72, her seviye daha yüksek, bozuk paket reddedilir, her seviyede tek bina, kalite değişince binalar değişir, sahip işareti arsa), `SceneryTests` binanın kareye sığdığını ve kart sahnesinde tek modelin durduğunu, `PerfTests` yapılı masayı denetler.
 
 ## Kurallar
 
