@@ -11,6 +11,11 @@ namespace Lazpoly.Presentation.Pawns
     {
         public const float Seconds = 0.5f;
         private const float Radius = 0.17f;
+        private const float Thickness = 0.03f;
+        private const float Lift = 0.001f;
+
+        /// <summary>How high a disc's top stands over the pawn's foot: under the board's print, so a disc never hides a price.</summary>
+        public const float Top = Lift + Thickness * Radius;
         private const int Discs = 6;
 
         private readonly Transform[] _discs = new Transform[Discs];
@@ -25,7 +30,7 @@ namespace Lazpoly.Presentation.Pawns
             Color faint = Color.Lerp(color, Color.white, 0.35f);
             for (int i = 0; i < Discs; i++)
             {
-                GameObject disc = ModelParts.Create("Footprint", root.transform, MeshFactory.Disc(0.08f), faint, 0.3f);
+                GameObject disc = ModelParts.Create("Footprint", root.transform, MeshFactory.Disc(Thickness), faint, 0.3f);
                 disc.SetActive(false);
                 trail._discs[i] = disc.transform;
             }
@@ -39,7 +44,7 @@ namespace Lazpoly.Presentation.Pawns
             Transform disc = _discs[_next];
             _age[_next] = 0f;
             _next = (_next + 1) % Discs;
-            disc.position = at + Vector3.up * 0.006f;
+            disc.position = at + Vector3.up * Lift;
             disc.localScale = Vector3.one * Radius;
             disc.gameObject.SetActive(true);
         }

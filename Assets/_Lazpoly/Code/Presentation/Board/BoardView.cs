@@ -97,6 +97,14 @@ namespace Lazpoly.Presentation.Tabletop
         public const float CornerNameOffset = 0.19f;
         public const float CornerPawnOffset = 0.22f;
 
+        /// <summary>A corner's small second line (the bus station's ticket), beyond its name, with its size and room.</summary>
+        public const float CornerPriceOffset = 0.335f;
+        public const float CornerPriceSize = 0.014f;
+        public const float CornerPriceDepth = 0.12f;
+
+        /// <summary>How high the board's print (names, prices) lies over a tile's top; anything flat on a tile stays under it.</summary>
+        public const float PrintHeight = 0.012f;
+
         /// <summary>On a corner, pawns also step this far along the edge away from the corner's scene.</summary>
         public const float CornerPawnShift = 0.25f;
 
@@ -636,7 +644,7 @@ namespace Lazpoly.Presentation.Tabletop
                 bool property = square.Type == SquareType.Property;
                 bool corner = Layout.IsCorner(i);
                 Vector3 down = ScreenDown(outward);
-                float top = TileHeight + 0.012f;
+                float top = TileHeight + PrintHeight;
                 if (property)
                 {
                     // The name lies on a strip of the group's full colour across the tile, above the price.
@@ -676,8 +684,11 @@ namespace Lazpoly.Presentation.Tabletop
                 string subtitle = Subtitle(square);
                 if (subtitle != null)
                 {
-                    _prices[i] = CreateLabel("Price", subtitle, center + down * (_depth * PriceOffset) + Vector3.up * (TileHeight + 0.012f), outward,
-                        _width * PriceSize, new Vector2(size.x * NameFill, _depth * PriceDepth), PriceColor);
+                    Vector3 pricePlace = corner
+                        ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerPriceOffset)
+                        : center + down * (_depth * PriceOffset);
+                    _prices[i] = CreateLabel("Price", subtitle, pricePlace + Vector3.up * (TileHeight + PrintHeight), outward,
+                        PriceCharacterSize(i), PriceRoom(i, size), PriceColor);
                 }
 
                 if (property)
@@ -770,6 +781,12 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Middle of the building row on a square: along its inner edge, on the tile's top.</summary>
         private Vector3 BuildingRowCenter(Vector3 center) => center + ScreenDown(Outward(center)) * (_depth * BuildingOffset) + Vector3.up * TileHeight;
+
+        /// <summary>A square's price line: big at the bottom of a town or tax square, small under a corner's name.</summary>
+        private float PriceCharacterSize(int index) => _width * (Layout.IsCorner(index) ? CornerPriceSize : PriceSize);
+
+        private Vector2 PriceRoom(int index, Vector2 size) =>
+            new Vector2(size.x * NameFill, _depth * (Layout.IsCorner(index) ? CornerPriceDepth : PriceDepth));
 
         /// <summary>The room a square's name may fill: the tile's width less a margin (and the group's letter, when shown), and its line's depth.</summary>
         private Vector2 NameRoom(int index, Vector2 size)
@@ -982,7 +999,7 @@ namespace Lazpoly.Presentation.Tabletop
             price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]);
             price.color = rent.HasValue && owner.HasValue ? RentColor(owner.Value) : PriceColor;
             Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
-            FitLabel(price, _width * PriceSize, new Vector2(size.x * NameFill, _depth * PriceDepth), Outward(Layout.SquareCenter(index)));
+            FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>

@@ -791,7 +791,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Şehir karelerinde ekranın altından üstüne doğru: büyük ve kalın fiyat satırı, grup renginde bir şerit üstünde şehir adı, en üstteki boş alanda arsa, ev ve otel. Düzen ekrana göredir (`BoardView.ScreenDown`): kameraya yakın kenarlarda fiyat dış kenarda, uzak kenarlarda tahtanın ortasına bakan kenardadır; böylece binaların yüksekliği hep yazılardan uzağa, ekranın yukarısına doğru yükselir.
 - Piyonlar yürürken ve dururken fiyat satırının üstünde durur (`PawnOffset` = `PriceOffset`). Köşeler eskisi gibi.
 - Satılık şehirde fiyat yazar; sahibi olunca aynı satırda o anki kira bedeli sahibin renginde yazar ve ev, otel ya da grubun tamamlanmasıyla güncellenir (`BoardView.SetRent`, `GameRules.CalculateRent`).
-- Vergi, otogar ve şans karelerinin işareti de en üstteki alana geçti; yazıları aynı sırada.
+- Vergi ve şans karelerinin işareti de en üstteki alana geçti; yazıları aynı sırada. Otogar köşesinin "bilet" satırı adının ötesinde küçük kalır. Piyonların yürürken bıraktığı izler fiyat yazısının altında kalır (`PawnTrail.Top` < `BoardView.PrintHeight`).
 - Renk körü modunda grup harfi şeridin sol ucunda durur, ad ona yer bırakır.
 - Testler: `SceneryTests` şeritlerin sırasını ve kareye sığmasını, gerçek tahtada her şehirde fiyatın adın altında ve piyonların fiyat satırında olduğunu, kiranın sahibin renginde yazıp satılınca fiyatın geri geldiğini denetler.
 

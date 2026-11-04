@@ -119,6 +119,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.Greater(BoardView.PriceSize, BoardView.NameSize, "the price is the big line");
             Assert.LessOrEqual(BoardView.NameFill, 0.88f, "a long name keeps a margin at both ends of its tile");
             Assert.Less(BoardView.MarkedNameFill, BoardView.NameFill, "the group's letter keeps its room");
+            Assert.Less(Lazpoly.Presentation.Pawns.PawnTrail.Top, BoardView.PrintHeight, "a pawn's trail lies under the price it walks over");
 
             // On a corner the scene stands towards the board's corner and the pawns step the other way; neither reaches the other.
             Assert.LessOrEqual(BoardView.SceneOffset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner along the edge");
@@ -126,6 +127,8 @@ namespace Lazpoly.Presentation.Tests
             Assert.Less(-BoardView.CornerPawnShift + pawnReach, BoardView.SceneOffset - BoardView.SceneSize / 2f, "the pawns stay clear of the scene");
             Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "the scene ends before the corner's name");
             Assert.LessOrEqual(BoardView.CornerPawnOffset + pawnReach, 0.5f, "on a far corner the pawns' outer row stays on the tile");
+            Assert.LessOrEqual(BoardView.CornerNameOffset + BoardView.CornerNameDepth / 2f, BoardView.CornerPriceOffset - BoardView.CornerPriceDepth / 2f, "a corner's ticket line lies beyond its name");
+            Assert.LessOrEqual(BoardView.CornerPriceOffset + BoardView.CornerPriceDepth / 2f, 0.5f, "and stays on the tile");
             Assert.Less(-BoardView.CornerPawnOffset + pawnReach, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "on a near corner the pawns stop short of the name");
 
             // Down the screen is out over the edge on the near rows and in towards the lawn on the far ones.
