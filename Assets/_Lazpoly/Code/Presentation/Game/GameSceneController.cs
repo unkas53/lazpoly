@@ -658,12 +658,14 @@ namespace Lazpoly.Presentation.Game
             IReadOnlyList<PlayerSeat> seats = FirstPlayerDraw.Draw(LocalGameSetup.TakeSeats(), DrawRandom());
             LocalGame game = LocalGame.Create(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), seats,
                 LocalGameSetup.TakeAiPlayers(), NewSeed());
-            if (!PerfRun.Requested || !PerfRun.BuiltUp) return game;
+            if (!PerfRun.Requested || !(PerfRun.BuiltUp || PerfRun.InDebt)) return game;
 
             // -perf -built: the same table with every town owned and built, the heaviest board there can be.
-            SavedGame built = game.Save(_data.Checksum);
-            PerfRun.BuildUp(built.Snapshot, _data.Board);
-            return LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, built);
+            // -perf -debt: the player on turn is a person selling towns for rent they cannot pay.
+            SavedGame staged = game.Save(_data.Checksum);
+            if (PerfRun.BuiltUp) PerfRun.BuildUp(staged.Snapshot, _data.Board);
+            if (PerfRun.InDebt) PerfRun.OpenDebt(staged, _data.Board);
+            return LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, staged);
         }
 
         private static Pcg32Random NewRandom() => new Pcg32Random(NewSeed());

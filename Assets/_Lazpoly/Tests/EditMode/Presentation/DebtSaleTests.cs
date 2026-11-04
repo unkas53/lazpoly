@@ -130,6 +130,10 @@ namespace Lazpoly.Presentation.Tests
                 {
                     Assert.GreaterOrEqual(part.sharedMaterial.renderQueue, 3000, $"{part.name} is see-through");
                     Assert.That(part.sharedMaterial.color.a, Is.EqualTo(PawnView.FadeAlpha).Within(1e-4f));
+                    Material[] drawn = part.sharedMaterials;
+                    Assert.AreEqual(2, drawn.Length, $"{part.name} carries the depth mask");
+                    Assert.AreEqual(ModelFade.DepthShaderName, drawn[1].shader.name);
+                    Assert.Less(drawn[1].renderQueue, drawn[0].renderQueue, $"{part.name}'s depth is drawn before its colour");
                 }
 
                 pawn.SetFaded(false);

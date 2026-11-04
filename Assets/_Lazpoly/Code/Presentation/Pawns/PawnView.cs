@@ -249,8 +249,12 @@ namespace Lazpoly.Presentation.Pawns
                 for (int i = 0; i < _parts.Length; i++)
                 {
                     Material[] solid = _solid[i];
-                    _faded[i] = new Material[solid.Length];
+                    // A one-material part also gets the depth mask: an extra material draws the same mesh again,
+                    // first (its queue is lower), so the see-through colour shows only the part's front.
+                    Material mask = solid.Length == 1 ? ModelFade.DepthMask() : null;
+                    _faded[i] = new Material[solid.Length + (mask != null ? 1 : 0)];
                     for (int m = 0; m < solid.Length; m++) _faded[i][m] = ModelFade.Copy(solid[m], FadeAlpha) ?? solid[m];
+                    if (mask != null) _faded[i][solid.Length] = mask;
                 }
             }
 

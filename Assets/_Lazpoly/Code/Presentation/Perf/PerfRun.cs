@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Lazpoly.App.AI;
+using Lazpoly.App.Save;
 using Lazpoly.Core.Board;
+using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
 using UnityEngine;
 
@@ -14,7 +16,9 @@ namespace Lazpoly.Presentation.Perf
     /// <c>lazpoly-perf.txt</c> next to the game and the game quits. The build step runs it after every build.
     /// The run leaves the player's save slot alone (see GameSceneController.SaveLocalGame).
     /// With <see cref="BuiltFlag"/> as well, the table starts fully built (<see cref="BuildUp"/>), the
-    /// heaviest board there can be, and every building level can be looked at.
+    /// heaviest board there can be, and every building level can be looked at. With <see cref="DebtFlag"/>
+    /// the first player is a person who owes rent they cannot pay (<see cref="OpenDebt"/>), so the sale
+    /// screen and its tags over the towns stand on the measured table.
     /// </summary>
     public static class PerfRun
     {
@@ -30,8 +34,19 @@ namespace Lazpoly.Presentation.Perf
         /// <summary>Everyone's money on the built table, so nobody goes bankrupt (and loses their buildings) during the run.</summary>
         public const int BuiltMoney = 100000;
 
+        /// <summary>With <see cref="Flag"/>: the player on turn is a person in debt, selling.</summary>
+        public const string DebtFlag = "-debt";
+
+        /// <summary>The debt <see cref="OpenDebt"/> sets up, against the debtor's <see cref="DebtMoney"/>.</summary>
+        public const int DebtAmount = 100;
+        public const int DebtMoney = 10;
+
+        /// <summary>How many towns the debtor holds, spread around the board.</summary>
+        public const int DebtTowns = 4;
+
         private static bool? _requested;
         private static bool? _builtUp;
+        private static bool? _inDebt;
         private static bool _started;
 
         /// <summary>Whether this process was started with <see cref="Flag"/>.</summary>
@@ -54,6 +69,16 @@ namespace Lazpoly.Presentation.Perf
             {
                 if (!_builtUp.HasValue) _builtUp = HasArgument(Environment.GetCommandLineArgs(), BuiltFlag);
                 return _builtUp.Value;
+            }
+        }
+
+        /// <summary>Whether the run asks for the sale screen (<see cref="DebtFlag"/>); it means nothing without <see cref="Flag"/>.</summary>
+        public static bool InDebt
+        {
+            get
+            {
+                if (!_inDebt.HasValue) _inDebt = HasArgument(Environment.GetCommandLineArgs(), DebtFlag);
+                return _inDebt.Value;
             }
         }
 
@@ -88,6 +113,37 @@ namespace Lazpoly.Presentation.Perf
             foreach (GameStateSnapshot.PlayerEntry player in snapshot.Players) player.Money = BuiltMoney;
         }
 
+        /// <summary>
+        /// Puts the player on turn in debt: a person (no longer played by the computer) with
+        /// <see cref="DebtMoney"/> and <see cref="DebtTowns"/> towns, owing the next player <see cref="DebtAmount"/>
+        /// in rent, at a table without a clock so the sale screen stays up for the whole run.
+        /// </summary>
+        public static void OpenDebt(SavedGame save, BoardDefinition board)
+        {
+            if (save?.Snapshot == null) throw new ArgumentNullException(nameof(save));
+            if (board == null) throw new ArgumentNullException(nameof(board));
+            GameStateSnapshot snapshot = save.Snapshot;
+            if (snapshot.Players.Count < 2 || snapshot.Owners.Length != board.Count) throw new ArgumentException("The snapshot does not fit the board.", nameof(save));
+
+            GameStateSnapshot.PlayerEntry debtor = snapshot.Players[snapshot.CurrentPlayerIndex];
+            GameStateSnapshot.PlayerEntry creditor = snapshot.Players[(snapshot.CurrentPlayerIndex + 1) % snapshot.Players.Count];
+            var towns = new List<int>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Property) towns.Add(i);
+            }
+
+            int step = Math.Max(1, towns.Count / DebtTowns);
+            for (int n = 0; n < DebtTowns && n * step < towns.Count; n++) snapshot.Owners[towns[n * step]] = debtor.Id;
+            debtor.Money = DebtMoney;
+            if (towns.Count > 0) debtor.Position = towns[0];
+            snapshot.Phase = GamePhase.AwaitingDebtPayment;
+            snapshot.TurnNumber = Math.Max(snapshot.TurnNumber, 2);
+            snapshot.Debt = new DebtState(debtor.Id, creditor.Id, DebtAmount, MoneyReason.Rent);
+            save.AiPlayers.Remove(debtor.Id);
+            save.Table = save.Table.WithTurnSeconds(0);
+        }
+
         /// <summary>Next to the executable (the project folder in the editor), so the build step can pick it up.</summary>
         public static string ReportPath => Path.Combine(Directory.GetParent(Application.dataPath)?.FullName ?? Application.persistentDataPath, ReportFileName);
 
@@ -114,6 +170,7 @@ namespace Lazpoly.Presentation.Perf
         {
             _requested = null;
             _builtUp = null;
+            _inDebt = null;
             _started = false;
         }
     }
