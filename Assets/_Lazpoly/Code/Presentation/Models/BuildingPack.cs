@@ -45,6 +45,9 @@ namespace Lazpoly.Presentation.Models
     {
         public static readonly byte[] Magic = Encoding.ASCII.GetBytes("LZB2");
 
+        /// <summary>The most meshes a pack may hold: every model's slots, whole and light, with room to spare.</summary>
+        public const int MaxMeshes = 256;
+
         /// <exception cref="FormatException">The data is not a whole, valid pack.</exception>
         public static IReadOnlyList<BuildingMesh> Parse(byte[] data)
         {
@@ -60,7 +63,7 @@ namespace Lazpoly.Presentation.Models
                     }
 
                     int count = reader.ReadInt32();
-                    if (count < 0 || count > 64) throw new FormatException($"{count} models");
+                    if (count < 0 || count > MaxMeshes) throw new FormatException($"{count} meshes");
                     var meshes = new List<BuildingMesh>(count);
                     for (int m = 0; m < count; m++) meshes.Add(ReadMesh(reader));
                     if (reader.BaseStream.Position != data.Length) throw new FormatException("data after the last model");

@@ -95,6 +95,7 @@ namespace Lazpoly.Presentation.Tests
             }
 
             Assert.AreEqual(meshes, pack.Count, "nothing else is in the pack");
+            Assert.LessOrEqual(pack.Count, BuildingPack.MaxMeshes, "the reader takes the whole pack");
             Assert.Less(lightTotal, 50000, "the light copies together stay light");
 
             foreach (BuildingMesh mesh in pack)
