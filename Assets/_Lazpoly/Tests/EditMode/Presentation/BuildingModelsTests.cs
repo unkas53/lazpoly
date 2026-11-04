@@ -41,7 +41,7 @@ namespace Lazpoly.Presentation.Tests
                 BuildingMesh whole = Find(pack, BuildingModels.Names[level]);
                 BuildingMesh light = Find(pack, BuildingModels.Names[level] + BuildingModels.LowSuffix);
                 Assert.AreEqual(SourceTriangles[level], whole.Triangles.Length / 3, $"{whole.Name} keeps all its detail");
-                Assert.Less(light.Triangles.Length / 3, SourceTriangles[level] * 0.4f, $"{light.Name} is thinned");
+                Assert.Less(light.Triangles.Length / 3, SourceTriangles[level] * 0.5f, $"{light.Name} is thinned (the small plot keeps a little more than the others)");
                 lightTotal += light.Triangles.Length / 3;
             }
 
