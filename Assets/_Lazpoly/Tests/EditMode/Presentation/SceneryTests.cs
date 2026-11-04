@@ -86,7 +86,8 @@ namespace Lazpoly.Presentation.Tests
                 board.SetRent(town, 7);
                 Assert.AreEqual(7, board.RentShown(town));
                 Assert.AreEqual(Lazpoly.Presentation.Texts.Lang.F($"{7}"), board.PriceLabel(town).text, "owned, it shows the rent");
-                Assert.That(Vector4.Distance(BoardView.RentColor(owner), board.PriceLabel(town).color), Is.LessThan(1e-4f), "in the owner's colour");
+                // A TextMesh keeps its colour in bytes, so compare it that way.
+                Assert.AreEqual((Color32)BoardView.RentColor(owner), (Color32)board.PriceLabel(town).color, "in the owner's colour");
 
                 board.SetRent(town, null);
                 Assert.AreEqual(BoardView.Subtitle(data.Board[town]), board.PriceLabel(town).text, "back on sale, the price returns");
