@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lazpoly.Presentation.Dice;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Models;
@@ -59,7 +60,8 @@ namespace Lazpoly.Presentation.Tests
             float pawnReach = PawnSlots.Pitch * widthInDepths; // Half the 3x3 slot grid, in tile depths.
 
             Assert.Greater(BoardView.BuildingOffset, BoardView.PawnOffset, "the building row lies behind the pawns");
-            Assert.Less(BoardView.BuildingOffset + BoardView.HouseSize * widthInDepths / 2f, 0.5f, "houses stay on the tile");
+            Assert.Less(BoardView.BuildingOffset + BuildingModels.Depth * BoardView.BuildingScale * widthInDepths / 2f, 0.5f, "the building stays on the tile");
+            Assert.Less(BuildingModels.Width * BoardView.BuildingScale, 0.5f, "the building leaves most of the tile's width free");
             Assert.Less(-BoardView.PawnOffset + pawnReach, BoardView.NameOffset - BoardView.NameDepth / 2f, "the back row of pawns stops short of the name");
             Assert.LessOrEqual(BoardView.NameOffset + BoardView.NameDepth / 2f, BoardView.PriceOffset - BoardView.PriceDepth / 2f, "the price sits under the name");
             Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, BoardView.BandOffset - BoardView.BandDepth / 2f, "the band lies beyond the price");
@@ -295,17 +297,17 @@ namespace Lazpoly.Presentation.Tests
                 {
                     preview.Show(level);
                     Assert.AreEqual(level, preview.Shown);
-                    int houses = 0, mansions = 0;
+                    var standing = new List<string>();
                     foreach (Transform child in preview.Root.transform)
                     {
-                        if (!child.gameObject.activeSelf) continue;
-                        if (child.name == "House") houses++;
-                        if (child.name == "Mansion") mansions++;
+                        if (child.gameObject.activeSelf && child.GetComponent<Camera>() == null && child.name != "Tile") standing.Add(child.name);
                     }
 
-                    Assert.AreEqual(level >= 5 ? 0 : level, houses, $"level {level}: houses on the stage");
-                    Assert.AreEqual(level >= 5 ? 1 : 0, mansions, $"level {level}: the mansion stands for the hotel");
+                    CollectionAssert.AreEqual(new[] { BuildingModels.Names[level] }, standing, $"level {level}: its one model stands on the stage");
                 }
+
+                Assert.Less(BuildingPreview.ModelScale * BuildingModels.Width, BuildingPreview.TileWidth);
+                Assert.Less(BuildingPreview.RowDepth + BuildingPreview.ModelScale * BuildingModels.Depth / 2f, BuildingPreview.TileDepth / 2f, "the building stays on the tile");
 
                 float row = BuildingPreview.HouseSize + 3f * BuildingPreview.HouseStep;
                 Assert.Less(row, BuildingPreview.TileWidth, "four houses fit across the tile");

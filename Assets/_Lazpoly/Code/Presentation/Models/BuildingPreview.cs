@@ -9,8 +9,9 @@ using UnityEngine.Rendering.Universal;
 namespace Lazpoly.Presentation.Models
 {
     /// <summary>
-    /// The little pictures on the property card: a paper tile with nothing, one to four houses or
-    /// the mansion on it, drawn with the game's own building models from the board's camera angle.
+    /// The little pictures on the property card: a paper tile with the empty plot, a house of one to
+    /// four storeys or the hotel on it (<see cref="BuildingModels"/>; the drawn houses and mansion when the
+    /// models are missing), from the board's camera angle.
     /// A stage far below the board holds one tile and the pieces; a camera of its own renders it
     /// into one texture per level the first time a card needs them, and again when the tile's
     /// colour changes. Nothing renders every frame. In the editor, or where the render pipeline
@@ -29,10 +30,13 @@ namespace Lazpoly.Presentation.Models
         public const float TileDepth = 1.0f;
         public const float TileThickness = 0.2f;
 
-        /// <summary>The houses in a row across the tile, a little behind its middle so the land in front stays visible.</summary>
+        /// <summary>The building model's size on the stage tile, a little behind its middle so the land in front stays visible.</summary>
+        public const float ModelScale = 0.55f;
+        public const float RowDepth = 0.12f;
+
+        /// <summary>The drawn stand-ins when the models are missing: houses in a row, the mansion for the hotel.</summary>
         public const float HouseSize = 0.24f;
         public const float HouseStep = 0.3f;
-        public const float RowDepth = 0.12f;
         public static readonly Vector3 MansionSize = new Vector3(0.9f, 0.58f, 0.5f);
 
         /// <summary>Where the stage stands: far under the board, outside the main camera's clip planes and view.</summary>
@@ -47,7 +51,8 @@ namespace Lazpoly.Presentation.Models
         private readonly GameObject _root;
         private readonly GameObject _tile;
         private readonly GameObject[] _houses = new GameObject[GameRules.MaxHouses];
-        private readonly GameObject _mansion;
+        private GameObject _mansion;
+        private readonly GameObject[] _models;
         private readonly Camera _camera;
         private readonly RenderTexture[] _pictures = new RenderTexture[Levels];
         private Color _tint = new Color(-1f, 0f, 0f);
@@ -63,19 +68,24 @@ namespace Lazpoly.Presentation.Models
             _tile.transform.localPosition = new Vector3(0f, -TileThickness / 2f, 0f);
             ModelParts.Skin(_tile, TileSkin.Paper());
 
-            for (int i = 0; i < _houses.Length; i++)
+            if (BuildingModels.IsAvailable)
             {
-                GameObject house = BuildingParts.House("House", _root.transform);
-                house.transform.localPosition = new Vector3((i - (_houses.Length - 1) / 2f) * HouseStep, 0f, RowDepth);
-                house.transform.localScale = Vector3.one * HouseSize;
-                house.SetActive(false);
-                _houses[i] = house;
+                // One model per level, its door towards the camera's side of the tile.
+                _models = new GameObject[Levels];
+                for (int level = 0; level < Levels; level++)
+                {
+                    GameObject model = BuildingModels.Create(level, BuildingModels.Names[level], _root.transform);
+                    model.transform.localPosition = new Vector3(0f, 0f, RowDepth);
+                    model.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                    model.transform.localScale = Vector3.one * ModelScale;
+                    model.SetActive(false);
+                    _models[level] = model;
+                }
             }
-
-            _mansion = BuildingParts.Mansion("Mansion", _root.transform);
-            _mansion.transform.localPosition = new Vector3(0f, 0f, RowDepth);
-            _mansion.transform.localScale = MansionSize;
-            _mansion.SetActive(false);
+            else
+            {
+                CreateStandIns();
+            }
 
             _camera = new GameObject("Preview Camera").AddComponent<Camera>();
             _camera.transform.SetParent(_root.transform, false);
@@ -98,13 +108,37 @@ namespace Lazpoly.Presentation.Models
 
         public GameObject Root => _root;
 
-        /// <summary>The level the stage shows now: how many houses stand, 5 for the mansion.</summary>
+        /// <summary>The houses in a row and the mansion, when the building models are not in the build.</summary>
+        private void CreateStandIns()
+        {
+            for (int i = 0; i < _houses.Length; i++)
+            {
+                GameObject house = BuildingParts.House("House", _root.transform);
+                house.transform.localPosition = new Vector3((i - (_houses.Length - 1) / 2f) * HouseStep, 0f, RowDepth);
+                house.transform.localScale = Vector3.one * HouseSize;
+                house.SetActive(false);
+                _houses[i] = house;
+            }
+
+            _mansion = BuildingParts.Mansion("Mansion", _root.transform);
+            _mansion.transform.localPosition = new Vector3(0f, 0f, RowDepth);
+            _mansion.transform.localScale = MansionSize;
+            _mansion.SetActive(false);
+        }
+
+        /// <summary>The level the stage shows now: 0 the empty plot, 1-4 the house's storeys, 5 the hotel.</summary>
         public int Shown { get; private set; }
 
         /// <summary>Puts the pieces of <paramref name="level"/> on the tile and hides the rest.</summary>
         public void Show(int level)
         {
             Shown = Mathf.Clamp(level, 0, Levels - 1);
+            if (_models != null)
+            {
+                for (int i = 0; i < _models.Length; i++) _models[i].SetActive(i == Shown);
+                return;
+            }
+
             bool hotel = Shown >= SquareDefinition.MaxBuildingLevel;
             for (int i = 0; i < _houses.Length; i++) _houses[i].SetActive(!hotel && i < Shown);
             _mansion.SetActive(hotel);

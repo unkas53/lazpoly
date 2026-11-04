@@ -1,0 +1,114 @@
+{
+  "assets": [
+    {
+      "name": "Plot_00",
+      "vertices": 2926,
+      "triangles": 2028,
+      "bounds": {
+        "min": [
+          -0.45,
+          0,
+          -0.36
+        ],
+        "max": [
+          0.45,
+          0.32,
+          0.36
+        ]
+      },
+      "removedDegenerateTriangles": 128
+    },
+    {
+      "name": "House_01",
+      "vertices": 9446,
+      "triangles": 7160,
+      "bounds": {
+        "min": [
+          -0.45,
+          0,
+          -0.36
+        ],
+        "max": [
+          0.45,
+          0.528,
+          0.36
+        ]
+      },
+      "removedDegenerateTriangles": 112
+    },
+    {
+      "name": "House_02",
+      "vertices": 18428,
+      "triangles": 14168,
+      "bounds": {
+        "min": [
+          -0.45,
+          0,
+          -0.36
+        ],
+        "max": [
+          0.45,
+          0.728,
+          0.36
+        ]
+      },
+      "removedDegenerateTriangles": 68
+    },
+    {
+      "name": "House_03",
+      "vertices": 25827,
+      "triangles": 19788,
+      "bounds": {
+        "min": [
+          -0.45,
+          0,
+          -0.36
+        ],
+        "max": [
+          0.45,
+          0.932,
+          0.36
+        ]
+      },
+      "removedDegenerateTriangles": 68
+    },
+    {
+      "name": "House_04",
+      "vertices": 33687,
+      "triangles": 25600,
+      "bounds": {
+        "min": [
+          -0.45,
+          0,
+          -0.36
+        ],
+        "max": [
+          0.45,
+          1.15,
+          0.36
+        ]
+      },
+      "removedDegenerateTriangles": 68
+    },
+    {
+      "name": "Hotel_05",
+      "vertices": 67362,
+      "triangles": 51268,
+      "bounds": {
+        "min": [
+          -0.457,
+          0,
+          -0.36
+        ],
+        "max": [
+          0.45,
+          1.625,
+          0.36
+        ]
+      },
+      "removedDegenerateTriangles": 508
+    }
+  ],
+  "materialCount": 1,
+  "validation": "Six independent assets, finite positions and normals, valid indices, no zero-area exported faces, smooth normals preserved, ground-center pivots, identical 0.90 x 0.72 footprint, increasing heights. Unity coordinates and winding converted. OBJ, GLB and Unity data contain the same cleaned triangles. Hotel sill extends 0.007 units past the standard foundation."
+}

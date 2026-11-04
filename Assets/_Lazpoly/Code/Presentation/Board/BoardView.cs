@@ -418,25 +418,24 @@ namespace Lazpoly.Presentation.Tabletop
             if (flag != null) flag.localScale = size;
         }
 
-        /// <summary>
-        /// Shows 1-4 small houses, or one hotel at the top level. With <paramref name="animate"/>, pieces
-        /// that appear drop onto the tile and bounce, pieces that go shrink away, and the flag folds
-        /// down when the first building takes its place.
-        /// </summary>
         /// <summary>The building level the board shows on a square now.</summary>
         public int LevelOf(int squareIndex) => _levels[squareIndex];
 
+        /// <summary>
+        /// Shows the one building of a level: a house of one to four storeys, or the hotel at the top level.
+        /// With <paramref name="animate"/>, the new building drops onto the tile and bounces while the old one
+        /// shrinks away, and the tent folds down when the first building takes its place.
+        /// </summary>
         public void SetBuildingLevel(int squareIndex, int level, bool animate = false)
         {
             GameObject[] pieces = _buildings[squareIndex];
             if (pieces == null) return;
 
-            bool hotel = level >= SquareDefinition.MaxBuildingLevel;
             _levels[squareIndex] = level;
             PaintBuildings(squareIndex);
             for (int i = 0; i < pieces.Length; i++)
             {
-                bool shown = i == pieces.Length - 1 ? hotel : !hotel && i < level;
+                bool shown = Shows(i, level);
                 Transform piece = pieces[i].transform;
                 bool appears = shown && !pieces[i].activeSelf;
                 bool goes = !shown && pieces[i].activeSelf;
@@ -464,12 +463,10 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>Whether piece <paramref name="index"/> of a square belongs on the table at its current level.</summary>
-        private bool PieceShown(int squareIndex, int index)
-        {
-            int level = _levels[squareIndex];
-            bool hotel = level >= SquareDefinition.MaxBuildingLevel;
-            return index == _buildings[squareIndex].Length - 1 ? hotel : !hotel && index < level;
-        }
+        private bool PieceShown(int squareIndex, int index) => Shows(index, _levels[squareIndex]);
+
+        /// <summary>A square has one building per level (index 0 is the one-storey house, the last the hotel); only the current level's stands.</summary>
+        public static bool Shows(int index, int level) => index == Mathf.Min(level, SquareDefinition.MaxBuildingLevel) - 1;
 
         private IEnumerator Shrink(Transform piece, int squareIndex, int index)
         {
@@ -489,7 +486,10 @@ namespace Lazpoly.Presentation.Tabletop
             piece.gameObject.SetActive(PieceShown(squareIndex, index));
         }
 
-        /// <summary>Walls in the owner's colour, roofs a darker shade of it; the builder's own colours while unowned.</summary>
+        /// <summary>
+        /// A building model takes the owner's colour, a little lightened so its windows and balconies still
+        /// read; the drawn stand-ins have walls in it and roofs a darker shade. Unowned, each keeps its own colours.
+        /// </summary>
         private void PaintBuildings(int squareIndex)
         {
             GameObject[] pieces = _buildings[squareIndex];
@@ -498,14 +498,26 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 foreach (Renderer part in piece.GetComponentsInChildren<Renderer>(true))
                 {
-                    bool roof = part.name == "Roof" || part.name == "Chimney";
-                    Color color = owner.HasValue
-                        ? (roof ? Color.Lerp(owner.Value, Color.black, 0.4f) : owner.Value)
-                        : (roof ? BuildingParts.Tile : part.name == "Ground floor" ? BuildingParts.Whitewash : BuildingParts.Timber);
+                    Color color;
+                    if (part.name == BuildingModels.PartName)
+                    {
+                        color = owner.HasValue ? Color.Lerp(owner.Value, Color.white, BuildingLightening) : BuildingModels.White;
+                    }
+                    else
+                    {
+                        bool roof = part.name == "Roof" || part.name == "Chimney";
+                        color = owner.HasValue
+                            ? (roof ? Color.Lerp(owner.Value, Color.black, 0.4f) : owner.Value)
+                            : (roof ? BuildingParts.Tile : part.name == "Ground floor" ? BuildingParts.Whitewash : BuildingParts.Timber);
+                    }
+
                     ModelParts.Paint(part.gameObject, color, 0.2f);
                 }
             }
         }
+
+        /// <summary>How far towards white the owner's colour is taken on a building model.</summary>
+        public const float BuildingLightening = 0.15f;
 
         /// <summary>A short swell of a square's owner frame, when it is bought or changes hands.</summary>
         public void PulseOwner(int squareIndex)
@@ -733,38 +745,54 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Middle of the building row on a square: along its inner edge, on the tile's top.</summary>
         private Vector3 BuildingRowCenter(Vector3 center) => center - Outward(center) * (_depth * BuildingOffset) + Vector3.up * TileHeight;
 
-        /// <summary>Distance between neighbouring houses in a row, in tile widths; four fit with clear gaps.</summary>
-        public const float HouseStep = 0.215f;
+        /// <summary>
+        /// A building model's size: one model unit is this many tile widths, so its footprint
+        /// (<see cref="BuildingModels.Width"/> along the edge) takes about a third of the tile's width and the hotel
+        /// stands a little over half a tile width tall.
+        /// </summary>
+        public const float BuildingScale = 0.36f;
 
-        /// <summary>A house's width (and depth and height), in tile widths.</summary>
-        public const float HouseSize = 0.13f;
+        /// <summary>The drawn house that stands in when the models are missing, in tile widths.</summary>
+        public const float FallbackHouseSize = 0.26f;
 
-        // Four houses in a row along the tile's inner edge plus one hotel, all hidden until built.
+        // One building per level on the tile's inner part, all hidden until built: the models (their door
+        // towards the outer edge, where the pawns walk and the camera mostly looks from), or drawn houses
+        // and the mansion when the models are not in the build.
         private GameObject[] CreateBuildings(Vector3 center)
         {
-            const int houses = SquareDefinition.MaxBuildingLevel - 1;
-            var pieces = new GameObject[houses + 1];
-            Vector3 inward = -Outward(center);
-            Vector3 side = Vector3.Cross(Vector3.up, inward);
-            Vector3 rowCenter = BuildingRowCenter(center);
-
-            for (int i = 0; i < houses; i++)
+            var pieces = new GameObject[SquareDefinition.MaxBuildingLevel];
+            Vector3 outward = Outward(center);
+            Vector3 spot = BuildingRowCenter(center);
+            for (int i = 0; i < pieces.Length; i++)
             {
-                float offset = (i - (houses - 1) / 2f) * _width * HouseStep;
-                pieces[i] = CreatePiece(BuildingParts.House("House", transform), rowCenter + side * offset, Vector3.one * (_width * HouseSize), inward);
+                int level = i + 1;
+                GameObject model = BuildingModels.Create(level, Level(level), transform);
+                if (model != null)
+                {
+                    pieces[i] = CreatePiece(model, spot, Vector3.one * (_width * BuildingScale), outward);
+                }
+                else if (level < SquareDefinition.MaxBuildingLevel)
+                {
+                    pieces[i] = CreatePiece(BuildingParts.House(Level(level), transform), spot, Vector3.one * (_width * FallbackHouseSize), -outward);
+                }
+                else
+                {
+                    GameObject mansion = BuildingParts.Mansion(Level(level), transform);
+                    ChimneySmoke.Attach(mansion, BuildingParts.ChimneyTop);
+                    pieces[i] = CreatePiece(mansion, spot, new Vector3(_width * 0.46f, _width * 0.30f, _width * 0.26f), -outward);
+                }
             }
 
-            GameObject mansion = BuildingParts.Mansion("Mansion", transform);
-            ChimneySmoke.Attach(mansion, BuildingParts.ChimneyTop);
-            pieces[houses] = CreatePiece(mansion, rowCenter, new Vector3(_width * 0.46f, _width * 0.30f, _width * 0.26f), inward);
             return pieces;
         }
 
-        // Houses and the mansion have their base at y = 0 and their long side along the tile's edge.
-        private GameObject CreatePiece(GameObject piece, Vector3 baseCenter, Vector3 size, Vector3 inward)
+        private static string Level(int level) => level >= SquareDefinition.MaxBuildingLevel ? "Hotel" : $"House {level}";
+
+        // Buildings have their base at y = 0 and their long side along the tile's edge; front is +Z.
+        private GameObject CreatePiece(GameObject piece, Vector3 baseCenter, Vector3 size, Vector3 front)
         {
             piece.transform.localPosition = baseCenter;
-            piece.transform.localRotation = Quaternion.LookRotation(inward);
+            piece.transform.localRotation = Quaternion.LookRotation(front);
             piece.transform.localScale = size;
             piece.SetActive(false);
             return piece;
