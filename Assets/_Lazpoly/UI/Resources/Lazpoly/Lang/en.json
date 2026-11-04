@@ -319,7 +319,7 @@
   "Otel için {0} gerekli, paran yetmiyor.": "The hotel costs {0}; you cannot afford it.",
   "Paran yetmiyor: bina ya da mülk satışıyla para bulabilirsin.": "Not enough cash: sell buildings or a property to raise it.",
   "Sat +{0}": "Sell +{0}",
-  "Borcunu ödeyecek kadar paran yok. Bina ya da mülk satarak para bul; bulamazsan iflas edersin.": "You cannot cover your debt. Sell buildings or a property to raise the money; if you cannot, you go bankrupt.",
+  "Borcunu ödeyecek kadar paran yok. Satacağın şehirleri haritada işaretleyip Sat'a bas; yetmezse iflas edersin.": "You cannot cover your debt. Tick the towns to sell on the board and press Sell; if that is not enough, you go bankrupt.",
   "mülk satışı": "property sale",
   "Satış değeri": "Sale value",
   "Üçüncü çift: hamle yanar, sıra geçer.": "Third double: the move is forfeited and the turn passes.",
@@ -536,5 +536,15 @@
   "Otogara gelen isterse {0} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine gidilemez.": "Whoever lands on the bus station may pay a {0} fare and walk to a square as if they had rolled; passing Start pays as usual. Another player's city cannot be chosen.",
   "Tahtada parlayan karelerden gitmek istediğine tıkla; piyon oraya yürür.": "Click one of the lit squares on the board; your pawn walks there.",
   "Otogardasın. Tahtada parlayan karelerden birine tıkla ve {0} ödeyerek oraya yürü. İstemezsen \"Burada kal\".": "You're at the bus station. Click one of the lit squares and pay {0} to walk there. If you'd rather not, choose \"Stay here\".",
-  "Kura: ilk zarı {0} atar": "Draw: {0} rolls first"
+  "Kura: ilk zarı {0} atar": "Draw: {0} rolls first",
+  "Satmak için bir şehir seçin": "Choose a city to sell",
+  "Para lazım": "Money needed",
+  "Kalan para": "Money left",
+  "Paran borcu karşılıyor.": "Your money covers the debt.",
+  "Ödemek için yeterli paran yok. Satacağın şehirleri haritada işaretle.": "You don't have enough money to pay. Tick the cities to sell on the map.",
+  "Seçilenler: +{0}, kalan para {1} olur.": "Ticked: +{0}, money left becomes {1}.",
+  "Emin misin? İflas et": "Sure? Go bankrupt",
+  "İflas": "Bankrupt",
+  "Otomatik Satış": "Auto Sell",
+  "Sat": "Sell"
 }

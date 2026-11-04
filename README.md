@@ -795,6 +795,12 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Renk körü modunda grup harfi şeridin sol ucunda durur, ad ona yer bırakır.
 - Testler: `SceneryTests` şeritlerin sırasını ve kareye sığmasını, gerçek tahtada her şehirde fiyatın adın altında ve piyonların fiyat satırında olduğunu, kiranın sahibin renginde yazıp satılınca fiyatın geri geldiğini denetler.
 
+## Faz 16d: sırası olmayan karakterler saydam, haritadan seçmeli satış
+
+- Sırası olan oyuncunun karakteri tam görünür; diğerleri yarı saydamdır (`PawnView.SetFaded`, opaklık 0,4). Saydam kopyalar `Resources/Lazpoly/Materials/ModelFade.mat` (URP Lit, saydam yüzey) üstünden her parçanın kendi rengiyle yapılır (`ModelFade.Copy`), sıra değişince yerine geçer.
+- Kirayı ya da vergiyi ödeyecek parası olmayan kişiye ekranın ortasında bir kart açılır: kırmızı "Satmak için bir şehir seçin" başlığı, "Para lazım" ve "Kalan para", borcun nedeni ve kime olduğu, İflas (ikinci basışta onaylanır), Otomatik Satış ve Sat (`DebtSaleView`). Haritada oyuncunun her şehrinin üstünde, kamera dönse de şehri izleyen beyaz bir etiket durur: işaret kutusu ve bankanın o şehir için ödeyeceği para. Oyuncu şehirleri etiketlerden ya da şehre tıklayarak işaretler; kart seçilenlerin getirisini ve kalacak parayı yazar. "Sat" işaretli şehirleri satar ve para borcu karşılıyorsa borcu da öder (`DebtSale`); para zaten yetiyorsa "Borcu Öde" çıkar. Süre dolunca eskisi gibi otomatik satılır.
+- Testler: `DebtSaleTests` (işaretler, satış ve ödeme komutları, başkasının şehri ya da borçsuz durumda bir şey gönderilmez, sırası olmayan piyon saydam), `InterfaceTests.APlayerWhoCannotPayTicksTownsOnTheBoardAndSellsThem` gerçek oyun sahnesinde borçlu oyuncunun kartını ve etiketlerini açar, şehirleri etiketlerden işaretleyip "Sat" ile satar ve borcun ödendiğini denetler.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

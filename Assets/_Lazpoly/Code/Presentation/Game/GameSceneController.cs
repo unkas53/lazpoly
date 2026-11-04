@@ -211,6 +211,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Why an online game stopped; null while it goes on.</summary>
         public SessionEndReason? EndReason { get; private set; }
 
+        /// <summary>A player's piece on the board, or null.</summary>
+        public PawnView PawnOf(int playerId) => _pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null;
+
         /// <summary>True while events are still being animated; the HUD waits before offering actions.</summary>
         public bool IsBusy => _playing || _pendingEvents.Count > 0 || _drawToAnnounce;
 
@@ -1115,9 +1118,10 @@ namespace Lazpoly.Presentation.Game
             yield return pawn.Bob();
         }
 
-        /// <summary>Moves the ring under the pawn whose turn it is.</summary>
+        /// <summary>Moves the ring under the pawn whose turn it is; that piece stands solid and the waiting players' pieces fade.</summary>
         private void MarkTurn(int playerId)
         {
+            foreach (KeyValuePair<int, PawnView> pair in _pawns) pair.Value.SetFaded(pair.Key != playerId);
             if (_turnMarker == null) return;
             _turnMarker.Follow(_pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null, ColorOf(playerId));
         }
