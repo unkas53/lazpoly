@@ -286,6 +286,7 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             foreach (KeyValuePair<Transform, Vector3> mark in _marks) mark.Key.localRotation = LabelRotation(mark.Value, yaw);
+            TurnBuildings(yaw);
             Vector3 up = ScreenUp(yaw);
             if (_scoreboard != null)
             {
@@ -654,7 +655,7 @@ namespace Lazpoly.Presentation.Tabletop
                 {
                     // Owner marker: the owner's plot (or the flag) on the tile's inner part, where the buildings will stand.
                     OwnerMarker marker = OwnerMarker.Create("Owner marker", transform, i * 0.9f);
-                    marker.Place(outward, BuildingRowCenter(center));
+                    marker.Place(outward, BuildingRowCenter(center), _yaw);
                     _flagScale[i] = marker.RestScale(_width);
                     marker.transform.localScale = _flagScale[i];
                     marker.gameObject.SetActive(false);
@@ -752,8 +753,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float FallbackHouseSize = 0.26f;
 
         // One building per level on the tile's inner part, all hidden until built: the models (their door
-        // towards the outer edge, where the pawns walk and the camera mostly looks from), or drawn houses
-        // and the mansion when the models are not in the build.
+        // towards the camera, see BuildingFront), or drawn houses and the mansion when the models are not in the build.
         private GameObject[] CreateBuildings(Vector3 center)
         {
             var pieces = new GameObject[SquareDefinition.MaxBuildingLevel];
@@ -765,7 +765,7 @@ namespace Lazpoly.Presentation.Tabletop
                 GameObject model = BuildingModels.Create(level, Level(level), transform);
                 if (model != null)
                 {
-                    pieces[i] = CreatePiece(model, spot, Vector3.one * (_width * BuildingScale), outward);
+                    pieces[i] = CreatePiece(model, spot, Vector3.one * (_width * BuildingScale), BuildingFront(outward, _yaw));
                 }
                 else if (level < SquareDefinition.MaxBuildingLevel)
                 {
@@ -859,6 +859,30 @@ namespace Lazpoly.Presentation.Tabletop
             float along = Vector3.Dot(line, right);
             if (along < -1e-4f || (Mathf.Abs(along) <= 1e-4f && Vector3.Dot(tops, ScreenUp(yaw)) < 0f)) tops = -tops;
             return Quaternion.LookRotation(Vector3.down, tops);
+        }
+
+        /// <summary>
+        /// Which way a building model's front (its door, the plot's sign) turns on a square whose outer edge
+        /// faces <paramref name="outward"/>, for a camera turned by <paramref name="yaw"/>: out over the edge
+        /// on the sides near the camera, in towards the lawn on the far sides, so the camera never sees a back.
+        /// </summary>
+        public static Vector3 BuildingFront(Vector3 outward, float yaw) => Vector3.Dot(outward, ScreenUp(yaw)) > 0f ? -outward : outward;
+
+        /// <summary>Turns the building models and plots to show their fronts to a camera at <paramref name="yaw"/>.</summary>
+        private void TurnBuildings(float yaw)
+        {
+            if (_buildings == null || !BuildingModels.IsAvailable) return;
+            for (int i = 0; i < _buildings.Length; i++)
+            {
+                Vector3 outward = Outward(Layout.SquareCenter(i));
+                if (_buildings[i] != null)
+                {
+                    Quaternion facing = Quaternion.LookRotation(BuildingFront(outward, yaw));
+                    foreach (GameObject piece in _buildings[i]) piece.transform.localRotation = facing;
+                }
+
+                if (_ownerMarkers != null && _ownerMarkers[i] != null) _ownerMarkers[i].Turn(outward, yaw);
+            }
         }
 
         /// <summary>The way on the board that is straight up the screen for a camera turned by <paramref name="yaw"/>.</summary>

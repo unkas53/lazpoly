@@ -41,13 +41,17 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Where the marker stands and which way it turns on a square whose outer edge faces <paramref name="outward"/>:
-        /// on the buildings' spot, the plot's sign facing out like the buildings' fronts.
+        /// on the buildings' spot, the plot's sign facing a camera at <paramref name="yaw"/> like the buildings' fronts.
         /// </summary>
-        public void Place(Vector3 outward, Vector3 buildingSpot)
+        public void Place(Vector3 outward, Vector3 buildingSpot, float yaw)
         {
             transform.localPosition = buildingSpot;
-            transform.localRotation = Quaternion.LookRotation(IsPlot ? outward : -outward); // The flag's +X, the pennant, flies along the row.
+            Turn(outward, yaw);
         }
+
+        /// <summary>Turns the plot's sign towards a camera at <paramref name="yaw"/> (<see cref="BoardView.BuildingFront"/>); the flag's pennant flies along the row.</summary>
+        public void Turn(Vector3 outward, float yaw) =>
+            transform.localRotation = Quaternion.LookRotation(IsPlot ? BoardView.BuildingFront(outward, yaw) : -outward);
 
         /// <summary>Colours the marker for its owner: the plot's paving and sign face (lightened like the buildings' walls), or the pennant.</summary>
         public void Paint(Color color)

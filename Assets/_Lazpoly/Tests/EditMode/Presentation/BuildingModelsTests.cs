@@ -229,6 +229,21 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void EveryBuildingShowsItsFrontToTheCamera()
+        {
+            Vector3[] edges = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+            foreach (float yaw in new[] { BoardCameraRig.BaseYaw, BoardCameraRig.BaseYaw + 90f, BoardCameraRig.BaseYaw + 180f, BoardCameraRig.BaseYaw - 90f })
+            {
+                foreach (Vector3 outward in edges)
+                {
+                    Vector3 front = BoardView.BuildingFront(outward, yaw);
+                    Assert.That(Mathf.Abs(Vector3.Dot(front, outward)), Is.EqualTo(1f).Within(1e-4f), "the front stays square to the edge");
+                    Assert.Less(Vector3.Dot(front, BoardView.ScreenUp(yaw)), 0f, $"yaw {yaw}, edge {outward}: the front looks back at the camera");
+                }
+            }
+        }
+
+        [Test]
         public void TheOwnerMarkerIsThePlotInTheOwnersColour()
         {
             var root = new GameObject("Marker Test");
@@ -249,10 +264,13 @@ namespace Lazpoly.Presentation.Tests
                     "the posts keep their wood colour");
 
                 var spot = new Vector3(1f, 0.2f, -5f);
-                marker.Place(Vector3.back, spot);
+                marker.Place(Vector3.back, spot, BoardCameraRig.BaseYaw);
                 Assert.AreEqual(spot, marker.transform.localPosition, "the plot stands where the buildings will");
                 Assert.That(Vector3.Distance(marker.transform.localRotation * Vector3.forward, Vector3.back), Is.LessThan(1e-4f),
-                    "its sign faces out like the buildings' fronts");
+                    "on a side near the camera its sign faces out like the buildings' fronts");
+                marker.Turn(Vector3.forward, BoardCameraRig.BaseYaw);
+                Assert.That(Vector3.Distance(marker.transform.localRotation * Vector3.forward, Vector3.back), Is.LessThan(1e-4f),
+                    "on a far side it faces in, towards the camera");
                 Assert.AreEqual(Vector3.one * (2f * BoardView.BuildingScale), marker.RestScale(2f), "as big as the buildings");
             }
             finally
