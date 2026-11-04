@@ -120,7 +120,7 @@ namespace Lazpoly.Presentation.Tests
                 else Assert.AreEqual(0, built.State.GetBuildingLevel(i));
             }
 
-            CollectionAssert.AreEquivalent(new[] { 1, 2, 3, 4, 5 }, levels, "every building level stands somewhere");
+            CollectionAssert.AreEquivalent(new[] { 0, 1, 2, 3, 4, 5 }, levels, "every building level, and the bare plot, stands somewhere");
             foreach (PlayerState player in built.State.Players) Assert.AreEqual(PerfRun.BuiltMoney, player.Money);
         }
 

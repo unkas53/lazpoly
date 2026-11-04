@@ -779,7 +779,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Çadır kaldırıldı: satın alınmış ama yapısız şehirde paketteki tabelalı arsa (`Plot_00`) durur, sahibinin renginde ve binalarla aynı ölçüde; ilk ev onun yerini alır (`OwnerMarker`). Paket yoksa eski bayrak gösterilir.
 - Kalite: Yüksek grafik kalitesinde modeller olduğu gibi (otel 51 bin üçgen), Orta ve Düşükte üçgenlerinin ~%30'u kadar hafif kopyaları gösterilir (`RoomDressing.FullBuildingsFor`); ayar oyun içinde değişince duran binalar da yerinde değişir (`BuildingModels.SetFullDetail`). `Tools/Art/make_buildings.py` iki kopyayı tek ikili pakete yazar (`Resources/Lazpoly/Models/buildings.bytes`, 4,8 MB; hafif kopya `fast-simplification` ile).
 - Mülk kartındaki küçük resimler de yeni modelleri kullanır; boş şehirde (seviye 0) tabelalı arsa görünür.
-- `Lazpoly.exe -perf -built`: ölçüm masası her şehri sahipli ve yapılı başlatır (seviyeler otelden 1 eve sırayla, herkes 100.000 parayla iflas etmeden), böylece bütün binalar görülür ve en ağır tahta ölçülür.
+- `Lazpoly.exe -perf -built`: ölçüm masası her şehri sahipli ve yapılı başlatır (seviyeler otelden boş arsaya sırayla, herkes 100.000 parayla iflas etmeden), böylece bütün binalar görülür ve en ağır tahta ölçülür.
 - Testler: `BuildingModelsTests` (paket her seviyeyi tam ve hafif taşır, taban 0,90 x 0,72, her seviye daha yüksek, bozuk paket reddedilir, her seviyede tek bina, kalite değişince binalar değişir, sahip işareti arsa), `SceneryTests` binanın kareye sığdığını ve kart sahnesinde tek modelin durduğunu, `PerfTests` yapılı masayı denetler.
 
 ## Kurallar

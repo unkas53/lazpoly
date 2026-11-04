@@ -68,8 +68,8 @@ namespace Lazpoly.Presentation.Perf
 
         /// <summary>
         /// Builds up a new game's snapshot: every town goes to the players in turn, and the developable ones
-        /// carry levels from the hotel down to one house and round again, so each building stands somewhere
-        /// and most of the board is tall. Everyone gets <see cref="BuiltMoney"/>.
+        /// carry levels from the hotel down to the bare plot and round again, so each building (and the owner's
+        /// plot) stands somewhere and most of the board is tall. Everyone gets <see cref="BuiltMoney"/>.
         /// </summary>
         public static void BuildUp(GameStateSnapshot snapshot, BoardDefinition board)
         {
@@ -82,7 +82,7 @@ namespace Lazpoly.Presentation.Perf
             {
                 if (board[i].Type != SquareType.Property) continue;
                 snapshot.Owners[i] = snapshot.Players[town++ % snapshot.Players.Count].Id;
-                snapshot.BuildingLevels[i] = board[i].IsDevelopable ? SquareDefinition.MaxBuildingLevel - built++ % SquareDefinition.MaxBuildingLevel : 0;
+                snapshot.BuildingLevels[i] = board[i].IsDevelopable ? SquareDefinition.MaxBuildingLevel - built++ % (SquareDefinition.MaxBuildingLevel + 1) : 0;
             }
 
             foreach (GameStateSnapshot.PlayerEntry player in snapshot.Players) player.Money = BuiltMoney;
