@@ -78,7 +78,7 @@ namespace Lazpoly.Presentation.Tabletop
         // The camera looks down at 35 degrees, so a piece's height falls up the screen over the ground behind it:
         // on the rows that face away from the camera the pawns' room is kept short of the name so they never cover it.
         /// <summary>The building row's centre, inward from the square's centre.</summary>
-        public const float BuildingOffset = 0.40f;
+        public const float BuildingOffset = 0.385f;
 
         /// <summary>Where pawns stand, inward from the square's centre.</summary>
         public const float PawnOffset = 0.22f;
@@ -744,10 +744,10 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A building model's size: one model unit is this many tile widths, so its footprint
-        /// (<see cref="BuildingModels.Width"/> along the edge) takes about a third of the tile's width and the hotel
-        /// stands a little over half a tile width tall.
+        /// (<see cref="BuildingModels.Width"/> along the edge) takes about two fifths of the tile's width and the hotel
+        /// stands about seven tenths of a tile width tall.
         /// </summary>
-        public const float BuildingScale = 0.36f;
+        public const float BuildingScale = 0.44f;
 
         /// <summary>The drawn house that stands in when the models are missing, in tile widths.</summary>
         public const float FallbackHouseSize = 0.26f;

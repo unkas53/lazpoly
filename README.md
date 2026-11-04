@@ -782,6 +782,10 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - `Lazpoly.exe -perf -built`: ölçüm masası her şehri sahipli ve yapılı başlatır (seviyeler otelden boş arsaya sırayla, herkes 100.000 parayla iflas etmeden), böylece bütün binalar görülür ve en ağır tahta ölçülür.
 - Testler: `BuildingModelsTests` (paket her seviyeyi tam ve hafif taşır, taban 0,90 x 0,72, her seviye daha yüksek, kapı önde, bozuk paket reddedilir, her seviyede tek bina ve parçaları kendi renginde, sahip rengi yalnız duvarlara gelir, her kenarda ön yüz kameraya bakar, kalite değişince binalar değişir, sahip işareti arsa), `SceneryTests` binanın kareye sığdığını ve kart sahnesinde tek modelin durduğunu, `PerfTests` yapılı masayı denetler.
 
+## Faz 16b: daha büyük binalar
+
+- Arsa, evler ve otel tahtada yaklaşık %22 daha büyük (`BoardView.BuildingScale` 0,36 → 0,44): bina artık karenin genişliğinin beşte ikisini kaplar, otel bir kare genişliğinin onda yedisi kadar yükselir. Bina sırası biraz içeri alındı (`BuildingOffset` 0,40 → 0,385), böylece taban karenin iç kenarında kalır; `SceneryTests` bunu denetler.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
