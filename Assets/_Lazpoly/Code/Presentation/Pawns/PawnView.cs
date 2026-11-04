@@ -43,6 +43,15 @@ namespace Lazpoly.Presentation.Pawns
         private Transform _model;
         private CharacterMotion _motion;
         private float _speed = 1f;
+        private Renderer[] _parts;
+        private Material[][] _solid;
+        private Material[][] _faded;
+
+        /// <summary>How much of a waiting player's piece still shows: the one on turn stands solid, the rest fade to this.</summary>
+        public const float FadeAlpha = 0.4f;
+
+        /// <summary>True while the piece is see-through (its player waits for their turn).</summary>
+        public bool Faded { get; private set; }
 
         /// <summary>True when the pawn is the character; false when it is one of the shapes.</summary>
         public bool IsCharacter { get; private set; }
@@ -218,6 +227,41 @@ namespace Lazpoly.Presentation.Pawns
 
             transform.position = rest;
             SetStretch(1f);
+        }
+
+        /// <summary>
+        /// Makes the piece see-through (<paramref name="faded"/>, a player waiting for their turn) or solid again
+        /// (the player on turn): each part swaps to a faded copy of its own material, kept for the next time.
+        /// </summary>
+        public void SetFaded(bool faded)
+        {
+            if (Faded == faded) return;
+            Faded = faded;
+            if (_parts == null)
+            {
+                _parts = _model.GetComponentsInChildren<Renderer>(true);
+                _solid = System.Array.ConvertAll(_parts, part => part.sharedMaterials);
+            }
+
+            if (faded && _faded == null)
+            {
+                _faded = new Material[_parts.Length][];
+                for (int i = 0; i < _parts.Length; i++)
+                {
+                    Material[] solid = _solid[i];
+                    // A one-material part also gets the depth mask: an extra material draws the same mesh again,
+                    // first (its queue is lower), so the see-through colour shows only the part's front.
+                    Material mask = solid.Length == 1 ? ModelFade.DepthMask() : null;
+                    _faded[i] = new Material[solid.Length + (mask != null ? 1 : 0)];
+                    for (int m = 0; m < solid.Length; m++) _faded[i][m] = ModelFade.Copy(solid[m], FadeAlpha) ?? solid[m];
+                    if (mask != null) _faded[i][solid.Length] = mask;
+                }
+            }
+
+            for (int i = 0; i < _parts.Length; i++)
+            {
+                if (_parts[i] != null) _parts[i].sharedMaterials = faded ? _faded[i] : _solid[i];
+            }
         }
 
         /// <summary>Hides a bankrupt player's pawn at once (used when the board is rebuilt from the state).</summary>

@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using Lazpoly.App.AI;
+using Lazpoly.App.Save;
 using Lazpoly.Core.Board;
+using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Random;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
+using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Perf;
 using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
@@ -122,6 +126,34 @@ namespace Lazpoly.Presentation.Tests
 
             CollectionAssert.AreEquivalent(new[] { 0, 1, 2, 3, 4, 5 }, levels, "every building level, and the bare plot, stands somewhere");
             foreach (PlayerState player in built.State.Players) Assert.AreEqual(PerfRun.BuiltMoney, player.Money);
+        }
+
+        [Test]
+        public void TheDebtTableLeavesAPersonSellingTownsForRentTheyCannotPay()
+        {
+            BoardDefinition board = BoardDataLoader.LoadFromResources().Board;
+            var rules = new RulesConfig(800, 100, 6, 3, 2, 50);
+            var engine = new GameEngine(board, rules, PerfRun.Seats(), new Pcg32Random(3UL));
+            var save = new SavedGame { Snapshot = GameStateSnapshot.Capture(engine.State) };
+            foreach (PlayerState player in engine.State.Players) save.AiPlayers[player.Id] = new SavedAiPlayer { Difficulty = AiDifficulty.Normal };
+            int debtor = engine.State.CurrentPlayer.Id;
+            PerfRun.OpenDebt(save, board);
+
+            Assert.IsFalse(save.AiPlayers.ContainsKey(debtor), "a person sells, not the computer");
+            Assert.AreEqual(PerfRun.PlayerCount - 1, save.AiPlayers.Count);
+            Assert.AreEqual(0, save.Table.TurnSeconds, "no clock sells for them during the run");
+
+            GameEngine table = GameEngine.Restore(board, rules, save.Snapshot, new Pcg32Random(3UL));
+            GameState state = table.State;
+            Assert.AreEqual(GamePhase.AwaitingDebtPayment, state.Phase);
+            Assert.AreEqual(debtor, state.CurrentPlayer.Id);
+            Assert.AreEqual(debtor, state.Debt.PlayerId);
+            Assert.AreEqual(PerfRun.DebtAmount, state.Debt.Amount);
+            Assert.AreEqual(PerfRun.DebtMoney, state.FindPlayer(debtor).Money);
+            int towns = 0;
+            for (int i = 0; i < board.Count; i++) towns += state.GetOwner(i) == debtor ? 1 : 0;
+            Assert.AreEqual(PerfRun.DebtTowns, towns);
+            Assert.AreNotEqual(RejectionReason.None, table.Validate(new PayDebtCommand(debtor)), "the money does not cover the debt yet");
         }
 
         [Test]

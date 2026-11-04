@@ -1,9 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Lazpoly.App.AI;
 using Lazpoly.App.Save;
+using Lazpoly.App.Session;
+using Lazpoly.Core.Board;
+using Lazpoly.Core.Engine;
+using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Audio;
+using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Setup;
 using NUnit.Framework;
@@ -220,6 +226,89 @@ namespace Lazpoly.PlayTests
             Assert.AreNotEqual(0, controller.Session.State.LastDie1, "The dice were rolled.");
             Assert.IsTrue(controller.IsBusy, "The roll is being shown.");
             Assert.IsFalse(hud.PressKey(KeyCode.Space), "Nothing is offered while the board animates.");
+        }
+
+        [UnityTest]
+        public IEnumerator APlayerWhoCannotPayTicksTownsOnTheBoardAndSellsThem()
+        {
+            // A saved game where the first player owes the second 100 in rent with 10 in hand and three towns.
+            BoardData data = BoardDataLoader.LoadFromResources();
+            LocalGame game = LocalGame.Create(data.Board, data.Rules, LocalGameSetup.DefaultSeats(2), new Dictionary<int, AiDifficulty>(), 7UL);
+            SavedGame save = game.Save(data.Checksum);
+            save.Table = save.Table.WithTurnSeconds(0); // No clock: nothing is sold for them while the test looks.
+            GameStateSnapshot snapshot = save.Snapshot;
+            int debtor = snapshot.Players[snapshot.CurrentPlayerIndex].Id;
+            int creditor = snapshot.Players[1 - snapshot.CurrentPlayerIndex].Id;
+            var towns = new List<int>();
+            for (int i = 0; i < data.Board.Count && towns.Count < 3; i++)
+            {
+                if (data.Board[i].Type == SquareType.Property) towns.Add(i);
+            }
+
+            foreach (int town in towns) snapshot.Owners[town] = debtor;
+            snapshot.Players[snapshot.CurrentPlayerIndex].Money = 10;
+            snapshot.Players[snapshot.CurrentPlayerIndex].Position = towns[0];
+            snapshot.TurnNumber = 3;
+            snapshot.Phase = GamePhase.AwaitingDebtPayment;
+            snapshot.Debt = new DebtState(debtor, creditor, 100, MoneyReason.Rent);
+            LocalGameSetup.SetResume(save);
+
+            SceneManager.LoadScene("Game");
+            yield return null;
+            yield return null;
+            var controller = Object.FindAnyObjectByType<GameSceneController>();
+            var hud = controller.GetComponent<GameHud>();
+            while (controller.IsBusy) yield return null;
+            yield return null;
+            yield return null;
+            Assert.AreEqual(GamePhase.AwaitingDebtPayment, controller.Session.State.Phase);
+
+            // The one on turn stands solid; the other is see-through.
+            Assert.IsFalse(controller.PawnOf(debtor).Faded, "The player on turn is faded.");
+            Assert.IsTrue(controller.PawnOf(creditor).Faded, "The waiting player is not faded.");
+
+            // The card is up with what is owed, and each town carries its tag.
+            DebtSaleView sale = hud.DebtSale;
+            Assert.IsTrue(sale.Shown, "The sale card did not open.");
+            Assert.IsNull(Find(hud.transform, "Borcu Öde"), "Paying is offered without the money.");
+            Assert.IsNull(Find(hud.transform, "Sat"), "Selling is offered with nothing ticked.");
+            foreach (int town in towns)
+            {
+                RectTransform tag = sale.TagOf(town);
+                Assert.IsNotNull(tag, $"Town {town} has no tag.");
+                Assert.IsTrue(tag.gameObject.activeInHierarchy, $"Town {town}'s tag is not on screen.");
+            }
+
+            // Tick towns on their tags until they cover the debt, then sell.
+            GameState state = controller.Session.State;
+            var ticked = new List<int>();
+            int gain = 0;
+            foreach (int town in towns)
+            {
+                if (10 + gain >= 100) break;
+                Toggle box = sale.TagOf(town).GetComponentInChildren<Toggle>();
+                Assert.IsNotNull(box, $"Town {town}'s tag has no tick box.");
+                box.isOn = true;
+                ticked.Add(town);
+                gain += GameRules.PropertySaleProceeds(data.Board, controller.Session.Rules, state, town);
+                yield return null;
+                Assert.IsTrue(sale.Sale.IsPicked(town));
+            }
+
+            Assume.That(10 + gain, Is.GreaterThanOrEqualTo(100), "The three first towns do not cover the test's debt.");
+            AssertMouseReaches("Sat");
+            int creditorMoney = state.FindPlayer(creditor).Money;
+            Assert.IsTrue(Press(hud.transform, "Sat"));
+            Assert.IsNull(controller.LastRejection);
+            while (controller.IsBusy) yield return null;
+            yield return null;
+
+            state = controller.Session.State;
+            Assert.AreNotEqual(GamePhase.AwaitingDebtPayment, state.Phase, "The debt is still open.");
+            foreach (int town in ticked) Assert.AreEqual(GameState.NoOwner, state.GetOwner(town), $"Town {town} was not sold.");
+            Assert.AreEqual(10 + gain - 100, state.FindPlayer(debtor).Money);
+            Assert.AreEqual(creditorMoney + 100, state.FindPlayer(creditor).Money);
+            Assert.IsFalse(sale.Shown, "The sale card stayed up.");
         }
 
         /// <summary>

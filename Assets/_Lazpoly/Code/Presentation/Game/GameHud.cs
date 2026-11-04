@@ -102,6 +102,7 @@ namespace Lazpoly.Presentation.Game
         private GameObject _buildLayer;
         private int _buildCardDismissed;
         private PropertyCard _propertyCard;
+        private DebtSaleView _debtSale;
         private BuildingPreview _preview;
 
         private const int NoSquare = -1;
@@ -151,6 +152,9 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Whether the building card (how many houses, or the hotel) is open for the person here.</summary>
         public bool BuildCardOpen => _buildLayer != null && _buildLayer.activeSelf;
+
+        /// <summary>The sale screen of a person who cannot pay (the card and the tags over their towns).</summary>
+        public DebtSaleView DebtSale => _debtSale;
 
         /// <summary>Whether the pause menu is open.</summary>
         public bool PauseOpen => _pauseLayer != null && _pauseLayer.activeSelf;
@@ -213,6 +217,9 @@ namespace Lazpoly.Presentation.Game
             RectTransform ticker = UiRoot.Rect(bottom, "Ticker", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             UiBuilder.AddColumnLayout(ticker.gameObject, 0, 0f);
             _ticker = new UiView(new UiBuilder(ticker), RenderTicker);
+
+            // A debt's sale screen: its card in the middle and a tag over each of the player's towns.
+            _debtSale = new DebtSaleView(_canvas.transform, _controller);
 
             // Frame rate and memory behind F3, in the strip above the turn banner.
             RectTransform perf = UiRoot.Rect(_canvas.transform, "Perf Overlay", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
@@ -561,6 +568,8 @@ namespace Lazpoly.Presentation.Game
             UpdatePointer(state);
             UpdatePerfOverlay();
             UpdateSquareCard(state, revision);
+            bool selling = state != null && SellingOnBoard(state);
+            _debtSale.Update(state, selling ? BoardChoices(state) : null, selling && !_controller.IsBusy && !_controller.EndReason.HasValue);
             UpdateBanner(state);
             UpdateCardPopup();
             UpdateRollPopup();
@@ -658,8 +667,8 @@ namespace Lazpoly.Presentation.Game
         {
             if (SellingOnBoard(state))
             {
-                // Each click on one of their towns sells it to the bank; the rest of the board does nothing.
-                if (square != NoSquare && BoardChoices(state).Contains(square)) Submit(new SellPropertyCommand(state.CurrentPlayer.Id, square));
+                // Each click on one of their towns ticks it for the sale (or unticks it); the rest of the board does nothing.
+                if (square != NoSquare) _debtSale?.Toggle(square);
                 return;
             }
 
@@ -1059,10 +1068,7 @@ namespace Lazpoly.Presentation.Game
 
             switch (state.Phase)
             {
-                case GamePhase.AwaitingDebtPayment:
-                    RenderDebt(ui, state, player);
-                    break;
-
+                // A debt has its own card in the middle of the screen (DebtSaleView).
                 case GamePhase.AwaitingTravelDecision:
                     RenderTravel(ui, player);
                     break;
@@ -1223,53 +1229,6 @@ namespace Lazpoly.Presentation.Game
                 ui.Button($"{dice[0]} + {dice[1]} = {sum}  →  {destination}", () => _controller.Submit(choose), _controller.IsAllowed(choose),
                     UiButtonStyle.Primary, CardButton);
             }
-        }
-
-        /// <summary>
-        /// The sale screen of a debt: the player's towns with their sale buttons, the automatic sale (which
-        /// towns it would sell) and the payment. When the decision time runs out the automatic sale is made.
-        /// </summary>
-        private void RenderDebt(UiBuilder ui, GameState state, PlayerState player)
-        {
-            DebtState debt = state.Debt;
-            BoardDefinition board = _controller.Session.Board;
-            string creditor = EventDescriber.CreditorText(state, debt.CreditorId);
-            UiBuilder card = ui.Card(UiTheme.NoticeFill);
-            card.CardHeader(F($"Borç: {debt.Amount} → {creditor}"), EventDescriber.ReasonText(debt.Reason));
-            card.Label(F($"Paran {player.Money}. Haritada halkalı şehirler senin: satmak istediğine tıkla, sonra öde."), UiTextStyle.Small);
-            // The town under the mouse, with what the bank pays for it (buildings included).
-            if (_hoveredSquare != NoSquare && state.GetOwner(_hoveredSquare) == player.Id && board[_hoveredSquare].Type == SquareType.Property)
-            {
-                int proceeds = GameRules.PropertySaleProceeds(board, _controller.Session.Rules, state, _hoveredSquare);
-                card.Label(F($"{L(board[_hoveredSquare].Name)}: tıklarsan bankaya +{proceeds} satılır."), UiTextStyle.Small, UiTheme.Gain);
-            }
-
-            IReadOnlyList<GameCommand> plan = DebtSettlement.Plan(board, _controller.Session.Rules, state, player.Id);
-            var pay = new PayDebtCommand(player.Id);
-            if (plan.Count == 1 && plan[0] is DeclareBankruptcyCommand giveUp)
-            {
-                // Only a game saved before insolvency ended games at once can stand here.
-                ui.Button(L("İflas Et"), () => _controller.Submit(giveUp), style: UiButtonStyle.Danger, height: CardButton);
-                return;
-            }
-
-            IReadOnlyList<int> sold = DebtSettlement.SquaresSold(plan);
-            if (sold.Count > 0)
-            {
-                var names = new List<string>();
-                foreach (int square in sold) names.Add(L(board[square].Name));
-                card.Label(F($"Otomatik satış: {string.Join(", ", names)}. Süre dolarsa bu yapılır."), UiTextStyle.Small, UiTheme.Muted);
-            }
-
-            // With the money already in hand there is nothing to sell: only the payment is offered.
-            ui.Actions(sold.Count > 0 ? L("Otomatik Sat") : null, () => SubmitAll(plan), F($"Borcu Öde ({debt.Amount})"), () => _controller.Submit(pay),
-                _controller.IsAllowed(pay));
-        }
-
-        /// <summary>Sends a whole plan (the automatic sale); the host takes the commands in order.</summary>
-        private void SubmitAll(IReadOnlyList<GameCommand> commands)
-        {
-            foreach (GameCommand command in commands) _controller.Submit(command);
         }
 
         /// <summary>

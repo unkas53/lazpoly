@@ -54,7 +54,7 @@ namespace Lazpoly.Presentation.Texts
 
             // Decisions first: they explain the buttons the player is looking at.
             return Offer(TipId.Debt, myTurn && state.Phase == GamePhase.AwaitingDebtPayment,
-                       L("Borcunu ödeyecek kadar paran yok. Bina ya da mülk satarak para bul; bulamazsan iflas edersin."))
+                       L("Borcunu ödeyecek kadar paran yok. Satacağın şehirleri haritada işaretleyip Sat'a bas; yetmezse iflas edersin."))
                    ?? Offer(TipId.Travel, myTurn && state.Phase == GamePhase.AwaitingTravelDecision,
                        F($"Otogardasın. Tahtada parlayan karelerden birine tıkla ve {board[me.Position].Fee} ödeyerek oraya yürü. İstemezsen \"Burada kal\"."))
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,

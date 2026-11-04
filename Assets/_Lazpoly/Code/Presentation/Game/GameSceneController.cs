@@ -211,6 +211,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Why an online game stopped; null while it goes on.</summary>
         public SessionEndReason? EndReason { get; private set; }
 
+        /// <summary>A player's piece on the board, or null.</summary>
+        public PawnView PawnOf(int playerId) => _pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null;
+
         /// <summary>True while events are still being animated; the HUD waits before offering actions.</summary>
         public bool IsBusy => _playing || _pendingEvents.Count > 0 || _drawToAnnounce;
 
@@ -655,12 +658,14 @@ namespace Lazpoly.Presentation.Game
             IReadOnlyList<PlayerSeat> seats = FirstPlayerDraw.Draw(LocalGameSetup.TakeSeats(), DrawRandom());
             LocalGame game = LocalGame.Create(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), seats,
                 LocalGameSetup.TakeAiPlayers(), NewSeed());
-            if (!PerfRun.Requested || !PerfRun.BuiltUp) return game;
+            if (!PerfRun.Requested || !(PerfRun.BuiltUp || PerfRun.InDebt)) return game;
 
             // -perf -built: the same table with every town owned and built, the heaviest board there can be.
-            SavedGame built = game.Save(_data.Checksum);
-            PerfRun.BuildUp(built.Snapshot, _data.Board);
-            return LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, built);
+            // -perf -debt: the player on turn is a person selling towns for rent they cannot pay.
+            SavedGame staged = game.Save(_data.Checksum);
+            if (PerfRun.BuiltUp) PerfRun.BuildUp(staged.Snapshot, _data.Board);
+            if (PerfRun.InDebt) PerfRun.OpenDebt(staged, _data.Board);
+            return LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, staged);
         }
 
         private static Pcg32Random NewRandom() => new Pcg32Random(NewSeed());
@@ -1115,9 +1120,10 @@ namespace Lazpoly.Presentation.Game
             yield return pawn.Bob();
         }
 
-        /// <summary>Moves the ring under the pawn whose turn it is.</summary>
+        /// <summary>Moves the ring under the pawn whose turn it is; that piece stands solid and the waiting players' pieces fade.</summary>
         private void MarkTurn(int playerId)
         {
+            foreach (KeyValuePair<int, PawnView> pair in _pawns) pair.Value.SetFaded(pair.Key != playerId);
             if (_turnMarker == null) return;
             _turnMarker.Follow(_pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null, ColorOf(playerId));
         }
