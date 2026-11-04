@@ -778,6 +778,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Bir şehirde artık her seviyede tek bina durur: 1 ev tek katlı ev, 2-3 ev iki ve üç katlı konut, 4 ev dört katlı apartman, otel kanatlı otel. Modeller proje sahibinin verdiği paketten (`Tools/Art/Models/Buildings`); bina sahibinin rengine boyanır (biraz açılarak, pencereler okunsun diye) ve kapısı karenin dış kenarına, piyonların yürüdüğü yola bakar. Seviye değişince eski bina küçülüp kaybolur, yenisi düşüp sekerek gelir.
 - Modeller 2.000-51.000 üçgenliydi; `Tools/Art/make_buildings.py` her birini üçgenlerinin ~%30'una indirip (görünüş aynı kalacak şekilde) tek bir ikili pakete yazar (`Resources/Lazpoly/Models/buildings.bytes`, 0,9 MB; altısı toplam ~39 bin üçgen). Oyun paketi okur (`BuildingPack`, `BuildingModels`); paket yoksa eski çizilmiş ev ve konak gösterilir.
 - Mülk kartındaki küçük resimler de yeni modelleri kullanır; boş şehirde (seviye 0) tabelalı boş arsa görünür.
+- `Lazpoly.exe -perf -built`: ölçüm masası her şehri sahipli ve yapılı başlatır (seviyeler otelden 1 eve sırayla, herkes 100.000 parayla iflas etmeden), böylece bütün binalar görülür ve en ağır tahta ölçülür.
 - Testler: `BuildingModelsTests` (paket altı seviyeyi taşır, taban 0,90 x 0,72, her seviye daha yüksek, bozuk paket reddedilir, her seviyede tek bina), `SceneryTests` binanın kareye sığdığını ve kart sahnesinde tek modelin durduğunu denetler.
 
 ## Kurallar

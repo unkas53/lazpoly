@@ -1,5 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Lazpoly.Core.Board;
+using Lazpoly.Core.Engine;
+using Lazpoly.Core.Random;
+using Lazpoly.Core.Rules;
+using Lazpoly.Core.State;
 using Lazpoly.Presentation.Perf;
 using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
@@ -79,6 +84,44 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsFalse(PerfRun.IsRequested(null));
             Assert.AreEqual(PerfRun.PlayerCount, PerfRun.Seats().Count);
             Assert.AreEqual(PerfRun.PlayerCount, PerfRun.Ai().Count, "every seat at the perf table is a computer");
+        }
+
+        [Test]
+        public void TheBuiltTableOwnsEveryTownAndShowsEveryLevel()
+        {
+            Assert.IsTrue(PerfRun.HasArgument(new[] { "Lazpoly.exe", "-perf", "-BUILT" }, PerfRun.BuiltFlag));
+            Assert.IsFalse(PerfRun.HasArgument(new[] { "Lazpoly.exe", "-perf" }, PerfRun.BuiltFlag));
+
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Start"),
+                SquareDefinition.Property("A1", 60, 6, 1, 50, new[] { 30, 90, 240, 330, 420 }),
+                SquareDefinition.Property("A2", 80, 8, 1, 50, new[] { 40, 120, 320, 440, 560 }),
+                SquareDefinition.Tax("Tax", 100),
+                SquareDefinition.Property("B1", 120, 12, 2, 100, new[] { 60, 180, 480, 660, 840 }),
+                SquareDefinition.Property("B2", 140, 14, 2, 100, new[] { 70, 210, 560, 770, 980 }),
+                SquareDefinition.Rest("Rest"),
+                SquareDefinition.Property("C1", 200, 20, 3, 150, new[] { 100, 300, 800, 1100, 1400 }),
+                SquareDefinition.Property("C2", 220, 22, 3, 150, new[] { 110, 330, 880, 1210, 1540 }),
+                SquareDefinition.Property("Solo", 150, 15, 0),
+            });
+            var rules = new RulesConfig(800, 100, 6, 3, 2, 50);
+            var engine = new GameEngine(board, rules, PerfRun.Seats(), new Pcg32Random(3UL));
+            GameStateSnapshot snapshot = GameStateSnapshot.Capture(engine.State);
+            PerfRun.BuildUp(snapshot, board);
+
+            GameEngine built = GameEngine.Restore(board, rules, snapshot, new Pcg32Random(3UL));
+            var levels = new HashSet<int>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                bool town = board[i].Type == SquareType.Property;
+                Assert.AreEqual(town, built.State.GetOwner(i) != GameState.NoOwner, $"square {i}");
+                if (board[i].IsDevelopable) levels.Add(built.State.GetBuildingLevel(i));
+                else Assert.AreEqual(0, built.State.GetBuildingLevel(i));
+            }
+
+            CollectionAssert.AreEquivalent(new[] { 1, 2, 3, 4, 5 }, levels, "every building level stands somewhere");
+            foreach (PlayerState player in built.State.Players) Assert.AreEqual(PerfRun.BuiltMoney, player.Money);
         }
 
         [Test]
