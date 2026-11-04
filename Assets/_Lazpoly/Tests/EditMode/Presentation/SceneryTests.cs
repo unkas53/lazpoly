@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Lazpoly.Core.Board;
+using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Dice;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Models;
@@ -58,15 +60,15 @@ namespace Lazpoly.Presentation.Tests
             var holder = new GameObject("Board Test");
             try
             {
-                BoardData data = Lazpoly.Presentation.Data.BoardDataLoader.LoadFromResources();
+                BoardData data = BoardDataLoader.LoadFromResources();
                 BoardView board = BoardView.Create(holder.transform, data);
                 int towns = 0;
                 for (int i = 0; i < data.Board.Count; i++)
                 {
-                    if (data.Board[i].Type != Lazpoly.Core.Board.SquareType.Property) continue;
+                    if (data.Board[i].Type != SquareType.Property) continue;
                     towns++;
                     Vector3 center = board.SquarePosition(i);
-                    Vector3 down = BoardView.ScreenDown(Lazpoly.Presentation.Tabletop.BoardLayout.Outward(board.Layout.SquareCenter(i)));
+                    Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(board.Layout.SquareCenter(i)));
                     Vector3 name = board.NameLabel(i).transform.position;
                     Vector3 price = board.PriceLabel(i).transform.position;
                     Assert.Greater(Vector3.Dot(price - name, down), 0f, $"square {i}: the price lies under the name on the screen");
