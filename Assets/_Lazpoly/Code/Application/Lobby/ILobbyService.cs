@@ -74,6 +74,9 @@ namespace Lazpoly.App.Lobby
         /// <summary>This machine's peer id.</summary>
         ulong LocalId { get; }
 
+        /// <summary>The name this machine's player goes by on the platform (their Steam name); empty when unavailable.</summary>
+        string LocalName { get; }
+
         LobbyStatus Status { get; }
 
         /// <summary>The member who hosts the game; 0 when not in a lobby.</summary>

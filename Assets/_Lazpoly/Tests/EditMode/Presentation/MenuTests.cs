@@ -1,8 +1,15 @@
+using System.Collections.Generic;
 using System.IO;
+using Lazpoly.Core.Board;
 using Lazpoly.Infra.Settings;
+using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Menu;
+using Lazpoly.Presentation.Models;
+using Lazpoly.Presentation.Pawns;
+using Lazpoly.Presentation.Setup;
+using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.UI;
 using NUnit.Framework;
@@ -10,7 +17,7 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Tests
 {
-    /// <summary>The main menu's paper look: its colours read, its parts fit the screen, its logo is in the build.</summary>
+    /// <summary>The main menu: its colours read, its parts fit the design, its pictures and logo are in the build, the character pick is kept.</summary>
     public class MenuTests
     {
         [TearDown]
@@ -88,15 +95,145 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheHomePageFitsTheReferenceScreen()
+        public void TheHomeScreensPartsStayInTheDesignAndNeverOverlap()
         {
-            Assert.That(MenuLayout.MinScreenHeight, Is.LessThanOrEqualTo(UiTheme.ReferenceResolution.y), "the six cards, title and footer stack on 1080 rows");
-            Assert.That(MenuLayout.CardHeight(UiTheme.ReferenceResolution.y), Is.GreaterThanOrEqualTo(MenuLayout.MinCardHeight));
-            Assert.That(MenuLayout.CardWidth(UiTheme.ReferenceResolution.x), Is.GreaterThan(400f), "a card holds a heading and a line of text");
-            Assert.That(MenuLayout.MastheadHeight, Is.GreaterThanOrEqualTo(MenuLayout.LogoSize + 8f), "the logo fits in the masthead with a margin");
-            Assert.AreEqual(6, MenuLayout.CardCount);
-            // At the smallest height the cards are exactly their minimum: the arithmetic and the minimum agree.
-            Assert.That(MenuLayout.CardHeight(MenuLayout.MinScreenHeight), Is.EqualTo(MenuLayout.MinCardHeight).Within(0.01f));
+            var design = new Rect(Vector2.zero, MenuLayout.Design);
+            var parts = new List<KeyValuePair<string, Rect>>(MenuLayout.HomeParts);
+            foreach (KeyValuePair<string, Rect> part in parts)
+            {
+                Assert.IsTrue(design.Contains(part.Value.min) && design.Contains(part.Value.max), $"{part.Key} leaves the 1920x1080 design");
+            }
+
+            for (int i = 0; i < parts.Count; i++)
+            {
+                for (int j = i + 1; j < parts.Count; j++)
+                {
+                    // The profile card holds its disc, name and caption; nothing else may share room.
+                    Assert.IsFalse(parts[i].Value.Overlaps(parts[j].Value), $"{parts[i].Key} overlaps {parts[j].Key}");
+                }
+            }
+
+            Assert.IsTrue(MenuLayout.Profile.Contains(MenuLayout.ProfileDisc.center) && MenuLayout.Profile.Contains(MenuLayout.ProfileName.center));
+            Assert.That(MenuLayout.Play.height, Is.GreaterThan(MenuLayout.Host.height), "playing at once is the big button");
+            Assert.IsTrue(design.Contains(MenuLayout.Sheet.min) && design.Contains(MenuLayout.Sheet.max));
+            float cards = 4f * MenuLayout.CharacterCardWidth + 3f * MenuLayout.CharacterCardGap;
+            Assert.That(cards + 80f, Is.LessThanOrEqualTo(MenuLayout.CharacterPanel.width), "the four portraits fit their window");
+        }
+
+        [Test]
+        public void TheDesignFrameShowsWholeOnEveryScreenShape()
+        {
+            Assert.AreEqual(1f, MenuLayout.FrameScale(new Vector2(1920f, 1080f)), 1e-5f);
+            Assert.AreEqual(1f, MenuLayout.FrameScale(new Vector2(2560f, 1080f)), 1e-5f, "a wide screen keeps the height and shows more city");
+            Assert.AreEqual(1600f / 1920f, MenuLayout.FrameScale(new Vector2(1600f, 1200f)), 1e-5f, "a squarer screen keeps the width");
+        }
+
+        [Test]
+        public void TheFirstSeatGoesByTheSteamNameUnlessTheyTypedTheirOwn()
+        {
+            Assert.AreEqual("UNKAS", MainMenuController.FirstSeatName("Oyuncu 1", "Oyuncu 1", " UNKAS "));
+            Assert.AreEqual("Mami", MainMenuController.FirstSeatName("Mami", "Oyuncu 1", "UNKAS"), "a typed name stays");
+            Assert.AreEqual("Oyuncu 1", MainMenuController.FirstSeatName("Oyuncu 1", "Oyuncu 1", ""), "no Steam, no change");
+            Assert.AreEqual("Oyuncu 1", MainMenuController.FirstSeatName("Oyuncu 1", "Oyuncu 1", null));
+        }
+
+        [Test]
+        public void EveryPictureOfTheMenuKitIsInTheBuild()
+        {
+            foreach (string name in MenuKit.Pictures)
+            {
+                Sprite sprite = MenuKit.Get(name);
+                Assert.IsNotNull(sprite, $"{name}: run Tools/Art/make_menu_art.py");
+                Assert.AreEqual(MenuKit.Borders(name), sprite.border, $"{name} stretches by its kit borders");
+                if (sprite.border != Vector4.zero)
+                {
+                    Assert.AreEqual(1, sprite.texture.mipmapCount, $"{name}: a squeezed skin has no blurred mips to draw pale stripes");
+                }
+            }
+
+            Assert.AreEqual(new Vector4(32f, 32f, 32f, 32f), MenuKit.Borders("Primary_Normal"));
+            Assert.AreEqual(Vector4.zero, MenuKit.Borders("Icon_Dice"));
+            Sprite background = MenuKit.Get(MenuKit.Background);
+            Assert.That(background.rect.width / background.rect.height, Is.EqualTo(16f / 9f).Within(0.05f), "the city picture is a wide screen's shape");
+            Assert.That(background.rect.width, Is.GreaterThanOrEqualTo(1920f), "sharp on a 1080p screen");
+            Assert.IsNull(MenuKit.Get("Not_A_Picture"), "a missing picture leaves a plain shape");
+        }
+
+        [Test]
+        public void TheHomeScreenNamesTheBoardsDearestTowns()
+        {
+            BoardDefinition board = BoardDataLoader.LoadFromResources().Board;
+            string line = MainMenuController.TownsLine(board, MainMenuController.TownsShown);
+            string[] towns = line.Split(new[] { " · " }, System.StringSplitOptions.None);
+            Assert.AreEqual(MainMenuController.TownsShown, towns.Length);
+            int previous = int.MaxValue;
+            foreach (string town in towns)
+            {
+                int price = -1;
+                for (int i = 0; i < board.Count; i++)
+                {
+                    if (board[i].Type == SquareType.Property && board[i].Name == town) price = board[i].Price;
+                }
+
+                Assert.That(price, Is.GreaterThan(0), $"{town} is a town on the board");
+                Assert.That(price, Is.LessThanOrEqualTo(previous), "dearest first");
+                previous = price;
+            }
+        }
+
+        private sealed class MemoryStorage : ISettingsStorage
+        {
+            private readonly Dictionary<string, string> _strings = new Dictionary<string, string>();
+            public int Saves;
+            public bool HasKey(string key) => _strings.ContainsKey(key);
+            public int GetInt(string key) => 0;
+            public float GetFloat(string key) => 0f;
+            public void SetInt(string key, int value) { }
+            public void SetFloat(string key, float value) { }
+            public string GetString(string key) => _strings.TryGetValue(key, out string value) ? value : string.Empty;
+            public void SetString(string key, string value) => _strings[key] = value ?? string.Empty;
+            public void Save() => Saves++;
+        }
+
+        [Test]
+        public void ThePickedCharacterIsKeptAndDecidesTheFigure()
+        {
+            var storage = new MemoryStorage();
+            var choice = new CharacterChoice(storage);
+            Assert.AreEqual("Ece", choice.Selected.Name, "the first character until one is picked");
+            Assert.AreEqual(4, CharacterChoice.All.Count);
+
+            choice.Select("Man02");
+            Assert.AreEqual("Deniz", new CharacterChoice(storage).Selected.Name, "the pick is kept");
+            Assert.AreEqual(CharacterKind.Man, choice.Selected.Figure);
+            Assert.AreEqual(1, storage.Saves);
+            Assert.Throws<System.ArgumentException>(() => choice.Select("Nobody"));
+
+            storage.SetString(CharacterChoice.StorageKey, "an old id");
+            Assert.AreEqual("Ece", choice.Selected.Name, "an unknown stored id falls back");
+            foreach (CharacterOption option in CharacterChoice.All)
+            {
+                Assert.AreEqual(option.Id.StartsWith("Woman") ? CharacterKind.Woman : CharacterKind.Man, option.Figure, option.Name);
+                Assert.IsNotNull(MenuKit.Get(option.Portrait), $"{option.Name}'s portrait");
+            }
+        }
+
+        [Test]
+        public void ThePickedFigureReplacesTheSeatsOwn()
+        {
+            var holder = new GameObject("Figure Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                var crowd = new PawnCrowd(2);
+                // Seat 0 plays the man unless the player picked a woman.
+                Assert.AreEqual(CharacterKind.Man, PawnView.Create(holder.transform, board, 0, Color.red, crowd, 1).Kind);
+                Assert.AreEqual(CharacterKind.Woman, PawnView.Create(holder.transform, board, 0, Color.red, crowd, 2, CharacterKind.Woman).Kind);
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
         }
 
         [Test]

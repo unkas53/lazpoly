@@ -45,6 +45,7 @@ namespace Lazpoly.Platform.Steam
 
         public bool IsAvailable => _steam.IsInitialized;
         public ulong LocalId => IsAvailable ? SteamUser.GetSteamID().m_SteamID : 0UL;
+        public string LocalName => IsAvailable ? SteamFriends.GetPersonaName() ?? "" : "";
         public LobbyStatus Status { get; private set; }
         public ulong OwnerId => InLobby ? SteamMatchmaking.GetLobbyOwner(_lobby).m_SteamID : 0UL;
         public bool IsOwner => InLobby && OwnerId == LocalId;

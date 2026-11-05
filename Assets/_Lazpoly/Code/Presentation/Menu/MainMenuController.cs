@@ -4,6 +4,7 @@ using Lazpoly.App.AI;
 using Lazpoly.App.Lobby;
 using Lazpoly.App.Presence;
 using Lazpoly.App.Save;
+using Lazpoly.Core.Board;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Infra;
@@ -24,9 +25,10 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// Main menu: one paper window over the board, with a green masthead, a greeting, six cards for the
-    /// ways to play and a footer with the quickest way to a table. A card opens its mode's setup sheet
-    /// in the middle of the window; an online room fills the window with the lobby's columns.
+    /// Main menu in the owner's kit: the city picture across the screen and, on a 1920x1080 design frame over it,
+    /// the home screen (<see cref="MenuHome"/>): play at once, host or join a room, set up a game against the
+    /// computer or on one computer, pick a character, read how to play, settings. A way in that needs setting up
+    /// opens on a paper sheet over the menu; an online room fills that sheet with the lobby's columns.
     /// </summary>
     public sealed class MainMenuController : MonoBehaviour
     {
@@ -37,21 +39,27 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>What sits in a local seat: a person (0) or the computer at a difficulty.</summary>
         private static readonly string[] SeatKinds = { "İnsan", "AI: Kolay", "AI: Orta", "AI: Zor" };
 
+        /// <summary>How many of the board's dearest towns the home screen names.</summary>
+        public const int TownsShown = 4;
+
         private readonly List<string> _names = new List<string>();
         private readonly List<int> _seatKinds = new List<int>();
+        private readonly List<RectTransform> _frames = new List<RectTransform>();
         private int _playerCount = 2;
         private Mode _mode = Mode.Home;
         private int _opponents = 3;
         private AiDifficulty _difficulty = AiDifficulty.Normal;
-        private UiView _mastheadView;
-        private UiView _titleView;
-        private UiView _cardsView;
+        private RectTransform _canvas;
+        private MenuHome _home;
+        private UiView _infoView;
+        private GameObject _sheetLayer;
         private UiView _sheetView;
         private UiView _footerView;
-        private GameObject _home;
-        private GameObject _sheet;
+        private CharacterWindow _characters;
+        private CharacterChoice _choice;
         private UiView _settingsView;
         private GameObject _settingsLayer;
+        private bool _confirmQuit;
         private UiView _tableView;
         private GameObject _tableLayer;
         private int _boardMoney;
@@ -62,6 +70,7 @@ namespace Lazpoly.Presentation.Menu
         private SavedGame _savedGame;
         private bool _brokenSave;
         private bool _rejoining;
+        private float _unmutedVolume;
         private SettingsPanel _settings;
         private SettingsService _settingsService;
         private ILobbyService _lobby;
@@ -89,6 +98,7 @@ namespace Lazpoly.Presentation.Menu
             FindSavedGame();
             _boardData = BoardDataLoader.LoadFromResources();
             _boardMoney = _boardData.Rules.StartingMoney;
+            _choice = new CharacterChoice(new PlayerPrefsStorage());
 
             ITransport transport = null;
             GameServices.Registry?.TryGet(out _lobby);
@@ -118,6 +128,7 @@ namespace Lazpoly.Presentation.Menu
         {
             Lang.Apply(settings.Language);
             UiRoot.ApplyScale(settings.UiScaleFactor);
+            RoomDressing.ApplyQuality(settings.Quality);
         }
 
         private void Update()
@@ -141,108 +152,147 @@ namespace Lazpoly.Presentation.Menu
                 SceneFader.Load("Game");
             }
 
-            MenuBackdrop.Create(transform, _boardData);
+            QuietCamera();
             Canvas canvas = UiRoot.CreateCanvas(transform, "Main Menu UI", 0);
-            UiRoot.Background(UiRoot.Stretch(canvas.transform, "Backdrop"), UiTheme.Veil, rounded: false);
+            _canvas = (RectTransform)canvas.transform;
 
-            // The paper window: rounded, with a shadow, clipping the masthead's band to its corners.
-            var margin = new Vector2(MenuLayout.WindowMargin, MenuLayout.WindowMargin);
-            RectTransform window = UiRoot.Rect(canvas.transform, "Window", Vector2.zero, Vector2.one, margin, -margin);
-            UiRoot.Background(window, UiTheme.Panel, shadow: true);
-            window.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            // The city picture covers the screen, cropped rather than letterboxed; the design frame sits over it whole.
+            RectTransform picture = UiRoot.Rect(_canvas, "City Background", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            Image background = MenuKit.Picture(picture, MenuKit.Background, Color.white);
+            if (background.sprite == null) background.color = UiTheme.Backdrop;
+            var cover = picture.gameObject.AddComponent<AspectRatioFitter>();
+            cover.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            cover.aspectRatio = background.sprite != null ? background.sprite.rect.width / background.sprite.rect.height : 16f / 9f;
 
-            RectTransform masthead = UiRoot.Rect(window, "Masthead", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -MenuLayout.MastheadHeight), Vector2.zero);
-            UiRoot.Background(masthead, UiPalette.Ink.Masthead, rounded: false).raycastTarget = false;
-            RectTransform edge = UiRoot.Rect(masthead, "Edge", Vector2.zero, new Vector2(1f, 0f), Vector2.zero, new Vector2(0f, 4f));
-            UiRoot.Background(edge, UiPalette.Ink.MastheadDeep, rounded: false).raycastTarget = false;
-            RectTransform brand = UiRoot.Rect(masthead, "Brand", Vector2.zero, Vector2.one, new Vector2(MenuLayout.Padding, 0f), new Vector2(-MenuLayout.Padding, 0f));
-            var line = brand.gameObject.AddComponent<HorizontalLayoutGroup>();
-            line.spacing = 16f;
-            line.childAlignment = TextAnchor.MiddleLeft;
-            line.childControlWidth = true;
-            line.childControlHeight = true;
-            line.childForceExpandWidth = false;
-            line.childForceExpandHeight = false;
-            _mastheadView = new UiView(new UiBuilder(brand), RenderMasthead);
+            _home = new MenuHome(Frame(_canvas, "Home"), new MenuHomeActions
+            {
+                Play = StartSingleGame,
+                Host = () =>
+                {
+                    _mode = Mode.Online;
+                    _lobbyPanel.HostRoom();
+                },
+                Join = () => _mode = Mode.Online,
+                Single = () => _mode = Mode.Single,
+                Local = () => _mode = Mode.Local,
+                Characters = () => _characters.Show(_choice.Selected),
+                HowToPlay = OpenHowToPlay,
+                Settings = OpenSettings,
+                ToggleSound = ToggleSound,
+            }, TownsLine(_boardData.Board, TownsShown));
+            UiBuilder.AddColumnLayout(_home.InfoArea.gameObject, 0, 4f);
+            _home.InfoArea.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            _infoView = new UiView(new UiBuilder(_home.InfoArea), RenderInfo);
 
-            // The page under the masthead: the home grid or a mode's sheet, and the footer line under either.
-            RectTransform page = UiRoot.Rect(window, "Page", Vector2.zero, Vector2.one, new Vector2(MenuLayout.Padding, MenuLayout.Padding),
-                new Vector2(-MenuLayout.Padding, -MenuLayout.MastheadHeight - MenuLayout.Padding));
-            UiBuilder.AddColumnLayout(page.gameObject, 0, MenuLayout.RowGap);
-
-            _home = UiRoot.Stretch(page, "Home").gameObject;
-            UiBuilder.AddColumnLayout(_home, 0, MenuLayout.RowGap);
-            Flexible(_home);
-            RectTransform title = UiRoot.Stretch(_home.transform, "Title Strip");
-            UiBuilder.Fix(title.gameObject, height: MenuLayout.TitleHeight);
-            var strip = title.gameObject.AddComponent<HorizontalLayoutGroup>();
-            strip.spacing = MenuLayout.CardGap;
-            strip.childAlignment = TextAnchor.MiddleLeft;
-            strip.childControlWidth = true;
-            strip.childControlHeight = true;
-            strip.childForceExpandWidth = false;
-            strip.childForceExpandHeight = false;
-            _titleView = new UiView(new UiBuilder(title), RenderTitle);
-            RectTransform cards = UiRoot.Stretch(_home.transform, "Cards");
-            UiBuilder.AddColumnLayout(cards.gameObject, 0, MenuLayout.CardGap);
-            Flexible(cards.gameObject);
-            _cardsView = new UiView(new UiBuilder(cards), RenderCards);
-
-            RectTransform sheet = UiRoot.Stretch(page, "Sheet");
-            Flexible(sheet.gameObject);
-            _sheet = sheet.gameObject;
-            _sheetView = new UiView(UiRoot.ScrollPanel(sheet, 0), RenderSheet);
-            _sheet.SetActive(false);
-
-            RectTransform footer = UiRoot.Stretch(page, "Footer");
-            UiBuilder.Fix(footer.gameObject, height: MenuLayout.FooterHeight);
+            // A mode's setup: a paper sheet over the dimmed menu, the lobby's ready line at its foot.
+            RectTransform sheetFrame = Frame(DimLayer(_canvas, "Sheet Layer", out _sheetLayer), "Sheet Frame");
+            Rect area = MenuLayout.Sheet;
+            RectTransform sheet = MenuKit.Place(sheetFrame, "Sheet", area.x, area.y, area.width, area.height);
+            UiRoot.Panel(sheet);
+            RectTransform inside = UiRoot.Stretch(sheet, "Inside");
+            UiBuilder.AddColumnLayout(inside.gameObject, 36, 20f);
+            RectTransform body = UiRoot.Stretch(inside, "Body");
+            LayoutElement grow = UiBuilder.Fix(body.gameObject, -1f);
+            grow.preferredHeight = 0f;
+            grow.flexibleHeight = 1f;
+            _sheetView = new UiView(UiRoot.ScrollPanel(body, 0), RenderSheet);
+            RectTransform footer = UiRoot.Stretch(inside, "Footer");
+            UiBuilder.Fix(footer.gameObject, height: 72f);
             UiBuilder.AddColumnLayout(footer.gameObject, 0, 0f);
             footer.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
             _footerView = new UiView(new UiBuilder(footer), RenderFooter);
+            _sheetLayer.SetActive(false);
 
-            _settingsView = new UiView(UiRoot.Modal(canvas.transform, "Settings", 520f, out _settingsLayer), ui => _settings.Render(ui, CloseSettings));
+            RectTransform characterFrame = Frame(DimLayer(_canvas, "Characters Layer", out GameObject characterLayer), "Characters Frame");
+            _characters = new CharacterWindow(characterFrame, characterLayer, option =>
+            {
+                _choice.Select(option.Id);
+            });
+
+            _settingsView = new UiView(UiRoot.Modal(_canvas, "Settings", 520f, out _settingsLayer), RenderSettings);
             _settingsLayer.SetActive(false);
-            _tableView = new UiView(UiRoot.Modal(canvas.transform, "Table Rules", 640f, out _tableLayer), RenderTableRules);
+            _tableView = new UiView(UiRoot.Modal(_canvas, "Table Rules", 640f, out _tableLayer), RenderTableRules);
             _tableLayer.SetActive(false);
             // The page describes the table rules chosen for the next game.
-            _howToView = new UiView(UiRoot.Modal(canvas.transform, "How To Play", HowToPlayPanel.Width, out _howToLayer),
+            _howToView = new UiView(UiRoot.Modal(_canvas, "How To Play", HowToPlayPanel.Width, out _howToLayer),
                 ui => HowToPlayPanel.Render(ui, _boardData.Board, _boardData.Rules.WithTable(TableSetup.Chosen), () => _howToLayer.SetActive(false)));
             _howToLayer.SetActive(false);
+            ScaleFrames();
         }
 
-        /// <summary>An element that takes the page's spare height.</summary>
-        private static void Flexible(GameObject element)
+        /// <summary>The scene's camera draws nothing now that the menu is a picture: no board, no sky, only the canvas.</summary>
+        private static void QuietCamera()
         {
-            LayoutElement layout = UiBuilder.Fix(element, -1f);
-            layout.preferredHeight = 0f;
-            layout.flexibleHeight = 1f;
+            Camera camera = Camera.main;
+            if (camera == null) return;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = UiTheme.Backdrop;
+            camera.cullingMask = 0;
+        }
+
+        /// <summary>A 1920x1080 design frame, centred on <paramref name="parent"/>; <see cref="ScaleFrames"/> fits it to the screen.</summary>
+        private RectTransform Frame(RectTransform parent, string name)
+        {
+            RectTransform frame = UiRoot.Rect(parent, name, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            frame.sizeDelta = MenuLayout.Design;
+            _frames.Add(frame);
+            return frame;
+        }
+
+        /// <summary>A layer over the whole screen in the kit's dim, blocking clicks to what lies under it.</summary>
+        private static RectTransform DimLayer(RectTransform canvas, string name, out GameObject layer)
+        {
+            RectTransform dim = UiRoot.Stretch(canvas, name);
+            UiRoot.Background(dim, MenuKit.Dim, rounded: false);
+            layer = dim.gameObject;
+            layer.AddComponent<UiFocusScope>();
+            return dim;
+        }
+
+        private void ScaleFrames()
+        {
+            if (_canvas == null) return;
+            float scale = MenuLayout.FrameScale(_canvas.rect.size);
+            foreach (RectTransform frame in _frames)
+            {
+                if (frame.localScale.x != scale) frame.localScale = new Vector3(scale, scale, 1f);
+            }
+        }
+
+        /// <summary>"İstanbul · New York · Londra · Paris": the board's dearest towns, dearest first.</summary>
+        public static string TownsLine(BoardDefinition board, int count)
+        {
+            var towns = new List<SquareDefinition>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Property) towns.Add(board[i]);
+            }
+
+            towns.Sort((a, b) => b.Price.CompareTo(a.Price));
+            var names = new List<string>();
+            for (int i = 0; i < towns.Count && i < count; i++) names.Add(towns[i].Name);
+            return string.Join(" · ", names);
         }
 
         private void LateUpdate()
         {
-            if (_footerView == null) return;
-            bool home = _mode == Mode.Home;
-            if (_home.activeSelf != home)
-            {
-                _home.SetActive(home);
-                _sheet.SetActive(!home);
-            }
-
-            _mastheadView.Refresh(HashCode.Combine(_lobbyPanel.IsAvailable, OnlineFriends(), _lobbyPanel.InRoom));
-            if (home)
-            {
-                _titleView.Refresh(0);
-                _cardsView.Refresh(HashCode.Combine(_lobbyPanel.IsAvailable, TableKey()));
-            }
-            else
+            if (_home == null) return;
+            ScaleFrames();
+            bool sheet = _mode != Mode.Home;
+            if (_sheetLayer.activeSelf != sheet) _sheetLayer.SetActive(sheet);
+            if (sheet)
             {
                 int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty);
                 _sheetView.Refresh(HashCode.Combine(_mode, modeKey, TableKey()));
+                _footerView.Refresh(HashCode.Combine(_lobbyPanel.InRoom, _lobbyPanel.InRoom ? _lobbyPanel.ViewKey : 0));
             }
 
-            int footerKey = _lobbyPanel.InRoom ? _lobbyPanel.ViewKey : HashCode.Combine(_savedGame != null, _brokenSave, CanRejoin(out _), _opponents, _difficulty);
-            _footerView.Refresh(HashCode.Combine(_mode, _lobbyPanel.InRoom, footerKey));
-            if (_settingsLayer.activeSelf) _settingsView.Refresh(0);
+            TakePlatformName();
+            _home.SetProfile(_names[0], _choice.Selected.Name);
+            _home.SetMuted(Muted);
+            _home.SetStatus(StatusLine());
+            _infoView.Refresh(HashCode.Combine(_savedGame != null, _brokenSave, CanRejoin(out _)));
+            if (_settingsLayer.activeSelf) _settingsView.Refresh(HashCode.Combine(_confirmQuit));
             if (_tableLayer.activeSelf) _tableView.Refresh(TableKey());
             if (_howToLayer.activeSelf) _howToView.Refresh(TableKey());
         }
@@ -255,132 +305,103 @@ namespace Lazpoly.Presentation.Menu
             return online;
         }
 
-        /// <summary>The green band: the logo and the tagline, Steam's state, the version, settings and the way out.</summary>
-        private void RenderMasthead(UiBuilder ui)
+        private bool _platformNamed;
+
+        /// <summary>
+        /// Once Steam is up, the person at this computer goes by their Steam name on the profile card and in the
+        /// first seat, unless they already typed a name of their own.
+        /// </summary>
+        private void TakePlatformName()
         {
-            if (MenuArt.HasLogo) Logo(ui, MenuLayout.LogoSize);
-            else ui.Swatch(UiPalette.Ink.Gold, 56f, mark: "L");
-            UiBuilder name = ui.Column(0f);
-            UiBuilder.Fix(name.Container.gameObject, -1f).flexibleWidth = 0f;
-            if (!MenuArt.HasLogo)
+            if (_platformNamed || _lobby == null || !_lobby.IsAvailable) return;
+            _platformNamed = true;
+            _names[0] = FirstSeatName(_names[0], F($"Oyuncu {1}"), _lobby.LocalName);
+        }
+
+        /// <summary>The first seat's name once the platform's is known: the platform's in place of the untouched default.</summary>
+        public static string FirstSeatName(string current, string untouched, string platform) =>
+            current == untouched && !string.IsNullOrWhiteSpace(platform) ? platform.Trim() : current;
+
+        private int _statusKey = int.MinValue;
+        private string _statusLine = "";
+
+        /// <summary>"Steam · 2 arkadaş çevrim içi · Sürüm 0.16": Steam's state and the build, so a friend's "which one do you have?" has an answer.</summary>
+        private string StatusLine()
+        {
+            bool steam = _lobbyPanel.IsAvailable;
+            int online = steam ? OnlineFriends() : 0;
+            int key = HashCode.Combine(steam, online, Lang.Current);
+            if (key == _statusKey) return _statusLine;
+            _statusKey = key;
+            string state = !steam ? L("Steam kapalı") : online == 1 ? L("Steam · 1 arkadaş çevrim içi") : F($"Steam · {online} arkadaş çevrim içi");
+            _statusLine = $"{state} · {F($"Sürüm {Application.version}")}";
+            return _statusLine;
+        }
+
+        /// <summary>Whether the game is silent: the master volume at nothing.</summary>
+        private bool Muted => _settingsService != null ? _settingsService.Current.MasterVolume <= 0.001f : AudioListener.volume <= 0.001f;
+
+        /// <summary>The sound button: silence, or back to the volume there was before it.</summary>
+        private void ToggleSound()
+        {
+            float before = _settingsService != null ? _settingsService.Current.MasterVolume : AudioListener.volume;
+            float after = before > 0.001f ? 0f : (_unmutedVolume > 0.001f ? _unmutedVolume : GameSettings.Default.MasterVolume);
+            if (before > 0.001f) _unmutedVolume = before;
+            if (_settingsService != null) _settingsService.Change(_settingsService.Current.WithMasterVolume(after));
+            else AudioListener.volume = after;
+        }
+
+        /// <summary>
+        /// The line under the play buttons: the unreadable save to delete, the saved game to go on with, the room
+        /// still open to go back to; otherwise the kit's motto.
+        /// </summary>
+        private void RenderInfo(UiBuilder ui)
+        {
+            UiBuilder row = ui.Row(16f, expand: false);
+            row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            if (_brokenSave)
             {
-                name.Label("LAZPOLY", UiTextStyle.Heading, UiPalette.Ink.OnMasthead).horizontalOverflow = HorizontalWrapMode.Overflow;
+                // One line beside its button, like the saved game's: the space under the play buttons is short.
+                UiBuilder words = row.Column(0f);
+                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
+                words.Eyebrow(L("Kayıtlı oyun okunamadı"), UiTheme.Warning);
+                words.Label(L("Dosya bozuk ya da eski bir sürümden; silip yeni oyun kurabilirsin."), UiTextStyle.Small, MenuKit.Muted);
+                UiBuilder.Fix(row.Button(L("Kaydı Sil"), () =>
+                {
+                    SaveGameStore.Delete();
+                    _brokenSave = false;
+                }, height: UiTheme.ButtonHeight), width: 160f);
             }
-
-            name.Eyebrow(L("Dünya Masası"), UiPalette.Ink.OnMastheadMuted).horizontalOverflow = HorizontalWrapMode.Overflow;
-
-            UiBuilder.Fix(ui.Label("", UiTextStyle.Small), -1f).flexibleWidth = 1f;
-            if (_lobbyPanel.IsAvailable)
+            else if (_savedGame != null)
             {
-                int online = OnlineFriends();
-                ui.Chip(online == 1 ? L("Steam · 1 arkadaş çevrim içi") : F($"Steam · {online} arkadaş çevrim içi"), UiPalette.Ink.MastheadDeep, UiPalette.Ink.OnMastheadMuted);
+                UiBuilder words = row.Column(0f);
+                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
+                words.Eyebrow(L("Kaldığın yerden"), UiTheme.Gain);
+                words.Label(SaveSummary(_savedGame, SaveGameStore.SavedAt), UiTextStyle.Small, MenuKit.Muted);
+                UiBuilder.Fix(row.Button(L("Kayıtlı Oyuna Devam  →"), ResumeSavedGame, style: UiButtonStyle.Primary, height: 56f), width: 300f);
+            }
+            else if (CanRejoin(out ulong room))
+            {
+                UiBuilder words = row.Column(0f);
+                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
+                words.Eyebrow(L("Odan hâlâ açık"), UiTheme.Gain);
+                words.Label(L("Son çevrim içi oyun kapanmadan koptu; odaya dönersen eski koltuğun seni bekler."), UiTextStyle.Small, MenuKit.Muted);
+                UiBuilder.Fix(row.Button(L("Unut"), LastRoomStore.Forget, height: UiTheme.ButtonHeight), width: 110f);
+                UiBuilder.Fix(row.Button(L("Odaya Geri Dön  →"), () =>
+                {
+                    _rejoining = true;
+                    _lobby.Join(room);
+                }, style: UiButtonStyle.Primary, height: 56f), width: 260f);
             }
             else
             {
-                ui.Chip(L("Steam kapalı"), UiPalette.Ink.MastheadDeep, UiPalette.Ink.OnMastheadMuted);
+                Text motto = row.Label(L("2–8 OYUNCU   ·   STRATEJİ, ŞANS VE REKABET"), UiTextStyle.Small, MenuKit.Muted);
+                motto.font = UiTheme.BoldFont;
+                motto.horizontalOverflow = HorizontalWrapMode.Overflow;
             }
-
-            // The build's version, so a bug report or a friend's "which one do you have?" has an answer.
-            ui.Label(F($"Sürüm {Application.version}"), UiTextStyle.Small, UiPalette.Ink.OnMastheadMuted).horizontalOverflow = HorizontalWrapMode.Overflow;
-            OnMasthead(ui.RoundButton(UiIcon.Sliders, L("Ayarlar"), OpenSettings, size: 48f));
-            OnMasthead(ui.RoundButton(UiIcon.Door, L("Çıkış"), Application.Quit, style: UiButtonStyle.Danger, size: 48f));
         }
 
-        /// <summary>A round button's caption is written for paper; on the green band it turns cream.</summary>
-        private static void OnMasthead(Button button)
-        {
-            foreach (Text caption in button.GetComponentsInChildren<Text>()) caption.color = UiPalette.Ink.OnMasthead;
-        }
-
-        /// <summary>The logo picture as a square of <paramref name="size"/> in a row.</summary>
-        private static Image Logo(UiBuilder ui, float size)
-        {
-            Image logo = ui.Swatch(Color.white, size);
-            logo.sprite = MenuArt.Logo;
-            logo.type = Image.Type.Simple;
-            logo.preserveAspect = true;
-            logo.raycastTarget = false;
-            return logo;
-        }
-
-        /// <summary>The greeting under the masthead.</summary>
-        private void RenderTitle(UiBuilder ui)
-        {
-            UiBuilder words = ui.Column(4f);
-            words.Eyebrow(L("Yol arkadaşların burada"), UiTheme.Gain);
-            words.Label(L("Bugün hangi masaya oturuyoruz?"), UiTextStyle.Display);
-            words.Label(L("Arkadaşlarınla ya da bilgisayara karşı dünyanın şehirlerini topla, kirayı topla, son kalan sen ol."), UiTextStyle.Small, UiTheme.Muted);
-        }
-
-        /// <summary>The six ways in, three to a row: each a card with a coloured edge, a title, a line and a tag.</summary>
-        private void RenderCards(UiBuilder ui)
-        {
-            bool steam = _lobbyPanel.IsAvailable;
-            UiBuilder top = CardRow(ui);
-            ModeCard(top, 0, UiIcon.Network, L("Özel Masa"), L("Oda kur, arkadaşlarını Steam'den davet et; kuralları sen seçersin."),
-                steam ? L("Steam ile") : L("Steam gerekir"), () =>
-                {
-                    _mode = Mode.Online;
-                    _lobbyPanel.HostRoom();
-                });
-            ModeCard(top, 1, UiIcon.People, L("Odaya Katıl"), L("Arkadaşının açtığı masaya oda koduyla ya da listeden gir."),
-                steam ? L("Oda kodu") : L("Steam gerekir"), () => _mode = Mode.Online);
-            ModeCard(top, 2, UiIcon.Dice, L("Tek Oyunculu"), L("Sen ve bilgisayar rakipler. Rakip sayısını ve zorluğu seçersin."),
-                L("1-7 bilgisayar"), () => _mode = Mode.Single);
-
-            UiBuilder bottom = CardRow(ui);
-            ModeCard(bottom, 3, UiIcon.Home, L("Aynı Bilgisayarda"), L("2-8 kişi aynı ekranda sırayla oynar; istenen koltuğa bilgisayar da oturabilir."),
-                L("2-8 oyuncu"), () => _mode = Mode.Local);
-            // The card's line is the rules as chosen, so the tag stays short enough for its pill.
-            ModeCard(bottom, 4, UiIcon.List, L("Masa Kuralları"), TableSetup.Summary(TableSetup.Chosen, _boardMoney), L("Sonraki oyun"), OpenTableRules);
-            ModeCard(bottom, 5, UiIcon.Book, L("Nasıl Oynanır"), L("Şehirler, binalar, kira, takas ve kartlar: masanın kuralları kısaca."),
-                L("Rehber"), OpenHowToPlay);
-        }
-
-        /// <summary>A row of cards that share the grid's width and height equally.</summary>
-        private static UiBuilder CardRow(UiBuilder ui)
-        {
-            UiBuilder row = ui.Row(MenuLayout.CardGap);
-            row.Container.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = true;
-            LayoutElement layout = UiBuilder.Fix(row.Container.gameObject, -1f, MenuLayout.MinCardHeight);
-            layout.flexibleHeight = 1f;
-            return row;
-        }
-
-        /// <summary>One way in: a stripe in the card's colour, the title, a line about it, a tag and the icon in a tinted disc.</summary>
-        private static void ModeCard(UiBuilder row, int index, UiIcon icon, string title, string description, string tag, Action open)
-        {
-            Color color = UiPalette.Ink.Stripes[index % UiPalette.Ink.Stripes.Length];
-            UiBuilder tile = row.Tile(open, padding: 20);
-            var card = (RectTransform)tile.Container;
-            card.gameObject.AddComponent<Mask>().showMaskGraphic = true;
-            LayoutElement layout = UiBuilder.Fix(card.gameObject, -1f);
-            layout.preferredWidth = 0f;
-            layout.flexibleWidth = 1f;
-            card.GetComponent<VerticalLayoutGroup>().padding = new RectOffset(20 + (int)MenuLayout.CardStripe, 20, 20, 20);
-
-            // The stripe hugs the left edge, outside the column's flow; the mask trims it to the card's corners.
-            RectTransform stripe = UiRoot.Rect(card, "Stripe", Vector2.zero, new Vector2(0f, 1f), Vector2.zero, new Vector2(MenuLayout.CardStripe, 0f));
-            UiRoot.Background(stripe, color, rounded: false).raycastTarget = false;
-            stripe.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-
-            tile.Label(title, UiTextStyle.Heading);
-            tile.Label(description, UiTextStyle.Small, UiTheme.Muted);
-            UiBuilder.Fix(tile.Label("", UiTextStyle.Small), -1f).flexibleHeight = 1f;
-            UiBuilder foot = tile.Row(12f, expand: false);
-            foot.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
-            foot.Chip(tag, UiPalette.Ink.Wash(color), UiPalette.Ink.Deep(color));
-            UiBuilder.Fix(foot.Label("", UiTextStyle.Small), -1f).flexibleWidth = 1f;
-            Image disc = foot.Swatch(UiPalette.Ink.Wash(color), 52f, round: true);
-            disc.raycastTarget = false;
-            RectTransform picture = UiIcons.Create((RectTransform)disc.transform, icon, 28f, color);
-            picture.anchorMin = picture.anchorMax = new Vector2(0.5f, 0.5f);
-            picture.anchoredPosition = Vector2.zero;
-            picture.sizeDelta = new Vector2(28f, 28f);
-            foot.Icon(UiIcon.Next, 22f, UiTheme.Muted);
-        }
-
-        /// <summary>A mode's setup, in a sheet in the middle of the window; a room fills the window instead.</summary>
+        /// <summary>A mode's setup on the sheet: one player or one computer in a card in its middle; online, the lobby.</summary>
         private void RenderSheet(UiBuilder ui)
         {
             if (_mode == Mode.Online && _lobbyPanel.InRoom)
@@ -392,7 +413,7 @@ namespace Lazpoly.Presentation.Menu
             UiBuilder centre = ui.Row(0f, expand: false);
             centre.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
             UiBuilder sheet = centre.Card(UiTheme.Card, 28);
-            UiBuilder.Fix(sheet.Container.gameObject, width: MenuLayout.SheetWidth);
+            UiBuilder.Fix(sheet.Container.gameObject, width: SheetCardWidth);
             switch (_mode)
             {
                 case Mode.Single: RenderSingle(sheet); break;
@@ -400,6 +421,9 @@ namespace Lazpoly.Presentation.Menu
                 case Mode.Online: RenderOnline(sheet); break;
             }
         }
+
+        /// <summary>The setup card in the middle of the sheet.</summary>
+        public const float SheetCardWidth = 860f;
 
         private void BackButton(UiBuilder ui, string title)
         {
@@ -490,7 +514,7 @@ namespace Lazpoly.Presentation.Menu
             ui.Button(L("Tamam"), () => _tableLayer.SetActive(false), style: UiButtonStyle.Primary);
         }
 
-        /// <summary>The footer line: on the home page the motto and the quickest way to a table; in a room the lobby's ready line.</summary>
+        /// <summary>The sheet's foot: in a room the lobby's ready line, while setting up a game a word on what is left.</summary>
         private void RenderFooter(UiBuilder ui)
         {
             if (_lobbyPanel.InRoom)
@@ -499,61 +523,9 @@ namespace Lazpoly.Presentation.Menu
                 return;
             }
 
-            UiBuilder row = ui.Row(16f, expand: false);
-            row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
-            UiBuilder words = row.Column(0f);
-            if (_mode != Mode.Home)
-            {
-                words.Eyebrow(L("Masa seni bekliyor"), UiTheme.Text);
-                words.Label(L("Kurulumu bitir, oyunu başlat."), UiTextStyle.Small, UiTheme.Muted);
-                return;
-            }
-
-            if (_brokenSave)
-            {
-                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
-                words.Notice(L("Kayıtlı oyun okunamadı; dosya bozulmuş ya da eski bir sürümden kalmış olabilir. Silip yeni bir oyun kurabilirsin."),
-                    L("Kaydı Sil"), () =>
-                    {
-                        SaveGameStore.Delete();
-                        _brokenSave = false;
-                    });
-            }
-            else if (_savedGame != null)
-            {
-                words.Eyebrow(L("Kaldığın yerden"), UiTheme.Gain);
-                words.Label(SaveSummary(_savedGame, SaveGameStore.SavedAt), UiTextStyle.Small, UiTheme.Muted);
-            }
-            else if (CanRejoin(out _))
-            {
-                words.Eyebrow(L("Odan hâlâ açık"), UiTheme.Gain);
-                words.Label(L("Son çevrim içi oyun kapanmadan koptu; odaya dönersen eski koltuğun seni bekler."), UiTextStyle.Small, UiTheme.Muted);
-            }
-            else
-            {
-                words.Eyebrow(L("Masa seni bekliyor"), UiTheme.Text);
-                words.Label(_opponents == 1 ? L("Hemen bir bilgisayara karşı başla; ayarlar Tek Oyunculu'da.") : F($"Hemen {_opponents} bilgisayara karşı başla; ayarlar Tek Oyunculu'da."),
-                    UiTextStyle.Small, UiTheme.Muted);
-            }
-
-            Vector2 size = MenuLayout.FooterButton;
-            if (_savedGame != null)
-            {
-                UiBuilder.Fix(row.Button(L("Kayıtlı Oyuna Devam  →"), ResumeSavedGame, style: UiButtonStyle.Primary, height: size.y), width: size.x);
-            }
-            else if (CanRejoin(out ulong room))
-            {
-                UiBuilder.Fix(row.Button(L("Unut"), LastRoomStore.Forget, height: UiTheme.ButtonHeight), width: 110f);
-                UiBuilder.Fix(row.Button(L("Odaya Geri Dön  →"), () =>
-                {
-                    _rejoining = true;
-                    _lobby.Join(room);
-                }, style: UiButtonStyle.Primary, height: size.y), width: size.x);
-            }
-            else
-            {
-                UiBuilder.Fix(row.Button(L("Masaya Otur  →"), StartSingleGame, style: UiButtonStyle.Primary, height: size.y), width: size.x);
-            }
+            UiBuilder words = ui.Column(0f);
+            words.Eyebrow(L("Masa seni bekliyor"), UiTheme.Text);
+            words.Label(L("Kurulumu bitir, oyunu başlat."), UiTextStyle.Small, UiTheme.Muted);
         }
 
         private void OpenHowToPlay()
@@ -570,22 +542,43 @@ namespace Lazpoly.Presentation.Menu
 
         private void OpenSettings()
         {
+            _confirmQuit = false;
             _settingsLayer.SetActive(true);
             _settingsView.Invalidate();
         }
 
-        private void CloseSettings() => _settingsLayer.SetActive(false);
+        private void CloseSettings()
+        {
+            _confirmQuit = false;
+            _settingsLayer.SetActive(false);
+        }
 
-        /// <summary>Esc closes the window on top, as it does in the game; with none open it does nothing.</summary>
+        /// <summary>The settings, and under them the way out of the game, asked twice.</summary>
+        private void RenderSettings(UiBuilder ui)
+        {
+            _settings.Render(ui, CloseSettings);
+            ui.Button(_confirmQuit ? L("Emin misin? Oyundan çık") : L("Oyundan Çık"), () =>
+            {
+                if (_confirmQuit) Application.Quit();
+                else _confirmQuit = true;
+            }, style: UiButtonStyle.Danger, height: UiTheme.SmallButtonHeight);
+        }
+
+        /// <summary>Esc closes the window on top, as it does in the game, and leaves a setup sheet for the home screen.</summary>
         public bool CloseTopWindow()
         {
             if (_howToLayer.activeSelf) _howToLayer.SetActive(false);
-            else if (_settingsLayer.activeSelf) CloseSettings();
             else if (_tableLayer.activeSelf) _tableLayer.SetActive(false);
+            else if (_settingsLayer.activeSelf) CloseSettings();
+            else if (_characters.IsOpen) _characters.Hide();
+            else if (_mode != Mode.Home && !LeavingHidesARoom()) _mode = Mode.Home;
             else return false;
             AudioPlayer.Play(SoundCue.UiClick);
             return true;
         }
+
+        /// <summary>Leaving the online screen while joining or in a room would hide the room, so it stays.</summary>
+        private bool LeavingHidesARoom() => _mode == Mode.Online && _lobby != null && _lobby.Status != LobbyStatus.Idle;
 
         /// <summary>"Tur 12 · 4 oyuncu · 01.11.2026 18:30": what the save holds, so the player knows which game it is.</summary>
         public static string SaveSummary(SavedGame save, DateTime? savedAt)

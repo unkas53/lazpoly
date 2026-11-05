@@ -702,6 +702,7 @@ namespace Lazpoly.Presentation.Game
             _dice.Speed = Settings.AnimationSpeed;
             _crowd = new PawnCrowd(state.Players.Count);
             _turnMarker = TurnMarker.Create(transform);
+            int chooser = ChoosingPlayer(state);
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
@@ -709,7 +710,8 @@ namespace Lazpoly.Presentation.Game
                 int seat = FirstPlayerDraw.LobbySeat(state.Players, player.Id);
                 Color color = PlayerPalette.ForSeat(seat);
                 _playerColors[player.Id] = color;
-                PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id);
+                Models.CharacterKind? figure = player.Id == chooser ? new CharacterChoice(new PlayerPrefsStorage()).Selected.Figure : (Models.CharacterKind?)null;
+                PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id, figure);
                 pawn.Speed = Settings.AnimationSpeed;
                 pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
                 PawnTrail trail = PawnTrail.Create(transform, color);
@@ -726,6 +728,30 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>The game has not begun: the first player, still on Start, waits to roll for the first time.</summary>
+        /// <summary>
+        /// The player whose figure is the character picked in the menu: in a game on this computer, the person in
+        /// the first lobby seat (the one who set the game up); none online, where each computer would see another
+        /// figure, and none at the computers' -perf table.
+        /// </summary>
+        private int ChoosingPlayer(GameState state)
+        {
+            if (_isOnline || PerfRun.Requested) return GameState.NoOwner;
+            int chooser = GameState.NoOwner;
+            int firstSeat = int.MaxValue;
+            foreach (PlayerState player in state.Players)
+            {
+                if (_session.IsAiPlaying(player.Id)) continue;
+                int seat = FirstPlayerDraw.LobbySeat(state.Players, player.Id);
+                if (seat < firstSeat)
+                {
+                    firstSeat = seat;
+                    chooser = player.Id;
+                }
+            }
+
+            return chooser;
+        }
+
         public static bool IsFirstRoll(GameState state) =>
             state != null && state.TurnNumber == 1 && state.Phase == GamePhase.WaitingForRoll && state.CurrentPlayer.Position == 0;
 
