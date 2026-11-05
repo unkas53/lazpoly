@@ -7,6 +7,7 @@ using Lazpoly.Core.Events;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Game;
+using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.UI;
 using NUnit.Framework;
 using UnityEngine;
@@ -69,8 +70,8 @@ namespace Lazpoly.Presentation.Tests
         public void SteamPicturesAreTurnedRightSideUpForTheTexture()
         {
             byte[] topFirst = { 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4 }; // Two pixels wide, two rows.
-            CollectionAssert.AreEqual(new byte[] { 3, 3, 3, 3, 4, 4, 4, 4, 1, 1, 1, 1, 2, 2, 2, 2 }, PlayerFaces.FlipRows(topFirst, 2, 2));
-            Assert.Throws<System.ArgumentException>(() => PlayerFaces.FlipRows(topFirst, 3, 2));
+            CollectionAssert.AreEqual(new byte[] { 3, 3, 3, 3, 4, 4, 4, 4, 1, 1, 1, 1, 2, 2, 2, 2 }, AvatarSprites.FlipRows(topFirst, 2, 2));
+            Assert.Throws<System.ArgumentException>(() => AvatarSprites.FlipRows(topFirst, 3, 2));
         }
 
         [Test]
@@ -222,6 +223,45 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("İFLAS", Named(card, "Bankrupt").text);
             Assert.Less(card.Face.color.a, 1f, "the face fades");
             Assert.AreEqual(PlayerCardView.Muted, card.Root.Find("Avatar").GetComponent<Image>().color);
+        }
+
+        [Test]
+        public void TheCornerCardsAreDrawnLargerThanTheKitsDesign()
+        {
+            Assert.Greater(UiLayout.CornerWidth, PlayerCardView.DesignWidth, "the cards were asked to be a little bigger");
+            // Eight players stack two cards in each corner; both stay in the top or bottom third of the 1080 screen.
+            float height = PlayerCardView.DesignHeight * UiLayout.CornerWidth / PlayerCardView.DesignWidth;
+            Assert.Less(UiLayout.Margin + 2f * height + UiTheme.Spacing, 1080f / 3f);
+        }
+
+        [Test]
+        public void TheMenusProfileShowsTheSteamPictureInPlaceOfTheLetter()
+        {
+            var frame = new GameObject("Frame", typeof(RectTransform));
+            _made.Add(frame);
+            var home = new MenuHome((RectTransform)frame.transform, new MenuHomeActions(), "");
+            home.SetProfile("Unkas", "Aras");
+            Assert.IsFalse(home.ShowsPhoto, "the letter until Steam has the picture");
+            Text initial = frame.GetComponentsInChildren<Text>(true).First(text => text.name == "Profile Initial");
+            Assert.IsTrue(initial.gameObject.activeSelf);
+
+            Sprite photo = AvatarSprites.ToSprite(new AvatarPicture(2, 2, Enumerable.Repeat((byte)90, 16).ToArray()));
+            try
+            {
+                home.SetPhoto(photo);
+                Assert.IsTrue(home.ShowsPhoto);
+                Assert.IsFalse(initial.gameObject.activeSelf);
+                Image picture = frame.GetComponentsInChildren<Image>(true).First(image => image.sprite == photo);
+                Assert.IsNotNull(picture.GetComponentInParent<Mask>(), "the picture is cut round");
+                home.SetPhoto(null);
+                Assert.IsFalse(home.ShowsPhoto);
+                Assert.IsTrue(initial.gameObject.activeSelf);
+            }
+            finally
+            {
+                Object.DestroyImmediate(photo.texture);
+                Object.DestroyImmediate(photo);
+            }
         }
     }
 }

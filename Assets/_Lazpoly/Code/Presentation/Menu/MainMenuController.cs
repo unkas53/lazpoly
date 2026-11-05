@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Lazpoly.App.AI;
+using Lazpoly.App.Avatars;
 using Lazpoly.App.Lobby;
 using Lazpoly.App.Presence;
 using Lazpoly.App.Save;
@@ -105,6 +106,7 @@ namespace Lazpoly.Presentation.Menu
             GameServices.Registry?.TryGet(out _lobby);
             GameServices.Registry?.TryGet(out transport);
             GameServices.Registry?.TryGet(out _presence);
+            GameServices.Registry?.TryGet(out _avatars);
             _lobbyPanel = new LobbyPanel(_lobby, transport, () => SceneFader.Load("Game"), OpenTableRules, _boardMoney);
             if (_lobby != null) _lobby.Failed += OnLobbyFailed;
             _settings = new SettingsPanel();
@@ -115,6 +117,7 @@ namespace Lazpoly.Presentation.Menu
             if (_settingsService != null) _settingsService.Changed -= OnSettingsChanged;
             if (_lobby != null) _lobby.Failed -= OnLobbyFailed;
             _lobbyPanel?.Dispose();
+            _profileFace?.Dispose();
         }
 
         /// <summary>A room that cannot be re-entered is gone; the offer to go back to it goes too.</summary>
@@ -325,6 +328,7 @@ namespace Lazpoly.Presentation.Menu
 
             TakePlatformName();
             _home.SetProfile(_names[0], _choice.Selected.Name);
+            ShowProfilePhoto();
             _home.SetMuted(Muted);
             _home.SetStatus(StatusLine());
             _infoView.Refresh(HashCode.Combine(_savedGame != null, _brokenSave, CanRejoin(out _)));
@@ -342,6 +346,25 @@ namespace Lazpoly.Presentation.Menu
         }
 
         private bool _platformNamed;
+        private IPlayerAvatars _avatars;
+        private Game.PlayerFaces _profileFace;
+        private const int ProfileSeat = 1;
+
+        /// <summary>
+        /// Once Steam is up, the profile card's disc shows the person's Steam profile picture (asked for every half
+        /// second until Steam has it, as on the cards at the table); without Steam or a picture the letter stays.
+        /// </summary>
+        private void ShowProfilePhoto()
+        {
+            if (_profileFace == null)
+            {
+                if (_avatars == null || _lobby == null || !_lobby.IsAvailable || _lobby.LocalId == 0) return;
+                _profileFace = new Game.PlayerFaces(_avatars, Game.SeatAccounts.Local(ProfileSeat, _lobby.LocalId), ProfileSeat, null);
+            }
+
+            _profileFace.Update(Time.unscaledTime);
+            if (_profileFace.HasPhoto(ProfileSeat) && !_home.ShowsPhoto) _home.SetPhoto(_profileFace.For(ProfileSeat, 0));
+        }
 
         /// <summary>
         /// Once Steam is up, the person at this computer goes by their Steam name on the profile card and in the

@@ -16,6 +16,9 @@ namespace Lazpoly.Presentation.Menu
 
         public static readonly Rect Profile = new Rect(100f, 40f, 310f, 76f);
         public static readonly Rect ProfileDisc = new Rect(115f, 48f, 56f, 56f);
+
+        /// <summary>The profile picture inside the disc's brass rim.</summary>
+        public static readonly Rect ProfilePhoto = new Rect(119f, 52f, 48f, 48f);
         public static readonly Rect ProfileName = new Rect(188f, 48f, 204f, 28f);
         public static readonly Rect ProfileCaption = new Rect(188f, 79f, 204f, 20f);
 

@@ -29,6 +29,7 @@ namespace Lazpoly.Presentation.Menu
     public sealed class MenuHome
     {
         private readonly Text _initial;
+        private readonly Image _photo;
         private readonly Text _name;
         private readonly Text _caption;
         private readonly Text _status;
@@ -40,10 +41,11 @@ namespace Lazpoly.Presentation.Menu
             if (frame == null) throw new ArgumentNullException(nameof(frame));
             if (actions == null) throw new ArgumentNullException(nameof(actions));
 
-            // Profile card: a navy disc with the name's first letter, the name and the character.
+            // Profile card: a navy disc with the name's first letter (or the Steam profile picture inside its brass rim), the name and the character.
             MenuKit.Picture(At(frame, "Profile Card", MenuLayout.Profile), MenuKit.Chip, Color.white);
             MenuKit.Picture(At(frame, "Profile Disc", MenuLayout.ProfileDisc), MenuKit.Circle, Color.white);
             _initial = MenuKit.Words(At(frame, "Profile Initial", MenuLayout.ProfileDisc), "", 25, MenuKit.Cream, bold: true, TextAnchor.MiddleCenter);
+            _photo = Photo(At(frame, "Profile Photo", MenuLayout.ProfilePhoto));
             _name = MenuKit.Words(At(frame, "Player Name", MenuLayout.ProfileName), "", 21, MenuKit.Ink, bold: true);
             _caption = MenuKit.Words(At(frame, "Character Caption", MenuLayout.ProfileCaption), "", 14, MenuKit.Muted);
 
@@ -83,6 +85,33 @@ namespace Lazpoly.Presentation.Menu
             Set(_name, name);
             Set(_initial, LobbyPanel.Initial(name));
             Set(_caption, F($"Karakter: {character}"));
+        }
+
+        /// <summary>The person's profile picture in the disc, in place of the letter; null goes back to the letter.</summary>
+        public void SetPhoto(Sprite photo)
+        {
+            if (_photo.sprite == photo && _photo.gameObject.activeSelf == (photo != null)) return;
+            _photo.sprite = photo;
+            _photo.gameObject.SetActive(photo != null);
+            _initial.gameObject.SetActive(photo == null);
+        }
+
+        /// <summary>Whether the profile card shows a picture rather than the letter.</summary>
+        public bool ShowsPhoto => _photo.gameObject.activeSelf;
+
+        /// <summary>A round window for the picture: a circle mask (not drawn) with the picture filling it; hidden until there is one.</summary>
+        private static Image Photo(RectTransform rect)
+        {
+            var mask = rect.gameObject.AddComponent<Image>();
+            mask.sprite = UiSprites.Circle;
+            mask.raycastTarget = false;
+            rect.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+            RectTransform inner = UiRoot.Stretch(rect, "Picture");
+            var photo = inner.gameObject.AddComponent<Image>();
+            photo.raycastTarget = false;
+            photo.preserveAspect = false;
+            rect.gameObject.SetActive(false);
+            return photo;
         }
 
         /// <summary>The sound button shows a struck speaker while the game is silent.</summary>
