@@ -252,6 +252,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsTrue(home.ShowsPhoto);
                 Assert.IsFalse(initial.gameObject.activeSelf);
                 Image picture = frame.GetComponentsInChildren<Image>(true).First(image => image.sprite == photo);
+                Assert.IsTrue(picture.gameObject.activeInHierarchy, "the round window opens with the picture");
                 Assert.IsNotNull(picture.GetComponentInParent<Mask>(), "the picture is cut round");
                 home.SetPhoto(null);
                 Assert.IsFalse(home.ShowsPhoto);

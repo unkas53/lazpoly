@@ -30,6 +30,7 @@ namespace Lazpoly.Presentation.Menu
     {
         private readonly Text _initial;
         private readonly Image _photo;
+        private readonly GameObject _photoWindow;
         private readonly Text _name;
         private readonly Text _caption;
         private readonly Text _status;
@@ -45,7 +46,9 @@ namespace Lazpoly.Presentation.Menu
             MenuKit.Picture(At(frame, "Profile Card", MenuLayout.Profile), MenuKit.Chip, Color.white);
             MenuKit.Picture(At(frame, "Profile Disc", MenuLayout.ProfileDisc), MenuKit.Circle, Color.white);
             _initial = MenuKit.Words(At(frame, "Profile Initial", MenuLayout.ProfileDisc), "", 25, MenuKit.Cream, bold: true, TextAnchor.MiddleCenter);
-            _photo = Photo(At(frame, "Profile Photo", MenuLayout.ProfilePhoto));
+            RectTransform window = At(frame, "Profile Photo", MenuLayout.ProfilePhoto);
+            _photo = Photo(window);
+            _photoWindow = window.gameObject;
             _name = MenuKit.Words(At(frame, "Player Name", MenuLayout.ProfileName), "", 21, MenuKit.Ink, bold: true);
             _caption = MenuKit.Words(At(frame, "Character Caption", MenuLayout.ProfileCaption), "", 14, MenuKit.Muted);
 
@@ -90,14 +93,14 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>The person's profile picture in the disc, in place of the letter; null goes back to the letter.</summary>
         public void SetPhoto(Sprite photo)
         {
-            if (_photo.sprite == photo && _photo.gameObject.activeSelf == (photo != null)) return;
+            if (_photo.sprite == photo && _photoWindow.activeSelf == (photo != null)) return;
             _photo.sprite = photo;
-            _photo.gameObject.SetActive(photo != null);
+            _photoWindow.SetActive(photo != null); // The round window, not only the picture in it.
             _initial.gameObject.SetActive(photo == null);
         }
 
         /// <summary>Whether the profile card shows a picture rather than the letter.</summary>
-        public bool ShowsPhoto => _photo.gameObject.activeSelf;
+        public bool ShowsPhoto => _photoWindow.activeSelf;
 
         /// <summary>A round window for the picture: a circle mask (not drawn) with the picture filling it; hidden until there is one.</summary>
         private static Image Photo(RectTransform rect)
