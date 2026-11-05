@@ -189,6 +189,7 @@ namespace Lazpoly.Presentation.Menu
             RectTransform sheetFrame = Frame(DimLayer(_canvas, "Sheet Layer", out _sheetLayer), "Sheet Frame");
             Rect area = MenuLayout.Sheet;
             RectTransform sheet = MenuKit.Place(sheetFrame, "Sheet", area.x, area.y, area.width, area.height);
+            _sheet = sheet;
             UiRoot.Panel(sheet);
             RectTransform inside = UiRoot.Stretch(sheet, "Inside");
             UiBuilder.AddColumnLayout(inside.gameObject, 36, 20f);
@@ -229,6 +230,7 @@ namespace Lazpoly.Presentation.Menu
         private IEnumerator TourMenu()
         {
             ScreenTour.MarkMenuShown();
+            yield return ScreenTour.Until(() => !BootSplash.IsShowing, 15f); // The opening screen fades out over the menu first.
             yield return ScreenTour.Take("menu");
             _characters.Show(_choice.Selected);
             yield return ScreenTour.Take("karakterler");
@@ -315,6 +317,7 @@ namespace Lazpoly.Presentation.Menu
             if (_sheetLayer.activeSelf != sheet) _sheetLayer.SetActive(sheet);
             if (sheet)
             {
+                PlaceSheet(_mode == Mode.Online && _lobbyPanel.InRoom ? MenuLayout.Sheet : MenuLayout.SetupSheet);
                 int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty);
                 _sheetView.Refresh(HashCode.Combine(_mode, modeKey, TableKey()));
                 _footerView.Refresh(HashCode.Combine(_lobbyPanel.InRoom, _lobbyPanel.InRoom ? _lobbyPanel.ViewKey : 0));
@@ -443,20 +446,25 @@ namespace Lazpoly.Presentation.Menu
                 return;
             }
 
-            UiBuilder centre = ui.Row(0f, expand: false);
-            centre.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
-            UiBuilder sheet = centre.Card(UiTheme.Card, 28);
-            UiBuilder.Fix(sheet.Container.gameObject, width: SheetCardWidth);
+            // The setup sits straight on the window-sized sheet, as the kit's windows hold their content.
             switch (_mode)
             {
-                case Mode.Single: RenderSingle(sheet); break;
-                case Mode.Local: RenderLocalGame(sheet); break;
-                case Mode.Online: RenderOnline(sheet); break;
+                case Mode.Single: RenderSingle(ui); break;
+                case Mode.Local: RenderLocalGame(ui); break;
+                case Mode.Online: RenderOnline(ui); break;
             }
         }
 
-        /// <summary>The setup card in the middle of the sheet.</summary>
-        public const float SheetCardWidth = 860f;
+        private RectTransform _sheet;
+
+        /// <summary>Sizes the sheet for what it holds: the setup in a window-sized sheet, the room's lobby across the wide one.</summary>
+        private void PlaceSheet(Rect area)
+        {
+            var position = new Vector2(area.x, -area.y);
+            if (_sheet.anchoredPosition == position && _sheet.sizeDelta == area.size) return;
+            _sheet.anchoredPosition = position;
+            _sheet.sizeDelta = area.size;
+        }
 
         private void BackButton(UiBuilder ui, string title)
         {

@@ -58,7 +58,7 @@ namespace Lazpoly.Presentation.UI
             Button button = MakeButton(element, onClick, enabled, style, height);
             Fix(element, height: height);
             Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small);
-            text.color = LabelColor(style, enabled);
+            text.color = LabelColor(style, enabled, Skinned(button));
             text.alignment = TextAnchor.MiddleCenter;
             text.font = UiTheme.BoldFont;
             ShrinkToFit(text);
@@ -93,9 +93,9 @@ namespace Lazpoly.Presentation.UI
             row.childForceExpandHeight = false;
 
             float size = height >= UiTheme.ButtonHeight ? 22f : 18f;
-            UiIcons.Create((RectTransform)element.transform, icon, size, IconColor(style, enabled));
+            UiIcons.Create((RectTransform)element.transform, icon, size, IconColor(style, enabled, Skinned(button)));
             Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small, stretch: false);
-            text.color = LabelColor(style, enabled);
+            text.color = LabelColor(style, enabled, Skinned(button));
             text.alignment = TextAnchor.MiddleLeft;
             text.font = UiTheme.BoldFont;
             ShrinkToFit(text);
@@ -217,8 +217,9 @@ namespace Lazpoly.Presentation.UI
             string resting = KitArt.Picture(skin, style == UiButtonStyle.Selected ? "Hover" : "Normal");
             if (!KitArt.Dress(image, resting, height > 0f ? height : UiTheme.ButtonHeight)) return false;
 
-            // The skins carry their own colour and shadow: white leaves them as drawn, a danger button is the cream one in brick red.
-            image.color = style == UiButtonStyle.Danger ? UiTheme.Fill(UiButtonStyle.Danger) : Color.white;
+            // The skins carry their own colour and shadow: white leaves them as drawn. A danger button is the kit's
+            // cream one (its "Oyundan Çık"), told apart by its brick red words (see LabelColor).
+            image.color = Color.white;
             button.transition = Selectable.Transition.SpriteSwap;
             button.spriteState = new SpriteState
             {
@@ -230,18 +231,24 @@ namespace Lazpoly.Presentation.UI
             return true;
         }
 
-        /// <summary>A button's label: its style's ink, faded when it cannot be pressed (the skin turns grey under it).</summary>
-        private static Color LabelColor(UiButtonStyle style, bool enabled)
+        /// <summary>Whether a button wears a kit skin (they change picture by state; the plain ones change tint).</summary>
+        private static bool Skinned(Button button) => button.transition == Selectable.Transition.SpriteSwap;
+
+        /// <summary>
+        /// A button's label: its style's ink, faded when it cannot be pressed (the skin turns grey under it). On the
+        /// kit's cream skin a danger button writes in brick red.
+        /// </summary>
+        private static Color LabelColor(UiButtonStyle style, bool enabled, bool skinned = false)
         {
-            Color color = UiTheme.Label(style);
+            Color color = skinned && style == UiButtonStyle.Danger ? UiTheme.Warning : UiTheme.Label(style);
             if (!enabled) color.a *= 0.55f;
             return color;
         }
 
         /// <summary>An icon on a button: the kit's brass on its dark buttons, the label's ink on the others.</summary>
-        private static Color IconColor(UiButtonStyle style, bool enabled)
+        private static Color IconColor(UiButtonStyle style, bool enabled, bool skinned = false)
         {
-            Color color = style == UiButtonStyle.Primary ? UiPalette.Ink.Gold : UiTheme.Label(style);
+            Color color = style == UiButtonStyle.Primary ? UiPalette.Ink.Gold : LabelColor(style, true, skinned);
             if (!enabled) color.a *= 0.55f;
             return color;
         }

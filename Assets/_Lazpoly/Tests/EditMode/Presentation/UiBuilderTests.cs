@@ -175,7 +175,8 @@ namespace Lazpoly.Presentation.Tests
             Button chosen = ui.Button("Orta", () => { }, style: UiButtonStyle.Selected);
             Assert.AreSame(KitArt.Get("Primary_Hover"), chosen.targetGraphic.GetComponent<Image>().sprite, "a choice made is the lighter petrol");
             Button leave = ui.Button("Çık", () => { }, style: UiButtonStyle.Danger);
-            Assert.AreEqual(UiTheme.Fill(UiButtonStyle.Danger), leave.targetGraphic.color, "leaving is the cream skin in brick red");
+            Assert.AreSame(KitArt.Get("Secondary_Normal"), leave.targetGraphic.GetComponent<Image>().sprite, "leaving is the kit's cream button, as its Oyundan Çık");
+            Assert.AreEqual(UiTheme.Warning, leave.GetComponentInChildren<Text>().color, "told apart by brick red words");
             Button resting = ui.Button("Satın Al", () => { }, enabled: false, style: UiButtonStyle.Primary);
             Assert.Less(resting.GetComponentInChildren<Text>().color.a, 1f, "a button that cannot be pressed fades its label");
 

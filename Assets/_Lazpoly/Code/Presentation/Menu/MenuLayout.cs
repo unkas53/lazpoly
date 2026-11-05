@@ -47,8 +47,11 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>Steam's state and the build's version, small under the towns.</summary>
         public static readonly Rect Status = new Rect(1310f, 1012f, 560f, 22f);
 
-        /// <summary>A mode's setup (one player, one computer, a room) on a paper sheet over the menu.</summary>
+        /// <summary>The room's lobby on a wide paper sheet over the menu: its columns need the width.</summary>
         public static readonly Rect Sheet = new Rect(90f, 60f, 1740f, 960f);
+
+        /// <summary>A mode's setup (one player, one computer, joining or hosting a room) on a window-sized sheet in the middle, like the kit's windows.</summary>
+        public static readonly Rect SetupSheet = new Rect(490f, 90f, 940f, 900f);
 
         /// <summary>Gap between the lobby's columns on the sheet.</summary>
         public const float CardGap = 24f;
