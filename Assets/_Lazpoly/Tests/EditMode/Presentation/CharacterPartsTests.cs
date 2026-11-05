@@ -213,7 +213,7 @@ namespace Lazpoly.Presentation.Tests
                 var bounds = new Bounds(level.Positions[0], Vector3.zero);
                 foreach (Vector3 position in level.Positions) bounds.Encapsulate(position);
                 Assert.That(bounds.size.y, Is.EqualTo(1f).Within(0.01f), $"{level.Name}: one unit tall like the others");
-                Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), $"{level.Name}: the soles stand on the stand");
+                Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), $"{level.Name}: the soles stand on the tile");
                 Assert.That(bounds.size.x, Is.InRange(0.3f, 0.6f));
                 Assert.AreEqual(level.Positions.Length, level.Uvs.Length);
                 foreach (Vector2 uv in level.Uvs) Assert.IsTrue(uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f);
@@ -224,11 +224,9 @@ namespace Lazpoly.Presentation.Tests
             {
                 GameObject figure = CharacterParts.Character(kind, "Model", root.transform);
                 Assert.IsNotNull(figure.transform.Find(FigureModels.BodyPart), "the textured figure, not the stand-in");
-                Transform stand = figure.transform.Find(FigureModels.StandPart);
-                Assert.IsNotNull(stand);
-                var player = new Color(0.85f, 0.39f, 0.33f);
-                CharacterParts.Paint(figure, player);
-                AssertColor(player, stand.GetComponent<Renderer>().sharedMaterial.color);
+                Assert.AreEqual(1, figure.GetComponentsInChildren<Renderer>().Length, "only the figure: no disc under its feet");
+                Assert.AreEqual(0f, figure.transform.Find(FigureModels.BodyPart).localPosition.y, "standing right on the tile");
+                CharacterParts.Paint(figure, new Color(0.85f, 0.39f, 0.33f));
                 Renderer body = figure.transform.Find(FigureModels.BodyPart).GetComponent<Renderer>();
                 AssertColor(Color.white, body.sharedMaterial.color);
                 Assert.IsNotNull(body.sharedMaterial.mainTexture, "the figure wears its own colour map");

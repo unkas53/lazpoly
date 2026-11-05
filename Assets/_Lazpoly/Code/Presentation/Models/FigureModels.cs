@@ -9,8 +9,7 @@ namespace Lazpoly.Presentation.Models
     /// The owner's textured figures (made with Meshy AI from pictures): the stylised business man in a suit and the
     /// gentleman with a cane. Tools/Art/make_figures.py turns each into figure_&lt;id&gt;.bytes (two levels of detail,
     /// one unit tall, soles at y = 0, facing +Z) and figure_&lt;id&gt;_skin.bytes (the colour map). A figure keeps its own
-    /// clothes; it stands on a thin <see cref="StandPart"/> disc in the player's colour, so two players with the same
-    /// figure still tell apart. The whole model shows at the High graphics quality and the light one at Medium and
+    /// clothes and stands right on the tile (the owner had the coloured disc under its feet taken away). The whole model shows at the High graphics quality and the light one at Medium and
     /// Low (<see cref="SetFullDetail"/>, switched in place like the buildings).
     /// </summary>
     public static class FigureModels
@@ -19,13 +18,6 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>The part that carries the figure and its colour map.</summary>
         public const string BodyPart = "body";
-
-        /// <summary>The disc under the feet, painted in the player's colour.</summary>
-        public const string StandPart = "stand";
-
-        /// <summary>The stand's size in the figure's units (the figure is one unit tall): its radius and thickness.</summary>
-        public const float StandRadius = 0.2f;
-        public const float StandThickness = 0.02f;
 
         private const float Smoothness = 0.2f;
 
@@ -47,10 +39,7 @@ namespace Lazpoly.Presentation.Models
         /// <summary>Whether the figure's files are in the build and readable.</summary>
         public static bool IsAvailable(string id) => Load(id) != null;
 
-        /// <summary>
-        /// The figure as a parent object with its body (raised onto the stand) and the stand, or null when its files
-        /// are missing.
-        /// </summary>
+        /// <summary>The figure as a parent object with its body, or null when its files are missing.</summary>
         public static GameObject Create(string id, string name, Transform parent)
         {
             Figure figure = Load(id);
@@ -59,12 +48,8 @@ namespace Lazpoly.Presentation.Models
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
             GameObject body = ModelParts.Create(BodyPart, root.transform, _fullDetail ? figure.Full : figure.Light, Color.white, Smoothness);
-            body.transform.localPosition = new Vector3(0f, StandThickness, 0f);
             if (figure.Skin != null) ModelParts.Skin(body, figure.Skin);
             Live.Add((body.GetComponent<MeshFilter>(), id));
-
-            GameObject stand = ModelParts.Create(StandPart, root.transform, MeshFactory.Disc(StandThickness), Color.white, 0.3f);
-            stand.transform.localScale = new Vector3(StandRadius, 1f, StandRadius);
             return root;
         }
 

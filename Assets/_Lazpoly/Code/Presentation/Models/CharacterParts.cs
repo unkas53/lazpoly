@@ -24,8 +24,8 @@ namespace Lazpoly.Presentation.Models
     /// take the player's colour, everything else keeps the model's own palette. When a model is missing the
     /// other one stands in, and when both are, the pawns fall back to the town's shapes (<see cref="PawnShapes"/>).
     /// Two more figures are textured models the owner made with Meshy AI (<see cref="FigureModels"/>): the
-    /// stylised man in a suit and the gentleman with a cane keep their own clothes and stand on a disc in the
-    /// player's colour; when their files are missing the business man stands in.
+    /// stylised man in a suit and the gentleman with a cane keep their own clothes (nothing is painted on them);
+    /// when their files are missing the business man stands in.
     /// </summary>
     public static class CharacterParts
     {
@@ -139,8 +139,8 @@ namespace Lazpoly.Presentation.Models
         public static GameObject Character(string name, Transform parent) => Character(CharacterKind.Man, name, parent);
 
         /// <summary>
-        /// A figure as a parent object: one part per material for the painted ones, the body and its stand for the
-        /// textured ones; another figure when this one's model is missing; null when none is there.
+        /// A figure as a parent object: one part per material for the painted ones, the textured body for the
+        /// others; another figure when this one's model is missing; null when none is there.
         /// </summary>
         public static GameObject Character(CharacterKind kind, string name, Transform parent)
         {
@@ -175,7 +175,6 @@ namespace Lazpoly.Presentation.Models
             PaintPart(character, JacketDarkPart, Dark(player));
             PaintPart(character, LapelPart, Lapel(player));
             PaintPart(character, SkirtPart, Skirt(player));
-            PaintPart(character, FigureModels.StandPart, player); // A textured figure keeps its clothes and stands on the player's colour.
         }
 
         private static void PaintPart(GameObject character, string material, Color color)

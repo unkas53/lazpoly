@@ -828,8 +828,8 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 
 - Proje sahibinin Meshy AI ile yaptığı iki dokulu karakter piyon oldu: takım elbiseli iş adamı (`CharacterKind.Suit`) ve bastonlu beyefendi (`CharacterKind.Gentleman`). Koltuklar dört karakteri sırayla alır: iş adamı, iş kadını, takım elbiseli, bastonlu beyefendi (8 oyuncuda her biri iki kez). Menüde seçilen karakter eskisi gibi oyunu kuranın piyonudur.
 - `Tools/Art/make_figures.py` GLB'yi okur, oyunun eksenine çevirir, bir birim boya ölçekler ve meshoptimizer ile iki ayrıntı düzeyine indirir: Yüksek ayarda 120.000, Orta ve Düşük'te 24.000 üçgen (kaynaklar 300 ve 600 bin üçgen); renk dokusu 2048 piksel JPEG. Oyunda `FigurePack` okur, `FigureModels` doku ekran kartında sıkıştırılarak yükler ve ayar değişince modeli yerinde değiştirir.
-- Dokulu karakterler kendi kıyafetlerini giyer; oyuncunun rengi ayaklarının altındaki ince diskte görünür. Bekleyen oyuncunun piyonu dokusuyla birlikte saydamlaşır. Dosyaları eksikse yerine iş adamı durur.
-- Testler: `CharacterPartsTests` (koltuk sırası, dokulu karakterlerin boyu ve iki düzeyi, disk rengi, ayara göre model, dosya biçimi).
+- Dokulu karakterler kendi kıyafetlerini giyer ve doğrudan zemine basar (ayak altındaki renkli disk proje sahibinin isteğiyle kaldırıldı). Bekleyen oyuncunun piyonu dokusuyla birlikte saydamlaşır. Dosyaları eksikse yerine iş adamı durur.
+- Testler: `CharacterPartsTests` (koltuk sırası, dokulu karakterlerin boyu ve iki düzeyi, diskin olmaması, ayara göre model, dosya biçimi).
 
 ## Kurallar
 
