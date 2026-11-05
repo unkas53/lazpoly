@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Lazpoly.App.AI;
 using Lazpoly.App.Lobby;
@@ -188,6 +189,7 @@ namespace Lazpoly.Presentation.Menu
             RectTransform sheetFrame = Frame(DimLayer(_canvas, "Sheet Layer", out _sheetLayer), "Sheet Frame");
             Rect area = MenuLayout.Sheet;
             RectTransform sheet = MenuKit.Place(sheetFrame, "Sheet", area.x, area.y, area.width, area.height);
+            _sheet = sheet;
             UiRoot.Panel(sheet);
             RectTransform inside = UiRoot.Stretch(sheet, "Inside");
             UiBuilder.AddColumnLayout(inside.gameObject, 36, 20f);
@@ -218,6 +220,39 @@ namespace Lazpoly.Presentation.Menu
                 ui => HowToPlayPanel.Render(ui, _boardData.Board, _boardData.Rules.WithTable(TableSetup.Chosen), () => _howToLayer.SetActive(false)));
             _howToLayer.SetActive(false);
             ScaleFrames();
+            if (ScreenTour.Requested && !ScreenTour.MenuShown && !PerfRun.Requested) StartCoroutine(TourMenu());
+        }
+
+        /// <summary>
+        /// The menu's part of the screen tour (<see cref="ScreenTour"/>): the home screen, the characters, settings,
+        /// how to play, each mode's sheet and the table rules; then on to the tour's table.
+        /// </summary>
+        private IEnumerator TourMenu()
+        {
+            ScreenTour.MarkMenuShown();
+            yield return ScreenTour.Until(() => !BootSplash.IsShowing, 15f); // The opening screen fades out over the menu first.
+            yield return ScreenTour.Take("menu");
+            _characters.Show(_choice.Selected);
+            yield return ScreenTour.Take("karakterler");
+            _characters.Hide();
+            OpenSettings();
+            yield return ScreenTour.Take("ayarlar");
+            CloseSettings();
+            OpenHowToPlay();
+            yield return ScreenTour.Take("nasil-oynanir");
+            _howToLayer.SetActive(false);
+            _mode = Mode.Single;
+            yield return ScreenTour.Take("tek-oyunculu");
+            OpenTableRules();
+            yield return ScreenTour.Take("masa-kurallari");
+            _tableLayer.SetActive(false);
+            _mode = Mode.Local;
+            yield return ScreenTour.Take("ayni-bilgisayarda");
+            _mode = Mode.Online;
+            yield return ScreenTour.Take("cevrim-ici");
+            _mode = Mode.Home;
+            LocalGameSetup.SetSeats(ScreenTour.Seats(), ScreenTour.Ai());
+            SceneFader.Load("Game");
         }
 
         /// <summary>The scene's camera draws nothing now that the menu is a picture: no board, no sky, only the canvas.</summary>
@@ -282,6 +317,7 @@ namespace Lazpoly.Presentation.Menu
             if (_sheetLayer.activeSelf != sheet) _sheetLayer.SetActive(sheet);
             if (sheet)
             {
+                PlaceSheet(_mode == Mode.Online && _lobbyPanel.InRoom ? MenuLayout.Sheet : MenuLayout.SetupSheet);
                 int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty);
                 _sheetView.Refresh(HashCode.Combine(_mode, modeKey, TableKey()));
                 _footerView.Refresh(HashCode.Combine(_lobbyPanel.InRoom, _lobbyPanel.InRoom ? _lobbyPanel.ViewKey : 0));
@@ -410,20 +446,25 @@ namespace Lazpoly.Presentation.Menu
                 return;
             }
 
-            UiBuilder centre = ui.Row(0f, expand: false);
-            centre.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
-            UiBuilder sheet = centre.Card(UiTheme.Card, 28);
-            UiBuilder.Fix(sheet.Container.gameObject, width: SheetCardWidth);
+            // The setup sits straight on the window-sized sheet, as the kit's windows hold their content.
             switch (_mode)
             {
-                case Mode.Single: RenderSingle(sheet); break;
-                case Mode.Local: RenderLocalGame(sheet); break;
-                case Mode.Online: RenderOnline(sheet); break;
+                case Mode.Single: RenderSingle(ui); break;
+                case Mode.Local: RenderLocalGame(ui); break;
+                case Mode.Online: RenderOnline(ui); break;
             }
         }
 
-        /// <summary>The setup card in the middle of the sheet.</summary>
-        public const float SheetCardWidth = 860f;
+        private RectTransform _sheet;
+
+        /// <summary>Sizes the sheet for what it holds: the setup in a window-sized sheet, the room's lobby across the wide one.</summary>
+        private void PlaceSheet(Rect area)
+        {
+            var position = new Vector2(area.x, -area.y);
+            if (_sheet.anchoredPosition == position && _sheet.sizeDelta == area.size) return;
+            _sheet.anchoredPosition = position;
+            _sheet.sizeDelta = area.size;
+        }
 
         private void BackButton(UiBuilder ui, string title)
         {

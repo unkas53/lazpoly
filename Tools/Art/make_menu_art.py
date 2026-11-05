@@ -4,10 +4,10 @@
 The kit's pictures are found by their kit names in the folder given (for example the unzipped
 Assets/LazpolyMainMenu/Art and Sprites folders copied into one place) and written as TextAssets under
     Assets/_Lazpoly/UI/Resources/Lazpoly/Art/Menu/<name>.bytes
-which the game decodes with MenuKit (Texture2D.LoadImage), like the logo. The city background and the four
+which the game decodes with KitArt (Texture2D.LoadImage), like the logo. The city background and the four
 character portraits have no see-through parts, so they are stored as JPEG (a tenth of the PNG's size);
 the buttons, panels, icons and the wide logo stay PNG for their transparency. The 9-slice borders of the
-buttons and panels are not in the pictures: MenuKit.Borders holds them (from the kit's SpriteManifest.json).
+buttons and panels are not in the pictures: KitArt.Borders holds them (from the kit's SpriteManifest.json).
 Run from the repository root: python3 Tools/Art/make_menu_art.py <kit folder>
 """
 import os
@@ -22,7 +22,7 @@ CUTOUTS = [
     "Primary_Normal", "Primary_Hover", "Primary_Pressed", "Primary_Disabled",
     "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
     "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
-    "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound",
+    "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound", "Icon_Home", "Icon_Check", "Icon_Hotel",
 ]
 JPEG_QUALITY = 90
 META = """fileFormatVersion: 2

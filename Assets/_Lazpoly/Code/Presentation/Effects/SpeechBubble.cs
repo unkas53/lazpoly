@@ -24,8 +24,9 @@ namespace Lazpoly.Presentation.Effects
         private const float PopSeconds = 0.22f;
         private const float FadeSeconds = 0.2f;
         private const float Thickness = 0.1f;
-        private static readonly Color Paper = new Color(0.98f, 0.97f, 0.93f);
-        private static readonly Color Ink = new Color(0.17f, 0.15f, 0.14f);
+        // The interface kit's cream paper and petrol ink, so a figure's words read like the windows.
+        private static readonly Color Paper = new Color(1f, 0.9921569f, 0.9607843f);
+        private static readonly Color Ink = new Color(0.086f, 0.239f, 0.314f);
 
         private Transform _follow;
         private float _age;

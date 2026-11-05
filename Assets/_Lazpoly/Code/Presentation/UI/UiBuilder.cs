@@ -55,10 +55,10 @@ namespace Lazpoly.Presentation.UI
             float height = UiTheme.ButtonHeight)
         {
             GameObject element = NewChild($"Button {label}");
-            Button button = MakeButton(element, onClick, enabled, style);
+            Button button = MakeButton(element, onClick, enabled, style, height);
             Fix(element, height: height);
             Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small);
-            text.color = UiTheme.Label(style);
+            text.color = LabelColor(style, enabled, Skinned(button));
             text.alignment = TextAnchor.MiddleCenter;
             text.font = UiTheme.BoldFont;
             ShrinkToFit(text);
@@ -81,7 +81,7 @@ namespace Lazpoly.Presentation.UI
             float height = UiTheme.ButtonHeight)
         {
             GameObject element = NewChild($"Button {label}");
-            Button button = MakeButton(element, onClick, enabled, style);
+            Button button = MakeButton(element, onClick, enabled, style, height);
             Fix(element, height: height);
             var row = element.AddComponent<HorizontalLayoutGroup>();
             row.padding = new RectOffset(14, 14, 0, 0);
@@ -93,9 +93,9 @@ namespace Lazpoly.Presentation.UI
             row.childForceExpandHeight = false;
 
             float size = height >= UiTheme.ButtonHeight ? 22f : 18f;
-            UiIcons.Create((RectTransform)element.transform, icon, size, UiTheme.Label(style));
+            UiIcons.Create((RectTransform)element.transform, icon, size, IconColor(style, enabled, Skinned(button)));
             Text text = TextChild(element.transform, label, height >= UiTheme.ButtonHeight ? UiTextStyle.Body : UiTextStyle.Small, stretch: false);
-            text.color = UiTheme.Label(style);
+            text.color = LabelColor(style, enabled, Skinned(button));
             text.alignment = TextAnchor.MiddleLeft;
             text.font = UiTheme.BoldFont;
             ShrinkToFit(text);
@@ -125,7 +125,7 @@ namespace Lazpoly.Presentation.UI
             image.type = Image.Type.Simple;
             UiRoot.AddShadow(disc.gameObject, 3f);
             Fix(disc.gameObject, size, size);
-            RectTransform picture = UiIcons.Create(disc, icon, size * 0.5f, enabled ? UiTheme.Label(style) : UiTheme.Muted);
+            RectTransform picture = UiIcons.Create(disc, icon, size * 0.5f, enabled ? IconColor(style, true) : UiTheme.Muted);
             picture.anchorMin = picture.anchorMax = new Vector2(0.5f, 0.5f);
             picture.anchoredPosition = Vector2.zero;
             picture.sizeDelta = new Vector2(size * 0.5f, size * 0.5f);
@@ -164,7 +164,10 @@ namespace Lazpoly.Presentation.UI
         public UiBuilder Tile(Action onClick, Color? color = null, int padding = 14)
         {
             GameObject element = NewChild("Tile");
-            MakeButton(element, onClick, true, UiButtonStyle.Secondary, color ?? UiTheme.Card);
+            Button button = MakeButton(element, onClick, true, UiButtonStyle.Secondary, -1f, color ?? UiTheme.Card);
+            // A tile is a card that answers a click: the kit's card skin, lighter under the pointer.
+            if (UiRoot.DressCard((Image)button.targetGraphic, color)) RemoveShadow(element);
+
             AddColumnLayout(element, padding, 6f);
             return new UiBuilder((RectTransform)element.transform, Changed);
         }
@@ -173,15 +176,21 @@ namespace Lazpoly.Presentation.UI
         public RectTransform Icon(UiIcon icon, float size = 28f, Color? color = null) =>
             UiIcons.Create(Container, icon, size, color ?? UiTheme.Accent);
 
-        private Button MakeButton(GameObject element, Action onClick, bool enabled, UiButtonStyle style, Color? fill = null)
+        /// <summary>
+        /// A button's ground. Buttons wear the kit's skins (the dark petrol one for <see cref="UiButtonStyle.Primary"/>
+        /// and a selected choice, the cream one otherwise, tinted brick red for leaving), which change picture on
+        /// hover, press and when they cannot be pressed. A <paramref name="fill"/> keeps the plain rounded shape in
+        /// that colour, for the callers that colour their own; so does a build without the kit's pictures.
+        /// </summary>
+        private Button MakeButton(GameObject element, Action onClick, bool enabled, UiButtonStyle style, float height, Color? fill = null)
         {
             Image image = UiRoot.Background((RectTransform)element.transform, fill ?? UiTheme.Fill(style));
-            UiRoot.AddShadow(element, 2f);
             element.AddComponent<UiHover>();
             var button = element.AddComponent<Button>();
             button.targetGraphic = image;
             button.colors = ButtonColors();
             button.interactable = enabled;
+            if (fill.HasValue || !DressButton(button, image, style, height)) UiRoot.AddShadow(element, 2f);
             if (style == UiButtonStyle.Primary) element.AddComponent<UiPrimaryMark>();
             if (onClick != null)
             {
@@ -194,6 +203,62 @@ namespace Lazpoly.Presentation.UI
             }
 
             return button;
+        }
+
+        /// <summary>The kit skin a button style wears.</summary>
+        public static KitArt.Skin SkinOf(UiButtonStyle style) =>
+            style == UiButtonStyle.Primary || style == UiButtonStyle.Selected ? KitArt.Skin.Primary : KitArt.Skin.Secondary;
+
+        /// <summary>Puts the kit's skin for <paramref name="style"/> on a button; false when the pictures are not in the build.</summary>
+        private static bool DressButton(Button button, Image image, UiButtonStyle style, float height)
+        {
+            KitArt.Skin skin = SkinOf(style);
+            // A selected choice rests on the lighter petrol of the dark skin, a step apart from the main action.
+            string resting = KitArt.Picture(skin, style == UiButtonStyle.Selected ? "Hover" : "Normal");
+            if (!KitArt.Dress(image, resting, height > 0f ? height : UiTheme.ButtonHeight)) return false;
+
+            // The skins carry their own colour and shadow: white leaves them as drawn. A danger button is the kit's
+            // cream one (its "Oyundan Çık"), told apart by its brick red words (see LabelColor).
+            image.color = Color.white;
+            button.transition = Selectable.Transition.SpriteSwap;
+            button.spriteState = new SpriteState
+            {
+                highlightedSprite = KitArt.Get(KitArt.Picture(skin, "Hover")),
+                selectedSprite = KitArt.Get(resting),
+                pressedSprite = KitArt.Get(KitArt.Picture(skin, "Pressed")),
+                disabledSprite = KitArt.Get(KitArt.Picture(skin, "Disabled")),
+            };
+            return true;
+        }
+
+        /// <summary>Whether a button wears a kit skin (they change picture by state; the plain ones change tint).</summary>
+        private static bool Skinned(Button button) => button.transition == Selectable.Transition.SpriteSwap;
+
+        /// <summary>
+        /// A button's label: its style's ink, faded when it cannot be pressed (the skin turns grey under it). On the
+        /// kit's cream skin a danger button writes in brick red.
+        /// </summary>
+        private static Color LabelColor(UiButtonStyle style, bool enabled, bool skinned = false)
+        {
+            Color color = skinned && style == UiButtonStyle.Danger ? UiTheme.Warning : UiTheme.Label(style);
+            if (!enabled) color.a *= 0.55f;
+            return color;
+        }
+
+        /// <summary>An icon on a button: the kit's brass on its dark buttons, the label's ink on the others.</summary>
+        private static Color IconColor(UiButtonStyle style, bool enabled, bool skinned = false)
+        {
+            Color color = style == UiButtonStyle.Primary ? UiPalette.Ink.Gold : LabelColor(style, true, skinned);
+            if (!enabled) color.a *= 0.55f;
+            return color;
+        }
+
+        private static void RemoveShadow(GameObject element)
+        {
+            var shadow = element.GetComponent<Shadow>();
+            if (shadow == null) return;
+            if (Application.isPlaying) Object.Destroy(shadow);
+            else Object.DestroyImmediate(shadow);
         }
 
         public Toggle Toggle(string label, bool value, Action<bool> changed, bool enabled = true)
@@ -212,9 +277,10 @@ namespace Lazpoly.Presentation.UI
 
             RectTransform box = UiRoot.Rect(element.transform, "Box", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             Image boxImage = UiRoot.Background(box, UiTheme.Field);
+            KitArt.Dress(boxImage, KitArt.Chip, 28f, KitArt.ChipDesignHeight);
             Fix(box.gameObject, 28f, 28f);
             RectTransform check = UiRoot.Rect(box, "Check", Vector2.zero, Vector2.one, new Vector2(6f, 6f), new Vector2(-6f, -6f));
-            Image checkImage = UiRoot.Background(check, UiTheme.Accent);
+            Image checkImage = UiRoot.Background(check, UiTheme.Fill(UiButtonStyle.Primary));
 
             Text text = TextChild(element.transform, label, UiTextStyle.Body, stretch: false);
             text.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
@@ -243,10 +309,18 @@ namespace Lazpoly.Presentation.UI
             UiRoot.Background(track, UiTheme.Field);
             RectTransform fillArea = UiRoot.Rect(element.transform, "Fill Area", new Vector2(0f, 0.35f), new Vector2(1f, 0.65f), new Vector2(4f, 0f), new Vector2(-14f, 0f));
             RectTransform fill = UiRoot.Rect(fillArea, "Fill", Vector2.zero, Vector2.one, Vector2.zero, new Vector2(10f, 0f));
-            UiRoot.Background(fill, UiTheme.Accent);
+            UiRoot.Background(fill, UiTheme.Fill(UiButtonStyle.Primary));
             RectTransform handleArea = UiRoot.Rect(element.transform, "Handle Slide Area", Vector2.zero, Vector2.one, new Vector2(10f, 0f), new Vector2(-10f, 0f));
             RectTransform handle = UiRoot.Rect(handleArea, "Handle", Vector2.zero, new Vector2(0f, 1f), new Vector2(-10f, 0f), new Vector2(10f, 0f));
             Image handleImage = UiRoot.Background(handle, UiTheme.Text);
+            // The kit's knob: a petrol disc with a brass rim.
+            Sprite knob = KitArt.Get(KitArt.Circle);
+            if (knob != null)
+            {
+                handleImage.sprite = knob;
+                handleImage.type = Image.Type.Simple;
+                handleImage.color = Color.white;
+            }
 
             var slider = element.AddComponent<Slider>();
             slider.fillRect = fill;
@@ -266,6 +340,7 @@ namespace Lazpoly.Presentation.UI
         {
             GameObject element = NewChild("Input");
             Image image = UiRoot.Background((RectTransform)element.transform, UiTheme.Field);
+            if (KitArt.Dress(image, KitArt.Chip, UiTheme.FieldHeight, KitArt.ChipDesignHeight)) image.color = Color.white; // The kit's field: cream with a thin grey edge.
             Fix(element, height: UiTheme.FieldHeight);
 
             Text text = TextChild(element.transform, "", UiTextStyle.Body);
@@ -371,7 +446,8 @@ namespace Lazpoly.Presentation.UI
         public UiBuilder Card(Color? color = null, int padding = 12)
         {
             GameObject element = NewChild("Card");
-            UiRoot.Background((RectTransform)element.transform, color ?? UiTheme.Card, shadow: true);
+            UiRoot.Card((RectTransform)element.transform, color);
+
             AddColumnLayout(element, padding, 6f);
             return new UiBuilder((RectTransform)element.transform, Changed);
         }
@@ -380,7 +456,7 @@ namespace Lazpoly.Presentation.UI
         public Text Title(UiIcon icon, string text, Color? color = null)
         {
             UiBuilder row = Row(10f, expand: false);
-            row.Icon(icon, 28f, color ?? UiTheme.Accent);
+            row.Icon(icon, 28f, color ?? UiTheme.Text);
             Text label = row.Label(text, UiTextStyle.Heading);
             Fix(label, -1f).flexibleWidth = 1f;
             Rule();
@@ -407,7 +483,8 @@ namespace Lazpoly.Presentation.UI
         public void Rule()
         {
             GameObject element = NewChild("Rule");
-            Image line = UiRoot.Background((RectTransform)element.transform, new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, 0.55f), rounded: false);
+            // The kit draws no heavy lines: a hairline of ink, barely there.
+            Image line = UiRoot.Background((RectTransform)element.transform, new Color(UiTheme.Text.r, UiTheme.Text.g, UiTheme.Text.b, 0.14f), rounded: false);
             line.raycastTarget = false;
             Fix(element, height: 2f);
         }

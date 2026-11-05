@@ -25,6 +25,9 @@ namespace Lazpoly.Presentation.Effects
             _caption = caption;
         }
 
+        /// <summary>The interface kit's wide logo.</summary>
+        public const string WideLogo = "Lazpoly_Logo";
+
         /// <summary>Builds the screen under <paramref name="root"/>, stretched over it; without the logo picture only the paper, the name and the bar show.</summary>
         public static LoadingScreen Build(RectTransform root, float logoSize, string caption)
         {
@@ -43,13 +46,17 @@ namespace Lazpoly.Presentation.Effects
             layout.childForceExpandHeight = false;
 
             var ui = new UiBuilder(column);
-            if (MenuArt.HasLogo)
+            // The kit's wide logo, as on the main menu; the older square one when the kit's is not in the build.
+            Sprite mark = KitArt.Get(WideLogo) ?? MenuArt.Logo;
+            if (mark != null)
             {
                 Image logo = ui.Swatch(Color.white, logoSize);
-                logo.sprite = MenuArt.Logo;
+                logo.sprite = mark;
                 logo.type = Image.Type.Simple;
                 logo.preserveAspect = true;
                 logo.raycastTarget = false;
+                float aspect = mark.rect.height > 0f ? mark.rect.width / mark.rect.height : 1f;
+                UiBuilder.Fix(logo, Mathf.Min(column.sizeDelta.x, logoSize * aspect), logoSize);
             }
 
             ui.Eyebrow(Texts.Lang.L("Dünya Masası"), paper.Muted, TextAnchor.MiddleCenter);

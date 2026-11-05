@@ -142,13 +142,69 @@ namespace Lazpoly.Presentation.Tests
             foreach (UiIcon icon in System.Enum.GetValues(typeof(UiIcon)))
             {
                 RectTransform drawn = ui.Icon(icon, 24f);
-                Assert.GreaterOrEqual(drawn.GetComponentsInChildren<Image>().Length, 2, $"{icon} has too few shapes.");
+                // The kit's line icon is one picture; an icon the kit lacks is drawn from two shapes or more.
+                int least = UiIcons.KitPicture(icon) != null ? 1 : 2;
+                Assert.GreaterOrEqual(drawn.GetComponentsInChildren<Image>().Length, least, $"{icon} has too few shapes.");
                 foreach (Image shape in drawn.GetComponentsInChildren<Image>()) Assert.IsFalse(shape.raycastTarget, $"{icon} would take clicks.");
             }
 
             Button button = ui.IconButton(UiIcon.Door, "Çıkış", () => { });
             Assert.AreEqual("Çıkış", button.GetComponentInChildren<Text>().text);
             Assert.IsTrue(button.transform.Find("Icon Door") != null, "The icon sits inside the button.");
+        }
+
+        [Test]
+        public void ButtonsCardsAndWindowsWearTheKitsSkins()
+        {
+            var ui = new UiBuilder(_container);
+            Button play = ui.Button("Oyunu Başlat", () => { }, style: UiButtonStyle.Primary);
+            var playSkin = (Image)play.targetGraphic;
+            Assert.AreSame(KitArt.Get("Primary_Normal"), playSkin.sprite, "the main action is the kit's dark petrol button");
+            Assert.AreEqual(Selectable.Transition.SpriteSwap, play.transition);
+            Assert.AreSame(KitArt.Get("Primary_Hover"), play.spriteState.highlightedSprite);
+            Assert.AreSame(KitArt.Get("Primary_Pressed"), play.spriteState.pressedSprite);
+            Assert.AreSame(KitArt.Get("Primary_Disabled"), play.spriteState.disabledSprite);
+            Assert.AreEqual(Image.Type.Sliced, playSkin.type);
+            Assert.AreEqual(Color.white, playSkin.color, "the skin is drawn as the kit drew it");
+            Assert.IsNull(play.GetComponent<Shadow>(), "the skin has its own shadow");
+            Assert.That(playSkin.pixelsPerUnitMultiplier, Is.EqualTo(KitArt.ButtonDesignHeight / UiTheme.ButtonHeight).Within(0.001f),
+                "a thinner button keeps the kit's proportions");
+
+            Button back = ui.Button("Geri", () => { });
+            Assert.AreSame(KitArt.Get("Secondary_Normal"), back.targetGraphic.GetComponent<Image>().sprite, "the rest are the cream ones");
+            Button chosen = ui.Button("Orta", () => { }, style: UiButtonStyle.Selected);
+            Assert.AreSame(KitArt.Get("Primary_Hover"), chosen.targetGraphic.GetComponent<Image>().sprite, "a choice made is the lighter petrol");
+            Button leave = ui.Button("Çık", () => { }, style: UiButtonStyle.Danger);
+            Assert.AreSame(KitArt.Get("Secondary_Normal"), leave.targetGraphic.GetComponent<Image>().sprite, "leaving is the kit's cream button, as its Oyundan Çık");
+            Assert.AreEqual(UiTheme.Warning, leave.GetComponentInChildren<Text>().color, "told apart by brick red words");
+            Button resting = ui.Button("Satın Al", () => { }, enabled: false, style: UiButtonStyle.Primary);
+            Assert.Less(resting.GetComponentInChildren<Text>().color.a, 1f, "a button that cannot be pressed fades its label");
+
+            Image card = ui.Card().Container.GetComponent<Image>();
+            Assert.AreSame(KitArt.Get(KitArt.Chip), card.sprite, "a card is the kit's chip");
+            Assert.AreEqual(Color.white, card.color);
+            Assert.AreEqual(Color.red, ui.Card(Color.red).Container.GetComponent<Image>().color, "a coloured card tints the chip");
+            Image tile = ui.Tile(() => { }).Container.GetComponent<Image>();
+            Assert.AreSame(KitArt.Get(KitArt.Chip), tile.sprite, "a clickable card too");
+
+            Image window = UiRoot.Panel(UiRoot.Stretch(_container, "Window"));
+            Assert.AreSame(KitArt.Get(KitArt.Panel), window.sprite, "a window is the kit's paper with its folded corner");
+            Assert.AreEqual(1f, window.pixelsPerUnitMultiplier, "its corners as drawn");
+            Assert.AreSame(KitArt.Get(KitArt.Chip), ui.Input("Oyuncu", null).targetGraphic.GetComponent<Image>().sprite, "a field is the kit's field");
+        }
+
+        [Test]
+        public void KitCornersShrinkOnThinPartsAndNeverGrow()
+        {
+            Assert.That(KitArt.CornerScale(42f), Is.EqualTo(2f).Within(0.001f));
+            Assert.AreEqual(1f, KitArt.CornerScale(KitArt.ButtonDesignHeight));
+            Assert.AreEqual(1f, KitArt.CornerScale(200f), "a tall part keeps the kit's corners, not bigger ones");
+            Assert.AreEqual(1f, KitArt.CornerScale(0f), "no height: as drawn");
+            foreach (UiIcon icon in System.Enum.GetValues(typeof(UiIcon)))
+            {
+                string picture = UiIcons.KitPicture(icon);
+                if (picture != null) Assert.Contains(picture, Lazpoly.Presentation.Menu.MenuKit.Pictures, $"{icon}'s kit icon ships with the game");
+            }
         }
 
         [Test]

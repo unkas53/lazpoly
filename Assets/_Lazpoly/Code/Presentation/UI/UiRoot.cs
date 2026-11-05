@@ -92,13 +92,59 @@ namespace Lazpoly.Presentation.UI
             return shadow;
         }
 
-        /// <summary>A panel with a thin accent line along its top edge, the look shared by every fixed panel.</summary>
+        /// <summary>
+        /// A window or fixed panel in the kit's look: cream paper with a thin grey edge, a soft shadow and the folded
+        /// top right corner. Without the kit's pictures, a rounded cream panel with a thin accent line along its top.
+        /// </summary>
         public static Image Panel(RectTransform rect)
         {
-            Image image = Background(rect, UiTheme.Panel, shadow: true);
+            Image image = Background(rect, UiTheme.Panel);
+            if (KitArt.Dress(image, KitArt.Panel, height: 0f)) // Height 0: the corners as drawn, whatever the panel's height.
+            {
+                image.color = Color.white;
+                return image;
+            }
+
+            AddShadow(rect.gameObject, 4f);
             RectTransform trim = Rect(rect, "Trim", new Vector2(0f, 1f), Vector2.one, new Vector2(14f, -3f), new Vector2(-14f, -1f));
             Image line = Background(trim, UiTheme.Accent, rounded: false);
             line.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// A card's ground in the kit's look (cream, rounded, a thin grey edge and its own soft shadow); without the
+        /// kit's pictures, a rounded card with a drop shadow. A colour other than the card colour tints the skin.
+        /// </summary>
+        public static Image Card(RectTransform rect, Color? color = null)
+        {
+            Image image = Background(rect, color ?? UiTheme.Card);
+            if (!DressCard(image, color)) AddShadow(rect.gameObject, 4f);
+            return image;
+        }
+
+        /// <summary>Puts the kit's card skin on an image already there; false when the picture is not in the build.</summary>
+        public static bool DressCard(Image image, Color? color = null)
+        {
+            if (!KitArt.Dress(image, KitArt.Chip, CardCornerHeight, KitArt.ChipDesignHeight)) return false;
+            image.color = !color.HasValue || color.Value == UiTheme.Card ? Color.white : color.Value; // The skin is already the card colour.
+            return true;
+        }
+
+        /// <summary>How tall a card's corners are drawn for: smaller than the kit's profile chip, so a stack of cards stays light.</summary>
+        public const float CardCornerHeight = 40f;
+
+        /// <summary>
+        /// A band for news over the board, <paramref name="height"/> pixels tall: the kit's dark petrol button skin
+        /// with its brass corner, or (<paramref name="dark"/> false) its cream skin, which takes a colour given to
+        /// <see cref="Image.color"/> (the player whose turn it is). Without the kit, a petrol rounded band.
+        /// </summary>
+        public static Image Banner(RectTransform rect, float height, bool dark = true)
+        {
+            Image image = Background(rect, UiPalette.Ink.Masthead);
+            if (KitArt.Dress(image, KitArt.Picture(dark ? KitArt.Skin.Primary : KitArt.Skin.Secondary, "Normal"), height)) image.color = Color.white;
+            else AddShadow(rect.gameObject, 4f);
+            image.raycastTarget = false;
             return image;
         }
 

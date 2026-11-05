@@ -87,7 +87,7 @@ namespace Lazpoly.Presentation.Tests
             // The current player's corner card stands out from the cream cards and keeps dark ink readable.
             Color current = GameHud.CurrentCardColor;
             Assert.That(Contrast(UiPalette.Paper.Text, current), Is.GreaterThan(4.5f));
-            Assert.That(Mathf.Abs(ColorVision.Luminance(current) - ColorVision.Luminance(UiPalette.Paper.Card)), Is.GreaterThan(0.2f), "the card on turn is plainly greener, not a faint tint");
+            Assert.That(Mathf.Abs(ColorVision.Luminance(current) - ColorVision.Luminance(UiPalette.Paper.Card)), Is.GreaterThan(0.2f), "the card on turn is plainly darker, not a faint tint");
             // Money at rest is gold-brown, readable on cream, and never the red of a loss.
             Assert.That(Contrast(UiPalette.Paper.Money, UiPalette.Paper.Card), Is.GreaterThan(4.5f));
             Assert.That(Contrast(UiPalette.Paper.Money, current), Is.GreaterThan(3f));
@@ -293,8 +293,8 @@ namespace Lazpoly.Presentation.Tests
             Assert.That(settings, Does.Contain("\n  productName: Lazpoly\n"), "the window title reads Lazpoly, capital L");
             Assert.That(settings, Does.Contain("\n  companyName: DefaultCompany\n"), "the saves and settings stay where they are until the release moves them");
             // Before our first frame the player clears the window to the loading screen's paper, not to dark grey or white.
-            Assert.That(settings, Does.Contain("m_SplashScreenBackgroundColor: {r: 0.9843137, g: 0.972549, b: 0.9254902, a: 1}"));
-            Assert.That(Vector4.Distance(UiPalette.Paper.Panel, new Color(0.9843137f, 0.972549f, 0.9254902f, 1f)), Is.LessThan(0.002f), "the start colour is the loading screen's paper");
+            Assert.That(settings, Does.Contain("m_SplashScreenBackgroundColor: {r: 1, g: 0.9921569, b: 0.9607843, a: 1}"));
+            Assert.That(Vector4.Distance(UiPalette.Paper.Panel, new Color(1f, 0.9921569f, 0.9607843f, 1f)), Is.LessThan(0.002f), "the start colour is the loading screen's paper");
 
             string iconPath = Path.Combine(project, "Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon.png");
             Assert.IsTrue(File.Exists(iconPath), "run Tools/Art/make_logo.py");
