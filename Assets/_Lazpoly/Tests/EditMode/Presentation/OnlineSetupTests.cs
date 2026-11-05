@@ -16,6 +16,7 @@ namespace Lazpoly.Presentation.Tests
         {
             public bool IsAvailable { get; set; } = true;
             public ulong LocalId { get; set; } = 2;
+            public string LocalName { get; set; } = "";
             public LobbyStatus Status { get; set; } = LobbyStatus.InLobby;
             public ulong OwnerId { get; set; } = 1;
             public bool IsOwner => OwnerId == LocalId;

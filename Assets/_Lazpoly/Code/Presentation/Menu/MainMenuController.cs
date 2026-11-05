@@ -287,6 +287,7 @@ namespace Lazpoly.Presentation.Menu
                 _footerView.Refresh(HashCode.Combine(_lobbyPanel.InRoom, _lobbyPanel.InRoom ? _lobbyPanel.ViewKey : 0));
             }
 
+            TakePlatformName();
             _home.SetProfile(_names[0], _choice.Selected.Name);
             _home.SetMuted(Muted);
             _home.SetStatus(StatusLine());
@@ -303,6 +304,23 @@ namespace Lazpoly.Presentation.Menu
             foreach (LobbyFriend friend in _lobbyPanel.Friends) online += friend.IsOnline ? 1 : 0;
             return online;
         }
+
+        private bool _platformNamed;
+
+        /// <summary>
+        /// Once Steam is up, the person at this computer goes by their Steam name on the profile card and in the
+        /// first seat, unless they already typed a name of their own.
+        /// </summary>
+        private void TakePlatformName()
+        {
+            if (_platformNamed || _lobby == null || !_lobby.IsAvailable) return;
+            _platformNamed = true;
+            _names[0] = FirstSeatName(_names[0], F($"Oyuncu {1}"), _lobby.LocalName);
+        }
+
+        /// <summary>The first seat's name once the platform's is known: the platform's in place of the untouched default.</summary>
+        public static string FirstSeatName(string current, string untouched, string platform) =>
+            current == untouched && !string.IsNullOrWhiteSpace(platform) ? platform.Trim() : current;
 
         private int _statusKey = int.MinValue;
         private string _statusLine = "";
@@ -339,20 +357,22 @@ namespace Lazpoly.Presentation.Menu
         /// </summary>
         private void RenderInfo(UiBuilder ui)
         {
-            if (_brokenSave)
-            {
-                ui.Notice(L("Kayıtlı oyun okunamadı; dosya bozulmuş ya da eski bir sürümden kalmış olabilir. Silip yeni bir oyun kurabilirsin."),
-                    L("Kaydı Sil"), () =>
-                    {
-                        SaveGameStore.Delete();
-                        _brokenSave = false;
-                    });
-                return;
-            }
-
             UiBuilder row = ui.Row(16f, expand: false);
             row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
-            if (_savedGame != null)
+            if (_brokenSave)
+            {
+                // One line beside its button, like the saved game's: the space under the play buttons is short.
+                UiBuilder words = row.Column(0f);
+                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
+                words.Eyebrow(L("Kayıtlı oyun okunamadı"), UiTheme.Warning);
+                words.Label(L("Dosya bozuk ya da eski bir sürümden; silip yeni oyun kurabilirsin."), UiTextStyle.Small, MenuKit.Muted);
+                UiBuilder.Fix(row.Button(L("Kaydı Sil"), () =>
+                {
+                    SaveGameStore.Delete();
+                    _brokenSave = false;
+                }, height: UiTheme.ButtonHeight), width: 160f);
+            }
+            else if (_savedGame != null)
             {
                 UiBuilder words = row.Column(0f);
                 UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;

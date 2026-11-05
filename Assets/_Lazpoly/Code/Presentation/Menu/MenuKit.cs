@@ -67,7 +67,7 @@ namespace Lazpoly.Presentation.Menu
             if (Missing.Contains(name)) return null;
 
             var asset = Resources.Load<TextAsset>(Folder + name);
-            Texture2D texture = asset != null ? MenuArt.Decode(asset.bytes, name) : null;
+            Texture2D texture = asset != null ? MenuArt.Decode(asset.bytes, name, mipmaps: Borders(name) == Vector4.zero) : null;
             if (texture == null)
             {
                 Missing.Add(name);

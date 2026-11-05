@@ -129,6 +129,15 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheFirstSeatGoesByTheSteamNameUnlessTheyTypedTheirOwn()
+        {
+            Assert.AreEqual("UNKAS", MainMenuController.FirstSeatName("Oyuncu 1", "Oyuncu 1", " UNKAS "));
+            Assert.AreEqual("Mami", MainMenuController.FirstSeatName("Mami", "Oyuncu 1", "UNKAS"), "a typed name stays");
+            Assert.AreEqual("Oyuncu 1", MainMenuController.FirstSeatName("Oyuncu 1", "Oyuncu 1", ""), "no Steam, no change");
+            Assert.AreEqual("Oyuncu 1", MainMenuController.FirstSeatName("Oyuncu 1", "Oyuncu 1", null));
+        }
+
+        [Test]
         public void EveryPictureOfTheMenuKitIsInTheBuild()
         {
             foreach (string name in MenuKit.Pictures)
@@ -136,6 +145,10 @@ namespace Lazpoly.Presentation.Tests
                 Sprite sprite = MenuKit.Get(name);
                 Assert.IsNotNull(sprite, $"{name}: run Tools/Art/make_menu_art.py");
                 Assert.AreEqual(MenuKit.Borders(name), sprite.border, $"{name} stretches by its kit borders");
+                if (sprite.border != Vector4.zero)
+                {
+                    Assert.AreEqual(1, sprite.texture.mipmapCount, $"{name}: a squeezed skin has no blurred mips to draw pale stripes");
+                }
             }
 
             Assert.AreEqual(new Vector4(32f, 32f, 32f, 32f), MenuKit.Borders("Primary_Normal"));
