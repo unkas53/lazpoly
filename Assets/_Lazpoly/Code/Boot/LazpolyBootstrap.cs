@@ -1,4 +1,5 @@
 using Lazpoly.App.Achievements;
+using Lazpoly.App.Avatars;
 using Lazpoly.App.Lobby;
 using Lazpoly.App.Presence;
 using Lazpoly.App.Save;
@@ -37,6 +38,7 @@ namespace Lazpoly.Boot
             registry.Register<ITransport>(transport);
             registry.Register<IAchievementService>(new SteamAchievementService(steam));
             registry.Register<IPresenceService>(new SteamPresenceService(steam));
+            registry.Register<IPlayerAvatars>(new SteamAvatars(steam));
 
             GameServices.SetRegistry(registry);
 

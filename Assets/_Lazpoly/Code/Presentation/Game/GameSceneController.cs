@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Lazpoly.App.Achievements;
+using Lazpoly.App.Avatars;
 using Lazpoly.App.Lobby;
 using Lazpoly.App.Presence;
 using Lazpoly.App.Save;
@@ -211,6 +212,12 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Why an online game stopped; null while it goes on.</summary>
         public SessionEndReason? EndReason { get; private set; }
 
+        /// <summary>The faces on the players' cards (Steam profile pictures and character portraits), once the game state is known.</summary>
+        public PlayerFaces Faces { get; private set; }
+
+        /// <summary>The lobby as the game began, for which Steam account plays which seat online.</summary>
+        private IReadOnlyList<LobbyMember> _startMembers;
+
         /// <summary>A player's piece on the board, or null.</summary>
         public PawnView PawnOf(int playerId) => _pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null;
 
@@ -268,6 +275,9 @@ namespace Lazpoly.Presentation.Game
 
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
 
+        /// <summary>The colour group a square belongs to.</summary>
+        public int GroupOf(int squareIndex) => _session.Board[squareIndex].GroupId;
+
         /// <summary>Colour of the group a square belongs to, as the board shows it.</summary>
         public Color GroupColorOf(int squareIndex) => _data.GroupColor(_session.Board[squareIndex].GroupId);
 
@@ -310,6 +320,7 @@ namespace Lazpoly.Presentation.Game
             {
                 GameServices.Registry?.TryGet(out _lobby);
                 _roomId = _lobby != null ? _lobby.RoomId : 0UL;
+                _startMembers = _lobby != null ? new List<LobbyMember>(_lobby.Members) : null;
             }
 
             if (_client != null)
@@ -342,6 +353,7 @@ namespace Lazpoly.Presentation.Game
                 Revision++; // Connection dots, latency and the reconnect countdown move without a game event.
             }
 
+            if (Faces != null && Faces.Update(Time.unscaledTime)) Revision++; // A Steam profile picture arrived.
             UpdateDayLight();
             ShowNextBubble();
             AnnounceDraw();
@@ -443,6 +455,7 @@ namespace Lazpoly.Presentation.Game
             if (_client != null) _client.ConnectionChanged -= OnConnectionChanged;
             if (_client != null && _lobby != null) _lobby.MemberLeft -= OnLobbyMemberLeft;
             _host?.Leave(); // Closing the window counts as leaving; the guests should not wait out their grace time.
+            Faces?.Dispose();
         }
 
         /// <summary>
@@ -711,6 +724,8 @@ namespace Lazpoly.Presentation.Game
             _crowd = new PawnCrowd(state.Players.Count);
             _turnMarker = TurnMarker.Create(transform);
             int chooser = ChoosingPlayer(state);
+            CharacterOption character = new CharacterChoice(new PlayerPrefsStorage()).Selected;
+            Faces = CreateFaces(state, chooser, character.Face);
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
@@ -718,7 +733,7 @@ namespace Lazpoly.Presentation.Game
                 int seat = FirstPlayerDraw.LobbySeat(state.Players, player.Id);
                 Color color = PlayerPalette.ForSeat(seat);
                 _playerColors[player.Id] = color;
-                Models.CharacterKind? figure = player.Id == chooser ? new CharacterChoice(new PlayerPrefsStorage()).Selected.Figure : (Models.CharacterKind?)null;
+                Models.CharacterKind? figure = player.Id == chooser ? character.Figure : (Models.CharacterKind?)null;
                 PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id, figure);
                 pawn.Speed = Settings.AnimationSpeed;
                 pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
@@ -758,6 +773,28 @@ namespace Lazpoly.Presentation.Game
             }
 
             return chooser;
+        }
+
+        /// <summary>
+        /// The card faces: Steam profile pictures for the real people whose account is known (online every
+        /// person's, from the lobby; on this computer the one who set the game up), portraits for the rest.
+        /// The -perf table has nobody's face.
+        /// </summary>
+        private PlayerFaces CreateFaces(GameState state, int chooser, string chooserFace)
+        {
+            IPlayerAvatars avatars = null;
+            ILobbyService lobby = _lobby;
+            if (!PerfRun.Requested)
+            {
+                GameServices.Registry?.TryGet(out avatars);
+                if (lobby == null) GameServices.Registry?.TryGet(out lobby);
+            }
+
+            IReadOnlyDictionary<int, ulong> accounts;
+            if (avatars == null || lobby == null) accounts = null;
+            else if (_isOnline) accounts = SeatAccounts.Online(_host != null ? lobby.LocalId : _hostPeer, _startMembers, state.Players);
+            else accounts = SeatAccounts.Local(chooser, lobby.LocalId);
+            return new PlayerFaces(avatars, accounts, chooser, chooserFace);
         }
 
         public static bool IsFirstRoll(GameState state) =>

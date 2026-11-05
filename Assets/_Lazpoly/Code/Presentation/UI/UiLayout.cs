@@ -10,8 +10,8 @@ namespace Lazpoly.Presentation.UI
     /// </summary>
     public static class UiLayout
     {
-        /// <summary>Width of a player's card in a corner of the game screen.</summary>
-        public const float CornerWidth = 300f;
+        /// <summary>Width of a player's card in a corner of the game screen (the player card kit's 320 by 112 card, drawn a little larger).</summary>
+        public const float CornerWidth = 360f;
 
         /// <summary>Diameter of a big round button with a caption under it.</summary>
         public const float DockButton = 64f;

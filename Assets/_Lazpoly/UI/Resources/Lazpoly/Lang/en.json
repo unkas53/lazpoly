@@ -566,5 +566,9 @@
   "Seçili karakter: {0}": "Chosen character: {0}",
   "2–8 OYUNCU   ·   STRATEJİ, ŞANS VE REKABET": "2–8 PLAYERS   ·   STRATEGY, LUCK AND RIVALRY",
   "Emin misin? Oyundan çık": "Sure? Quit the game",
-  "Oyundan Çık": "Quit Game"
+  "Oyundan Çık": "Quit Game",
+  "Sıra sende": "Your turn",
+  "düşünüyor": "thinking",
+  "oynuyor": "playing",
+  "Bilgisayar oynuyor": "Computer playing"
 }
