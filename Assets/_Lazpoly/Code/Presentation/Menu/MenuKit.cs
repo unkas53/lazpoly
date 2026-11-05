@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Lazpoly.Presentation.Audio;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
@@ -15,13 +14,13 @@ namespace Lazpoly.Presentation.Menu
     /// </summary>
     public static class MenuKit
     {
-        public const string Folder = "Lazpoly/Art/Menu/";
+        public const string Folder = KitArt.Folder;
 
         public const string Background = "Higgsfield_City_Background";
         public const string Logo = "Lazpoly_Logo";
-        public const string Panel = "Panel";
-        public const string Chip = "Chip";
-        public const string Circle = "Circle";
+        public const string Panel = KitArt.Panel;
+        public const string Chip = KitArt.Chip;
+        public const string Circle = KitArt.Circle;
 
         /// <summary>The kit's colours: dark petrol ink, its muted grey-blue, cream labels on the dark button and its brass icons.</summary>
         public static readonly Color Ink = Hex(0x163D50);
@@ -40,48 +39,18 @@ namespace Lazpoly.Presentation.Menu
             "Primary_Normal", "Primary_Hover", "Primary_Pressed", "Primary_Disabled",
             "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
             "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
-            "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound",
+            "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound", "Icon_Home", "Icon_Check", "Icon_Hotel",
             "Portrait_Woman01", "Portrait_Woman02", "Portrait_Man01", "Portrait_Man02",
         };
 
-        /// <summary>The 9-slice borders of the stretchable skins, in picture pixels (the kit's SpriteManifest.json).</summary>
-        public static Vector4 Borders(string name)
-        {
-            if (name.StartsWith("Primary_", StringComparison.Ordinal) || name.StartsWith("Secondary_", StringComparison.Ordinal)) return new Vector4(32f, 32f, 32f, 32f);
-            if (name == Panel) return new Vector4(36f, 36f, 36f, 36f);
-            if (name == Chip) return new Vector4(30f, 30f, 30f, 30f);
-            return Vector4.zero;
-        }
+        /// <summary>The 9-slice borders of the stretchable skins, in picture pixels (see <see cref="KitArt.Borders"/>).</summary>
+        public static Vector4 Borders(string name) => KitArt.Borders(name);
 
         /// <summary>The kit's button looks: the wide dark one (Hemen Oyna) and the cream ones.</summary>
         public enum Skin { Primary, Secondary }
 
-        private static readonly Dictionary<string, Sprite> Sprites = new Dictionary<string, Sprite>();
-        private static readonly HashSet<string> Missing = new HashSet<string>();
-
         /// <summary>A kit picture as a sprite (sliced when it has borders), or null when it is not in the build.</summary>
-        public static Sprite Get(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return null;
-            if (Sprites.TryGetValue(name, out Sprite cached) && cached != null) return cached;
-            if (Missing.Contains(name)) return null;
-
-            var asset = Resources.Load<TextAsset>(Folder + name);
-            Texture2D texture = asset != null ? MenuArt.Decode(asset.bytes, name, mipmaps: Borders(name) == Vector4.zero) : null;
-            if (texture == null)
-            {
-                Missing.Add(name);
-                Debug.LogWarning($"[Lazpoly] Menu picture '{Folder}{name}' is missing; run Tools/Art/make_menu_art.py.");
-                return null;
-            }
-
-            Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f, 0,
-                SpriteMeshType.FullRect, Borders(name));
-            sprite.name = name;
-            sprite.hideFlags = HideFlags.DontSave;
-            Sprites[name] = sprite;
-            return sprite;
-        }
+        public static Sprite Get(string name) => KitArt.Get(name);
 
         /// <summary>A rectangle at the kit's design position: <paramref name="x"/>, <paramref name="y"/> from the parent's top left, in design pixels.</summary>
         public static RectTransform Place(Transform parent, string name, float x, float y, float w, float h)
@@ -191,12 +160,5 @@ namespace Lazpoly.Presentation.Menu
         }
 
         private static Color Hex(int rgb) => new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f);
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics()
-        {
-            Sprites.Clear();
-            Missing.Clear();
-        }
     }
 }

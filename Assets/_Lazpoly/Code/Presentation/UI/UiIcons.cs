@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace Lazpoly.Presentation.UI
 {
-    /// <summary>The small pictures the menus use beside their titles; each is drawn from a few shapes, so no art files are needed.</summary>
+    /// <summary>The small pictures the menus use beside their titles: the kit's line icons where it has one, otherwise a few drawn shapes.</summary>
     public enum UiIcon
     {
         /// <summary>A die: playing alone against the computer.</summary>
@@ -44,8 +44,42 @@ namespace Lazpoly.Presentation.UI
         {
             RectTransform root = UiRoot.Rect(parent, $"Icon {icon}", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             UiBuilder.Fix(root.gameObject, size, size);
-            Draw(root, icon, color);
+            Sprite line = KitArt.Get(KitPicture(icon));
+            if (line != null)
+            {
+                Image image = UiRoot.Stretch(root, "Line").gameObject.AddComponent<Image>();
+                image.sprite = line;
+                image.color = color;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+            }
+            else
+            {
+                Draw(root, icon, color);
+            }
+
             return root;
+        }
+
+        /// <summary>
+        /// The kit's line icon for <paramref name="icon"/>, or null where the kit has none and the shapes are drawn:
+        /// the die, the people, the book, the gear for settings, the house, the arrow on, the globe for online and
+        /// the cross for leaving, as on the main menu.
+        /// </summary>
+        public static string KitPicture(UiIcon icon)
+        {
+            switch (icon)
+            {
+                case UiIcon.Dice: return "Icon_Dice";
+                case UiIcon.People: return "Icon_People";
+                case UiIcon.Book: return "Icon_Book";
+                case UiIcon.Sliders: return "Icon_Gear";
+                case UiIcon.Home: return "Icon_Home";
+                case UiIcon.Next: return "Icon_Arrow";
+                case UiIcon.Network: return "Icon_Globe";
+                case UiIcon.Door: return "Icon_Close";
+                default: return null;
+            }
         }
 
         private static void Draw(RectTransform root, UiIcon icon, Color color)

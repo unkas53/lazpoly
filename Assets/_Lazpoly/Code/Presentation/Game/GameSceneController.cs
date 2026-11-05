@@ -658,6 +658,14 @@ namespace Lazpoly.Presentation.Game
             IReadOnlyList<PlayerSeat> seats = FirstPlayerDraw.Draw(LocalGameSetup.TakeSeats(), DrawRandom());
             LocalGame game = LocalGame.Create(_data.Board, _data.Rules.WithTable(TableSetup.Chosen), seats,
                 LocalGameSetup.TakeAiPlayers(), NewSeed());
+            if (ScreenTour.Requested && !PerfRun.Requested)
+            {
+                // -shots: the person stands on a town for sale, for the city card and the rest of the tour.
+                SavedGame tour = game.Save(_data.Checksum);
+                ScreenTour.Stage(tour, _data.Board);
+                return LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, tour);
+            }
+
             if (!PerfRun.Requested || !(PerfRun.BuiltUp || PerfRun.InDebt)) return game;
 
             // -perf -built: the same table with every town owned and built, the heaviest board there can be.
@@ -678,7 +686,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Keeps the single local save slot in step with the game; a finished game leaves no save. The -perf table is nobody's game, so it never touches the slot.</summary>
         private void SaveLocalGame()
         {
-            if (_localGame == null || PerfRun.Requested) return;
+            if (_localGame == null || PerfRun.Requested || ScreenTour.Requested) return;
             try
             {
                 if (_session.State.Phase == GamePhase.GameOver) SaveGameStore.Delete();
@@ -785,6 +793,65 @@ namespace Lazpoly.Presentation.Game
             {
                 Probe.StartRun(PerfRun.WarmUpSeconds, PerfRun.Seconds, sample => StartCoroutine(FinishPerfRun(sample)));
             }
+            else if (ScreenTour.Requested && !PerfRun.Requested && !_isOnline && !_touring)
+            {
+                _touring = true;
+                StartCoroutine(TourTable());
+            }
+        }
+
+        private bool _touring;
+
+        /// <summary>
+        /// The table's part of the screen tour (<see cref="ScreenTour"/>): the city card the person stands at, the
+        /// building card after buying, a square's card, then, once the computers have played and the roll is the
+        /// person's again, the table and each window the game screen opens. Quits when done.
+        /// </summary>
+        private IEnumerator TourTable()
+        {
+            GameHud hud = _hud;
+            int person = ScreenTour.PersonId;
+            yield return ScreenTour.Until(() => hud.CityCardOpen, 20f);
+            yield return ScreenTour.Take("sehir-karti");
+
+            var buy = new BuyPropertyCommand(person);
+            if (IsAllowed(buy)) Submit(buy);
+            yield return ScreenTour.Until(() => hud.BuildCardOpen, 5f);
+            if (hud.BuildCardOpen)
+            {
+                yield return ScreenTour.Take("bina-karti");
+                hud.CloseTop();
+            }
+
+            hud.PinSquare(_session.State.FindPlayer(person).Position);
+            yield return ScreenTour.Take("kare-karti");
+            hud.CloseTop();
+
+            yield return ScreenTour.Until(() => !IsBusy && _session.State.CurrentPlayer.Id == person && _session.State.Phase == GamePhase.WaitingForRoll, 120f);
+            yield return ScreenTour.Take("masa");
+            foreach ((HudWindow window, string name) in new[]
+            {
+                (HudWindow.Properties, "mulkler"), (HudWindow.Trade, "takas"), (HudWindow.Log, "olaylar"),
+            })
+            {
+                hud.Open(window);
+                yield return ScreenTour.Take(name);
+                hud.CloseTop();
+            }
+
+            hud.Open(HudWindow.Pause);
+            yield return ScreenTour.Take("duraklat");
+            hud.Open(HudWindow.Settings);
+            yield return ScreenTour.Take("oyun-ayarlari");
+            hud.CloseTop();
+            hud.Open(HudWindow.HowToPlay);
+            yield return ScreenTour.Take("oyun-nasil-oynanir");
+            hud.CloseTop();
+            hud.CloseTop();
+
+            Debug.Log($"[Lazpoly] Screen tour done: {ScreenTour.Folder}");
+            yield return null;
+            Application.Quit();
         }
 
         /// <summary>Writes the perf report, keeps a picture of the table it measured, and quits.</summary>

@@ -157,6 +157,39 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheScreenToursTableLeavesThePersonOnATownForSale()
+        {
+            BoardDefinition board = BoardDataLoader.LoadFromResources().Board;
+            var rules = new RulesConfig(800, 100, 6, 3, 2, 50);
+            var engine = new GameEngine(board, rules, ScreenTour.Seats(), new Pcg32Random(5UL));
+            var save = new SavedGame { Snapshot = GameStateSnapshot.Capture(engine.State) };
+            foreach (KeyValuePair<int, AiDifficulty> seat in ScreenTour.Ai()) save.AiPlayers[seat.Key] = new SavedAiPlayer { Difficulty = seat.Value };
+            ScreenTour.Stage(save, board);
+
+            Assert.IsFalse(save.AiPlayers.ContainsKey(ScreenTour.PersonId), "the person decides");
+            Assert.AreEqual(ScreenTour.PlayerCount - 1, save.AiPlayers.Count, "three computers play the others");
+            Assert.AreEqual(0, save.Table.TurnSeconds, "no clock decides for the person while the pictures are taken");
+
+            GameEngine table = GameEngine.Restore(board, rules, save.Snapshot, new Pcg32Random(5UL));
+            GameState state = table.State;
+            Assert.AreEqual(GamePhase.AwaitingBuyDecision, state.Phase);
+            Assert.AreEqual(ScreenTour.PersonId, state.CurrentPlayer.Id);
+            int square = state.CurrentPlayer.Position;
+            Assert.IsTrue(board[square].IsDevelopable, "a town with buildings to show on the cards");
+            Assert.AreEqual(GameState.NoOwner, state.GetOwner(square), "for sale");
+            Assert.AreEqual(RejectionReason.None, table.Validate(new BuyPropertyCommand(ScreenTour.PersonId)), "the person can buy it");
+            foreach (PlayerState player in state.Players)
+            {
+                int towns = 0;
+                for (int i = 0; i < board.Count; i++) towns += state.GetOwner(i) == player.Id ? 1 : 0;
+                Assert.AreEqual(player.Id == ScreenTour.PersonId ? 0 : ScreenTour.TownsEach, towns, player.Name);
+            }
+
+            Assert.AreEqual("03-ayarlar.png", ScreenTour.FileName(3, "ayarlar"));
+            Assert.IsTrue(PerfRun.HasArgument(new[] { "Lazpoly.exe", "-SHOTS" }, ScreenTour.Flag));
+        }
+
+        [Test]
         public void ScreenshotPresetsAreDistinctAndWithinTheCamerasReach()
         {
             Assert.AreEqual(5, ScreenshotPresets.All.Length);

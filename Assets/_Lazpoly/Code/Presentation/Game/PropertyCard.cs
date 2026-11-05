@@ -101,7 +101,6 @@ namespace Lazpoly.Presentation.Game
             Text label = confirm.GetComponentInChildren<Text>();
             label.fontSize = ConfirmFontSize;
             UiBuilder.ShrinkToFit(label);
-            UiRoot.AddShadow(confirm.gameObject, 6f);
         }
 
         /// <summary>The title on a band of the group's colour, its letter mark at the left and a close mark at the right; the square card opens the same way.</summary>
@@ -164,7 +163,7 @@ namespace Lazpoly.Presentation.Game
                 text.text = locked;
                 text.font = UiTheme.BoldFont;
                 text.fontSize = 13;
-                text.color = UiTheme.Backdrop;
+                text.color = UiTheme.Label(UiButtonStyle.Danger);
                 text.alignment = TextAnchor.MiddleCenter;
                 text.horizontalOverflow = HorizontalWrapMode.Overflow;
             }

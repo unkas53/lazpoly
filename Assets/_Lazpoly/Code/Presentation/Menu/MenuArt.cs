@@ -1,3 +1,4 @@
+using Lazpoly.Presentation.UI;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Menu
@@ -45,26 +46,8 @@ namespace Lazpoly.Presentation.Menu
             }
         }
 
-        /// <summary>
-        /// PNG (or JPEG) bytes as a texture, or null when they are not a picture. A 9-sliced skin is decoded without
-        /// mipmaps: its middle squeezes hard on a narrow button, and a blurred mip there would draw pale stripes
-        /// across the button's top and bottom edges.
-        /// </summary>
-        public static Texture2D Decode(byte[] bytes, string name, bool mipmaps = true)
-        {
-            if (bytes == null || bytes.Length == 0) return null;
-            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, mipmaps) { name = name, hideFlags = HideFlags.DontSave };
-            if (!texture.LoadImage(bytes, false))
-            {
-                if (Application.isPlaying) Object.Destroy(texture);
-                else Object.DestroyImmediate(texture);
-                return null;
-            }
-
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = mipmaps ? FilterMode.Trilinear : FilterMode.Bilinear;
-            return texture;
-        }
+        /// <summary>PNG (or JPEG) bytes as a texture, or null when they are not a picture (see <see cref="KitArt.Decode"/>).</summary>
+        public static Texture2D Decode(byte[] bytes, string name, bool mipmaps = true) => KitArt.Decode(bytes, name, mipmaps);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()

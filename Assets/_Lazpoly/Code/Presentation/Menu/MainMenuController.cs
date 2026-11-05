@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Lazpoly.App.AI;
 using Lazpoly.App.Lobby;
@@ -218,6 +219,38 @@ namespace Lazpoly.Presentation.Menu
                 ui => HowToPlayPanel.Render(ui, _boardData.Board, _boardData.Rules.WithTable(TableSetup.Chosen), () => _howToLayer.SetActive(false)));
             _howToLayer.SetActive(false);
             ScaleFrames();
+            if (ScreenTour.Requested && !ScreenTour.MenuShown && !PerfRun.Requested) StartCoroutine(TourMenu());
+        }
+
+        /// <summary>
+        /// The menu's part of the screen tour (<see cref="ScreenTour"/>): the home screen, the characters, settings,
+        /// how to play, each mode's sheet and the table rules; then on to the tour's table.
+        /// </summary>
+        private IEnumerator TourMenu()
+        {
+            ScreenTour.MarkMenuShown();
+            yield return ScreenTour.Take("menu");
+            _characters.Show(_choice.Selected);
+            yield return ScreenTour.Take("karakterler");
+            _characters.Hide();
+            OpenSettings();
+            yield return ScreenTour.Take("ayarlar");
+            CloseSettings();
+            OpenHowToPlay();
+            yield return ScreenTour.Take("nasil-oynanir");
+            _howToLayer.SetActive(false);
+            _mode = Mode.Single;
+            yield return ScreenTour.Take("tek-oyunculu");
+            OpenTableRules();
+            yield return ScreenTour.Take("masa-kurallari");
+            _tableLayer.SetActive(false);
+            _mode = Mode.Local;
+            yield return ScreenTour.Take("ayni-bilgisayarda");
+            _mode = Mode.Online;
+            yield return ScreenTour.Take("cevrim-ici");
+            _mode = Mode.Home;
+            LocalGameSetup.SetSeats(ScreenTour.Seats(), ScreenTour.Ai());
+            SceneFader.Load("Game");
         }
 
         /// <summary>The scene's camera draws nothing now that the menu is a picture: no board, no sky, only the canvas.</summary>

@@ -21,6 +21,9 @@ using UnityEngine.UI;
 using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
+    /// <summary>The windows of the game screen that a button or a key opens.</summary>
+    public enum HudWindow { Pause, Settings, HowToPlay, Properties, Log, Trade }
+
     /// <summary>
     /// The game screen's interface around the diamond-shaped board: a player card in each corner, the
     /// big roll button over the lawn, decisions in a panel at the bottom, the newest event and a few small
@@ -169,6 +172,28 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Shows a square's card until another square or the empty table is clicked.</summary>
         public void PinSquare(int squareIndex) => _pinnedSquare = squareIndex;
 
+        /// <summary>Opens one of the windows the game screen's buttons and keys open, as they would (the screen tour uses it).</summary>
+        public void Open(HudWindow window)
+        {
+            GameState state = _controller.Session?.State;
+            switch (window)
+            {
+                case HudWindow.Pause: OpenPause(); break;
+                case HudWindow.Settings: OpenSettings(); break;
+                case HudWindow.HowToPlay: OpenHowToPlay(); break;
+                case HudWindow.Properties: OpenProperties(); break;
+                case HudWindow.Log:
+                    if (!_logLayer.activeSelf) ToggleLog();
+                    break;
+                case HudWindow.Trade:
+                    if (state != null) _trade.Open(state.CurrentPlayer.Id);
+                    break;
+            }
+        }
+
+        /// <summary>Closes the window on top, as Esc does.</summary>
+        public void CloseTop() => CloseTopWindow(_controller.Session?.State);
+
         public void Bind(GameSceneController controller)
         {
             _controller = controller;
@@ -230,7 +255,7 @@ namespace Lazpoly.Presentation.Game
 
             RectTransform banner = UiRoot.Rect(_canvas.transform, "Turn Banner", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-320f, -150f), new Vector2(320f, -60f));
-            _bannerFill = UiRoot.Background(banner, UiPalette.Ink.Masthead, shadow: true);
+            _bannerFill = UiRoot.Banner(banner, 90f, dark: false); // The cream skin, tinted in the player's colour when it shows.
             _bannerGroup = banner.gameObject.AddComponent<CanvasGroup>();
             _bannerGroup.blocksRaycasts = false;
             _bannerGroup.alpha = 0f;
@@ -292,7 +317,7 @@ namespace Lazpoly.Presentation.Game
         {
             RectTransform card = UiRoot.Rect(_canvas.transform, "Card Popup", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(-260f, -40f), new Vector2(260f, 150f));
-            UiRoot.Background(card, new Color(0.98f, 0.93f, 0.78f, 0.97f));
+            UiRoot.Panel(card).raycastTarget = false; // A sheet of the kit's paper, like every window.
             _cardGroup = card.gameObject.AddComponent<CanvasGroup>();
             _cardGroup.blocksRaycasts = false;
             _cardGroup.interactable = false;
@@ -300,8 +325,8 @@ namespace Lazpoly.Presentation.Game
             _cardRect = card;
             UiBuilder.AddColumnLayout(card.gameObject, 18, 8f);
             var builder = new UiBuilder(card);
-            _cardTitle = builder.Label(L("SOKAK HABERİ"), UiTextStyle.Heading, new Color(0.55f, 0.28f, 0.08f), TextAnchor.MiddleCenter);
-            _cardText = builder.Label("", UiTextStyle.Body, new Color(0.15f, 0.12f, 0.10f), TextAnchor.MiddleCenter);
+            _cardTitle = builder.Label(L("SOKAK HABERİ"), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
+            _cardText = builder.Label("", UiTextStyle.Body, UiTheme.Text, TextAnchor.MiddleCenter);
             _cardText.fontSize = 22;
         }
 
@@ -310,7 +335,7 @@ namespace Lazpoly.Presentation.Game
         {
             RectTransform roll = UiRoot.Rect(_canvas.transform, "Roll Popup", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(-220f, -214f), new Vector2(220f, -160f));
-            UiRoot.Background(roll, UiPalette.Ink.Masthead, shadow: true);
+            UiRoot.Banner(roll, 54f);
             _rollGroup = roll.gameObject.AddComponent<CanvasGroup>();
             _rollGroup.blocksRaycasts = false;
             _rollGroup.interactable = false;
@@ -356,7 +381,6 @@ namespace Lazpoly.Presentation.Game
             prompt.sizeDelta = new Vector2(UiLayout.RollPromptWidth, UiLayout.RollPromptHeight);
             UiBuilder.AddColumnLayout(prompt.gameObject, 0, 0f);
             Button button = new UiBuilder(prompt).Button(L("Zar At").ToUpperInvariant(), PressRollPrompt, true, UiButtonStyle.Primary, UiLayout.RollPromptHeight);
-            UiRoot.AddShadow(button.gameObject, 6f);
             Text label = button.GetComponentInChildren<Text>();
             label.fontSize = 34;
             label.resizeTextMaxSize = 34;
@@ -392,7 +416,7 @@ namespace Lazpoly.Presentation.Game
         private void BuildTipPanel(RectTransform stack)
         {
             RectTransform tip = UiRoot.Rect(stack, "Tip", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
-            UiRoot.Background(tip, UiTheme.Card, shadow: true);
+            UiRoot.Card(tip);
             UiBuilder.AddColumnLayout(tip.gameObject, 14, 8f);
             _tipPanel = tip.gameObject;
             _tipView = new UiView(new UiBuilder(tip), RenderTip);
@@ -945,7 +969,7 @@ namespace Lazpoly.Presentation.Game
             Color cardColor = current ? CurrentCardColor : UiTheme.Card;
             UiBuilder card = ui.Card(cardColor, 10);
             _playerCards[player.Id] = card.Container.GetComponent<Image>();
-            _playerCardColors[player.Id] = cardColor;
+            _playerCardColors[player.Id] = _playerCards[player.Id].color; // The colour it rests at (the kit's skin is drawn untinted).
             if (current) card.Rule();
 
             UiBuilder row = card.Row(10f, expand: false);
