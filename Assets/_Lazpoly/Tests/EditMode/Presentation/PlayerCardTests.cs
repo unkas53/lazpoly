@@ -123,7 +123,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsTrue(faces.HasPhoto(1));
                 Assert.AreEqual(4f, faces.For(1, 0).rect.width);
                 Assert.IsFalse(faces.HasPhoto(2));
-                Assert.AreEqual(PlayerFaces.Portraits[0], faces.For(2, 1)?.name, "a computer keeps a portrait");
+                Assert.AreEqual(PlayerFaces.Portraits[2], faces.For(2, 1)?.name, "a computer keeps a portrait (seat 1 takes the second of the faces the chooser left)");
 
                 int asked = avatars.Asked;
                 faces.Update(10f);
