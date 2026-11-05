@@ -3,11 +3,17 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Models
 {
-    /// <summary>The two figures a player can be; seats alternate between them.</summary>
+    /// <summary>The figures a player can be; seats take them in turn.</summary>
     public enum CharacterKind
     {
         Man = 0,
         Woman = 1,
+
+        /// <summary>The stylised business man in a navy three-piece suit (textured, <see cref="FigureModels"/>).</summary>
+        Suit = 2,
+
+        /// <summary>The gentleman with a hat and a cane (textured, <see cref="FigureModels"/>).</summary>
+        Gentleman = 3,
     }
 
     /// <summary>
@@ -17,6 +23,9 @@ namespace Lazpoly.Presentation.Models
     /// moves them as one piece. One part per material; the jacket's four materials (and the woman's skirt)
     /// take the player's colour, everything else keeps the model's own palette. When a model is missing the
     /// other one stands in, and when both are, the pawns fall back to the town's shapes (<see cref="PawnShapes"/>).
+    /// Two more figures are textured models the owner made with Meshy AI (<see cref="FigureModels"/>): the
+    /// stylised man in a suit and the gentleman with a cane keep their own clothes and stand on a disc in the
+    /// player's colour; when their files are missing the business man stands in.
     /// </summary>
     public static class CharacterParts
     {
@@ -32,6 +41,16 @@ namespace Lazpoly.Presentation.Models
         public const string JacketLightPart = "jacket_light";
         public const string JacketDarkPart = "jacket_dark";
         public const string LapelPart = "lapel";
+
+        /// <summary>The textured figures' ids in Resources (figure_&lt;id&gt;.bytes).</summary>
+        public const string SuitFigure = "suit";
+        public const string GentlemanFigure = "cane";
+
+        public const string SuitName = "Takım Elbiseli";
+        public const string GentlemanName = "Bastonlu Beyefendi";
+
+        /// <summary>The order the seats take the figures in.</summary>
+        public static readonly CharacterKind[] SeatOrder = { CharacterKind.Man, CharacterKind.Woman, CharacterKind.Suit, CharacterKind.Gentleman };
 
         /// <summary>The woman's skirt, painted a shade darker than the jacket like the other half of a suit.</summary>
         public const string SkirtPart = "skirt";
@@ -53,12 +72,26 @@ namespace Lazpoly.Presentation.Models
         /// <summary>Whether a character model is in the build; false means the pawns are the town's shapes.</summary>
         public static bool IsAvailable => Load(CharacterKind.Man) != null || Load(CharacterKind.Woman) != null;
 
-        /// <summary>The figure at a seat: men and women take turns round the table.</summary>
-        public static CharacterKind KindFor(int seatIndex) => (seatIndex % 2 + 2) % 2 == 0 ? CharacterKind.Man : CharacterKind.Woman;
+        /// <summary>The figure at a seat: the four figures take turns round the table (<see cref="SeatOrder"/>).</summary>
+        public static CharacterKind KindFor(int seatIndex) => SeatOrder[(seatIndex % SeatOrder.Length + SeatOrder.Length) % SeatOrder.Length];
 
-        public static string ResourceOf(CharacterKind kind) => kind == CharacterKind.Woman ? WomanResource : Resource;
+        /// <summary>Whether a figure is one of the textured ones (<see cref="FigureModels"/>) rather than a painted model.</summary>
+        public static bool IsTextured(CharacterKind kind) => kind == CharacterKind.Suit || kind == CharacterKind.Gentleman;
 
-        public static string NameOf(CharacterKind kind) => kind == CharacterKind.Woman ? WomanName : Name;
+        /// <summary>A textured figure's id in Resources; null for the painted ones.</summary>
+        public static string FigureOf(CharacterKind kind) =>
+            kind == CharacterKind.Suit ? SuitFigure : kind == CharacterKind.Gentleman ? GentlemanFigure : null;
+
+        public static string ResourceOf(CharacterKind kind) =>
+            IsTextured(kind) ? FigureModels.MeshResource(FigureOf(kind)) : kind == CharacterKind.Woman ? WomanResource : Resource;
+
+        public static string NameOf(CharacterKind kind) => kind switch
+        {
+            CharacterKind.Woman => WomanName,
+            CharacterKind.Suit => SuitName,
+            CharacterKind.Gentleman => GentlemanName,
+            _ => Name,
+        };
 
         /// <summary>The man's parsed model.</summary>
         public static ObjModel Load() => Load(CharacterKind.Man);
@@ -66,6 +99,7 @@ namespace Lazpoly.Presentation.Models
         /// <summary>The parsed model of a figure, loaded once; null when the asset is missing or unreadable.</summary>
         public static ObjModel Load(CharacterKind kind)
         {
+            if (IsTextured(kind)) return null; // Textured figures are no OBJ models (see FigureModels).
             int index = (int)kind;
             if (Loaded[index]) return Models[index];
             Loaded[index] = true;
@@ -105,11 +139,18 @@ namespace Lazpoly.Presentation.Models
         public static GameObject Character(string name, Transform parent) => Character(CharacterKind.Man, name, parent);
 
         /// <summary>
-        /// A figure as a parent object with one part per material; the other figure when this one's model is
-        /// missing; null when neither is there.
+        /// A figure as a parent object: one part per material for the painted ones, the body and its stand for the
+        /// textured ones; another figure when this one's model is missing; null when none is there.
         /// </summary>
         public static GameObject Character(CharacterKind kind, string name, Transform parent)
         {
+            if (IsTextured(kind))
+            {
+                GameObject figure = FigureModels.Create(FigureOf(kind), name, parent);
+                if (figure != null) return figure;
+                kind = CharacterKind.Man; // Its files are missing: the business man stands in.
+            }
+
             if (Load(kind) == null) kind = kind == CharacterKind.Man ? CharacterKind.Woman : CharacterKind.Man;
             ObjModel model = Load(kind);
             if (model == null) return null;
@@ -134,6 +175,7 @@ namespace Lazpoly.Presentation.Models
             PaintPart(character, JacketDarkPart, Dark(player));
             PaintPart(character, LapelPart, Lapel(player));
             PaintPart(character, SkirtPart, Skirt(player));
+            PaintPart(character, FigureModels.StandPart, player); // A textured figure keeps its clothes and stands on the player's colour.
         }
 
         private static void PaintPart(GameObject character, string material, Color color)

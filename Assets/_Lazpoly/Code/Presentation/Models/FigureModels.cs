@@ -1,0 +1,179 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
+namespace Lazpoly.Presentation.Models
+{
+    /// <summary>
+    /// The owner's textured figures (made with Meshy AI from pictures): the stylised business man in a suit and the
+    /// gentleman with a cane. Tools/Art/make_figures.py turns each into figure_&lt;id&gt;.bytes (two levels of detail,
+    /// one unit tall, soles at y = 0, facing +Z) and figure_&lt;id&gt;_skin.bytes (the colour map). A figure keeps its own
+    /// clothes; it stands on a thin <see cref="StandPart"/> disc in the player's colour, so two players with the same
+    /// figure still tell apart. The whole model shows at the High graphics quality and the light one at Medium and
+    /// Low (<see cref="SetFullDetail"/>, switched in place like the buildings).
+    /// </summary>
+    public static class FigureModels
+    {
+        public const string Folder = "Lazpoly/Models/";
+
+        /// <summary>The part that carries the figure and its colour map.</summary>
+        public const string BodyPart = "body";
+
+        /// <summary>The disc under the feet, painted in the player's colour.</summary>
+        public const string StandPart = "stand";
+
+        /// <summary>The stand's size in the figure's units (the figure is one unit tall): its radius and thickness.</summary>
+        public const float StandRadius = 0.2f;
+        public const float StandThickness = 0.02f;
+
+        private const float Smoothness = 0.2f;
+
+        private sealed class Figure
+        {
+            public Mesh Full;
+            public Mesh Light;
+            public Texture2D Skin;
+        }
+
+        private static readonly Dictionary<string, Figure> Figures = new Dictionary<string, Figure>();
+        private static readonly HashSet<string> Missing = new HashSet<string>();
+        private static readonly List<(MeshFilter filter, string id)> Live = new List<(MeshFilter, string)>();
+        private static bool _fullDetail = true;
+
+        public static string MeshResource(string id) => Folder + "figure_" + id;
+        public static string SkinResource(string id) => Folder + "figure_" + id + "_skin";
+
+        /// <summary>Whether the figure's files are in the build and readable.</summary>
+        public static bool IsAvailable(string id) => Load(id) != null;
+
+        /// <summary>
+        /// The figure as a parent object with its body (raised onto the stand) and the stand, or null when its files
+        /// are missing.
+        /// </summary>
+        public static GameObject Create(string id, string name, Transform parent)
+        {
+            Figure figure = Load(id);
+            if (figure == null) return null;
+
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            GameObject body = ModelParts.Create(BodyPart, root.transform, _fullDetail ? figure.Full : figure.Light, Color.white, Smoothness);
+            body.transform.localPosition = new Vector3(0f, StandThickness, 0f);
+            if (figure.Skin != null) ModelParts.Skin(body, figure.Skin);
+            Live.Add((body.GetComponent<MeshFilter>(), id));
+
+            GameObject stand = ModelParts.Create(StandPart, root.transform, MeshFactory.Disc(StandThickness), Color.white, 0.3f);
+            stand.transform.localScale = new Vector3(StandRadius, 1f, StandRadius);
+            return root;
+        }
+
+        /// <summary>Shows the whole models (true, the High quality) or the light ones, on every figure already made too.</summary>
+        public static void SetFullDetail(bool full)
+        {
+            if (_fullDetail == full) return;
+            _fullDetail = full;
+            for (int i = Live.Count - 1; i >= 0; i--)
+            {
+                (MeshFilter filter, string id) = Live[i];
+                if (filter == null || !Figures.TryGetValue(id, out Figure figure) || figure == null) Live.RemoveAt(i); // Its scene is gone.
+                else filter.sharedMesh = full ? figure.Full : figure.Light;
+            }
+        }
+
+        /// <summary>Whether the whole models are shown now.</summary>
+        public static bool FullDetail => _fullDetail;
+
+        private static Figure Load(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            if (Figures.TryGetValue(id, out Figure cached)) return cached;
+            if (Missing.Contains(id)) return null;
+
+            var asset = Resources.Load<TextAsset>(MeshResource(id));
+            if (asset == null) return Fail(id, "is missing");
+            IReadOnlyList<FigureMesh> levels;
+            try
+            {
+                levels = FigurePack.Parse(asset.bytes);
+            }
+            catch (FormatException exception)
+            {
+                return Fail(id, $"could not be read: {exception.Message}");
+            }
+
+            FigureMesh full = Find(levels, FigurePack.HighLevel);
+            FigureMesh light = Find(levels, FigurePack.LowLevel) ?? full;
+            if (full == null) return Fail(id, "has no High level");
+
+            var figure = new Figure
+            {
+                Full = full.ToMesh($"figure-{id}"),
+                Light = light == full ? null : light.ToMesh($"figure-{id}-low"),
+                Skin = LoadSkin(id),
+            };
+            figure.Light ??= figure.Full;
+            Figures[id] = figure;
+            return figure;
+        }
+
+        private static FigureMesh Find(IReadOnlyList<FigureMesh> levels, string name)
+        {
+            foreach (FigureMesh level in levels)
+            {
+                if (level.Name == name) return level;
+            }
+
+            return null;
+        }
+
+        /// <summary>The colour map, compressed on the graphics card once decoded; null (a white figure) when it is missing.</summary>
+        private static Texture2D LoadSkin(string id)
+        {
+            var asset = Resources.Load<TextAsset>(SkinResource(id));
+            if (asset == null)
+            {
+                Debug.LogWarning($"[Lazpoly] Figure colour map '{SkinResource(id)}' is missing; the figure shows white. Run Tools/Art/make_figures.py.");
+                return null;
+            }
+
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, true) { name = $"figure-{id}-skin", hideFlags = HideFlags.DontSave };
+            if (!texture.LoadImage(asset.bytes, false))
+            {
+                Destroy(texture);
+                Debug.LogWarning($"[Lazpoly] Figure colour map '{SkinResource(id)}' could not be read; the figure shows white.");
+                return null;
+            }
+
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Trilinear;
+            texture.anisoLevel = 4;
+            // Decoding made the mipmaps; compressing keeps them and shrinks the map about eight times on the card.
+            if (texture.width % 4 == 0 && texture.height % 4 == 0) texture.Compress(true);
+            texture.Apply(false, true);
+            return texture;
+        }
+
+        private static Figure Fail(string id, string problem)
+        {
+            Missing.Add(id);
+            Debug.LogWarning($"[Lazpoly] Figure '{MeshResource(id)}' {problem}; another figure stands in. Run Tools/Art/make_figures.py.");
+            return null;
+        }
+
+        private static void Destroy(Object thing)
+        {
+            if (Application.isPlaying) Object.Destroy(thing);
+            else Object.DestroyImmediate(thing);
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            Figures.Clear();
+            Missing.Clear();
+            Live.Clear();
+            _fullDetail = true;
+        }
+    }
+}

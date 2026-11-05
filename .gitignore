@@ -35,3 +35,6 @@ Thumbs.db
 *.aab
 *.unitypackage
 crashlytics-build.properties
+
+# Meshy figure sources are large; they live in the project files (see Tools/Art/Models/Figures/KAYNAK.md).
+Tools/Art/Models/Figures/*.glb

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Pawns;
@@ -113,12 +114,15 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void SeatsAlternateBetweenTheTwoFigures()
+        public void SeatsTakeTheFourFiguresInTurn()
         {
             Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(0));
             Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(1));
-            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(6));
-            Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(7));
+            Assert.AreEqual(CharacterKind.Suit, CharacterParts.KindFor(2));
+            Assert.AreEqual(CharacterKind.Gentleman, CharacterParts.KindFor(3));
+            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(4));
+            Assert.AreEqual(CharacterKind.Suit, CharacterParts.KindFor(6));
+            Assert.AreEqual(CharacterKind.Gentleman, CharacterParts.KindFor(7));
             Assert.AreNotEqual(CharacterParts.ResourceOf(CharacterKind.Man), CharacterParts.ResourceOf(CharacterKind.Woman));
 
             var root = new GameObject("Woman Test");
@@ -187,5 +191,99 @@ namespace Lazpoly.Presentation.Tests
 
         private static Color PartColor(GameObject character, string material) =>
             character.transform.Find(material).GetComponent<Renderer>().sharedMaterial.color;
+
+        [TestCase(CharacterKind.Suit)]
+        [TestCase(CharacterKind.Gentleman)]
+        public void TheTexturedFiguresAreOneUnitTallAndLighterForMediumAndLow(CharacterKind kind)
+        {
+            string id = CharacterParts.FigureOf(kind);
+            string folder = Path.Combine(Application.dataPath, "_Lazpoly", "Data", "Resources", "Lazpoly", "Models");
+            string path = Path.Combine(folder, $"figure_{id}.bytes");
+            Assert.IsTrue(File.Exists(path), "run Tools/Art/make_figures.py");
+            Assert.IsTrue(File.Exists(Path.Combine(folder, $"figure_{id}_skin.bytes")), "the colour map ships with the figure");
+            var levels = FigurePack.Parse(File.ReadAllBytes(path));
+            FigureMesh high = levels.Single(level => level.Name == FigurePack.HighLevel);
+            FigureMesh low = levels.Single(level => level.Name == FigurePack.LowLevel);
+            Assert.That(high.TriangleCount, Is.InRange(60000, 130000), "detailed on High, yet eight of them stay smooth");
+            Assert.That(low.TriangleCount, Is.InRange(10000, 30000));
+            Assert.Less(low.TriangleCount, high.TriangleCount / 3);
+
+            foreach (FigureMesh level in levels)
+            {
+                var bounds = new Bounds(level.Positions[0], Vector3.zero);
+                foreach (Vector3 position in level.Positions) bounds.Encapsulate(position);
+                Assert.That(bounds.size.y, Is.EqualTo(1f).Within(0.01f), $"{level.Name}: one unit tall like the others");
+                Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), $"{level.Name}: the soles stand on the stand");
+                Assert.That(bounds.size.x, Is.InRange(0.3f, 0.6f));
+                Assert.AreEqual(level.Positions.Length, level.Uvs.Length);
+                foreach (Vector2 uv in level.Uvs) Assert.IsTrue(uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f);
+            }
+
+            var root = new GameObject("Figure Test");
+            try
+            {
+                GameObject figure = CharacterParts.Character(kind, "Model", root.transform);
+                Assert.IsNotNull(figure.transform.Find(FigureModels.BodyPart), "the textured figure, not the stand-in");
+                Transform stand = figure.transform.Find(FigureModels.StandPart);
+                Assert.IsNotNull(stand);
+                var player = new Color(0.85f, 0.39f, 0.33f);
+                CharacterParts.Paint(figure, player);
+                AssertColor(player, stand.GetComponent<Renderer>().sharedMaterial.color);
+                Renderer body = figure.transform.Find(FigureModels.BodyPart).GetComponent<Renderer>();
+                AssertColor(Color.white, body.sharedMaterial.color);
+                Assert.IsNotNull(body.sharedMaterial.mainTexture, "the figure wears its own colour map");
+                Assert.AreEqual(high.Positions.Length, body.GetComponent<MeshFilter>().sharedMesh.vertexCount, "the whole model on High");
+                FigureModels.SetFullDetail(false);
+                Assert.AreEqual(low.Positions.Length, body.GetComponent<MeshFilter>().sharedMesh.vertexCount, "the light model on Medium and Low");
+            }
+            finally
+            {
+                FigureModels.SetFullDetail(true);
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void AFigureFileIsReadWholeOrRefused()
+        {
+            byte[] figure = TinyFigure();
+            FigureMesh level = FigurePack.Parse(figure).Single();
+            Assert.AreEqual("High", level.Name);
+            Assert.AreEqual(1, level.TriangleCount);
+            Assert.That(level.Positions[1].y, Is.EqualTo(1f));
+            Assert.That(level.Normals[0].z, Is.EqualTo(1f).Within(1e-4f));
+            Assert.That(level.Uvs[2].x, Is.EqualTo(1f).Within(1e-4f));
+            Assert.Throws<System.FormatException>(() => FigurePack.Parse(figure.Take(figure.Length - 2).ToArray()), "cut short");
+            Assert.Throws<System.FormatException>(() => FigurePack.Parse(figure.Concat(new byte[] { 0 }).ToArray()), "extra bytes");
+            byte[] wrong = (byte[])figure.Clone();
+            wrong[0] = (byte)'X';
+            Assert.Throws<System.FormatException>(() => FigurePack.Parse(wrong));
+        }
+
+        /// <summary>One triangle in the make_figures.py format.</summary>
+        private static byte[] TinyFigure()
+        {
+            using var stream = new MemoryStream();
+            using var writer = new BinaryWriter(stream);
+            writer.Write(FigurePack.Magic);
+            writer.Write((byte)1);
+            writer.Write((byte)4);
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("High"));
+            writer.Write(3);
+            foreach (float value in new[] { 0f, 0f, 0f, 0f, 1f, 0f, 1f, 0f, 0f }) writer.Write(value);
+            for (int i = 0; i < 3; i++)
+            {
+                writer.Write((short)0);
+                writer.Write((short)0);
+                writer.Write((short)32767);
+            }
+
+            foreach (ushort value in new ushort[] { 0, 0, 0, 65535, 65535, 0 }) writer.Write(value);
+            writer.Write((byte)2);
+            writer.Write(3);
+            foreach (ushort index in new ushort[] { 0, 1, 2 }) writer.Write(index);
+            writer.Flush();
+            return stream.ToArray();
+        }
     }
 }

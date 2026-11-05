@@ -50,6 +50,7 @@ namespace Lazpoly.Presentation.Models
             Color color = solid.color;
             color.a = Mathf.Clamp01(alpha);
             copy.color = color;
+            if (solid.mainTexture != null) copy.mainTexture = solid.mainTexture; // A textured figure fades with its clothes on.
             if (solid.HasProperty("_Smoothness") && copy.HasProperty("_Smoothness")) copy.SetFloat("_Smoothness", solid.GetFloat("_Smoothness"));
             return copy;
         }
