@@ -1,68 +1,75 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// The measures of the main menu, in pixels of the 1920x1080 reference screen. The menu is one paper
-    /// "window" with a green masthead, laid over the board behind it; the home page under the masthead
-    /// is a title strip, a grid of cards three wide and two tall, and a footer line. Layout groups place
-    /// the parts at run time; the arithmetic here says what size they come out at, for the tests.
+    /// Where the main menu's parts stand, in the owner's kit's 1920x1080 design (x and y from the top left;
+    /// Layout.json, with the ways in the game has that the kit leaves out). The design is one frame scaled to fit the
+    /// screen whole (<see cref="FrameScale"/>), over the city background that covers the screen. Left: the profile card,
+    /// the logo, the tagline and the buttons; top right: sound and settings; bottom: characters, how to play, settings,
+    /// and the line of the board's dearest towns.
     /// </summary>
     public static class MenuLayout
     {
-        /// <summary>Sky showing round the window.</summary>
-        public const float WindowMargin = 40f;
+        public static readonly Vector2 Design = new Vector2(1920f, 1080f);
 
-        /// <summary>The masthead band across the top of the window, tall enough for the logo.</summary>
-        public const float MastheadHeight = 128f;
+        public static readonly Rect Profile = new Rect(100f, 40f, 310f, 76f);
+        public static readonly Rect ProfileDisc = new Rect(115f, 48f, 56f, 56f);
+        public static readonly Rect ProfileName = new Rect(188f, 48f, 204f, 28f);
+        public static readonly Rect ProfileCaption = new Rect(188f, 79f, 204f, 20f);
 
-        /// <summary>Room between the window's edge and what is written on it.</summary>
-        public const float Padding = 36f;
+        public static readonly Rect Sound = new Rect(1668f, 40f, 70f, 76f);
+        public static readonly Rect SettingsTop = new Rect(1750f, 40f, 70f, 76f);
 
-        /// <summary>The title strip under the masthead: eyebrow, greeting and a line under it.</summary>
-        public const float TitleHeight = 136f;
+        public static readonly Rect Logo = new Rect(110f, 124f, 610f, 296f);
+        public static readonly Rect Tagline = new Rect(140f, 428f, 650f, 46f);
+        public static readonly Rect Subtitle = new Rect(140f, 474f, 640f, 32f);
 
-        /// <summary>The logo picture at the left of the masthead (it is square).</summary>
-        public const float LogoSize = 116f;
+        /// <summary>The big dark button: straight to a table against the computer.</summary>
+        public static readonly Rect Play = new Rect(140f, 526f, 580f, 104f);
+        public static readonly Rect Host = new Rect(140f, 648f, 280f, 84f);
+        public static readonly Rect Join = new Rect(440f, 648f, 280f, 84f);
+        public static readonly Rect Single = new Rect(140f, 750f, 280f, 84f);
+        public static readonly Rect Local = new Rect(440f, 750f, 280f, 84f);
 
-        /// <summary>Between the title strip, the cards and the footer.</summary>
-        public const float RowGap = 20f;
+        /// <summary>Under the buttons: the saved game to go on with, the room still open, or the kit's motto.</summary>
+        public static readonly Rect Info = new Rect(140f, 852f, 740f, 72f);
 
-        /// <summary>The footer line at the bottom of the window: the motto and the big button.</summary>
-        public const float FooterHeight = 72f;
+        public static readonly Rect Characters = new Rect(100f, 950f, 250f, 80f);
+        public static readonly Rect HowToPlay = new Rect(366f, 950f, 280f, 80f);
+        public static readonly Rect SettingsBottom = new Rect(662f, 950f, 210f, 80f);
 
-        /// <summary>Gap between cards.</summary>
+        public static readonly Rect WorldIcon = new Rect(1250f, 959f, 46f, 46f);
+        public static readonly Rect WorldTitle = new Rect(1310f, 948f, 560f, 30f);
+        public static readonly Rect WorldTowns = new Rect(1310f, 982f, 560f, 26f);
+
+        /// <summary>Steam's state and the build's version, small under the towns.</summary>
+        public static readonly Rect Status = new Rect(1310f, 1012f, 560f, 22f);
+
+        /// <summary>A mode's setup (one player, one computer, a room) on a paper sheet over the menu.</summary>
+        public static readonly Rect Sheet = new Rect(90f, 60f, 1740f, 960f);
+
+        /// <summary>Gap between the lobby's columns on the sheet.</summary>
         public const float CardGap = 24f;
 
-        public const int CardColumns = 3;
-        public const int CardRows = 2;
-        public const int CardCount = CardColumns * CardRows;
+        /// <summary>The character window and its parts.</summary>
+        public static readonly Rect CharacterPanel = new Rect(410f, 180f, 1100f, 710f);
+        public const float CharacterCardWidth = 230f;
+        public const float CharacterCardHeight = 425f;
+        public const float CharacterCardGap = 20f;
 
-        /// <summary>The home page's cards never get shorter than this, so their title, line and chip fit.</summary>
-        public const float MinCardHeight = 170f;
+        /// <summary>The design frame's scale on a canvas of this size: the whole design shows, centred, never cropped.</summary>
+        public static float FrameScale(Vector2 canvas) => Mathf.Min(canvas.x / Design.x, canvas.y / Design.y);
 
-        /// <summary>The coloured stripe down a card's left edge.</summary>
-        public const float CardStripe = 9f;
-
-        /// <summary>A mode's setup sheet in the middle of the window.</summary>
-        public const float SheetWidth = 860f;
-
-        /// <summary>The big button at the right of the footer.</summary>
-        public static readonly Vector2 FooterButton = new Vector2(300f, 56f);
-
-        /// <summary>The page under the masthead, inside the padding: how tall it is on a screen of this height.</summary>
-        public static float PageHeight(float screenHeight) => screenHeight - 2f * WindowMargin - MastheadHeight - 2f * Padding;
-
-        /// <summary>How tall each home card comes out on a screen of this height, before the minimum applies.</summary>
-        public static float CardHeight(float screenHeight) =>
-            (PageHeight(screenHeight) - TitleHeight - FooterHeight - 2f * RowGap - (CardRows - 1) * CardGap) / CardRows;
-
-        /// <summary>How wide each home card comes out on a screen of this width.</summary>
-        public static float CardWidth(float screenWidth) =>
-            (screenWidth - 2f * WindowMargin - 2f * Padding - (CardColumns - 1) * CardGap) / CardColumns;
-
-        /// <summary>The smallest reference screen height at which the home page's parts stack without overlapping.</summary>
-        public static float MinScreenHeight =>
-            2f * WindowMargin + MastheadHeight + 2f * Padding + TitleHeight + FooterHeight + 2f * RowGap + CardRows * MinCardHeight + (CardRows - 1) * CardGap;
+        /// <summary>The home screen's parts by name, for the test that none overlaps another or leaves the design.</summary>
+        public static IReadOnlyDictionary<string, Rect> HomeParts => new Dictionary<string, Rect>
+        {
+            { nameof(Profile), Profile }, { nameof(Sound), Sound }, { nameof(SettingsTop), SettingsTop },
+            { nameof(Logo), Logo }, { nameof(Tagline), Tagline }, { nameof(Subtitle), Subtitle },
+            { nameof(Play), Play }, { nameof(Host), Host }, { nameof(Join), Join }, { nameof(Single), Single }, { nameof(Local), Local },
+            { nameof(Info), Info }, { nameof(Characters), Characters }, { nameof(HowToPlay), HowToPlay }, { nameof(SettingsBottom), SettingsBottom },
+            { nameof(WorldIcon), WorldIcon }, { nameof(WorldTitle), WorldTitle }, { nameof(WorldTowns), WorldTowns }, { nameof(Status), Status },
+        };
     }
 }

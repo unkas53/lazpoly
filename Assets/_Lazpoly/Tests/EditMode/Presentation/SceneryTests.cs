@@ -4,7 +4,6 @@ using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Dice;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Models;
-using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
 using UnityEngine;
@@ -323,15 +322,6 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(aim.y, peeked.y, "the aim keeps its height");
             Vector3 farPeek = BoardCameraRig.PeekAim(aim, new Vector3(100f, 0f, 3f), center, 6f);
             Assert.That(Vector3.Distance(farPeek, peeked), Is.LessThan(1e-4f), "a point off the board counts as its edge");
-        }
-
-        [Test]
-        public void TheMenuBackdropBreathesAroundTheFramedView()
-        {
-            Assert.AreEqual(10f, MenuBackdrop.BreathingSize(10f, 0f), 1e-4f);
-            Assert.AreEqual(10f * (1f + MenuBackdrop.Breath), MenuBackdrop.BreathingSize(10f, MenuBackdrop.BreathSeconds / 4f), 1e-4f);
-            Assert.AreEqual(10f, MenuBackdrop.BreathingSize(10f, MenuBackdrop.BreathSeconds), 1e-3f, "a full breath comes back");
-            Assert.Less(MenuBackdrop.Breath, 0.1f, "the breathing stays gentle");
         }
 
         [Test]

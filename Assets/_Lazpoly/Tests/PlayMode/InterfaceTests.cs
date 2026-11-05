@@ -52,9 +52,29 @@ namespace Lazpoly.PlayTests
             yield return null;
             yield return null;
 
-            // The first screen only asks how to play.
-            AssertMouseReaches("Tek Oyunculu");
-            Assert.IsTrue(Press(null, "Tek Oyunculu"), "No single player button.");
+            // The kit's home screen: play at once, rooms, the set-up games and the bottom row, all within reach of the mouse.
+            foreach (string way in new[] { "HEMEN OYNA", "ODA KUR", "ODAYA KATIL", "TEK OYUNCULU", "AYNI BİLGİSAYARDA", "Karakterler", "Nasıl oynanır", "Ayarlar" })
+            {
+                AssertMouseReaches(way);
+            }
+
+            // Picking a character names it on the profile card; Esc closes the window. The player's own pick is put back.
+            var menu = Object.FindAnyObjectByType<Lazpoly.Presentation.Menu.MainMenuController>();
+            var choice = new CharacterChoice(new Lazpoly.Infra.Settings.PlayerPrefsStorage());
+            string ownPick = choice.Selected.Id;
+            Assert.IsTrue(Press(null, "Karakterler"));
+            yield return null;
+            AssertMouseReaches("Ada");
+            Assert.IsTrue(Press(null, "Ada"));
+            yield return null;
+            Assert.AreEqual("Ada", choice.Selected.Name);
+            Assert.IsTrue(ShowsText("Karakter: Ada"), "The profile card names the picked character.");
+            Assert.IsTrue(menu.CloseTopWindow());
+            yield return null;
+            Assert.IsNull(Find(null, "Ada"), "The character window closed.");
+            choice.Select(ownPick);
+
+            Assert.IsTrue(Press(null, "TEK OYUNCULU"), "No single player button.");
             yield return null;
             yield return null;
 
@@ -331,6 +351,20 @@ namespace Lazpoly.PlayTests
             Assert.IsTrue(top == button.gameObject || top.transform.IsChildOf(button.transform),
                 $"'{top.name}' lies on top of the '{label}' button.");
             Assert.AreEqual(button.gameObject, ExecuteEvents.GetEventHandler<IPointerClickHandler>(top));
+        }
+
+        /// <summary>Whether some text on screen reads exactly this.</summary>
+        private static bool ShowsText(string value)
+        {
+            foreach (GameObject sceneRoot in SceneManager.GetActiveScene().GetRootGameObjects())
+            {
+                foreach (Text text in sceneRoot.GetComponentsInChildren<Text>())
+                {
+                    if (text.text == value && text.gameObject.activeInHierarchy) return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool Press(Transform root, string label)

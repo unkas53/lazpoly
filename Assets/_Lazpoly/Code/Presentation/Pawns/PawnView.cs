@@ -81,10 +81,11 @@ namespace Lazpoly.Presentation.Pawns
 
         /// <param name="crowd">Shared by every pawn on the board, so two never take the same slot of a square.</param>
         /// <param name="playerId">The pawn's key in <paramref name="crowd"/>.</param>
-        public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId)
+        /// <param name="figure">The figure the player picked (see CharacterChoice); seats alternate between the two when none is given.</param>
+        public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId, CharacterKind? figure = null)
         {
             if (crowd == null) throw new ArgumentNullException(nameof(crowd));
-            CharacterKind kind = CharacterParts.KindFor(seatIndex);
+            CharacterKind kind = figure ?? CharacterParts.KindFor(seatIndex);
             GameObject model = CharacterParts.Character(kind, ModelName, null);
             bool character = model != null;
             var root = new GameObject($"Pawn {seatIndex + 1} {(character ? CharacterParts.NameOf(kind) : PawnShapes.NameOf(seatIndex))}");
