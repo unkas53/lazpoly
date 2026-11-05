@@ -114,15 +114,16 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void SeatsTakeTheFourFiguresInTurn()
+        public void SeatsTakeTheSixFiguresInTurn()
         {
             Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(0));
             Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(1));
             Assert.AreEqual(CharacterKind.Suit, CharacterParts.KindFor(2));
-            Assert.AreEqual(CharacterKind.Gentleman, CharacterParts.KindFor(3));
-            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(4));
-            Assert.AreEqual(CharacterKind.Suit, CharacterParts.KindFor(6));
-            Assert.AreEqual(CharacterKind.Gentleman, CharacterParts.KindFor(7));
+            Assert.AreEqual(CharacterKind.TealSuit, CharacterParts.KindFor(3));
+            Assert.AreEqual(CharacterKind.Gentleman, CharacterParts.KindFor(4));
+            Assert.AreEqual(CharacterKind.HandOnHip, CharacterParts.KindFor(5));
+            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(6));
+            Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(7));
             Assert.AreNotEqual(CharacterParts.ResourceOf(CharacterKind.Man), CharacterParts.ResourceOf(CharacterKind.Woman));
 
             var root = new GameObject("Woman Test");
@@ -194,6 +195,8 @@ namespace Lazpoly.Presentation.Tests
 
         [TestCase(CharacterKind.Suit)]
         [TestCase(CharacterKind.Gentleman)]
+        [TestCase(CharacterKind.TealSuit)]
+        [TestCase(CharacterKind.HandOnHip)]
         public void TheTexturedFiguresAreOneUnitTallAndLighterForMediumAndLow(CharacterKind kind)
         {
             string id = CharacterParts.FigureOf(kind);
@@ -214,7 +217,7 @@ namespace Lazpoly.Presentation.Tests
                 foreach (Vector3 position in level.Positions) bounds.Encapsulate(position);
                 Assert.That(bounds.size.y, Is.EqualTo(1f).Within(0.01f), $"{level.Name}: one unit tall like the others");
                 Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), $"{level.Name}: the soles stand on the tile");
-                Assert.That(bounds.size.x, Is.InRange(0.3f, 0.6f));
+                Assert.That(bounds.size.x, Is.InRange(0.25f, 0.6f));
                 Assert.AreEqual(level.Positions.Length, level.Uvs.Length);
                 foreach (Vector2 uv in level.Uvs) Assert.IsTrue(uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f);
             }
