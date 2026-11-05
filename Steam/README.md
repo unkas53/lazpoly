@@ -83,6 +83,7 @@ beyan edilecek içerik:
 | Logo (ana menü bandı, tahtanın çimenliği, açılış ekranı, exe simgesi) | `Tools/Art/Logo`, oyunda `logo.bytes` | Proje sahibi ChatGPT ile üretti; kaynaktaki portre oyun kopyasında boyanarak kaldırıldı (`KAYNAK.md`) |
 | Ana menü / lobi konsept ekranları | `Tools/Art/Design/Menu` | Yalnız başvuru (ChatGPT); oyunda yalnızca düzen ve tarz kodla kuruldu, görsel kullanılmadı |
 | Ana menü kiti: şehir arka planı, geniş logo, dört karakter portresi (Ece, Ada, Aras, Deniz) | oyunda `Resources/Lazpoly/Art/Menu` (`Tools/Art/make_menu_art.py`) | Proje sahibinin kiti (2026-11-05): arka plan Higgsfield (nano_banana_2_1) ile üretildi, portreler de Higgsfield tasarım çalışmaları; düğme, panel ve simgeler kitin kendi çizimi (SVG) |
+| Oyuncu kartı kiti: kart zeminleri (normal, sırada, iflas), çerçeve, şerit, para, ev ve süre çizgisi, dört kart portresi | oyunda `Resources/Lazpoly/Art/Menu` (`Tools/Art/make_menu_art.py`) | Proje sahibinin kiti (2026-11-05): kart parçaları kitin kendi çizimi (SVG); portreler menü kitinin karakterleriyle aynı tasarım çalışmasından (Higgsfield) |
 
 Ses efektleri yapay zekâ ürünü değildir: Kenney'nin CC0 kayıtlarından kurulur (`Tools/Audio/Kenney/KAYNAK.md`), beyan gerekmez.
 

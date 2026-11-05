@@ -817,6 +817,12 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - `Lazpoly.exe -shots`: oyun pencerelerini sırayla açıp her birinin resmini oyunun yanındaki `lazpoly-shots` klasörüne kaydeder ve kapanır (`ScreenTour`): ana menü, karakterler, ayarlar, nasıl oynanır, tek oyunculu, masa kuralları, aynı bilgisayarda, çevrim içi; sonra bir kişi ve üç bilgisayarlı masada şehir kartı, (açılırsa) bina kartı, kare kartı, masa, mülkler, takas, olaylar, duraklatma, oyun içi ayarlar ve nasıl oynanır. Kayıt dosyasına dokunmaz. Borç satış ekranı için `-perf -debt` kullanılır.
 - Testler: `UiBuilderTests` (düğmeler, kartlar, pencereler ve alanlar kitin resimlerini giyer, ince parçada köşeler küçülür, kit simgeleri yapıda), `PerfTests` gösterim masasını denetler, `MenuTests` yeni paleti ve açılış rengini denetler.
 
+## Faz 19: oyuncu kartları ve Steam profil resmi
+
+- Masanın köşelerindeki oyuncu kartları proje sahibinin oyuncu kartı kitiyle çizilir (`PlayerCardView`, kitin 320x112 tasarımı köşe genişliğine ölçeklenir): solda koyu panelde çerçeveli yüz ve altında oyuncu numarası (lobideki sıra, 01-08), oyuncunun renginde şerit, ad, Lazpoly parası ve sayan para, alttaki şeritte sahip olunan her renk grubu için oyuncunun o gruptaki ilk şehrini açan küçük bir ev (en çok 8). Sırası gelen oyuncunun kartı altın kenarlı kit kartıdır; sağ üstte "SIRA SENDE" (bilgisayarsa "DÜŞÜNÜYOR", başka bilgisayardaki kişiyse "OYNUYOR") ve saat varsa altında kalan süre çizgisi. Sırası olmayan kartta sağ üstte kimin oynadığı (Bilgisayar) ya da çevrim içi bağlantı noktası ve gecikme yazar. İflas eden oyuncunun kartı griye döner ve "İFLAS" yazar.
+- Gerçek bir oyuncu oynuyorsa kartta Steam profil resmi görünür (`PlayerFaces`, `IPlayerAvatars`, `SteamAvatars`): çevrim içi oyunda her kişinin, lobide oturdukları koltuğa göre (`SeatAccounts`, sunucunun koltuk planıyla aynı; ad tutmazsa resim gösterilmez); aynı bilgisayarda oyunu kuran kişinin (bilgisayarda açık Steam hesabı). Resim Steam'den gelene kadar ve diğer herkes için kitin portreleri kullanılır: oyunu kuran kişi menüde seçtiği karakterin portresini, diğerleri kalan portreleri sırayla alır. Steam yoksa yalnız portreler görünür.
+- Testler: `PlayerCardTests` (kit resimleri yapıda, Steam resminin satırları çevrilir, portre dağıtımı, koltuk-hesap eşlemesi, resmin gelince portrenin yerini alması, renk grubu evleri, normal/sıradaki/iflas kartları).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

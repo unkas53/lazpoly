@@ -86,8 +86,7 @@ namespace Lazpoly.Presentation.Game
         private RectTransform _rollRect;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
         private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
-        private readonly Dictionary<int, Image> _playerCards = new Dictionary<int, Image>();
-        private readonly Dictionary<int, Color> _playerCardColors = new Dictionary<int, Color>();
+        private readonly Dictionary<int, PlayerCardView> _playerCards = new Dictionary<int, PlayerCardView>();
         private readonly Dictionary<int, float> _moneyFlash = new Dictionary<int, float>();
         private readonly Dictionary<int, int> _moneyFlashSign = new Dictionary<int, int>();
         private TipMemory _tipMemory;
@@ -509,6 +508,7 @@ namespace Lazpoly.Presentation.Game
             float seconds = _controller.SecondsLeft;
             bool show = state != null && state.Phase != GamePhase.GameOver && !_controller.IsBusy && !_controller.Paused &&
                         !_controller.EndReason.HasValue && !float.IsInfinity(seconds) && WaitsOnSomeoneHere(state);
+            ShowTimeOnCard(state, show ? seconds : (float?)null);
             if (!show)
             {
                 _timer.text = "";
@@ -521,6 +521,18 @@ namespace Lazpoly.Presentation.Game
             bool urgent = seconds <= EdgeWarningSeconds;
             _timer.color = urgent ? UiTheme.Warning : UiTheme.Muted;
             _timeEdge.alpha = urgent ? 0.35f + 0.35f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * Mathf.PI)) : 0f;
+        }
+
+        /// <summary>The thin clock line on the card on turn: the share of the decision's time left, hidden when nobody here is timed.</summary>
+        private void ShowTimeOnCard(GameState state, float? seconds)
+        {
+            int current = state != null ? state.CurrentPlayer.Id : NoPlayer;
+            float limit = state != null ? (float)TurnClock.LimitFor(state.Phase, _controller.Session.Rules.TurnSeconds) : 0f;
+            foreach (KeyValuePair<int, PlayerCardView> card in _playerCards)
+            {
+                bool timed = card.Key == current && seconds.HasValue && limit > 0f && !float.IsInfinity(limit);
+                card.Value.SetTime(timed ? seconds.Value / limit : (float?)null);
+            }
         }
 
         private bool WaitsOnSomeoneHere(GameState state)
@@ -634,20 +646,21 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The player's card glows green or red while their money counts, then fades back over half a second.</summary>
         private void FlashCard(int playerId, int direction)
         {
-            if (!_playerCards.TryGetValue(playerId, out Image card) || card == null) return;
+            if (!_playerCards.TryGetValue(playerId, out PlayerCardView view) || view.Background == null) return;
+            Image card = view.Background;
             _moneyFlash.TryGetValue(playerId, out float flash);
             flash = direction != 0 ? 1f : Mathf.MoveTowards(flash, 0f, Time.unscaledDeltaTime * 2f);
             _moneyFlash[playerId] = flash;
             if (direction != 0) _moneyFlashSign[playerId] = direction; // Which way it went, kept for the fade.
             _moneyFlashSign.TryGetValue(playerId, out int sign);
             Color tint = sign < 0 ? UiTheme.Warning : UiTheme.Gain;
-            card.color = Color.Lerp(_playerCardColors[playerId], tint, flash * 0.35f);
+            card.color = Color.Lerp(Color.white, tint, flash * 0.35f); // The kit's skin rests untinted.
         }
 
         private static void ShowMoney(Text label, RollingNumber money)
         {
             label.text = Lang.N(money.Shown);
-            label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Money;
+            label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Text; // At rest in the kit's ink.
         }
 
         /// <summary>Whether the frame rate and memory strip is shown (F3).</summary>
@@ -962,27 +975,26 @@ namespace Lazpoly.Presentation.Game
             foreach (PlayerState player in here) RenderPlayerCard(ui, state, player);
         }
 
-        /// <summary>A player's card: a round avatar with their initial, the name, the money, their connection and who plays the seat, and their properties.</summary>
+        /// <summary>A player's card in the player card kit's look (<see cref="PlayerCardView"/>): their face, seat number, name, money and towns.</summary>
         private void RenderPlayerCard(UiBuilder ui, GameState state, PlayerState player)
         {
             bool current = player.Id == state.CurrentPlayer.Id && state.Phase != GamePhase.GameOver;
-            Color cardColor = current ? CurrentCardColor : UiTheme.Card;
-            UiBuilder card = ui.Card(cardColor, 10);
-            _playerCards[player.Id] = card.Container.GetComponent<Image>();
-            _playerCardColors[player.Id] = _playerCards[player.Id].color; // The colour it rests at (the kit's skin is drawn untinted).
-            if (current) card.Rule();
-
-            UiBuilder row = card.Row(10f, expand: false);
-            Color color = player.IsBankrupt ? UiTheme.Muted : _controller.ColorOf(player.Id);
-            row.Swatch(color, 44f, round: true, mark: Initial(player.Name));
-            UiBuilder column = row.Column(0f);
-            Text name = column.Label(player.Name, color: player.IsBankrupt ? UiTheme.Muted : UiTheme.Text);
-            name.font = current ? UiTheme.BoldFont : UiTheme.Font;
-            Text money = column.Label(player.IsBankrupt ? L("iflas") : string.Empty, UiTextStyle.Heading, UiTheme.Money);
-            if (!player.IsBankrupt) TrackMoney(player.Id, money);
-
-            RenderPlayerStatus(card, player, current);
-            if (!player.IsBankrupt) RenderOwnedSquares(card, state, player.Id);
+            int seat = FirstPlayerDraw.LobbySeat(state.Players, player.Id);
+            var model = new PlayerCardModel
+            {
+                Name = player.Name,
+                Number = PlayerCardView.NumberOf(seat),
+                Color = _controller.ColorOf(player.Id),
+                State = player.IsBankrupt ? PlayerCardState.Bankrupt : current ? PlayerCardState.Active : PlayerCardState.Normal,
+                Face = _controller.Faces?.For(player.Id, seat),
+                Initial = Initial(player.Name),
+                Pips = player.IsBankrupt ? Array.Empty<PlayerCardPip>() : PlayerCardView.GroupsOf(state, player.Id, _controller.GroupOf, _controller.GroupColorOf),
+            };
+            DescribeSeat(model, player);
+            PlayerCardView view = PlayerCardView.Create(ui.Container, CornerWidth, model, PinSquare);
+            _playerCards[player.Id] = view;
+            if (view.Balance != null) TrackMoney(player.Id, view.Balance);
+            else _moneyLabels.Remove(player.Id);
         }
 
         /// <summary>The letter on a player's avatar: the first of their name, capitalised the Turkish way for a dotted i.</summary>
@@ -1006,47 +1018,28 @@ namespace Lazpoly.Presentation.Game
             ShowMoney(label, money);
         }
 
-        /// <summary>One small square per property the player owns, in board order (so groups sit together).</summary>
-        private void RenderOwnedSquares(UiBuilder card, GameState state, int playerId)
-        {
-            UiBuilder row = null;
-            for (int square = 0; square < state.SquareCount; square++)
-            {
-                if (state.GetOwner(square) != playerId) continue;
-                row ??= card.Row(4f, expand: false);
-                Image swatch = row.Swatch(_controller.GroupColorOf(square), 16f, mark: _controller.GroupMarkOf(square));
-                // A click on the swatch opens the square's card, as a click on the square itself does.
-                swatch.raycastTarget = true;
-                swatch.gameObject.AddComponent<SquareClickTarget>().Bind(square, PinSquare);
-            }
-        }
-
         /// <summary>
-        /// Who or what plays the seat. Online every seat also gets a connection dot (green: reachable,
-        /// red: not) and, when known, the latency the host measures to that machine.
+        /// Who plays the seat, on its card. On turn the pill says it: "SIRA SENDE" to the person here, otherwise
+        /// whether a computer thinks or a person elsewhere plays. Resting cards name a computer, and online show
+        /// a connection dot with the latency the host measures (or that the link is lost).
         /// </summary>
-        private void RenderPlayerStatus(UiBuilder card, PlayerState player, bool current)
+        private void DescribeSeat(PlayerCardModel model, PlayerState player)
         {
             IGameSession session = _controller.Session;
             bool ai = session.IsAiPlaying(player.Id);
             bool connected = session.IsConnected(player.Id);
-            // Whose move it is shows on their card: the person here sees the roll button, the others see who they wait for.
-            if (current && !player.IsBankrupt && !session.CanControl(player.Id)) card.Label(ai ? L("düşünüyor...") : L("oynuyor..."), UiTextStyle.Small, UiTheme.Accent);
-            string tag = !_controller.IsOnline ? (ai ? L("Bilgisayar") : null)
-                : !connected ? (ai ? L("Bağlantı yok, bilgisayar oynuyor") : L("Bağlantı yok"))
-                : ai ? L("Bilgisayar oynuyor (hamle yapmadı)") : null;
-            if (!_controller.IsOnline || player.IsBankrupt)
+            model.Pill = Lang.Upper(session.CanControl(player.Id) && !ai ? L("Sıra sende") : ai ? L("düşünüyor") : L("oynuyor"));
+            if (!_controller.IsOnline)
             {
-                if (tag != null) card.Label(tag, UiTextStyle.Small);
+                model.Status = ai ? L("Bilgisayar") : null;
                 return;
             }
 
-            UiBuilder row = card.Row(6f, expand: false);
-            row.Swatch(connected ? UiTheme.Gain : UiTheme.Warning, 10f, round: true);
+            model.StatusDot = connected ? UiTheme.Gain : UiTheme.Warning;
             int ping = session.PingMs(player.Id);
-            string latency = !connected ? L("bağlantı yok") : ping > 0 ? F($"{ping} ms") : ping == 0 ? L("bu bilgisayar") : L("gecikme ölçülüyor");
-            UiBuilder.Fix(row.Label(latency, UiTextStyle.Small), -1f).flexibleWidth = 1f;
-            if (tag != null) card.Label(tag, UiTextStyle.Small, connected ? UiTheme.Muted : UiTheme.Warning);
+            model.Status = !connected ? L("Bağlantı yok")
+                : ai ? L("Bilgisayar oynuyor")
+                : ping > 0 ? F($"{ping} ms") : ping == 0 ? L("bu bilgisayar") : L("gecikme ölçülüyor");
         }
 
         /// <summary>The link to the host broke: the board stays, the actions wait, and the player sees how long the game holds their seat open.</summary>

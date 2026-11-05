@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turns the owner's main menu kit (Layout.json's pictures, made with Higgsfield) into the menu's art assets.
+"""Turns the owner's interface kits (the main menu kit made with Higgsfield, and the player card kit V2) into art assets.
 
 The kit's pictures are found by their kit names in the folder given (for example the unzipped
 Assets/LazpolyMainMenu/Art and Sprites folders copied into one place) and written as TextAssets under
@@ -23,6 +23,10 @@ CUTOUTS = [
     "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
     "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
     "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound", "Icon_Home", "Icon_Check", "Icon_Hotel",
+    # The player card kit (V2): the card in its three states, its parts and the four character faces.
+    "Card_Normal", "Card_Active", "Card_Bankrupt", "Avatar_Disc", "Avatar_Frame", "Player_Stripe", "Currency_L",
+    "Lazpoly_Mark", "Property_Pip", "Turn_Pill", "Timer_Line", "Number_Tab",
+    "Portrait_Woman_01_Bordo", "Portrait_Woman_02_Turkuaz", "Portrait_Man_01_Mor", "Portrait_Man_02_Lacivert",
 ]
 JPEG_QUALITY = 90
 META = """fileFormatVersion: 2

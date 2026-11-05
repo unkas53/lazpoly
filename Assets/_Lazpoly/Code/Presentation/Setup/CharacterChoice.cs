@@ -9,12 +9,13 @@ namespace Lazpoly.Presentation.Setup
     /// <summary>One of the menu's characters: its kit id, name, accent colour, portrait and the figure it plays with.</summary>
     public sealed class CharacterOption
     {
-        public CharacterOption(string id, string name, Color color, CharacterKind figure)
+        public CharacterOption(string id, string name, Color color, CharacterKind figure, string face)
         {
             Id = id;
             Name = name;
             Color = color;
             Figure = figure;
+            Face = face;
         }
 
         public string Id { get; }
@@ -28,6 +29,9 @@ namespace Lazpoly.Presentation.Setup
 
         /// <summary>The portrait's picture in the menu kit.</summary>
         public string Portrait => "Portrait_" + Id;
+
+        /// <summary>The character's face on a player card at the table (the player card kit's portrait).</summary>
+        public string Face { get; }
     }
 
     /// <summary>
@@ -41,10 +45,10 @@ namespace Lazpoly.Presentation.Setup
 
         public static readonly IReadOnlyList<CharacterOption> All = new[]
         {
-            new CharacterOption("Woman01", "Ece", new Color(0x92 / 255f, 0x3C / 255f, 0x51 / 255f), CharacterKind.Woman),
-            new CharacterOption("Woman02", "Ada", new Color(0x39 / 255f, 0x81 / 255f, 0x8A / 255f), CharacterKind.Woman),
-            new CharacterOption("Man01", "Aras", new Color(0x77 / 255f, 0x5C / 255f, 0x83 / 255f), CharacterKind.Man),
-            new CharacterOption("Man02", "Deniz", new Color(0x27 / 255f, 0x4B / 255f, 0x70 / 255f), CharacterKind.Man),
+            new CharacterOption("Woman01", "Ece", new Color(0x92 / 255f, 0x3C / 255f, 0x51 / 255f), CharacterKind.Woman, "Portrait_Woman_01_Bordo"),
+            new CharacterOption("Woman02", "Ada", new Color(0x39 / 255f, 0x81 / 255f, 0x8A / 255f), CharacterKind.Woman, "Portrait_Woman_02_Turkuaz"),
+            new CharacterOption("Man01", "Aras", new Color(0x77 / 255f, 0x5C / 255f, 0x83 / 255f), CharacterKind.Man, "Portrait_Man_01_Mor"),
+            new CharacterOption("Man02", "Deniz", new Color(0x27 / 255f, 0x4B / 255f, 0x70 / 255f), CharacterKind.Man, "Portrait_Man_02_Lacivert"),
         };
 
         private readonly ISettingsStorage _storage;
