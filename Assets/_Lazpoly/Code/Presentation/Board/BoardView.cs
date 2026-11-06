@@ -171,6 +171,15 @@ namespace Lazpoly.Presentation.Tabletop
         public const float JailNameScale = 1.6f;
         public const float JailNameOffset = 0.26f;
 
+        /// <summary>
+        /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, with a
+        /// big question mark printed flat on the tile's top part in <see cref="ChanceMarkColor"/>, in place of a standing sign.
+        /// </summary>
+        public const float ChanceNameScale = 1.6f;
+        public const float ChanceMarkSize = 0.12f;
+        public const float ChanceMarkDepth = 0.44f;
+        public static readonly Color ChanceMarkColor = new Color(0.36f, 0.27f, 0.62f);
+
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
         public const float NameSize = 0.02f;
         public const float PriceSize = 0.034f;
@@ -213,6 +222,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Color[] _tileColors;
         private bool[] _printed;
         private TextMesh[] _names;
+        private TextMesh[] _chanceMarks;
         private TextMesh[] _prices;
         private int?[] _rents;
         private readonly List<KeyValuePair<Transform, Vector3>> _marks = new List<KeyValuePair<Transform, Vector3>>();
@@ -384,6 +394,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Quaternion rotation = LabelRotation(Outward(Layout.SquareCenter(i)), yaw);
                 if (_names[i] != null) _names[i].transform.localRotation = rotation;
                 if (_prices[i] != null) _prices[i].transform.localRotation = rotation;
+                if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
             }
 
             foreach (KeyValuePair<Transform, Vector3> mark in _marks) mark.Key.localRotation = LabelRotation(mark.Value, yaw);
@@ -671,6 +682,7 @@ namespace Lazpoly.Presentation.Tabletop
             _tileColors = new Color[board.Count];
             _printed = new bool[board.Count];
             _names = new TextMesh[board.Count];
+            _chanceMarks = new TextMesh[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
             _data = data;
@@ -724,6 +736,11 @@ namespace Lazpoly.Presentation.Tabletop
                 {
                     CreateScene(square.Type, i, center, outward, size.y);
                 }
+                else if (IsChance(i))
+                {
+                    _chanceMarks[i] = CreateLabel("Chance mark", "?", BuildingRowCenter(center) + Vector3.up * PrintHeight, outward,
+                        _width * ChanceMarkSize, new Vector2(size.x * NameFill, _depth * ChanceMarkDepth), ChanceMarkColor);
+                }
                 else
                 {
                     CreateIcon(square.Type, center, outward);
@@ -735,7 +752,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 namePlace = corner
                     ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : CornerNameOffset))
                     : center + down * (_depth * NameOffset);
-                _names[i] = CreateLabel("Name", PrintedName(square), namePlace + Vector3.up * top, outward,
+                _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkColor);
                 string subtitle = Subtitle(square);
                 if (subtitle != null || property)
@@ -899,7 +916,14 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>The room a square's name may fill: the tile's width less a margin (and the group's letter, when shown), and its line's depth.</summary>
         /// <summary>How much larger than other names a square's name is printed: the jail's, larger.</summary>
-        private float NameScale(int index) => _data.Board[index].Type == SquareType.Jail ? JailNameScale : 1f;
+        private float NameScale(int index) =>
+            _data.Board[index].Type == SquareType.Jail ? JailNameScale : IsChance(index) ? ChanceNameScale : 1f;
+
+        /// <summary>A Şans square: a card square along an edge (the card corner is Sokak Haberi, with its kiosk).</summary>
+        private bool IsChance(int index) => _data.Board[index].Type == SquareType.Card && !Layout.IsCorner(index);
+
+        /// <summary>The flat "?" printed on a Şans square, or null on any other square.</summary>
+        public TextMesh ChanceMark(int index) => _chanceMarks != null ? _chanceMarks[index] : null;
 
         private float NameCharacterSize(int index) => _width * NameSize * NameScale(index);
 
@@ -908,7 +932,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (Layout.IsCorner(index)) return new Vector2(size.x * NameFill, _depth * CornerNameDepth * NameScale(index));
             SquareDefinition square = _data.Board[index];
             bool marked = square.Type == SquareType.Property && _data.GroupMark(square.GroupId) != null;
-            return new Vector2(size.x * (marked ? MarkedNameFill : NameFill), _depth * NameDepth);
+            return new Vector2(size.x * (marked ? MarkedNameFill : NameFill), _depth * NameDepth * NameScale(index));
         }
 
         /// <summary>
@@ -1117,9 +1141,13 @@ namespace Lazpoly.Presentation.Tabletop
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
 
-        /// <summary>A square's name as printed on the board: a town's and the jail's in capitals ("İSTANBUL", "HAPİS", Turkish capitals in Turkish), the others as written.</summary>
-        public static string PrintedName(SquareDefinition square) =>
-            square.Type == SquareType.Property || square.Type == SquareType.Jail ? Upper(L(square.Name)) : L(square.Name);
+        /// <summary>
+        /// A square's name as printed on the board: a town's, the jail's and a Şans square's (a card square off the corners) in
+        /// capitals ("İSTANBUL", "HAPİS", "ŞANS", Turkish capitals in Turkish), the others as written.
+        /// </summary>
+        public static string PrintedName(SquareDefinition square, bool corner) =>
+            square.Type == SquareType.Property || square.Type == SquareType.Jail || (square.Type == SquareType.Card && !corner)
+                ? Upper(L(square.Name)) : L(square.Name);
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>
         public void Relabel()
@@ -1132,7 +1160,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 outward = Outward(Layout.SquareCenter(i));
                 if (_names[i] != null)
                 {
-                    _names[i].text = PrintedName(square);
+                    _names[i].text = PrintedName(square, Layout.IsCorner(i));
                     FitLabel(_names[i], NameCharacterSize(i), NameRoom(i, size), outward);
                 }
 

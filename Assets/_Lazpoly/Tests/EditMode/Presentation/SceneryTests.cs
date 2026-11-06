@@ -152,7 +152,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TownsAndTheJailArePrintedInCapitalsTheOtherSquaresAsWritten()
+        public void TownsTheJailAndChanceArePrintedInCapitalsTheOtherSquaresAsWritten()
         {
             Texts.Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
             BoardData data = BoardDataLoader.LoadFromResources();
@@ -163,12 +163,24 @@ namespace Lazpoly.Presentation.Tests
                 for (int i = 0; i < data.Board.Count; i++)
                 {
                     SquareDefinition square = data.Board[i];
-                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Jail;
+                    bool chance = square.Type == SquareType.Card && !board.Layout.IsCorner(i);
+                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Jail || chance;
                     string expected = capitals ? Texts.Lang.Upper(square.Name) : square.Name;
                     Assert.AreEqual(expected, board.NameLabel(i).text, $"square {i}");
                     if (square.Name == "İstanbul") Assert.AreEqual("İSTANBUL", board.NameLabel(i).text);
                     if (square.Type == SquareType.Jail) Assert.AreEqual("HAPİS", board.NameLabel(i).text, "the jail too, larger (the owner's wish)");
                     if (square.Name == "Rio de Janeiro") Assert.AreEqual("RİO DE JANEİRO", board.NameLabel(i).text, "a Turkish capital i keeps its dot");
+                    if (chance)
+                    {
+                        Assert.AreEqual("ŞANS", board.NameLabel(i).text, "Şans in capitals, larger (the owner's wish, Faz 24)");
+                        Assert.IsNotNull(board.ChanceMark(i), "a question mark is printed on the Şans tile");
+                        Assert.AreEqual("?", board.ChanceMark(i).text);
+                        Assert.IsNull(board.transform.Find("Sign Card"), "no standing sign on a Şans square");
+                    }
+                    else
+                    {
+                        Assert.IsNull(board.ChanceMark(i), $"square {i} has no question mark");
+                    }
                 }
             }
             finally

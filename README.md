@@ -883,7 +883,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Tahtaya üç Şans karesi geldi (`"type": "card"`, adı "Şans"): Prag ile Viyana, Barselona ile Roma, Otogar ile Paris arasında. Gelen oyuncu Sokak Haberi destesinden rastgele bir kart çeker; kartın başlığı çekildiği karenin adını taşır ("ŞANS · Ayşe", `GameSceneController.ShownCardSquare`). Olay günlüğünde "X kart çekti: ...", para satırlarında "(kart)".
 - Güney Amerika grubuna üçüncü şehir: Lima (140, kira 10, bina 50), Rio de Janeiro ve Buenos Aires'in hemen ardında.
 - Tahta 28'den 32 kareye çıktı, her kenarda 7 kare; köşeler 0, 8, 16, 24 (Başlangıç, Hapis, Sokak Haberi, Otogar). Kareler daralmadı, tahta büyüdü (`BoardView.HalfSizeFor`). Tahtanın sağlama değeri değişti: eski kayıtlar açılmaz, ağda Hello eşleşmeyen tahtayı zaten reddeder.
-- Şans karesinde gazete yerine mor, büyük bir soru işareti durur (`SquareIcons.QuestionMark`). Nasıl Oynanır bölümü "Sokak Haberi ve Şans".
+- Şans karesinin adı büyük harfle ve 1,6 kat büyük basılır ("ŞANS", `BoardView.ChanceNameScale`); üstünde duran bir işaret yok, karenin üst bölümüne mor, düz, büyük bir soru işareti basılı (`BoardView.ChanceMark`). Köşedeki Sokak Haberi eskisi gibi. Nasıl Oynanır bölümü "Sokak Haberi ve Şans".
 - Testler: `BoardDataLoaderTests` (32 kare, köşeler, üç Şans karesinin komşuları, Lima), `TipsTests` (ortak bölüm başlığı).
 
 ## Kurallar

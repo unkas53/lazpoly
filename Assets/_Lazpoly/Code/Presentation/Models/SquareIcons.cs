@@ -6,8 +6,9 @@ namespace Lazpoly.Presentation.Models
 {
     /// <summary>
     /// Small signs that stand on the special squares so they read from across the table: a tea glass
-    /// on the pot square, a barred window at the jail, a bus at the bus station, binoculars on the lookout terrace and a big
-    /// question mark on a card square along an edge (the Şans squares, Faz 24; the card corner has its kiosk scene). Each is one mesh about a unit wide with its base at y = 0.
+    /// on the pot square, a barred window at the jail, a bus at the bus station and binoculars on the lookout terrace.
+    /// A card square carries none: the card corner has its kiosk scene and a Şans square a question mark printed flat
+    /// on the tile (Faz 24). Each is one mesh about a unit wide with its base at y = 0.
     /// </summary>
     public static class SquareIcons
     {
@@ -20,7 +21,6 @@ namespace Lazpoly.Presentation.Models
                 case SquareType.Jail: return Bars();
                 case SquareType.Travel: return Bus();
                 case SquareType.Lookout: return Binoculars();
-                case SquareType.Card: return QuestionMark();
                 default: return null;
             }
         }
@@ -34,7 +34,6 @@ namespace Lazpoly.Presentation.Models
                 case SquareType.Jail: return new Color(0.22f, 0.24f, 0.28f);
                 case SquareType.Travel: return new Color(0.93f, 0.55f, 0.18f);
                 case SquareType.Lookout: return new Color(0.22f, 0.24f, 0.30f);
-                case SquareType.Card: return new Color(0.30f, 0.27f, 0.62f);
                 default: return new Color(0.97f, 0.96f, 0.92f);
             }
         }
@@ -85,33 +84,6 @@ namespace Lazpoly.Presentation.Models
 
             parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(0.3f, 0.16f, 0.4f), 0.03f, 2), Matrix4x4.TRS(new Vector3(0f, 0.22f, 0.05f), Quaternion.identity, Vector3.one)));
             return MeshFactory.Combine("icon:binoculars", parts);
-        }
-
-        /// <summary>An upright question mark facing +Z: a hook of short bars, a stem and a round dot, about 1.25 tall.</summary>
-        public static Mesh QuestionMark()
-        {
-            const float radius = 0.26f;
-            const float thick = 0.15f;
-            var hook = new Vector2(0f, 0.92f);
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            const int bars = 7;
-            const float from = 160f;
-            const float to = -90f;
-            for (int i = 0; i < bars; i++)
-            {
-                float angle = Mathf.Lerp(from, to, (i + 0.5f) / bars);
-                float rad = angle * Mathf.Deg2Rad;
-                var at = new Vector3(hook.x + Mathf.Cos(rad) * radius, hook.y + Mathf.Sin(rad) * radius, 0f);
-                // Each bar lies along the hook's tangent, a little long so the bars overlap into one stroke.
-                parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(0.19f, thick, thick), 0.04f, 2),
-                    Matrix4x4.TRS(at, Quaternion.Euler(0f, 0f, angle + 90f), Vector3.one)));
-            }
-
-            parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(thick, 0.32f, thick), 0.04f, 2),
-                Matrix4x4.TRS(new Vector3(0f, 0.52f, 0f), Quaternion.identity, Vector3.one)));
-            parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Sphere(),
-                Matrix4x4.TRS(new Vector3(0f, 0.1f, 0f), Quaternion.identity, Vector3.one * 0.1f)));
-            return MeshFactory.Combine("icon:question", parts);
         }
     }
 }

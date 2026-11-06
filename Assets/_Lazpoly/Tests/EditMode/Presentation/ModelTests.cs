@@ -269,7 +269,7 @@ namespace Lazpoly.Presentation.Tests
             AssertFacesOutward(sphere, Vector3.zero);
             Assert.That(sphere.bounds.extents.magnitude, Is.EqualTo(Mathf.Sqrt(3f)).Within(0.05f));
 
-            foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Lookout, Lazpoly.Core.Board.SquareType.Card })
+            foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Lookout })
             {
                 Mesh sign = SquareIcons.For(type);
                 Assert.IsNotNull(sign, $"{type} has no sign.");
@@ -281,6 +281,7 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Property));
             Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Start));
+            Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Card), "a Şans square has its question mark printed on the tile, not standing on it");
         }
 
         [Test]
