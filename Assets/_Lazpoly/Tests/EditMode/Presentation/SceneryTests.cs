@@ -54,6 +54,46 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ATownsNameAndRentLieOnABandInItsGroupsColour()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var light = new Color(1f, 0.84f, 0.31f);
+            Assert.AreEqual(Color.Lerp(light, BoardView.PaperColor, BoardView.BandPastel), BoardView.BandColor(light), "a light group keeps its strong colour");
+            Assert.GreaterOrEqual(BoardView.Contrast(BoardView.BandColor(new Color(0.2f, 0.2f, 0.5f)), BoardView.InkColor), BoardView.BandContrast, "a dark group is washed until the ink reads");
+
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView.Create(holder.transform, data);
+                for (int i = 0; i < data.Board.Count; i++)
+                {
+                    SquareDefinition square = data.Board[i];
+                    Transform tile = null;
+                    foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (child.name.StartsWith($"Square {i:00} ")) tile = child;
+                    }
+
+                    Assert.IsNotNull(tile, $"square {i}");
+                    Transform band = tile.Find("Name band");
+                    bool town = square.Type == SquareType.Property && !square.IsResort;
+                    Assert.AreEqual(town, band != null, $"{square.Name}: only towns carry a name band");
+                    if (band == null) continue;
+
+                    Color bandColor = band.GetComponent<Renderer>().sharedMaterial.color;
+                    Color tileColor = tile.GetComponent<Renderer>().sharedMaterial.color;
+                    Assert.GreaterOrEqual(BoardView.Contrast(bandColor, BoardView.InkColor), BoardView.BandContrast - 0.01f, $"{square.Name}: the ink reads on its band");
+                    Assert.Greater(Mathf.Abs(bandColor.r - tileColor.r) + Mathf.Abs(bandColor.g - tileColor.g) + Mathf.Abs(bandColor.b - tileColor.b), 0.1f,
+                        $"{square.Name}: the band stands apart from the light top");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void TownNamesLieOnTheTileWithoutAStripInADarkInk()
         {
             BoardData data = BoardDataLoader.LoadFromResources();

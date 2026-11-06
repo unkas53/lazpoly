@@ -80,7 +80,8 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color TitleColor = new Color(0.16f, 0.32f, 0.20f);
         private static readonly Color ScoreColor = new Color(0.14f, 0.18f, 0.15f);
         private static readonly Color PotTextColor = new Color(0.20f, 0.26f, 0.20f);
-        private static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
+        /// <summary>The one dark ink every name on the board is printed in.</summary>
+        public static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
         private static readonly Color PriceColor = new Color(0.21f, 0.19f, 0.17f);
 
         // Where things sit across a square, in tile depths from its centre towards the edge that lies lower on the
@@ -101,6 +102,18 @@ namespace Lazpoly.Presentation.Tabletop
         public const float SurfRadius = 0.05f;
         public const int SurfScallops = 7;
         public const float ResortOffset = -0.2f;
+
+        /// <summary>
+        /// A town's tile: the top part, where the buildings stand, washed nearly to the paper; from the top of the name's
+        /// line down to the tile's lower edge a band in the group's colour, washed only as far as the dark ink needs to
+        /// read on it (<see cref="BandColor"/>).
+        /// </summary>
+        public const float TownTopPastel = 0.8f;
+        public const float BandPastel = 0.2f;
+        public const float BandContrast = 4.5f;
+
+        /// <summary>The band's inset from the tile's edges, so it lies on the flat of the tile and not over its rounded rim.</summary>
+        public const float BandInset = 0.03f;
 
         /// <summary>The sand of a resort's tile, and the sea and surf printed on it.</summary>
         public static readonly Color SandColor = new Color(0.97f, 0.86f, 0.58f);
@@ -192,6 +205,8 @@ namespace Lazpoly.Presentation.Tabletop
         private Vector3[][] _buildingRest;
         private GameObject[] _tiles;
         private Color[] _tileColors;
+        private GameObject[] _bands;
+        private Color[] _bandColors;
         private TextMesh[] _names;
         private TextMesh[] _prices;
         private int?[] _rents;
@@ -288,7 +303,7 @@ namespace Lazpoly.Presentation.Tabletop
         {
             _highlighted = squares == null || squares.Count == 0 ? null : new HashSet<int>(squares);
             _dimOthers = dimOthers && _highlighted != null;
-            for (int i = 0; i < _tiles.Length; i++) PaintTile(_tiles[i], ShownTileColor(i));
+            for (int i = 0; i < _tiles.Length; i++) PaintSquare(i);
         }
 
         /// <summary>
@@ -297,21 +312,27 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public void Glow(int square, Color color)
         {
-            if (_glowSquare >= 0 && _glowSquare != square) PaintTile(_tiles[_glowSquare], ShownTileColor(_glowSquare));
+            if (_glowSquare >= 0 && _glowSquare != square) PaintSquare(_glowSquare);
             _glowSquare = square >= 0 && square < _tiles.Length ? square : -1;
             _glowColor = Color.Lerp(color, Color.white, 0.15f);
         }
 
         public void StopGlow()
         {
-            if (_glowSquare >= 0) PaintTile(_tiles[_glowSquare], ShownTileColor(_glowSquare));
+            if (_glowSquare >= 0) PaintSquare(_glowSquare);
             _glowSquare = -1;
         }
 
-        /// <summary>A tile's colour with the current highlight: lit when chosen, dark when a choice leaves it out.</summary>
-        private Color ShownTileColor(int square)
+        /// <summary>Paints a square's tile and its name band with the current highlight, brightened by <paramref name="glow"/> towards the glow's colour.</summary>
+        private void PaintSquare(int square, float glow = 0f)
         {
-            Color color = _tileColors[square];
+            PaintTile(_tiles[square], Color.Lerp(Shown(square, _tileColors[square]), _glowColor, glow));
+            if (_bands[square] != null) PaintTile(_bands[square], Color.Lerp(Shown(square, _bandColors[square]), _glowColor, glow));
+        }
+
+        /// <summary>A colour of a square with the current highlight: lit when chosen, dark when a choice leaves it out.</summary>
+        private Color Shown(int square, Color color)
+        {
             if (_highlighted == null) return color;
             if (_highlighted.Contains(square)) return Color.Lerp(color, Color.white, _dimOthers ? 0.35f : 0.25f);
             return _dimOthers ? Color.Lerp(color, Color.black, DimAmount) : color;
@@ -322,7 +343,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (_glowSquare < 0) return;
             // A soft beat: up to full brightness and back to the tile's own colour, never below it.
             float beat = 0.5f - 0.5f * Mathf.Cos(Time.unscaledTime * GlowPulsesPerSecond * 2f * Mathf.PI);
-            PaintTile(_tiles[_glowSquare], Color.Lerp(ShownTileColor(_glowSquare), _glowColor, GlowAmount * beat));
+            PaintSquare(_glowSquare, GlowAmount * beat);
         }
 
         /// <summary>Shows what the pot holds under the dice score (boards without a pot show nothing).</summary>
@@ -638,6 +659,8 @@ namespace Lazpoly.Presentation.Tabletop
             _buildingRest = new Vector3[board.Count][];
             _tiles = new GameObject[board.Count];
             _tileColors = new Color[board.Count];
+            _bands = new GameObject[board.Count];
+            _bandColors = new Color[board.Count];
             _names = new TextMesh[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
@@ -653,7 +676,10 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector2 size = Layout.SquareSize(i) - Vector2.one * Gap;
 
                 // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint; every name is in the one dark ink.
-                Color body = Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : Pastel);
+                // A town is two parts, like the reference the owner sent: a light top where the buildings stand, and from the
+                // name down a band in the group's colour (CreateBand); a resort is sand with its sea; other squares one colour.
+                bool town = square.Type == SquareType.Property && !square.IsResort;
+                Color body = Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : town ? TownTopPastel : Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
                 ModelParts.Skin(tileObject, paper);
@@ -661,6 +687,7 @@ namespace Lazpoly.Presentation.Tabletop
                 tileObject.transform.localRotation = facing;
                 _tiles[i] = tileObject;
                 if (square.IsResort) CreateShore(i, center, outward, size);
+                if (town) CreateBand(i, center, outward, size, BandColor(TileColor(square, data)));
                 _tileColors[i] = body;
                 _squareOfCollider[tileObject.AddComponent<BoxCollider>()] = i;
 
@@ -807,6 +834,50 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Where a resort's beach stands: on the sand between the sea and the name.</summary>
         private Vector3 ResortSpot(Vector3 center) => center + ScreenDown(Outward(center)) * (_depth * ResortOffset) + Vector3.up * TileHeight;
+
+        /// <summary>
+        /// The group's colour for a town's name band: washed towards the paper from <see cref="BandPastel"/> on, only as far as
+        /// the dark ink needs to reach <see cref="BandContrast"/> on it, so the light groups stay bright and the dark ones still read.
+        /// </summary>
+        public static Color BandColor(Color group)
+        {
+            for (float wash = BandPastel; wash < 1f; wash += 0.05f)
+            {
+                Color band = Color.Lerp(group, PaperColor, wash);
+                if (Contrast(band, InkColor) >= BandContrast) return band;
+            }
+
+            return PaperColor;
+        }
+
+        /// <summary>The contrast ratio of two colours (WCAG), 1 to 21.</summary>
+        public static float Contrast(Color a, Color b)
+        {
+            float la = RelativeLuminance(a), lb = RelativeLuminance(b);
+            return (Mathf.Max(la, lb) + 0.05f) / (Mathf.Min(la, lb) + 0.05f);
+        }
+
+        private static float RelativeLuminance(Color c) => 0.2126f * Linear(c.r) + 0.7152f * Linear(c.g) + 0.0722f * Linear(c.b);
+
+        private static float Linear(float channel) => channel <= 0.04045f ? channel / 12.92f : Mathf.Pow((channel + 0.055f) / 1.055f, 2.4f);
+
+        /// <summary>
+        /// Lays a town's name band on its tile: from the top of the name's line down to the tile's lower edge on the screen,
+        /// across its whole width, flat on the tile under the print. It belongs to the tile, so it swells with it.
+        /// </summary>
+        private void CreateBand(int index, Vector3 center, Vector3 outward, Vector2 size, Color color)
+        {
+            Vector3 down = ScreenDown(outward);
+            float top = _depth * (NameOffset - StripDepth / 2f);
+            float bottom = size.y / 2f - BandInset;
+            GameObject band = ModelParts.Create("Name band", transform, MeshFactory.RoundedBox(new Vector3(size.x - 2f * BandInset, 0.004f, bottom - top), 0.0015f, 1), color, 0.05f);
+            ModelParts.Skin(band, TileSkin.Paper());
+            band.transform.localPosition = center + down * ((top + bottom) / 2f) + Vector3.up * (TileHeight + 0.002f);
+            band.transform.localRotation = Quaternion.LookRotation(down);
+            band.transform.SetParent(_tiles[index].transform, true);
+            _bands[index] = band;
+            _bandColors[index] = color;
+        }
 
         /// <summary>
         /// Prints the sea along a resort tile's top edge (towards the top of the screen) with a row of white scallops of
