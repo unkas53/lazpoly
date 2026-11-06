@@ -12,8 +12,8 @@ namespace Lazpoly.Presentation.Tabletop
     /// </summary>
     public static class BoardCameraFraming
     {
-        /// <summary>Fraction of the free area the board may fill.</summary>
-        public const float Fill = 0.94f;
+        /// <summary>Fraction of the free area the board may fill; the owner had the camera stand a little further back (Faz 22, was 0.94).</summary>
+        public const float Fill = 0.88f;
 
         /// <summary>Room kept above the far corner for what stands on it (a corner scene, a pawn with its bubble), in world units.</summary>
         public const float Headroom = 0.8f;
