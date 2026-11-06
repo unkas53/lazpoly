@@ -607,5 +607,9 @@
   "Üst üste {0} çift atan ve hapse gönderen kartı çeken de buraya düşer; Başlangıç'tan geçmiş sayılmaz.": "Rolling {0} doubles in a row or drawing the go-to-jail card also lands you here, without passing Start.",
   "Hapse gelen, üst üste {0} çift atan ya da hapse gönderen kartı çeken, {1} kez sırası gelene kadar orada bekler. Sırası gelince isterse {2} ödeyip hemen çıkar ve zar atar; ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler (bir daha atmaz), gelmezse sıra geçer. Hapisteyken kira almak sürer.": "Whoever lands on the jail, rolls {0} doubles in a row or draws the go-to-jail card waits there until their turn has come {1} times. On their turn they may pay {2} to leave at once and roll, or roll for free: a double gets them out to move by it (with no second roll); otherwise the turn passes. You still collect rent in jail.",
   "{0} çift attı, hapisten çıktı": "{0} rolled a double and left jail",
-  "{0} tur daha beklemen gerekiyor.": "You have to wait {0} more turns."
+  "{0} tur daha beklemen gerekiyor.": "You have to wait {0} more turns.",
+  "TAKAS KABUL EDİLDİ": "TRADE ACCEPTED",
+  "TAKAS REDDEDİLDİ": "TRADE REJECTED",
+  "TAKAS GERİ ÇEKİLDİ": "TRADE WITHDRAWN",
+  "Takas yapıyoruz...": "Trading..."
 }

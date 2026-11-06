@@ -255,6 +255,14 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Real time the shown card was drawn, so the HUD can fade it.</summary>
         public float ShownCardTime { get; private set; }
 
+        /// <summary>The last trade that ended, how it ended and the real time it did, for the result card in the middle; null before any.</summary>
+        public TradeOffer ShownTrade { get; private set; }
+        public TradeOutcome ShownTradeOutcome { get; private set; }
+        public float ShownTradeTime { get; private set; }
+
+        /// <summary>How long the table waits after a trade so its result card can be read (scaled by the animation speed).</summary>
+        public const float TradeReadSeconds = 2.4f;
+
         /// <summary>The last roll shown on the table (0 before the first), and real time it settled, for the HUD's result popup.</summary>
         public int ShownDie1 { get; private set; }
         public int ShownDie2 { get; private set; }
@@ -1193,12 +1201,25 @@ namespace Lazpoly.Presentation.Game
                         break;
                     case TradeProposedEvent proposed:
                         _shownOffer = proposed.Offer;
-                        Say(proposed.Offer.FromPlayerId, L("Takas edelim mi?"));
+                        // Both sides say they are trading, so a trade between others reads on the table (the owner's wish, Faz 23).
+                        Say(proposed.Offer.FromPlayerId, L("Takas yapıyoruz..."));
+                        Say(proposed.Offer.ToPlayerId, L("Takas yapıyoruz..."));
                         break;
                     case TradeResolvedEvent resolved:
                         if (_shownOffer != null && resolved.Outcome != TradeOutcome.Cancelled)
                         {
                             Say(_shownOffer.ToPlayerId, L(resolved.Outcome == TradeOutcome.Accepted ? "Anlaştık!" : "Olmaz."));
+                        }
+
+                        if (_shownOffer != null)
+                        {
+                            // The result card in the middle; the table waits a moment so it can be read.
+                            ShownTrade = _shownOffer;
+                            ShownTradeOutcome = resolved.Outcome;
+                            ShownTradeTime = Time.unscaledTime;
+                            Revision++;
+                            _shownOffer = null;
+                            yield return new WaitForSeconds(TradeReadSeconds / Mathf.Max(Settings.AnimationSpeed, 0.1f));
                         }
 
                         _shownOffer = null;

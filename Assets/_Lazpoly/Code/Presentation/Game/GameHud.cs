@@ -5,6 +5,7 @@ using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
+using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Audio;
@@ -75,6 +76,10 @@ namespace Lazpoly.Presentation.Game
         private float _bannerUntil;
         private int _lastTurnPlayer = -1;
         private int _lastTurnNumber = -1;
+        private Text _tradeTitle;
+        private Text _tradeText;
+        private CanvasGroup _tradeGroup;
+        private RectTransform _tradeRect;
         private Text _cardTitle;
         private Text _cardText;
         private CanvasGroup _cardGroup;
@@ -271,6 +276,7 @@ namespace Lazpoly.Presentation.Game
             _banner.fontSize = 34;
 
             BuildCardPopup();
+            BuildTradePopup();
             BuildRollPopup();
             BuildRollPrompt();
 
@@ -337,6 +343,50 @@ namespace Lazpoly.Presentation.Game
             _cardTitle = builder.Label(L("SOKAK HABERİ"), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
             _cardText = builder.Label("", UiTextStyle.Body, UiTheme.Text, TextAnchor.MiddleCenter);
             _cardText.fontSize = 22;
+        }
+
+        /// <summary>
+        /// A trade's result, shown in the middle for a few seconds after it ends (the owner's wish, Faz 23): who offered
+        /// what to whom, and whether it was taken. It never takes the mouse and closes by itself, so no turn waits on it.
+        /// </summary>
+        private void BuildTradePopup()
+        {
+            RectTransform card = UiRoot.Rect(_canvas.transform, "Trade Popup", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-300f, -70f), new Vector2(300f, 170f));
+            UiRoot.Panel(card).raycastTarget = false;
+            _tradeGroup = card.gameObject.AddComponent<CanvasGroup>();
+            _tradeGroup.blocksRaycasts = false;
+            _tradeGroup.interactable = false;
+            _tradeGroup.alpha = 0f;
+            _tradeRect = card;
+            UiBuilder.AddColumnLayout(card.gameObject, 18, 8f);
+            var builder = new UiBuilder(card);
+            _tradeTitle = builder.Label("", UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
+            _tradeText = builder.Label("", UiTextStyle.Body, UiTheme.Text, TextAnchor.MiddleCenter);
+        }
+
+        private void UpdateTradePopup()
+        {
+            TradeOffer offer = _controller.ShownTrade;
+            float age = Time.unscaledTime - _controller.ShownTradeTime;
+            float visible = GameSceneController.TradeReadSeconds + 1.6f;
+            if (offer == null || age > visible)
+            {
+                _tradeGroup.alpha = 0f;
+                return;
+            }
+
+            GameState state = _controller.Session.State;
+            string from = state.FindPlayer(offer.FromPlayerId)?.Name;
+            string to = state.FindPlayer(offer.ToPlayerId)?.Name;
+            TradeOutcome outcome = _controller.ShownTradeOutcome;
+            _tradeTitle.text = outcome == TradeOutcome.Accepted ? L("TAKAS KABUL EDİLDİ")
+                : outcome == TradeOutcome.Rejected ? L("TAKAS REDDEDİLDİ") : L("TAKAS GERİ ÇEKİLDİ");
+            _tradeTitle.color = outcome == TradeOutcome.Accepted ? UiTheme.Gain : UiTheme.Warning;
+            _tradeText.text = $"{from} → {to}\n" + F($"{from} verir: {_trade.Describe(offer.GiveSquares, offer.GiveMoney)}") + "\n" +
+                              F($"{from} ister: {_trade.Describe(offer.TakeSquares, offer.TakeMoney)}");
+            _tradeGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
+            _tradeRect.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.3f)));
         }
 
         /// <summary>A note under the banner when a double is rolled (the lawn shows the figures). It never takes the mouse.</summary>
@@ -624,6 +674,7 @@ namespace Lazpoly.Presentation.Game
             _debtSale.Update(state, selling ? BoardChoices(state) : null, selling && !_controller.IsBusy && !_controller.EndReason.HasValue);
             UpdateBanner(state);
             UpdateCardPopup();
+            UpdateTradePopup();
             UpdateRollPopup();
             UpdateTip(state);
             UpdateTimer(state);
@@ -1093,15 +1144,9 @@ namespace Lazpoly.Presentation.Game
             if (state.Phase == GamePhase.GameOver || _controller.IsBusy) return;
 
             // A trade answer comes from a player other than the one on turn. Whoever here sent or received the offer
-            // answers it on the card in the middle (OffersAnswerHere); anyone else only reads it here.
-            if (state.Phase == GamePhase.AwaitingTradeResponse)
-            {
-                if (!OffersAnswerHere(state)) _trade.RenderResponse(ui, state);
-            }
-            else
-            {
-                RenderTurnActions(ui, state);
-            }
+            // answers it on the card in the middle (OffersAnswerHere); a trade between others shows as their speech
+            // bubbles and a result card, not down here (the owner's wish, Faz 23).
+            if (state.Phase != GamePhase.AwaitingTradeResponse) RenderTurnActions(ui, state);
 
             if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);
         }
