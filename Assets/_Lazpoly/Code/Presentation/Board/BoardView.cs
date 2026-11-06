@@ -983,17 +983,13 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The rent a town's price line shows now; null while it shows the price.</summary>
         public int? RentShown(int squareIndex) => _rents?[squareIndex];
 
-        /// <summary>The colour of a rent: the owner's, darkened enough to read on the paper.</summary>
-        public static Color RentColor(Color owner) => Color.Lerp(owner, Color.black, 0.3f);
-
         private void ShowPrice(int index)
         {
             TextMesh price = _prices[index];
             if (price == null) return;
             int? rent = _rents[index];
-            Color? owner = _ownerColors[index];
             price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]);
-            price.color = rent.HasValue && owner.HasValue ? RentColor(owner.Value) : PriceColor;
+            price.color = PriceColor; // The rent stays in the print's ink, never the owner's colour (the owner's wish, Faz 21).
             Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
