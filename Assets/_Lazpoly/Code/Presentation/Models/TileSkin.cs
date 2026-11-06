@@ -24,7 +24,7 @@ namespace Lazpoly.Presentation.Models
         public const float FrameInset = 0.07f;
 
         /// <summary>Half the frame line's thickness, as a fraction of the tile's size.</summary>
-        public const float FrameWidth = 0.016f;
+        public const float FrameWidth = 0.008f;
 
         /// <summary>How much darker the frame line is than the paper around it.</summary>
         public const float FrameShade = 0.6f;
