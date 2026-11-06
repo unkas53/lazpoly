@@ -190,47 +190,11 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void LawnPiecesStandOnTheGrassAndThePennantsHangFromTheirString()
+        public void TheJarStandsOnTheGrass()
         {
             var root = new GameObject("Lawn");
             try
             {
-                for (int kind = 0; kind < LawnParts.TreeKinds; kind++)
-                {
-                    GameObject tree = LawnParts.Tree("Tree", root.transform, kind);
-                    Bounds bounds = Extent(tree);
-                    Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.02f), $"tree {kind} floats or sinks");
-                    Assert.LessOrEqual(bounds.max.y, LawnParts.TreeHeight + 1e-3f, $"tree {kind} is taller than the lawn allows for");
-                    Assert.Greater(bounds.max.y, 0.5f, $"tree {kind} is a shrub");
-                }
-
-                Bounds bush = Extent(LawnParts.Bush("Bush", root.transform));
-                Assert.That(bush.min.y, Is.EqualTo(0f).Within(0.02f));
-                Assert.LessOrEqual(bush.max.y, LawnDressing.BushHeight + 1e-3f, "a bush is low");
-
-                Bounds post = Extent(LawnParts.BuntingPost("Post", root.transform));
-                Assert.That(post.max.y, Is.EqualTo(LawnParts.PostHeight).Within(0.05f));
-                Assert.Less(LawnParts.StringHeight, LawnParts.PostHeight, "the string ties on below the post's top");
-
-                var from = new Vector3(-1f, LawnParts.StringHeight, 0f);
-                var to = new Vector3(1f, LawnParts.StringHeight, 0f);
-                GameObject bunting = LawnParts.Bunting("Bunting", root.transform, from, to, 9);
-                int pennants = 0;
-                foreach (MeshFilter part in bunting.GetComponentsInChildren<MeshFilter>())
-                {
-                    if (part.sharedMesh != MeshFactory.Pennant()) continue;
-                    pennants++;
-                    Vector3 top = part.transform.TransformPoint(new Vector3(0f, 1f, 0f));
-                    Vector3 tip = part.transform.TransformPoint(Vector3.zero);
-                    Assert.LessOrEqual(top.y, LawnParts.StringHeight + 1e-3f, "a pennant hangs from the string, not above it");
-                    Assert.GreaterOrEqual(top.y, LawnParts.StringHeight - LawnParts.Sag - 1e-3f, "a pennant's top is on the string");
-                    Assert.That(tip.y, Is.EqualTo(top.y - LawnParts.PennantDrop).Within(1e-3f), "a pennant hangs straight down");
-                    Assert.That(Mathf.Abs(tip.x), Is.LessThan(1f), "a pennant hangs between the posts");
-                }
-
-                Assert.AreEqual(9, pennants);
-                Assert.AreEqual(6, MeshFactory.Pennant().vertexCount, "a pennant has two faces");
-
                 Bounds jar = Extent(LawnParts.Jar("Jar", root.transform));
                 Assert.That(jar.min.y, Is.EqualTo(0f).Within(0.02f));
                 Assert.That(jar.max.y, Is.EqualTo(1f).Within(0.02f), "the jar is one unit tall, scaled by the board");

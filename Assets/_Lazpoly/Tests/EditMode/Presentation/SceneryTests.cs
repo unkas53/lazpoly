@@ -306,54 +306,27 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void NothingOnTheLawnFallsOverTheSquaresUpTheScreen()
+        public void TheLawnIsPlainGrass()
         {
-            const float inner = 9.8f;
-            float yaw = BoardCameraRig.BaseYaw;
-            float lawnHalf = LawnDressing.LawnHalf * inner;
-            float pathHalf = LawnDressing.PathHalf * inner;
-            Assert.AreEqual(LawnDressing.TreeSpots.Length, LawnDressing.TreeKinds.Length);
-            for (int i = 0; i < LawnDressing.TreeSpots.Length; i++)
-            {
-                Vector3 foot = LawnDressing.Ground(LawnDressing.TreeSpots[i], inner, 0f);
-                Vector3 top = LawnDressing.GroundUnderTop(foot, LawnParts.TreeHeight, yaw);
-                Assert.Less(Mathf.Max(Mathf.Abs(top.x), Mathf.Abs(top.z)), lawnHalf, $"tree {i}'s crown reaches past the lawn up the screen");
-                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf + 0.3f, $"tree {i} stands on the path");
-                Assert.Less(Vector3.Dot(foot, BoardView.ScreenUp(yaw)), 0.3f * inner, $"tree {i} stands at the top of the screen, over the title");
-            }
-
-            for (int i = 0; i < LawnDressing.BushSpots.Length; i++)
-            {
-                Vector3 foot = LawnDressing.Ground(LawnDressing.BushSpots[i], inner, 0f);
-                Vector3 top = LawnDressing.GroundUnderTop(foot, LawnDressing.BushHeight, yaw);
-                Assert.Less(Mathf.Max(Mathf.Abs(top.x), Mathf.Abs(top.z)), lawnHalf, $"bush {i} reaches past the lawn up the screen");
-                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf + 0.2f, $"bush {i} sits on the path");
-            }
-
-            foreach (Vector2 spot in LawnDressing.PostSpots)
-            {
-                Vector3 foot = LawnDressing.Ground(spot, inner, 0f);
-                Assert.LessOrEqual(Vector3.Dot(foot, BoardView.ScreenUp(yaw)), 1e-3f, "the bunting runs along the near sides of the path, below the score");
-                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf, "a post stands just outside the path's corner");
-            }
-
-            var root = new GameObject("Lawn");
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
             try
             {
-                LawnDressing.Dress(root.transform, inner, 0.08f);
-                int trees = 0, pennants = 0;
-                foreach (MeshFilter part in root.GetComponentsInChildren<MeshFilter>())
+                BoardView.Create(holder.transform, data);
+                Transform lawn = null;
+                foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
                 {
-                    if (part.name == "Trunk") trees++;
-                    if (part.sharedMesh == MeshFactory.Pennant()) pennants++;
+                    if (child.name == "Lawn") lawn = child;
                 }
 
-                Assert.AreEqual(LawnDressing.TreeSpots.Length, trees);
-                Assert.AreEqual((LawnDressing.PostSpots.Length - 1) * LawnDressing.PennantsPerString, pennants);
+                Assert.IsNotNull(lawn);
+                var names = new List<string>();
+                foreach (Transform child in lawn) names.Add(child.name);
+                CollectionAssert.AreEquivalent(new[] { "Gravel", "Grass" }, names, "no trees, bushes, bunting, paths or patches: the owner wants plain grass");
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(root);
+                Object.DestroyImmediate(holder);
             }
         }
 

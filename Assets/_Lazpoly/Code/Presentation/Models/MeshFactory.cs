@@ -215,22 +215,6 @@ namespace Lazpoly.Presentation.Models
             return Lathe($"sphere:{segments}", profile, segments * 2);
         }
 
-        /// <summary>
-        /// A pennant: a triangle hanging from its top edge (x -0.5..0.5 at y = 1) down to a point at the
-        /// origin, drawn on both sides so it reads from wherever the camera is. Lies in the XY plane.
-        /// </summary>
-        public static Mesh Pennant()
-        {
-            const string key = "pennant";
-            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
-            var vertices = new List<Vector3> { new Vector3(-0.5f, 1f, 0f), new Vector3(0.5f, 1f, 0f), new Vector3(0f, 0f, 0f) };
-            vertices.AddRange(vertices.ToArray());
-            var normals = new List<Vector3> { Vector3.back, Vector3.back, Vector3.back, Vector3.forward, Vector3.forward, Vector3.forward };
-            // The front (-Z) face runs clockwise seen from -Z; the back face runs the other way.
-            var triangles = new List<int> { 0, 1, 2, 3, 5, 4 };
-            return Store(key, vertices, normals, triangles);
-        }
-
         /// <summary>A flat disc at y = 0 with radius 1 and the given thickness.</summary>
         public static Mesh Disc(float thickness, int segments = 48) =>
             Lathe($"disc:{thickness:F3}", new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, thickness), new Vector2(0f, thickness) }, segments);

@@ -70,8 +70,6 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
         private static readonly Color RoadColor = new Color(0.72f, 0.68f, 0.60f);
         private static readonly Color GrassColor = new Color(0.47f, 0.70f, 0.36f);
-        private static readonly Color LightGrassColor = new Color(0.55f, 0.76f, 0.42f);
-        private static readonly Color PathColor = new Color(0.86f, 0.80f, 0.66f);
         /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
         public static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
 
@@ -783,7 +781,7 @@ namespace Lazpoly.Presentation.Tabletop
             _frontScenes.Add(new KeyValuePair<Transform, Vector3>(scene.transform, outward));
         }
 
-        /// <summary>The lawn in the middle: a gravel ring where the squares end, grass with lighter patches, a path round the park, and <see cref="LawnDressing"/> on it.</summary>
+        /// <summary>The lawn in the middle: a gravel ring where the squares end and plain grass (the owner had the trees, bunting and paths taken away).</summary>
         private void CreateLawn(float inner)
         {
             var lawn = new GameObject("Lawn");
@@ -796,26 +794,6 @@ namespace Lazpoly.Presentation.Tabletop
             float grass = inner * 0.9f;
             GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), GrassColor, 0.05f);
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
-
-            // A path runs round the park, a little way in from the gravel.
-            float path = inner * 0.44f;
-            for (int side = 0; side < 4; side++)
-            {
-                GameObject piece = ModelParts.Create("Path", root, MeshFactory.RoundedBox(new Vector3(path + inner * 0.03f, 0.01f, inner * 0.03f), 0.005f, 1), PathColor, 0.1f);
-                piece.transform.localRotation = Quaternion.Euler(0f, side * 90f, 0f);
-                piece.transform.localPosition = piece.transform.localRotation * new Vector3(0f, LawnHeight + 0.004f, path / 2f);
-            }
-
-            Vector2[] patches = { new Vector2(-0.34f, 0.22f), new Vector2(0.3f, 0.3f), new Vector2(0.36f, -0.2f), new Vector2(-0.2f, -0.36f), new Vector2(0.05f, 0.4f) };
-            float[] sizes = { 0.09f, 0.06f, 0.08f, 0.07f, 0.05f };
-            for (int i = 0; i < patches.Length; i++)
-            {
-                GameObject patch = ModelParts.Create("Light grass", root, MeshFactory.Disc(0.004f, 28), LightGrassColor, 0.05f);
-                patch.transform.localPosition = new Vector3(patches[i].x * inner, LawnHeight + 0.002f, patches[i].y * inner);
-                patch.transform.localScale = new Vector3(inner * sizes[i], 1f, inner * sizes[i] * 0.8f);
-            }
-
-            LawnDressing.Dress(root, inner, LawnHeight);
         }
 
         /// <summary>The dice score large on the lawn with the pot's line under it; <see cref="FaceCamera"/> places and turns it.</summary>
