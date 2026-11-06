@@ -20,8 +20,9 @@ namespace Lazpoly.Presentation.Pawns
         /// The character's height on the board; the shapes are about 0.55. The owner asked for him
         /// large (at 0.9 he was about 60 pixels at 1080p): he stands over one and a half tiles tall,
         /// so the figure reads from across the room even though he may cover a name behind him.
+        /// Faz 21: the owner asked for half as tall again (1.8 to 2.7).
         /// </summary>
-        public const float CharacterHeight = 1.8f;
+        public const float CharacterHeight = 2.7f;
 
         /// <summary>The child that holds the character or the shape.</summary>
         public const string ModelName = "Model";

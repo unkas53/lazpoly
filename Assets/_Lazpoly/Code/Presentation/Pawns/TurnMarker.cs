@@ -9,7 +9,8 @@ namespace Lazpoly.Presentation.Pawns
     /// </summary>
     public sealed class TurnMarker : MonoBehaviour
     {
-        private const float Radius = 0.26f;
+        /// <summary>The ring's size, grown with the figures (Faz 21: half as big again) so it still shows round their feet.</summary>
+        private const float Radius = 0.26f * PawnView.CharacterHeight / 1.8f;
         private const float BreathSeconds = 1.6f;
 
         private PawnView _pawn;
