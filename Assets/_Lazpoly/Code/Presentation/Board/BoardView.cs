@@ -104,11 +104,11 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ResortOffset = -0.2f;
 
         /// <summary>
-        /// A town's tile: the top part, where the buildings stand, washed nearly to the paper; from the top of the name's
-        /// line down to the tile's lower edge a band in the group's colour, washed only as far as the dark ink needs to
-        /// read on it (<see cref="BandColor"/>).
+        /// A town's tile: from its top edge down to the bottom of the name's line a band in the group's colour with a
+        /// pattern (<see cref="TileSkin.Pattern"/>), washed only as far as the dark ink needs to read on it
+        /// (<see cref="BandColor"/>); below it a light paved strip for the rent and the pawns.
         /// </summary>
-        public const float TownTopPastel = 0.8f;
+        public static readonly Color PavingColor = new Color(0.91f, 0.90f, 0.91f);
         public const float BandPastel = 0.2f;
         public const float BandContrast = 4.5f;
 
@@ -676,10 +676,11 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector2 size = Layout.SquareSize(i) - Vector2.one * Gap;
 
                 // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint; every name is in the one dark ink.
-                // A town is two parts, like the reference the owner sent: a light top where the buildings stand, and from the
-                // name down a band in the group's colour (CreateBand); a resort is sand with its sea; other squares one colour.
+                // A town is two parts, like the owner's reference: the top, with the buildings and the name, in the group's
+                // colour with a pattern (CreateBand), and a light paved strip below where the rent and the pawns are; a resort
+                // is sand with its sea; the other squares one colour.
                 bool town = square.Type == SquareType.Property && !square.IsResort;
-                Color body = Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : town ? TownTopPastel : Pastel);
+                Color body = town ? PavingColor : Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
                 ModelParts.Skin(tileObject, paper);
@@ -727,12 +728,12 @@ namespace Lazpoly.Presentation.Tabletop
                 _names[i] = CreateLabel("Name", PrintedName(square), namePlace + Vector3.up * top, outward,
                     _width * NameSize, NameRoom(i, size), InkColor);
                 string subtitle = Subtitle(square);
-                if (subtitle != null)
+                if (subtitle != null || property)
                 {
                     Vector3 pricePlace = corner
                         ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerPriceOffset)
                         : center + down * (_depth * PriceOffset);
-                    _prices[i] = CreateLabel("Price", subtitle, pricePlace + Vector3.up * (TileHeight + PrintHeight), outward,
+                    _prices[i] = CreateLabel("Price", subtitle ?? string.Empty, pricePlace + Vector3.up * (TileHeight + PrintHeight), outward,
                         PriceCharacterSize(i), PriceRoom(i, size), PriceColor);
                 }
 
@@ -862,16 +863,17 @@ namespace Lazpoly.Presentation.Tabletop
         private static float Linear(float channel) => channel <= 0.04045f ? channel / 12.92f : Mathf.Pow((channel + 0.055f) / 1.055f, 2.4f);
 
         /// <summary>
-        /// Lays a town's name band on its tile: from the top of the name's line down to the tile's lower edge on the screen,
-        /// across its whole width, flat on the tile under the print. It belongs to the tile, so it swells with it.
+        /// Lays a town's coloured band on its tile: from the tile's top edge on the screen down to the bottom of the name's
+        /// line, across its whole width, flat on the tile under the print, with the pattern. It belongs to the tile, so it
+        /// swells with it.
         /// </summary>
         private void CreateBand(int index, Vector3 center, Vector3 outward, Vector2 size, Color color)
         {
             Vector3 down = ScreenDown(outward);
-            float top = _depth * (NameOffset - StripDepth / 2f);
-            float bottom = size.y / 2f - BandInset;
+            float top = -size.y / 2f + BandInset;
+            float bottom = _depth * (NameOffset + StripDepth / 2f);
             GameObject band = ModelParts.Create("Name band", transform, MeshFactory.RoundedBox(new Vector3(size.x - 2f * BandInset, 0.004f, bottom - top), 0.0015f, 1), color, 0.05f);
-            ModelParts.Skin(band, TileSkin.Paper());
+            ModelParts.Skin(band, TileSkin.Pattern());
             band.transform.localPosition = center + down * ((top + bottom) / 2f) + Vector3.up * (TileHeight + 0.002f);
             band.transform.localRotation = Quaternion.LookRotation(down);
             Flat(band);
@@ -1114,12 +1116,12 @@ namespace Lazpoly.Presentation.Tabletop
         public static float FitCharacterSize(float characterSize, Vector2 size, Vector2 maxSize) =>
             Mathf.Min(FitCharacterSize(characterSize, size.x, maxSize.x), FitCharacterSize(characterSize, size.y, maxSize.y));
 
-        /// <summary>The line under a square's name: its price, the tax it takes or the fare; null when the square has none.</summary>
+        /// <summary>The line under a square's name: the tax it takes or the fare; null when the square has none (a town for sale shows no figure).</summary>
         public static string Subtitle(SquareDefinition square)
         {
             switch (square.Type)
             {
-                case SquareType.Property: return F($"{square.Price}");
+                case SquareType.Property: return null; // For sale a town shows no figure; owned, its rent (the owner's wish, Faz 22).
                 case SquareType.Tax: return F($"-{square.TaxAmount}");
                 case SquareType.Travel: return F($"bilet {square.Fee}");
                 default: return null;
@@ -1127,8 +1129,8 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// What a town's price line says: its price while it is for sale, or, once owned, the rent a visitor pays
-        /// (<paramref name="rent"/>), printed in the owner's colour. Null puts the price back.
+        /// What a town's price line says: nothing while it is for sale, or, once owned, the rent a visitor pays
+        /// (<paramref name="rent"/>), in the print's ink. Null clears it again.
         /// </summary>
         public void SetRent(int squareIndex, int? rent)
         {
@@ -1149,7 +1151,7 @@ namespace Lazpoly.Presentation.Tabletop
             TextMesh price = _prices[index];
             if (price == null) return;
             int? rent = _rents[index];
-            price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]);
+            price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]) ?? string.Empty;
             price.color = PriceColor; // The rent stays in the print's ink, never the owner's colour (the owner's wish, Faz 21).
             Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));

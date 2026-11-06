@@ -54,7 +54,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ATownsNameAndRentLieOnABandInItsGroupsColour()
+        public void ATownsTopAndNameLieOnAPatternedBandInItsGroupsColourOverALightStrip()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
             var light = new Color(1f, 0.84f, 0.31f);
@@ -64,7 +64,7 @@ namespace Lazpoly.Presentation.Tests
             var holder = new GameObject("Board Test");
             try
             {
-                BoardView.Create(holder.transform, data);
+                BoardView view = BoardView.Create(holder.transform, data);
                 for (int i = 0; i < data.Board.Count; i++)
                 {
                     SquareDefinition square = data.Board[i];
@@ -84,7 +84,17 @@ namespace Lazpoly.Presentation.Tests
                     Color tileColor = tile.GetComponent<Renderer>().sharedMaterial.color;
                     Assert.GreaterOrEqual(BoardView.Contrast(bandColor, BoardView.InkColor), BoardView.BandContrast - 0.01f, $"{square.Name}: the ink reads on its band");
                     Assert.Greater(Mathf.Abs(bandColor.r - tileColor.r) + Mathf.Abs(bandColor.g - tileColor.g) + Mathf.Abs(bandColor.b - tileColor.b), 0.1f,
-                        $"{square.Name}: the band stands apart from the light top");
+                        $"{square.Name}: the band stands apart from the light strip");
+                    Assert.AreEqual(TileSkin.Pattern(), band.GetComponent<Renderer>().sharedMaterial.mainTexture, $"{square.Name}: the band carries the pattern");
+
+                    // Up the screen the band, with the name on it; down the screen the strip with the rent and the pawns.
+                    Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(view.Layout.SquareCenter(i)));
+                    Vector3 name = view.NameLabel(i).transform.position;
+                    Vector3 price = view.PriceLabel(i).transform.position;
+                    Assert.Less(Vector3.Dot(band.position - name, down), 0f, $"{square.Name}: the band lies up the screen from the name");
+                    Bounds area = band.GetComponent<Renderer>().bounds;
+                    float bandBottom = Vector3.Dot(area.center - tile.position, down) + Vector3.Dot(area.extents, new Vector3(Mathf.Abs(down.x), 0f, Mathf.Abs(down.z)));
+                    Assert.Less(bandBottom, Vector3.Dot(price - tile.position, down), $"{square.Name}: the rent lies on the light strip, below the band");
                 }
             }
             finally
@@ -169,7 +179,8 @@ namespace Lazpoly.Presentation.Tests
 
                 Assert.Greater(towns, 0);
                 const int town = 1;
-                Assert.AreEqual(BoardView.Subtitle(data.Board[town]), board.PriceLabel(town).text, "for sale, the town shows its price");
+                Assert.IsNull(BoardView.Subtitle(data.Board[town]));
+                Assert.AreEqual(string.Empty, board.PriceLabel(town).text, "for sale, the town shows no figure");
                 Assert.IsNull(board.RentShown(town));
                 Color32 ink = board.PriceLabel(town).color;
 
@@ -182,7 +193,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(ink, (Color32)board.PriceLabel(town).color, "in the same ink as the price, not the owner's colour");
 
                 board.SetRent(town, null);
-                Assert.AreEqual(BoardView.Subtitle(data.Board[town]), board.PriceLabel(town).text, "back on sale, the price returns");
+                Assert.AreEqual(string.Empty, board.PriceLabel(town).text, "back on sale, the figure goes again");
             }
             finally
             {

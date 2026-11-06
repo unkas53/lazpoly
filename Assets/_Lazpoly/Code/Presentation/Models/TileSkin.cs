@@ -29,6 +29,59 @@ namespace Lazpoly.Presentation.Models
         public const float FrameShade = 0.80f;
 
         private static Texture2D _paper;
+        private static Texture2D _pattern;
+
+        /// <summary>The town band's pattern: soft patches a little darker and lighter, and fine specks, like worn stone or a lawn.</summary>
+        public const float PatchShade = 0.09f;
+        public const float SpeckShade = 0.12f;
+        public const int SpecksAcross = 36;
+        public const float SpeckChance = 0.18f;
+
+        /// <summary>The shared pattern texture for the coloured part of a town's tile, made on first use; it repeats.</summary>
+        public static Texture2D Pattern()
+        {
+            if (_pattern != null) return _pattern;
+            const int size = Size;
+            _pattern = new Texture2D(size, size, TextureFormat.RGBA32, true)
+            {
+                name = "tile-pattern",
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Trilinear,
+            };
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    byte value = (byte)Mathf.RoundToInt(255f * PatternValue((x + 0.5f) / size, (y + 0.5f) / size));
+                    pixels[y * size + x] = new Color32(value, value, value, 255);
+                }
+            }
+
+            _pattern.SetPixels32(pixels);
+            _pattern.Apply(true, false);
+            return _pattern;
+        }
+
+        /// <summary>The pattern's brightness (0-1) at a point, u and v both 0-1: patches of noise under scattered specks.</summary>
+        public static float PatternValue(float u, float v)
+        {
+            // Soft patches: the noise pushed towards its ends, so the patches have shape instead of a uniform wash.
+            float patch = Mathf.SmoothStep(0f, 1f, Noise(u * 5f + 11f, v * 5f + 3f));
+            float value = 1f - PatchShade * patch + 0.03f * Noise(u * 23f, v * 23f);
+            // Specks: in a few cells of a fine grid, a small round dot, some dark and some light.
+            float cx = u * SpecksAcross, cy = v * SpecksAcross;
+            int ix = Mathf.FloorToInt(cx), iy = Mathf.FloorToInt(cy);
+            float pick = Hash(ix + 101, iy + 37);
+            if (pick < SpeckChance)
+            {
+                float dx = cx - ix - 0.5f, dy = cy - iy - 0.5f;
+                float dot = Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy) / 0.32f);
+                value += (pick < SpeckChance * 0.6f ? -SpeckShade : SpeckShade * 0.5f) * dot;
+            }
+
+            return Mathf.Clamp(value, 0.8f, 1f);
+        }
 
         /// <summary>The shared paper texture, made on first use.</summary>
         public static Texture2D Paper()
