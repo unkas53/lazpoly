@@ -150,7 +150,8 @@ namespace Lazpoly.Presentation.Models
             GameObject palm = Group(root, "Palm", at, yaw);
             const int pieces = 5;
             const float piece = 0.11f;
-            Vector3 top = Vector3.zero;
+            // The first ring leans already; lifted by its lean over its radius, its low edge stays on the sand.
+            Vector3 top = Vector3.up * 0.002f;
             for (int i = 0; i < pieces; i++)
             {
                 // Each ring of the trunk leans a little more towards +X, narrowing as it goes.
