@@ -23,4 +23,12 @@ Menüde, lobide ve oyuncu kartlarında görünen karakter resimleri (`Figure_<ki
 
     python3 Tools/Art/make_figure_portraits.py hip purple teal navy mob suit boss cane
 
+## Otogar dioraması
+
+Otogar köşesindeki sahne de proje sahibinin Meshy AI ile ürettiği bir modeldir: `Meshy_AI_BusAtBusStopDiorama_1106131802_image-to-3d-texture.glb` (45 MB, 316.852 üçgen, 8192 doku), durakta bekleyen mavi beyaz bir otobüs. Bu klasöre `BusAtBusStopDiorama.glb` adıyla koyup çalıştır:
+
+    python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/BusAtBusStopDiorama.glb
+
+Araç modeli boyuna göre değil genişliğine göre ölçekler (bir birim genişlik, taban y = 0, önü +Z), aynı iki ayrıntı düzeyini ve 2048'lik dokuyu yazar (`figure_station.bytes`, `figure_station_skin.bytes`). Dosyalar yoksa oyun çizilmiş durağı gösterir.
+
 Steam yapay zekâ beyanına girer (Steam/README.md).

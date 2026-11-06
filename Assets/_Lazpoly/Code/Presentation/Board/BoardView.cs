@@ -141,6 +141,9 @@ namespace Lazpoly.Presentation.Tabletop
         private int[] _levels;
         private Color?[] _ownerColors;
         private GameObject[][] _buildings;
+
+        // Corner scenes that are textured models (the bus station): turned to show their front to the camera.
+        private readonly List<KeyValuePair<Transform, Vector3>> _frontScenes = new List<KeyValuePair<Transform, Vector3>>();
         private Vector3[][] _buildingRest;
         private GameObject[] _tiles;
         private Color[] _tileColors;
@@ -684,8 +687,16 @@ namespace Lazpoly.Presentation.Tabletop
             if (scene == null) return;
             bool far = FacesAway(outward);
             scene.transform.localPosition = center + SceneSide(index, far) * (side * SceneOffset) + outward * (side * SceneInset * (far ? 1f : -1f)) + Vector3.up * TileHeight;
-            scene.transform.localRotation = Quaternion.LookRotation(outward);
             scene.transform.localScale = Vector3.one * (side * SceneSize);
+            if (!CornerParts.ShowsFront(scene))
+            {
+                scene.transform.localRotation = Quaternion.LookRotation(outward);
+                return;
+            }
+
+            // A model's front (the bus) turns to the camera like a building's, so it never shows its back.
+            scene.transform.localRotation = Quaternion.LookRotation(BuildingFront(outward, _yaw));
+            _frontScenes.Add(new KeyValuePair<Transform, Vector3>(scene.transform, outward));
         }
 
         /// <summary>The lawn in the middle: a gravel ring where the squares end, grass with lighter patches, a path round the park, and <see cref="LawnDressing"/> on it.</summary>
@@ -886,6 +897,11 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Turns the building models and plots to show their fronts to a camera at <paramref name="yaw"/>.</summary>
         private void TurnBuildings(float yaw)
         {
+            foreach (KeyValuePair<Transform, Vector3> scene in _frontScenes)
+            {
+                if (scene.Key != null) scene.Key.localRotation = Quaternion.LookRotation(BuildingFront(scene.Value, yaw));
+            }
+
             if (_buildings == null || !BuildingModels.IsAvailable) return;
             for (int i = 0; i < _buildings.Length; i++)
             {

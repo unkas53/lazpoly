@@ -95,7 +95,17 @@ namespace Lazpoly.Presentation.Tests
                     GameObject scene = CornerParts.For(type, type.ToString(), root.transform);
                     Assert.IsNotNull(scene, $"{type} has no scene.");
                     MeshFilter[] parts = scene.GetComponentsInChildren<MeshFilter>();
-                    Assert.Greater(parts.Length, 3, $"{type}'s scene is too plain.");
+                    if (type == Lazpoly.Core.Board.SquareType.Travel)
+                    {
+                        Assert.IsTrue(CornerParts.ShowsFront(scene), "the bus station is the owner's textured diorama");
+                        Assert.AreEqual(1, parts.Length);
+                        Assert.Greater(parts[0].sharedMesh.triangles.Length / 3, 20000, "in full detail");
+                    }
+                    else
+                    {
+                        Assert.Greater(parts.Length, 3, $"{type}'s scene is too plain.");
+                        Assert.IsFalse(CornerParts.ShowsFront(scene), $"{type}'s drawn scene faces out over its edge");
+                    }
 
                     var low = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
                     var high = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -119,6 +129,7 @@ namespace Lazpoly.Presentation.Tests
                     Assert.That(high.z, Is.LessThanOrEqualTo(0.53f), $"{type}'s scene spills over its square.");
                 }
 
+                Assert.Greater(CornerParts.BusStop("Drawn stop", root.transform).GetComponentsInChildren<MeshFilter>().Length, 3, "the drawn stop stands in without the diorama");
                 Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Lookout));
                 Assert.IsNull(CornerParts.For(Lazpoly.Core.Board.SquareType.Tax, "none", root.transform));
             }

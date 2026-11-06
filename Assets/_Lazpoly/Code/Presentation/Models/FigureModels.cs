@@ -27,6 +27,12 @@ namespace Lazpoly.Presentation.Models
         /// </summary>
         public static readonly string[] Ids = { "hip", "teal", "purple", "navy", "mob", "suit", "boss", "cane" };
 
+        /// <summary>
+        /// Not a character: the bus station corner's diorama (a bus at a stop), in the same pack format, one unit
+        /// wide instead of one unit tall (Tools/Art/make_corner_models.py; <see cref="CornerParts.Station"/>).
+        /// </summary>
+        public const string StationId = "station";
+
         private const float Smoothness = 0.2f;
 
         private sealed class Figure

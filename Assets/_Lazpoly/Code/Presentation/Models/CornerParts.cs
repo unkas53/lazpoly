@@ -38,10 +38,21 @@ namespace Lazpoly.Presentation.Models
                 case SquareType.Start: return Pier(name, parent);
                 case SquareType.Pot: return TeaGarden(name, parent);
                 case SquareType.Card: return Kiosk(name, parent);
-                case SquareType.Travel: return BusStop(name, parent);
+                case SquareType.Travel: return Station(name, parent) ?? BusStop(name, parent);
                 default: return null;
             }
         }
+
+        /// <summary>
+        /// The owner's bus station diorama (a bus at a stop, made with Meshy AI; <see cref="FigureModels.StationId"/>):
+        /// one unit wide, its base at y = 0, its front (the bus) at +Z. Null when its files are not in the build,
+        /// and the drawn <see cref="BusStop"/> stands in.
+        /// </summary>
+        public static GameObject Station(string name, Transform parent) =>
+            FigureModels.IsAvailable(FigureModels.StationId) ? FigureModels.Create(FigureModels.StationId, name, parent) : null;
+
+        /// <summary>Whether a corner scene is a textured model that should show its front to the camera, not face out over the edge.</summary>
+        public static bool ShowsFront(GameObject scene) => scene != null && scene.transform.Find(FigureModels.BodyPart) != null;
 
         /// <summary>A timber pier on posts with the lighthouse at its end and a rowing boat moored beside it.</summary>
         public static GameObject Pier(string name, Transform parent)

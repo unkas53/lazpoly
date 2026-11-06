@@ -83,6 +83,7 @@ beyan edilecek içerik:
 | Ana menü kiti: şehir arka planı, geniş logo | oyunda `Resources/Lazpoly/Art/Menu` (`Tools/Art/make_menu_art.py`) | Proje sahibinin kiti (2026-11-05): arka plan Higgsfield (nano_banana_2_1) ile üretildi; düğme, panel ve simgeler kitin kendi çizimi (SVG). Kitin karakter portreleri Faz 21'de oyundan çıktı |
 | Oyuncu kartı kiti: kart zeminleri (normal, sırada, iflas), çerçeve, şerit, para, ev ve süre çizgisi | oyunda `Resources/Lazpoly/Art/Menu` (`Tools/Art/make_menu_art.py`) | Proje sahibinin kiti (2026-11-05): kart parçaları kitin kendi çizimi (SVG) |
 | Karakterler (piyonlar): sekiz dokulu 3B figür (takım elbiseli, bastonlu, turkuaz takımlı, eli belinde, lacivert takımlı, mor ceketli, purolu patron, kürklü kadın) ve onlardan çizilen karakter resimleri | oyunda `Resources/Lazpoly/Models/figure_*` (`Tools/Art/make_figures.py`), resimler `Resources/Lazpoly/Art/Menu/Figure_*`, `Face_*` (`Tools/Art/make_figure_portraits.py`) | Proje sahibi Meshy AI ile resimden üretti (2026-11-05/06); oyun için sadeleştirildi ve dokusu küçültüldü; resimler figürlerden Blender ile çizildi |
+| Otogar köşesi: durakta bekleyen otobüs dioraması | oyunda `Resources/Lazpoly/Models/figure_station*` (`Tools/Art/make_corner_models.py`) | Proje sahibi Meshy AI ile resimden üretti (2026-11-06); oyun için sadeleştirildi ve dokusu küçültüldü |
 
 Ses efektleri yapay zekâ ürünü değildir: Kenney'nin CC0 kayıtlarından kurulur (`Tools/Audio/Kenney/KAYNAK.md`), beyan gerekmez.
 
