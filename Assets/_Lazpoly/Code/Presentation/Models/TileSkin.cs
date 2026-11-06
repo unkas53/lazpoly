@@ -127,9 +127,9 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>
         /// A town tile's whole skin, printed flat into the tile's own face: the group's colour with the pattern from
-        /// <paramref name="bandFrom"/> to <paramref name="bandTo"/> (v, 0-1, across the tile), the paper in
+        /// <paramref name="bandFrom"/> to <paramref name="bandTo"/>, inside the frame, (v, 0-1, across the tile), the paper in
         /// <paramref name="paving"/> elsewhere, and the frame line running round the tile over both and across it between
-        /// them (<see cref="OnDivider"/>), all of it in the colour's darker tone. The tile is drawn
+        /// them (<see cref="OnDivider"/>), in the paper's frame tone; the colour stays inside the frame. The tile is drawn
         /// untinted (white), since the colours are in the texture. <paramref name="depthOverWidth"/> is the tile's depth
         /// over its width, so the pixels stay square. Towns of one colour and shape share one texture.
         /// </summary>
@@ -153,21 +153,21 @@ namespace Lazpoly.Presentation.Models
                 (u, v) => PatternValue(u, Mathf.Clamp01((v - bandFrom) / span)));
             // The line between the two parts lies on the band's inner end: the end that is not at the tile's edge.
             float split = bandFrom <= 0f ? bandTo : bandFrom;
+            // The colour stays inside the frame: from the frame line on the tile's edge side to the line between the parts.
+            float low = Mathf.Max(bandFrom, FrameInset), high = Mathf.Min(bandTo, 1f - FrameInset);
             var pixels = new Color32[width * height];
             for (int y = 0; y < height; y++)
             {
-                float v0 = (float)y / height, v1 = (float)(y + 1) / height;
-                // How much of this row the band covers, so its edge is smooth rather than stepped.
-                float cover = Mathf.Clamp01((Mathf.Min(v1, bandTo) - Mathf.Max(v0, bandFrom)) / (v1 - v0));
+                float v = (y + 0.5f) / height;
                 for (int x = 0; x < width; x++)
                 {
                     int i = y * width + x;
-                    // The frame and the line between the parts are all one line in the colour's darker tone, round the
-                    // strip too: in two tones they read as two boxes side by side rather than one tile in two parts.
-                    float u = (x + 0.5f) / width, v = (y + 0.5f) / height;
-                    Color colour = OnFrame(u, v) || OnDivider(u, v, split)
-                        ? band * pattern[i] * FrameShade
-                        : Color.Lerp(paving * paper[i], band * pattern[i], cover);
+                    float u = (x + 0.5f) / width;
+                    // The frame and the line between the parts are in the paper's own frame tone, as on every other
+                    // square; they lie over the colour's edges, so those need no smoothing.
+                    bool coloured = u > FrameInset && u < 1f - FrameInset && v > low && v < high;
+                    Color colour = coloured ? band * pattern[i] : paving * paper[i];
+                    if (OnFrame(u, v) || OnDivider(u, v, split)) colour = paving * paper[i] * FrameShade;
                     colour.a = 1f;
                     pixels[i] = colour;
                 }

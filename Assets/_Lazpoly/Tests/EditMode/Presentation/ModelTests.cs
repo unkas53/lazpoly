@@ -98,28 +98,29 @@ namespace Lazpoly.Presentation.Tests
             Color strip = skin.GetPixelBilinear(0.5f, 0.85f);
             Assert.That(strip.b, Is.GreaterThan(0.75f), "beyond it the light paving");
 
-            // The frame line crosses the colour: the patterned colour, darkened by the frame's shade.
+            // The frame line runs round the colour in the paper's frame tone, as on every square.
             int x = Mathf.RoundToInt(TileSkin.FrameInset * skin.width - 0.5f), y = Mathf.RoundToInt(0.3f * skin.height);
             float u = (x + 0.5f) / skin.width, v = (y + 0.5f) / skin.height;
             Assert.IsTrue(TileSkin.OnFrame(u, v));
-            float expected = band.r * TileSkin.PatternValue(u, v / 0.6f) * TileSkin.FrameShade;
-            Assert.That(skin.GetPixel(x, y).r, Is.EqualTo(expected).Within(0.01f), "the frame line runs over the colour");
+            Assert.That(skin.GetPixel(x, y).r, Is.EqualTo(paving.r * TileSkin.Value(u, v)).Within(0.01f), "the frame line keeps the paper's tone");
+            Color outside = skin.GetPixelBilinear(0.02f, 0.3f);
+            Assert.That(outside.b, Is.GreaterThan(0.75f), "outside the frame the tile is plain: the colour stays inside the frame");
 
             // A line like the frame's runs between the two parts, from one side of the frame to the other.
             // The row just past the band's end: paving, but on the line.
             int row = Mathf.CeilToInt(0.6f * skin.height);
             float du = (skin.width / 2 + 0.5f) / skin.width, dv = (row + 0.5f) / skin.height;
             Assert.IsTrue(TileSkin.OnDivider(du, dv, 0.6f));
-            Assert.That(skin.GetPixel(skin.width / 2, row).b, Is.EqualTo(band.b * TileSkin.PatternValue(du, 1f) * TileSkin.FrameShade).Within(0.01f),
-                "the dividing line is one line in the colour's frame tone, on the paving's side too");
+            Assert.That(skin.GetPixel(skin.width / 2, row).b, Is.EqualTo(paving.b * TileSkin.Value(du, dv) * TileSkin.FrameShade).Within(0.01f),
+                "the dividing line is in the frame's tone");
             Assert.IsFalse(TileSkin.OnDivider(0.02f, 0.6f, 0.6f), "it stops at the frame line");
 
-            // Round the strip the frame keeps the colour's tone: one tile in two parts, not two boxes.
+            // Round the strip the same frame tone.
             int fx = Mathf.RoundToInt(TileSkin.FrameInset * skin.width - 0.5f), fy = Mathf.RoundToInt(0.8f * skin.height);
             float fu = (fx + 0.5f) / skin.width, fv = (fy + 0.5f) / skin.height;
             Assert.IsTrue(TileSkin.OnFrame(fu, fv));
-            Assert.That(skin.GetPixel(fx, fy).b, Is.EqualTo(band.b * TileSkin.PatternValue(fu, 1f) * TileSkin.FrameShade).Within(0.01f),
-                "the strip's frame is in the colour's tone");
+            Assert.That(skin.GetPixel(fx, fy).b, Is.EqualTo(paving.b * TileSkin.Value(fu, fv)).Within(0.01f),
+                "the strip's frame is in the same tone");
 
             Texture2D flipped = TileSkin.Town(band, paving, 0.4f, 1f, 1.4f);
             Assert.Greater(flipped.GetPixelBilinear(0.5f, 0.7f).r, flipped.GetPixelBilinear(0.5f, 0.7f).b + 0.1f, "the colour can lie at the other end");

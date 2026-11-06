@@ -54,7 +54,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ATownsColourIsPrintedFlatIntoItsTileOnTopWithTheLightStripBelow()
+        public void ATownsColourIsPrintedFlatInsideItsFrameOnTopWithTheLightStripBelow()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
             var light = new Color(1f, 0.84f, 0.31f);
@@ -106,10 +106,15 @@ namespace Lazpoly.Presentation.Tests
                         $"{square.Name}: the colour stands apart from the light strip");
                     Assert.That(underPrice.r, Is.GreaterThan(0.75f), $"{square.Name}: the strip is light");
                     Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(view.Layout.SquareCenter(i)));
-                    float topV = Vector3.Dot(tile.forward, down) > 0f ? 0.02f : 0.98f;
-                    Color atTop = skin.GetPixelBilinear(0.5f, topV);
+                    bool lowEnd = Vector3.Dot(tile.forward, down) > 0f;
+                    float insideTop = TileSkin.FrameInset + 3f * TileSkin.FrameWidth;
+                    Color atTop = skin.GetPixelBilinear(0.5f, lowEnd ? insideTop : 1f - insideTop);
                     Assert.Greater(Mathf.Abs(atTop.r - underPrice.r) + Mathf.Abs(atTop.g - underPrice.g) + Mathf.Abs(atTop.b - underPrice.b), 0.1f,
-                        $"{square.Name}: the colour runs to the tile's top edge");
+                        $"{square.Name}: the colour runs up to the frame line at the top");
+                    Color edge = skin.GetPixelBilinear(0.5f, lowEnd ? 0.02f : 0.98f);
+                    float spread = Mathf.Max(edge.r, Mathf.Max(edge.g, edge.b)) - Mathf.Min(edge.r, Mathf.Min(edge.g, edge.b));
+                    Assert.That(spread, Is.LessThan(0.06f), $"{square.Name}: outside the frame the tile is the plain grey paving");
+                    Assert.That(edge.g, Is.GreaterThan(0.7f), $"{square.Name}: and light");
                 }
             }
             finally
