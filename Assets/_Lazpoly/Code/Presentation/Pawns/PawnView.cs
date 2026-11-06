@@ -73,9 +73,6 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>Raised each time the pawn lands on a square while walking; the scene plays a step sound.</summary>
         public event Action<int> Stepped;
 
-        /// <summary>Raised with the spot the pawn leaves at the start of every hop; the scene leaves a trail there.</summary>
-        public event Action<Vector3> Departed;
-
         /// <summary>The square the pawn stands on (or is walking from).</summary>
         public int Square => _square;
 
@@ -160,7 +157,6 @@ namespace Lazpoly.Presentation.Pawns
             {
                 int next = (_square + (backward ? count - 1 : 1)) % count;
                 Vector3 from = transform.position;
-                Departed?.Invoke(from);
                 Vector3 to = Reserve(next);
                 for (float t = 0f; t < 1f; t += Time.deltaTime * speed / StepSeconds)
                 {
@@ -194,7 +190,6 @@ namespace Lazpoly.Presentation.Pawns
             const float seconds = 0.8f;
             float speed = Mathf.Max(Speed, 0.1f);
             Vector3 from = transform.position;
-            Departed?.Invoke(from);
             Vector3 to = Reserve(destination);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / seconds)
             {

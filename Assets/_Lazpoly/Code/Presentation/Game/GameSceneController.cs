@@ -736,8 +736,6 @@ namespace Lazpoly.Presentation.Game
                 PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id, CharacterOf(state, player).Id);
                 pawn.Speed = Settings.AnimationSpeed;
                 pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
-                PawnTrail trail = PawnTrail.Create(transform, color);
-                pawn.Departed += trail.Leave;
                 _pawns[player.Id] = pawn;
             }
 

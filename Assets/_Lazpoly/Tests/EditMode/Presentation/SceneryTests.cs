@@ -69,6 +69,7 @@ namespace Lazpoly.Presentation.Tests
                     if (data.Board[i].Type != SquareType.Property) continue;
                     Color ink = board.NameLabel(i).color;
                     Assert.Less(ink.grayscale, 0.4f, $"square {i}: the name reads dark on its pastel tile");
+                    Assert.AreEqual((Color32)board.NameLabel(0).color, (Color32)ink, $"square {i}: every name is in the one ink, whatever its group");
                 }
             }
             finally
@@ -167,7 +168,6 @@ namespace Lazpoly.Presentation.Tests
             Assert.Greater(BoardView.PriceSize, BoardView.NameSize, "the price is the big line");
             Assert.LessOrEqual(BoardView.NameFill, 0.88f, "a long name keeps a margin at both ends of its tile");
             Assert.Less(BoardView.MarkedNameFill, BoardView.NameFill, "the group's letter keeps its room");
-            Assert.Less(Lazpoly.Presentation.Pawns.PawnTrail.Top, BoardView.PrintHeight, "a pawn's trail lies under the price it walks over");
 
             // On a corner the scene stands towards the board's corner and the pawns step the other way; neither reaches the other.
             Assert.LessOrEqual(BoardView.SceneOffset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner along the edge");

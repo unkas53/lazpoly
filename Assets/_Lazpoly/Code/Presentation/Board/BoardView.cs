@@ -630,7 +630,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // A tile's size: along the edge, and from its inner edge to its outer edge (its local Z, turned outward).
                 Vector2 size = Layout.SquareSize(i) - Vector2.one * Gap;
 
-                // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint and the name's ink.
+                // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint; every name is in the one dark ink.
                 Color body = Color.Lerp(TileColor(square, data), PaperColor, Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
@@ -656,7 +656,7 @@ namespace Lazpoly.Presentation.Tabletop
                         Vector3 along = Vector3.Cross(Vector3.up, outward);
                         if (Vector3.Dot(along, ScreenRight(BoardCameraRig.BaseYaw)) > 0f) along = -along;
                         Vector3 line = center + down * (_depth * NameOffset) + Vector3.up * top;
-                        CreateBandMark(mark, line + along * (size.x * 0.4f), outward, NameInk(TileColor(square, data)));
+                        CreateBandMark(mark, line + along * (size.x * 0.4f), outward, InkColor);
                     }
                 }
                 else if (corner && CornerParts.Has(square.Type))
@@ -674,9 +674,8 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 namePlace = corner
                     ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
                     : center + down * (_depth * NameOffset);
-                Color ink = property ? NameInk(TileColor(square, data)) : InkColor;
                 _names[i] = CreateLabel("Name", PrintedName(square), namePlace + Vector3.up * top, outward,
-                    _width * NameSize, NameRoom(i, size), ink);
+                    _width * NameSize, NameRoom(i, size), InkColor);
                 string subtitle = Subtitle(square);
                 if (subtitle != null)
                 {
@@ -993,12 +992,6 @@ namespace Lazpoly.Presentation.Tabletop
             Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
-
-        /// <summary>A town's name ink: the print's dark ink with a touch of the group's colour, dark enough to read on the pastel tile.</summary>
-        public static Color NameInk(Color group) => Color.Lerp(group, InkColor, NameInkDepth);
-
-        /// <summary>How far a town's name ink goes from its group's colour towards the dark ink.</summary>
-        public const float NameInkDepth = 0.7f;
 
         /// <summary>A square's name as printed on the board: a town's in capitals ("İSTANBUL", Turkish capitals in Turkish), the others as written.</summary>
         public static string PrintedName(SquareDefinition square) =>
