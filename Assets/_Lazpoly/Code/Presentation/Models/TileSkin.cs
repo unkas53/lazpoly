@@ -163,8 +163,11 @@ namespace Lazpoly.Presentation.Models
                 {
                     // The frame line is in both grids, so it runs over the colour too: the tile reads as one printed piece.
                     int i = y * width + x;
-                    Color colour = Color.Lerp(paving * paper[i], band * pattern[i], cover);
-                    if (OnDivider((x + 0.5f) / width, (y + 0.5f) / height, split)) colour *= FrameShade;
+                    // The line between them is one line in the colour's darker tone, on both sides of the edge: half in
+                    // the colour's tone and half in the paving's it would read as two frames side by side.
+                    Color colour = OnDivider((x + 0.5f) / width, (y + 0.5f) / height, split)
+                        ? band * pattern[i] * FrameShade
+                        : Color.Lerp(paving * paper[i], band * pattern[i], cover);
                     colour.a = 1f;
                     pixels[i] = colour;
                 }
