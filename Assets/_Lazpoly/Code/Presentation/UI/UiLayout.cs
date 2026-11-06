@@ -41,7 +41,7 @@ namespace Lazpoly.Presentation.UI
         /// <summary>The big "roll" button over the lawn while it is this person's roll: its size, and how far below the screen's centre it sits.</summary>
         public const float RollPromptWidth = 300f;
         public const float RollPromptHeight = 76f;
-        public const float RollPromptDrop = 170f;
+        public const float RollPromptDrop = 110f; // Faz 23: higher, off the bottom row's squares (was 170).
 
         /// <summary>
         /// Screen pixels kept clear of the board at each side edge (<see cref="SideReserve"/>). The corner

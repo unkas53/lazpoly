@@ -585,7 +585,6 @@
   "{0} tatil yeri": "{0} resorts",
   "Tatil yerine bina kurulmaz. Kirası sahibinin elindeki tatil yeri sayısıyla artar: her biri için bir, iki, üç ya da dört kat.": "No buildings go on a resort. Its rent grows with the resorts its owner holds: one, two, three or four times, for each of them.",
   "Hapiste ({0})": "In jail ({0})",
-  "{0}: {1} tur daha beklemen gerekiyor.": "{0}: you have to wait {1} more turns.",
   "Öde ve çık ({0})": "Pay and leave ({0})",
   "Paran yetmiyor ({0})": "Not enough money ({0})",
   "{0} hapiste: {1} tur bekleyecek": "{0} is in jail: waits {1} turns",
@@ -607,5 +606,6 @@
   "Buraya gelen {0} kez sırası gelene kadar burada bekler. Sırası gelince isterse {1} ödeyip hemen çıkar ve zar atar ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler.": "Whoever lands here waits until their turn has come {0} times. On their turn they may pay {1} to leave at once and roll, or roll for free: a double gets them out to move by it.",
   "Üst üste {0} çift atan ve hapse gönderen kartı çeken de buraya düşer; Başlangıç'tan geçmiş sayılmaz.": "Rolling {0} doubles in a row or drawing the go-to-jail card also lands you here, without passing Start.",
   "Hapse gelen, üst üste {0} çift atan ya da hapse gönderen kartı çeken, {1} kez sırası gelene kadar orada bekler. Sırası gelince isterse {2} ödeyip hemen çıkar ve zar atar; ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler (bir daha atmaz), gelmezse sıra geçer. Hapisteyken kira almak sürer.": "Whoever lands on the jail, rolls {0} doubles in a row or draws the go-to-jail card waits there until their turn has come {1} times. On their turn they may pay {2} to leave at once and roll, or roll for free: a double gets them out to move by it (with no second roll); otherwise the turn passes. You still collect rent in jail.",
-  "{0} çift attı, hapisten çıktı": "{0} rolled a double and left jail"
+  "{0} çift attı, hapisten çıktı": "{0} rolled a double and left jail",
+  "{0} tur daha beklemen gerekiyor.": "You have to wait {0} more turns."
 }

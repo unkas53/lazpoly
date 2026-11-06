@@ -102,6 +102,8 @@ namespace Lazpoly.Presentation.Game
         private GameObject _cityLayer;
         private UiView _buildWindow;
         private GameObject _buildLayer;
+        private UiView _jailWindow;
+        private GameObject _jailLayer;
         private int _buildCardDismissed;
         private PropertyCard _propertyCard;
         private DebtSaleView _debtSale;
@@ -291,6 +293,8 @@ namespace Lazpoly.Presentation.Game
                 ui => HowToPlayPanel.Render(ui, _controller.Session.Board, _controller.Session.Rules, () => _howToLayer.SetActive(false)));
             _cityWindow = new UiView(UiRoot.Modal(_canvas.transform, "City Card", UiLayout.PropertyCardWidth, out _cityLayer), RenderCityCard);
             _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", UiLayout.PropertyCardWidth, out _buildLayer), RenderBuildCard);
+            // A jailed turn's choice opens in the middle of the screen (the owner's wish, Faz 23).
+            _jailWindow = new UiView(UiRoot.Modal(_canvas.transform, "Jail Card", UiLayout.WindowWidth, out _jailLayer), RenderJailCard);
             // The log and the properties open on request, over whatever card is up.
             _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
             _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
@@ -309,6 +313,7 @@ namespace Lazpoly.Presentation.Game
             _endLayer.SetActive(false);
             _cityLayer.SetActive(false);
             _buildLayer.SetActive(false);
+            _jailLayer.SetActive(false);
         }
 
         /// <summary>The drawn "Sokak Haberi" card, shown in the middle for a few seconds. It never takes the mouse.</summary>
@@ -368,6 +373,9 @@ namespace Lazpoly.Presentation.Game
             _rollRect.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.25f)));
         }
 
+        /// <summary>The roll button's red: it tints the kit's cream skin to a brick red.</summary>
+        public static readonly Color RollPromptRed = new Color(0.88f, 0.25f, 0.21f);
+
         /// <summary>
         /// The big "roll" button over the lawn: it pops up when the roll is this person's and goes the
         /// moment it is pressed. Space and Enter roll too.
@@ -379,8 +387,11 @@ namespace Lazpoly.Presentation.Game
             prompt.anchoredPosition = new Vector2(0f, -UiLayout.RollPromptDrop);
             prompt.sizeDelta = new Vector2(UiLayout.RollPromptWidth, UiLayout.RollPromptHeight);
             UiBuilder.AddColumnLayout(prompt.gameObject, 0, 0f);
-            Button button = new UiBuilder(prompt).Button(L("Zar At").ToUpperInvariant(), PressRollPrompt, true, UiButtonStyle.Primary, UiLayout.RollPromptHeight);
+            // Red with white words (the owner's wish, Faz 23): the kit's cream skin tinted, so hover and press still show.
+            Button button = new UiBuilder(prompt).Button(L("Zar At").ToUpperInvariant(), PressRollPrompt, true, UiButtonStyle.Secondary, UiLayout.RollPromptHeight);
+            button.GetComponent<Image>().color = RollPromptRed;
             Text label = button.GetComponentInChildren<Text>();
+            label.color = Color.white;
             label.fontSize = 34;
             label.resizeTextMaxSize = 34;
             _rollPrompt = prompt;
@@ -616,6 +627,8 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
             SetLayer(_cityLayer, _cityWindow, cityOpen, revision);
+            bool jailOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingJailDecision);
+            SetLayer(_jailLayer, _jailWindow, jailOpen, revision);
             bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
             SetLayer(_buildLayer, _buildWindow, buildOpen, revision);
             SetLayer(_pauseLayer, _pauseWindow, _pauseLayer.activeSelf, HashCode.Combine(revision, _controller.EndReason, _controller.ReportNote));
@@ -1102,10 +1115,6 @@ namespace Lazpoly.Presentation.Game
                 case GamePhase.AwaitingDiceChoice:
                     RenderDiceChoice(ui, state, player);
                     break;
-
-                case GamePhase.AwaitingJailDecision:
-                    RenderJail(ui, player);
-                    break;
             }
         }
 
@@ -1245,25 +1254,31 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
-        /// A turn in jail: pay the exit fee and roll now, or roll for a double, which lets the player out for free.
-        /// Any other roll waits the turn out; after the last one the player is free. When the clock runs out the dice are rolled.
+        /// A turn in jail, on a card in the middle of the screen: roll for a double, which lets the player out for free
+        /// (the first button), or pay the exit fee and roll now. Any other roll waits the turn out; after the last one the
+        /// player is free. When the clock runs out the dice are rolled.
         /// </summary>
-        private void RenderJail(UiBuilder ui, PlayerState player)
+        private void RenderJailCard(UiBuilder ui)
         {
+            GameState state = _controller.Session.State;
+            if (state == null || state.Phase != GamePhase.AwaitingJailDecision) return;
+            PlayerState player = state.CurrentPlayer;
             BoardDefinition board = _controller.Session.Board;
             int fee = GameRules.JailFee(board);
-            UiBuilder card = ui.Card();
-            card.Label(F($"{L(board[board.JailIndex].Name)}: {player.JailTurns} tur daha beklemen gerekiyor."));
-            card.Label(player.JailTurns > 1
+            ui.Title(UiIcon.Door, Lang.Upper(L(board[board.JailIndex].Name)));
+            ui.Label(F($"{player.JailTurns} tur daha beklemen gerekiyor."), UiTextStyle.Body);
+            ui.Label(player.JailTurns > 1
                 ? F($"{fee} ödersen hemen çıkıp zar atarsın. Zar atarsan çift gelince bedava çıkıp ilerlersin; gelmezse sıra geçer.")
                 : F($"{fee} ödersen hemen çıkıp zar atarsın. Zar atarsan çift gelince bedava çıkıp ilerlersin; gelmezse bu son bekleyişin, sonraki turda serbestsin."),
                 UiTextStyle.Small, UiTheme.Muted);
 
+            // Rolling comes first: it is free (the owner's wish); paying is the second choice.
+            ui.Button(L("Zar at (çift gelirse çık)"), () => _controller.Submit(new RollInJailCommand(player.Id)), true,
+                UiButtonStyle.Primary, CardButton);
             var pay = new PayJailFeeCommand(player.Id);
             bool canPay = _controller.IsAllowed(pay);
             ui.Button(canPay ? F($"Öde ve çık ({fee})") : F($"Paran yetmiyor ({fee})"), () => _controller.Submit(pay), canPay,
-                UiButtonStyle.Primary, CardButton);
-            ui.Button(L("Zar at (çift gelirse çık)"), () => _controller.Submit(new RollInJailCommand(player.Id)));
+                UiButtonStyle.Secondary, CardButton);
         }
 
         /// <summary>The lookout's two rolls, each with where it would take the player.</summary>
@@ -1490,7 +1505,7 @@ namespace Lazpoly.Presentation.Game
                 PauseOpen = _pauseLayer.activeSelf,
                 ClosableOpen = _squareLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
                                _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
-                BlockingOpen = _cityLayer.activeSelf,
+                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf,
                 Acting = acting,
                 Phase = state?.Phase ?? GamePhase.GameOver,
                 CanBuild = acting && OffersExtras(state) && CanReopenBuildCard(state),
