@@ -18,7 +18,9 @@ namespace Lazpoly.Presentation.Menu
     /// in and who is ready, read the house rules the owner picked, and start. Outside a room it is a
     /// sheet in the middle of the window; in a room it fills the window with three columns (the table
     /// settings, the seats, the friends) and the window's footer carries the big ready/start button.
-    /// Members other than the owner follow the owner into the game automatically.
+    /// Under the seats each member picks a character; one another member holds is locked, and a pick two
+    /// members made at once goes to the earlier seat (<see cref="FigurePicks"/>), so the room shows what the
+    /// game will use. Members other than the owner follow the owner into the game automatically.
     /// </summary>
     public sealed class LobbyPanel : IDisposable
     {
@@ -34,23 +36,29 @@ namespace Lazpoly.Presentation.Menu
         private readonly Action _loadGameScene;
         private readonly Action _openTableRules;
         private readonly int _boardMoney;
+        private readonly CharacterChoice _choice;
         private string _message;
         private string _problem;
         private string _code = "";
         private bool _launched;
         private IReadOnlyList<LobbyFriend> _friends = Array.Empty<LobbyFriend>();
         private LobbyStatus? _friendsLoadedFor;
+        private ulong _figureRoom;
+        private string _sentFigure;
 
         /// <param name="lobby">Null when no lobby service is registered (the panel then shows why).</param>
         /// <param name="openTableRules">Opens the house rules window; null hides the "change" button.</param>
         /// <param name="boardMoney">The board's own starting money, for the rules summary.</param>
-        public LobbyPanel(ILobbyService lobby, ITransport transport, Action loadGameScene, Action openTableRules = null, int boardMoney = 0)
+        /// <param name="choice">The character this person likes best, their first pick in a room; null starts with the first free one.</param>
+        public LobbyPanel(ILobbyService lobby, ITransport transport, Action loadGameScene, Action openTableRules = null, int boardMoney = 0,
+            CharacterChoice choice = null)
         {
             _lobby = lobby;
             _transport = transport;
             _loadGameScene = loadGameScene ?? throw new ArgumentNullException(nameof(loadGameScene));
             _openTableRules = openTableRules;
             _boardMoney = boardMoney;
+            _choice = choice;
             if (_lobby != null) _lobby.Failed += OnFailed;
         }
 
@@ -85,6 +93,7 @@ namespace Lazpoly.Presentation.Menu
             if (_friendsLoadedFor != _lobby.Status) RefreshFriends();
             // The owner's chosen rules go up to the room as soon as they change, so every member reads the same summary.
             if (_lobby.Status == LobbyStatus.InLobby && _lobby.IsOwner && !TableSetup.Chosen.SameAs(_lobby.Table)) _lobby.SetTable(TableSetup.Chosen);
+            if (_lobby.Status == LobbyStatus.InLobby) ClaimFigure();
             if (_launched || _lobby.Status != LobbyStatus.InLobby || _lobby.IsOwner || !_lobby.IsGameStarted || RoomIsOutdated) return;
 
             _launched = true;
@@ -102,7 +111,7 @@ namespace Lazpoly.Presentation.Menu
                 int key = HashCode.Combine(_lobby.Status, _lobby.IsOwner, _message, _problem, _friends.Count);
                 key = HashCode.Combine(key, table.StartingMoney, table.RoundLimit, table.TurnSeconds);
                 key = HashCode.Combine(key, _lobby.RoomProtocolVersion, _lobby.IsOverlayAvailable);
-                foreach (LobbyMember member in _lobby.Members) key = HashCode.Combine(key, member.Id, member.Name, member.IsReady, member.ProtocolVersion);
+                foreach (LobbyMember member in _lobby.Members) key = HashCode.Combine(key, member.Id, member.Name, member.IsReady, member.ProtocolVersion, member.Figure);
                 return key;
             }
         }
@@ -244,6 +253,7 @@ namespace Lazpoly.Presentation.Menu
             int capacity = RulesConfig.AbsoluteMaxPlayers;
             ColumnHeading(ui, UiIcon.People, UiPalette.Ink.Stripes[3], L("Oyuncu koltukları"), F($"{_lobby.Members.Count} / {capacity} dolu"));
             IReadOnlyList<LobbyMember> order = SeatOrder();
+            IReadOnlyList<string> figures = Figures(order);
             int rows = (capacity + SeatsPerRow - 1) / SeatsPerRow;
             bool inviteOffered = false;
             for (int row = 0; row < rows; row++)
@@ -254,7 +264,7 @@ namespace Lazpoly.Presentation.Menu
                 {
                     int seat = row * SeatsPerRow + column;
                     if (seat >= capacity) break;
-                    if (seat < order.Count) RenderSeat(line, seat, order[seat]);
+                    if (seat < order.Count) RenderSeat(line, seat, order[seat], CharacterChoice.Find(figures[seat]));
                     else
                     {
                         RenderEmptySeat(line, !inviteOffered);
@@ -263,19 +273,88 @@ namespace Lazpoly.Presentation.Menu
                 }
             }
 
+            RenderCharacters(ui, order, figures);
             RenderRoomCode(ui);
         }
 
         /// <summary>Members as the game will seat them: the owner first, then lobby order (<see cref="OnlineSeatPlan"/>).</summary>
-        private IReadOnlyList<LobbyMember> SeatOrder()
+        private IReadOnlyList<LobbyMember> SeatOrder() => OnlineSeatPlan.SeatOrder(_lobby.OwnerId, _lobby.Members);
+
+        /// <summary>The character each seat will play, as the host's seat plan will settle it.</summary>
+        private static IReadOnlyList<string> Figures(IReadOnlyList<LobbyMember> order) => FigurePicks.Resolve(OnlineSeatPlan.Picks(order), CharacterChoice.Ids);
+
+        /// <summary>This member's character strip: their own one picked, the others' locked with the holder's name.</summary>
+        private void RenderCharacters(UiBuilder ui, IReadOnlyList<LobbyMember> order, IReadOnlyList<string> figures)
         {
-            var order = new List<LobbyMember>(_lobby.Members.Count);
-            foreach (LobbyMember member in _lobby.Members) if (member.Id == _lobby.OwnerId) order.Add(member);
-            foreach (LobbyMember member in _lobby.Members) if (member.Id != _lobby.OwnerId) order.Add(member);
-            return order;
+            int mine = IndexOf(order, _lobby.LocalId);
+            if (mine < 0) return;
+            ui.Eyebrow(L("Karakterin"), UiTheme.Muted);
+            CharacterPicker.Render(ui, figures[mine], id =>
+            {
+                for (int i = 0; i < order.Count; i++) if (i != mine && figures[i] == id) return order[i].Name;
+                return null;
+            }, PickFigure, 52f);
         }
 
-        private void RenderSeat(UiBuilder row, int seat, LobbyMember member)
+        /// <summary>A click on a free character: it is this member's, for the room to see.</summary>
+        private void PickFigure(string id)
+        {
+            IReadOnlyList<LobbyMember> order = SeatOrder();
+            if (!FigurePicks.IsFree(Figures(order), IndexOf(order, _lobby.LocalId), id)) return;
+            _sentFigure = id;
+            _lobby.SetFigure(id);
+            _choice?.Select(id);
+        }
+
+        /// <summary>
+        /// Keeps this member's character settled: on entering a room it asks for their favourite (or the first free
+        /// one when another member holds it), and when two members asked for the same one at once, the later seat
+        /// takes the one the seat plan gives it instead. Asks once per change, not every frame.
+        /// </summary>
+        private void ClaimFigure()
+        {
+            if (_figureRoom != _lobby.RoomId)
+            {
+                _figureRoom = _lobby.RoomId;
+                _sentFigure = null;
+            }
+
+            IReadOnlyList<LobbyMember> order = SeatOrder();
+            int mine = IndexOf(order, _lobby.LocalId);
+            if (mine < 0) return;
+            string held = order[mine].Figure;
+            string wanted;
+            if (string.IsNullOrEmpty(held) && _sentFigure == null)
+            {
+                string favourite = _choice?.Selected.Id;
+                IReadOnlyList<string> others = OthersPicks(order, mine);
+                wanted = favourite != null && FigurePicks.IsFree(others, -1, favourite) ? favourite : Figures(order)[mine];
+            }
+            else
+            {
+                wanted = Figures(order)[mine];
+                if (string.IsNullOrEmpty(held) || held == wanted) return; // Waiting for the room to show the pick, or settled.
+            }
+
+            if (wanted == _sentFigure) return;
+            _sentFigure = wanted;
+            _lobby.SetFigure(wanted);
+        }
+
+        private static IReadOnlyList<string> OthersPicks(IReadOnlyList<LobbyMember> order, int mine)
+        {
+            var picks = new List<string>(order.Count);
+            for (int i = 0; i < order.Count; i++) if (i != mine) picks.Add(order[i].Figure);
+            return picks;
+        }
+
+        private static int IndexOf(IReadOnlyList<LobbyMember> order, ulong id)
+        {
+            for (int i = 0; i < order.Count; i++) if (order[i].Id == id) return i;
+            return -1;
+        }
+
+        private void RenderSeat(UiBuilder row, int seat, LobbyMember member, CharacterOption character)
         {
             bool owner = member.Id == _lobby.OwnerId;
             bool me = member.Id == _lobby.LocalId;
@@ -288,14 +367,14 @@ namespace Lazpoly.Presentation.Menu
             UiBuilder card = row.Card(UiTheme.Panel, 10);
             card.Chip(status, band, Color.white, 28f);
             card.Space(2f);
-            Centred(card).Swatch(color, 64f, round: true, mark: Initial(member.Name));
+            CharacterPicker.Face(Centred(card), character, 64f, ring: color);
             Text name = card.Label(member.Name, UiTextStyle.Body, UiTheme.Text, TextAnchor.MiddleCenter);
             name.font = UiTheme.BoldFont;
             card.Label(me ? L("Senin koltuğun") : owner ? L("Masayı kurdu") : member.IsReady ? L("Oyuna hazır") : L("Hazır olması bekleniyor"),
                 UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
             UiBuilder pawn = Centred(card, 6f);
-            pawn.Label(L("Piyon"), UiTextStyle.Small, UiTheme.Muted);
             pawn.Swatch(color, 16f, round: true);
+            pawn.Label(character?.Name ?? L("Piyon"), UiTextStyle.Small, UiTheme.Muted);
         }
 
         private void RenderEmptySeat(UiBuilder row, bool offerInvite)
@@ -468,7 +547,7 @@ namespace Lazpoly.Presentation.Menu
             OnlineSeatPlan plan;
             try
             {
-                plan = OnlineSeatPlan.Create(_lobby.LocalId, _lobby.Members);
+                plan = OnlineSeatPlan.Create(_lobby.LocalId, _lobby.Members, CharacterChoice.Ids);
             }
             catch (ArgumentException exception)
             {

@@ -6,12 +6,12 @@ using Object = UnityEngine.Object;
 namespace Lazpoly.Presentation.Models
 {
     /// <summary>
-    /// The owner's textured figures (made with Meshy AI from pictures): the stylised business man in a suit, the
-    /// gentleman with a cane, the business woman in a teal suit, the one with a hand on her hip, the business man in a
-    /// navy suit and the one in a purple blazer. Tools/Art/make_figures.py turns each into figure_&lt;id&gt;.bytes (two levels of detail,
-    /// one unit tall, soles at y = 0, facing +Z) and figure_&lt;id&gt;_skin.bytes (the colour map). A figure keeps its own
-    /// clothes and stands right on the tile (the owner had the coloured disc under its feet taken away). The whole model shows at the High graphics quality and the light one at Medium and
-    /// Low (<see cref="SetFullDetail"/>, switched in place like the buildings).
+    /// The characters' figures: the owner's textured models, made with Meshy AI from pictures (<see cref="Ids"/>).
+    /// Tools/Art/make_figures.py turns each into figure_&lt;id&gt;.bytes (two levels of detail, one unit tall, soles at
+    /// y = 0, facing +Z) and figure_&lt;id&gt;_skin.bytes (the colour map). A figure keeps its own clothes and stands
+    /// right on the tile (the owner had the coloured disc under its feet taken away). The whole model shows at the
+    /// High graphics quality and the light one at Medium and Low (<see cref="SetFullDetail"/>, switched in place like
+    /// the buildings). When a figure's files are missing another one stands in (<see cref="CreateOrStandIn"/>).
     /// </summary>
     public static class FigureModels
     {
@@ -19,6 +19,19 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>The part that carries the figure and its colour map.</summary>
         public const string BodyPart = "body";
+
+        /// <summary>
+        /// The figures in the build: the woman in a burgundy blazer with a hand on her hip, the woman in a teal suit,
+        /// the bearded man in a purple blazer, the man in a navy suit, the woman in a fur coat, the blond man in a
+        /// three-piece suit, the boss with a cigar and the gentleman with a cane.
+        /// </summary>
+        public static readonly string[] Ids = { "hip", "teal", "purple", "navy", "mob", "suit", "boss", "cane" };
+
+        /// <summary>
+        /// Not a character: the bus station corner's diorama (a bus at a stop), in the same pack format, one unit
+        /// wide instead of one unit tall (Tools/Art/make_corner_models.py; <see cref="CornerParts.Station"/>).
+        /// </summary>
+        public const string StationId = "station";
 
         private const float Smoothness = 0.2f;
 
@@ -52,6 +65,19 @@ namespace Lazpoly.Presentation.Models
             if (figure.Skin != null) ModelParts.Skin(body, figure.Skin);
             Live.Add((body.GetComponent<MeshFilter>(), id));
             return root;
+        }
+
+        /// <summary>The figure, or the first other one whose files are there; null when no figure is in the build.</summary>
+        public static GameObject CreateOrStandIn(string id, string name, Transform parent)
+        {
+            GameObject figure = Create(id, name, parent);
+            foreach (string other in Ids)
+            {
+                if (figure != null) break;
+                if (other != id) figure = Create(other, name, parent);
+            }
+
+            return figure;
         }
 
         /// <summary>Shows the whole models (true, the High quality) or the light ones, on every figure already made too.</summary>

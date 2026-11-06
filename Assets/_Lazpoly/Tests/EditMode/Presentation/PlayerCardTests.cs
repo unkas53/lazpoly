@@ -8,6 +8,7 @@ using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Menu;
+using Lazpoly.Presentation.Setup;
 using Lazpoly.Presentation.UI;
 using NUnit.Framework;
 using UnityEngine;
@@ -56,9 +57,9 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheCardKitAndItsPortraitsShipWithTheGame()
+        public void TheCardKitAndTheCharactersFacesShipWithTheGame()
         {
-            foreach (string name in PlayerCardView.Pictures.Concat(PlayerFaces.Portraits))
+            foreach (string name in PlayerCardView.Pictures.Concat(CharacterChoice.All.Select(option => option.Face)))
             {
                 Assert.IsNotNull(KitArt.Get(name), $"{name} is in Resources/Lazpoly/Art/Menu");
             }
@@ -75,18 +76,13 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheChooserWearsTheirCharacterAndTheOthersTakeTheRestInTurn()
+        public void EachCardWearsItsPlayersCharacter()
         {
-            string chosen = PlayerFaces.Portraits[2];
-            Assert.AreEqual(chosen, PlayerFaces.PortraitFor(1, 0, 1, chosen));
-            var others = new HashSet<string>();
-            for (int seat = 1; seat < 4; seat++) others.Add(PlayerFaces.PortraitFor(seat + 1, seat, 1, chosen));
-            Assert.AreEqual(3, others.Count, "three seats, three different faces");
-            CollectionAssert.DoesNotContain(others, chosen, "nobody else wears the chooser's face");
-            // Nobody chose (online, or a computers' table): all four take turns.
-            var all = new HashSet<string>();
-            for (int seat = 0; seat < 4; seat++) all.Add(PlayerFaces.PortraitFor(seat + 1, seat, GameState.NoOwner, null));
-            Assert.AreEqual(4, all.Count);
+            var seats = new[] { new PlayerSeat(1, "Ayşe", "boss"), new PlayerSeat(2, "Can", "mob"), new PlayerSeat(3, "Ece") };
+            GameState state = GameState.CreateInitial(Board, new RulesConfig(1000, 200, 6, 3, 2, 50), seats);
+            Assert.AreEqual("Baron", GameSceneController.CharacterOf(state, state.Players[0]).Name);
+            Assert.AreEqual("mob", GameSceneController.CharacterOf(state, state.Players[1]).Id);
+            Assert.AreEqual(CharacterChoice.ForSeat(2), GameSceneController.CharacterOf(state, state.Players[2]), "no pick (an older game): the seats take turns");
         }
 
         [Test]
@@ -112,19 +108,21 @@ namespace Lazpoly.Presentation.Tests
         public void TheSteamPictureReplacesThePortraitOnceItArrives()
         {
             var avatars = new FakeAvatars();
-            var faces = new PlayerFaces(avatars, new Dictionary<int, ulong> { [1] = 55 }, 1, PlayerFaces.Portraits[1]);
+            var portraits = new Dictionary<int, string> { [1] = CharacterChoice.All[1].Face, [2] = CharacterChoice.All[2].Face };
+            var faces = new PlayerFaces(avatars, new Dictionary<int, ulong> { [1] = 55 }, portraits);
             try
             {
-                Assert.AreEqual(PlayerFaces.Portraits[1], faces.For(1, 0)?.name, "the character stands in while the picture is on its way");
+                Assert.AreEqual(CharacterChoice.All[1].Face, faces.For(1)?.name, "the character stands in while the picture is on its way");
                 Assert.IsFalse(faces.Update(0f));
                 avatars.Pictures[55] = new AvatarPicture(4, 4, Enumerable.Repeat((byte)200, 64).ToArray());
                 Assert.IsFalse(faces.Update(0.1f), "asked again only every half second");
                 Assert.IsTrue(faces.Update(PlayerFaces.PollSeconds + 0.01f));
                 Assert.AreEqual(1, faces.Version);
                 Assert.IsTrue(faces.HasPhoto(1));
-                Assert.AreEqual(4f, faces.For(1, 0).rect.width);
+                Assert.AreEqual(4f, faces.For(1).rect.width);
                 Assert.IsFalse(faces.HasPhoto(2));
-                Assert.AreEqual(PlayerFaces.Portraits[2], faces.For(2, 1)?.name, "a computer keeps a portrait (seat 1 takes the second of the faces the chooser left)");
+                Assert.AreEqual(CharacterChoice.All[2].Face, faces.For(2)?.name, "a computer keeps its character's face");
+                Assert.IsNull(faces.For(9), "nobody at seat nine");
 
                 int asked = avatars.Asked;
                 faces.Update(10f);
@@ -135,9 +133,9 @@ namespace Lazpoly.Presentation.Tests
                 faces.Dispose();
             }
 
-            var nobody = new PlayerFaces(null, new Dictionary<int, ulong> { [1] = 55 }, 1, null);
+            var nobody = new PlayerFaces(null, new Dictionary<int, ulong> { [1] = 55 }, portraits);
             Assert.IsFalse(nobody.Update(1f), "without Steam nothing is asked");
-            Assert.IsNotNull(nobody.For(1, 0));
+            Assert.IsNotNull(nobody.For(1), "the character's face without Steam");
         }
 
         [Test]
@@ -180,7 +178,7 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void ARestingCardShowsTheFaceNumberMoneyAndHouses()
         {
-            PlayerCardView card = Card(PlayerCardState.Normal, KitArt.Get(PlayerFaces.Portraits[0]));
+            PlayerCardView card = Card(PlayerCardState.Normal, KitArt.Get(CharacterChoice.All[0].Face));
             LayoutElement size = card.Root.GetComponent<LayoutElement>();
             Assert.AreEqual(300f, size.preferredWidth);
             Assert.AreEqual(105f, size.preferredHeight, 0.01f, "the kit's 320 by 112 card, scaled to the corner");
@@ -216,7 +214,7 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void ABankruptCardGoesGreyAndSaysSo()
         {
-            PlayerCardView card = Card(PlayerCardState.Bankrupt, KitArt.Get(PlayerFaces.Portraits[0]));
+            PlayerCardView card = Card(PlayerCardState.Bankrupt, KitArt.Get(CharacterChoice.All[0].Face));
             Assert.AreEqual(PlayerCardView.BankruptCard, card.Background.sprite.name);
             Assert.IsNull(card.Balance, "no money to count");
             Assert.AreEqual(0, card.Pips.Count);

@@ -64,7 +64,7 @@ namespace Lazpoly.Presentation.Setup
             var seats = new PlayerSeat[count];
             for (int i = 0; i < count; i++)
             {
-                seats[i] = new PlayerSeat(i + 1, F($"Oyuncu {i + 1}"));
+                seats[i] = new PlayerSeat(i + 1, F($"Oyuncu {i + 1}"), CharacterChoice.ForSeat(i).Id);
             }
 
             return seats;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Lazpoly.App.Lobby;
 using Lazpoly.Core.Rules;
 using Lazpoly.Net.Messages;
@@ -33,7 +34,17 @@ namespace Lazpoly.Presentation.Tests
             {
                 ReadySet = ready;
                 int index = MemberList.FindIndex(m => m.Id == LocalId);
-                if (index >= 0) MemberList[index] = new LobbyMember(LocalId, MemberList[index].Name, ready);
+                if (index >= 0) MemberList[index] = new LobbyMember(LocalId, MemberList[index].Name, ready, MemberList[index].ProtocolVersion, MemberList[index].Figure);
+            }
+
+            public List<string> FiguresSent { get; } = new List<string>();
+
+            /// <summary>Steam shows a member's own data at once; the fake does the same.</summary>
+            public void SetFigure(string figure)
+            {
+                FiguresSent.Add(figure);
+                int index = MemberList.FindIndex(m => m.Id == LocalId);
+                if (index >= 0) MemberList[index] = new LobbyMember(LocalId, MemberList[index].Name, MemberList[index].IsReady, MemberList[index].ProtocolVersion, figure);
             }
 
             public event Action Changed { add { } remove { } }
@@ -226,6 +237,74 @@ namespace Lazpoly.Presentation.Tests
             panel.Update();
 
             Assert.AreEqual(2000, lobby.Table.StartingMoney);
+            panel.Dispose();
+        }
+
+        private sealed class MemoryStorage : Infra.Settings.ISettingsStorage
+        {
+            private readonly Dictionary<string, string> _strings = new Dictionary<string, string>();
+            public bool HasKey(string key) => _strings.ContainsKey(key);
+            public int GetInt(string key) => 0;
+            public float GetFloat(string key) => 0f;
+            public void SetInt(string key, int value) { }
+            public void SetFloat(string key, float value) { }
+            public string GetString(string key) => _strings.TryGetValue(key, out string value) ? value : string.Empty;
+            public void SetString(string key, string value) => _strings[key] = value ?? string.Empty;
+            public void Save() { }
+        }
+
+        private static CharacterChoice Favourite(string id)
+        {
+            var choice = new CharacterChoice(new MemoryStorage());
+            choice.Select(id);
+            return choice;
+        }
+
+        [Test]
+        public void AMemberEntersAsTheirFavouriteUnlessSomeoneHasIt()
+        {
+            var lobby = new FakeLobby { LocalId = 2 };
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(2), () => { }, choice: Favourite("boss"));
+            panel.Update();
+            panel.Update();
+            CollectionAssert.AreEqual(new[] { "boss" }, lobby.FiguresSent, "asked once for the favourite");
+            panel.Dispose();
+
+            lobby = new FakeLobby { LocalId = 2 };
+            lobby.MemberList[0] = new LobbyMember(1, "Ev", figure: "boss");
+            panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(2), () => { }, choice: Favourite("boss"));
+            panel.Update();
+            Assert.AreEqual(CharacterChoice.Ids[0], lobby.FiguresSent.Single(), "the owner has it: the first free one instead");
+            panel.Dispose();
+        }
+
+        [Test]
+        public void TwoMembersAskingForOneCharacterLeaveItToTheEarlierSeat()
+        {
+            var lobby = new FakeLobby { LocalId = 2 };
+            lobby.MemberList[0] = new LobbyMember(1, "Ev", figure: "mob");
+            lobby.MemberList[1] = new LobbyMember(2, "Ben", figure: "mob"); // Both asked at the same moment.
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(2), () => { }, choice: Favourite("mob"));
+            panel.Update();
+            Assert.AreEqual(CharacterChoice.Ids[0], lobby.FiguresSent.Single(), "the guest moves to the first free character");
+            Assert.AreEqual("mob", lobby.MemberList[0].Figure, "the owner keeps it");
+            panel.Update();
+            Assert.AreEqual(1, lobby.FiguresSent.Count, "settled: no more asking");
+            panel.Dispose();
+        }
+
+        [Test]
+        public void TheHostsSeatsCarryEveryonesCharacter()
+        {
+            var lobby = new FakeLobby { LocalId = 1 };
+            lobby.MemberList[0] = new LobbyMember(1, "Ev", figure: "cane");
+            lobby.MemberList[1] = new LobbyMember(2, "Ben", isReady: true, figure: "teal");
+            var panel = new LobbyPanel(lobby, new LoopbackNetwork().CreateTransport(1), () => { }, choice: Favourite("cane"));
+            panel.Update();
+            OnlineSeatPlan plan = OnlineSeatPlan.Create(lobby.LocalId, lobby.Members, CharacterChoice.Ids);
+            Assert.AreEqual("cane", plan.Seats[0].Figure);
+            Assert.AreEqual("teal", plan.Seats[1].Figure);
+            Assert.AreEqual(0, lobby.FiguresSent.Count, "the owner already holds a character of their own");
             panel.Dispose();
         }
 

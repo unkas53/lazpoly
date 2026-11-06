@@ -118,7 +118,7 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
-                PawnView pawn = PawnView.Create(holder.transform, board, 0, Color.red, new PawnCrowd(4), 1);
+                PawnView pawn = PawnView.Create(holder.transform, board, 0, Color.red, new PawnCrowd(4), 1, "suit");
                 Renderer[] parts = pawn.transform.Find(PawnView.ModelName).GetComponentsInChildren<Renderer>(true);
                 Assert.Greater(parts.Length, 0);
                 var solid = new List<Material>();

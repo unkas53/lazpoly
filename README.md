@@ -831,6 +831,20 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Dokulu karakterler kendi kıyafetlerini giyer ve doğrudan zemine basar (ayak altındaki renkli disk proje sahibinin isteğiyle kaldırıldı). Bekleyen oyuncunun piyonu dokusuyla birlikte saydamlaşır. Dosyaları eksikse yerine iş adamı durur.
 - Testler: `CharacterPartsTests` (koltuk sırası, dokulu karakterlerin boyu ve iki düzeyi, diskin olmaması, ayara göre model, dosya biçimi).
 
+
+## Faz 21: sekiz karakter ve lobide karakter seçimi
+
+- İki yeni Meshy karakteri: purolu, fötr şapkalı patron (`boss`) ve kürk paltolu kadın (`mob`). Eski boyalı iş adamı ve iş kadını (`business_man.txt`, `business_woman.txt`, `CharacterParts`, `ObjModel`, `make_character.py`, `make_businesswoman.py`) proje sahibinin isteğiyle kaldırıldı; artık her piyon dokulu bir figür (`FigureModels.Ids`, sekiz tane). Bir figürün dosyası eksikse başka bir figür durur, hiçbiri yoksa eski eşya piyonlar.
+- Karakterler (`CharacterChoice.All`): Ece (eli belinde), Aras (mor ceketli), Ada (turkuaz takımlı), Deniz (lacivert takımlı), Leyla (kürklü), Kaan (takım elbiseli), Baron (purolu patron), Necdet Bey (bastonlu). Menüdeki eski seçim yeni karaktere taşınır (Ece, Ada, Aras, Deniz aynı kalır).
+- Karakter resimleri figürlerin kendisinden çizilir (`Tools/Art/make_figure_portraits.py`, Blender): bütün figür `Figure_<id>` karakter penceresi için, baş ve omuzlar `Face_<id>` lobi koltuğu, karakter şeridi ve oyuncu kartı için. Kitlerin dört portresi artık kullanılmadığı için yapıdan çıktı.
+- Lobide karakter seçimi (`CharacterPicker`), aynı karakter iki oyuncuda olamaz:
+  - Tek Oyunculu: "Karakterin" şeridi; bilgisayarlar kalan karakterleri alır.
+  - Aynı Bilgisayarda: her koltuğun yüzüne basılır, karakteri alttaki şeritten seçilir; başka koltuktaki karakter kilitli. Görünmeyen koltuktaki karakter seçilirse ikisi yer değiştirir.
+  - Çevrim içi: her üye kendi karakterini seçer (Steam üye verisi `lazpoly_figure`); başka üyenin karakteri kilitli ve altında adı yazar. Odaya girince menüdeki favori, o alınmışsa ilk boştaki seçilir. İki üye aynı anda aynısını seçerse önceki koltuk kalır, sonraki boştaki ilk karaktere geçer (`FigurePicks`, her bilgisayarda aynı sonuç). Ev sahibinin koltuk planı karakterleri koltuklara yazar.
+- Karakter oyun durumunda taşınır: `PlayerSeat.Figure`, `PlayerState.Figure`, anlık görüntü sürümü 8, kayıt biçimi 8 (7 ve öncesi açılır; karakter yoksa koltuklar sırayla alır), ağ protokolü 12. Piyon ve oyuncu kartının yüzü oyuncunun karakteridir; Steam resmi gelince kartta onun yerini alır.
+- Menüdeki "Karakterler" penceresi sekiz kartı iki sıra halinde gösterir; buradaki seçim her lobide ilk seçimdir.
+- Testler: `FigureTests` (her figürün karakteri ve resimleri, yedek figür, figür boyları ve iki düzeyi, dosya biçimi), `OnlineSeatPlanTests` (koltuk başına ayrı karakter, çakışmanın çözümü), `OnlineSetupTests` (odaya favoriyle girme, çakışmada sonraki koltuğun değişmesi, ev sahibinin planı), `MenuTests` (eski seçimin taşınması, şeridin kilitleri), `PlayerCardTests` (kartın karakter yüzü), `MessageCodecTests` ve `LocalGameAndSaveTests` (karakterin ağda ve kayıtta taşınması, eski kayıt).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

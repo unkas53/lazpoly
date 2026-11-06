@@ -46,7 +46,7 @@ namespace Lazpoly.Presentation.Tests
                     // A square spans about (width + depth) / sqrt 2 across the screen, a little over 1.7 widths: the line stays on it.
                     Assert.LessOrEqual(Mathf.Abs(offset.x), spacing * 0.8f, "a figure stands off the square");
                     Assert.LessOrEqual(Mathf.Abs(offset.z), spacing * 0.1f, "figures stay in one line, not rows behind each other");
-                    // Side by side across the screen: a figure is about a third of its height wide (0.6 units at height 1.8),
+                    // Side by side across the screen: a figure is about a third of its height wide (0.9 units at height 2.7),
                     // and neighbours stand about half of that apart, so every face and jacket shows.
                     foreach (Vector3 other in seen) Assert.Greater(Mathf.Abs(offset.x - other.x), 0.29f, $"slots of {capacity} stand behind each other");
                     seen.Add(offset);

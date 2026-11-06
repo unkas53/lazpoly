@@ -47,7 +47,9 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>Gap between neighbours across the screen, as a fraction of the square's width (four players, and more).</summary>
-        public const float LineStep = 0.26f;
+        /// Faz 21 widened the four-player gap with the taller (and so wider) figures; a crowd of nine already
+        /// fills the square's width, so its gap stays and the figures overlap like a queue.
+        public const float LineStep = 0.30f;
         public const float CrowdedLineStep = 0.17f;
 
         /// <summary>How much further back every other figure stands, as a fraction of the square's width.</summary>

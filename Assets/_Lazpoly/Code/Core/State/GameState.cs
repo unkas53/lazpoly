@@ -99,7 +99,7 @@ namespace Lazpoly.Core.State
             {
                 if (seat == null) throw new ArgumentException("Seats cannot contain null.", nameof(seats));
                 if (!ids.Add(seat.Id)) throw new ArgumentException($"Duplicate player id {seat.Id}.", nameof(seats));
-                players.Add(new PlayerState(seat.Id, seat.Name, rules.StartingMoney));
+                players.Add(new PlayerState(seat.Id, seat.Name, rules.StartingMoney, seat.Figure));
             }
 
             return new GameState(players, board.Count)
@@ -141,7 +141,7 @@ namespace Lazpoly.Core.State
                 }
 
                 if (entry.Laps < 0) throw new ArgumentException($"Player {entry.Id} has a negative lap count.", nameof(snapshot));
-                players.Add(new PlayerState(entry.Id, entry.Name ?? string.Empty, entry.Money)
+                players.Add(new PlayerState(entry.Id, entry.Name ?? string.Empty, entry.Money, entry.Figure)
                 {
                     Position = entry.Position,
                     IsBankrupt = entry.IsBankrupt,

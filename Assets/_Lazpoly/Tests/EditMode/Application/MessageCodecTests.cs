@@ -15,7 +15,7 @@ namespace Lazpoly.App.Tests
         private static GameStateSnapshot SampleSnapshot()
         {
             var engine = new GameEngine(NetTestData.Board(), NetTestData.Rules(),
-                new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Çağrı Öztürk") }, new Pcg32Random(3UL));
+                new[] { new PlayerSeat(1, "Ayşe", "boss"), new PlayerSeat(2, "Çağrı Öztürk") }, new Pcg32Random(3UL));
             engine.Execute(new RollDiceCommand(1));
             return GameStateSnapshot.Capture(engine.State);
         }
@@ -324,6 +324,19 @@ namespace Lazpoly.App.Tests
             negative.WriteULong(0);
             negative.WriteInt(-1);
             Assert.Throws<FormatException>(() => MessageCodec.Decode(negative.ToArray()));
+        }
+
+        [Test]
+        public void EveryPlayersCharacterTravelsWithTheGameState()
+        {
+            var start = new GameStartMessage
+            {
+                ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 9UL, YourPlayerId = 2, Sequence = 1, Snapshot = SampleSnapshot(),
+            };
+            var read = (GameStartMessage)MessageCodec.Decode(MessageCodec.Encode(start));
+            Assert.AreEqual("boss", read.Snapshot.Players[0].Figure);
+            Assert.AreEqual("", read.Snapshot.Players[1].Figure, "no pick stays no pick");
+            Assert.AreEqual("boss", read.Snapshot.Restore().Players[0].Figure);
         }
 
         [Test]

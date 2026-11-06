@@ -617,7 +617,7 @@ namespace Lazpoly.Presentation.Game
             var ai = new Dictionary<int, AiDifficulty>();
             foreach (PlayerState player in state.Players)
             {
-                seats.Add(new PlayerSeat(player.Id, player.Name));
+                seats.Add(new PlayerSeat(player.Id, player.Name, CharacterOf(state, player).Id));
                 if (save.AiPlayers.TryGetValue(player.Id, out SavedAiPlayer computer)) ai[player.Id] = computer.Difficulty;
             }
 
@@ -723,9 +723,9 @@ namespace Lazpoly.Presentation.Game
             _dice.Speed = Settings.AnimationSpeed;
             _crowd = new PawnCrowd(state.Players.Count);
             _turnMarker = TurnMarker.Create(transform);
-            int chooser = ChoosingPlayer(state);
-            CharacterOption character = new CharacterChoice(new PlayerPrefsStorage()).Selected;
-            Faces = CreateFaces(state, chooser, character.Face);
+            var portraits = new Dictionary<int, string>();
+            foreach (PlayerState player in state.Players) portraits[player.Id] = CharacterOf(state, player).Face;
+            Faces = CreateFaces(state, ChoosingPlayer(state), portraits);
             for (int i = 0; i < state.Players.Count; i++)
             {
                 PlayerState player = state.Players[i];
@@ -733,12 +733,9 @@ namespace Lazpoly.Presentation.Game
                 int seat = FirstPlayerDraw.LobbySeat(state.Players, player.Id);
                 Color color = PlayerPalette.ForSeat(seat);
                 _playerColors[player.Id] = color;
-                Models.CharacterKind? figure = player.Id == chooser ? character.Figure : (Models.CharacterKind?)null;
-                PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id, figure);
+                PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id, CharacterOf(state, player).Id);
                 pawn.Speed = Settings.AnimationSpeed;
                 pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
-                PawnTrail trail = PawnTrail.Create(transform, color);
-                pawn.Departed += trail.Leave;
                 _pawns[player.Id] = pawn;
             }
 
@@ -752,9 +749,16 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>The game has not begun: the first player, still on Start, waits to roll for the first time.</summary>
         /// <summary>
-        /// The player whose figure is the character picked in the menu: in a game on this computer, the person in
-        /// the first lobby seat (the one who set the game up); none online, where each computer would see another
-        /// figure, and none at the computers' -perf table.
+        /// The character a player plays: the one picked in the lobby, which the game state carries; in a game saved
+        /// before Faz 21 none was picked, and the seats take the characters in turn.
+        /// </summary>
+        public static CharacterOption CharacterOf(GameState state, PlayerState player) =>
+            CharacterChoice.Find(player.Figure) ?? CharacterChoice.ForSeat(FirstPlayerDraw.LobbySeat(state.Players, player.Id));
+
+        /// <summary>
+        /// The person whose Steam picture this computer knows in a game played on it: the one in the first lobby
+        /// seat who is not the computer (the one who set the game up); none online, where the lobby names everyone's
+        /// account, and none at the computers' -perf table.
         /// </summary>
         private int ChoosingPlayer(GameState state)
         {
@@ -780,7 +784,7 @@ namespace Lazpoly.Presentation.Game
         /// person's, from the lobby; on this computer the one who set the game up), portraits for the rest.
         /// The -perf table has nobody's face.
         /// </summary>
-        private PlayerFaces CreateFaces(GameState state, int chooser, string chooserFace)
+        private PlayerFaces CreateFaces(GameState state, int chooser, IReadOnlyDictionary<int, string> portraits)
         {
             IPlayerAvatars avatars = null;
             ILobbyService lobby = _lobby;
@@ -794,7 +798,7 @@ namespace Lazpoly.Presentation.Game
             if (avatars == null || lobby == null) accounts = null;
             else if (_isOnline) accounts = SeatAccounts.Online(_host != null ? lobby.LocalId : _hostPeer, _startMembers, state.Players);
             else accounts = SeatAccounts.Local(chooser, lobby.LocalId);
-            return new PlayerFaces(avatars, accounts, chooser, chooserFace);
+            return new PlayerFaces(avatars, accounts, portraits);
         }
 
         public static bool IsFirstRoll(GameState state) =>
@@ -1128,7 +1132,6 @@ namespace Lazpoly.Presentation.Game
 
                         _board.SetOwner(owner.SquareIndex, ColorOf(owner.NewOwnerId));
                         ShowRents();
-                        _board.PulseOwner(owner.SquareIndex);
                         _board.RaiseFlag(owner.SquareIndex);
                         Pawn(owner.NewOwnerId)?.Cheer();
                         // Bought from the bank on landing; a trade has its own lines.

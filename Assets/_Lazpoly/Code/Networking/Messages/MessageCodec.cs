@@ -14,10 +14,11 @@ namespace Lazpoly.Net.Messages
     public static class MessageCodec
     {
         /// <summary>
-        /// 11: a ride walks (passing Start pays) and may not end on another player's town. 10: the engine
+        /// 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
+        /// not end on another player's town. 10: the engine
         /// ends an insolvent player's game at once and the turn ends by itself. Mixed builds must not share a table.
         /// </summary>
-        public const int ProtocolVersion = 11;
+        public const int ProtocolVersion = 12;
 
         private enum CommandTag : byte
         {
@@ -379,6 +380,7 @@ namespace Lazpoly.Net.Messages
                 w.WriteBool(p.IsBankrupt);
                 w.WriteBool(p.HasLookout);
                 w.WriteInt(p.Laps);
+                w.WriteString(p.Figure ?? string.Empty);
             }
 
             w.WriteInt(s.Owners.Length);
@@ -405,8 +407,11 @@ namespace Lazpoly.Net.Messages
             }
         }
 
-        /// <summary>The snapshot layout written today (Faz 13b: no auctions any more).</summary>
-        public const int SnapshotVersion = 7;
+        /// <summary>The snapshot layout written today (Faz 21: each player's character).</summary>
+        public const int SnapshotVersion = 8;
+
+        /// <summary>Layout 7 (Faz 13b) dropped the auctions; it knows no characters.</summary>
+        public const int PlainSnapshotVersion = 7;
 
         /// <summary>Layout 6 (Faz 10c-2) carried a running auction and the bank auctions still queued.</summary>
         public const int QueueSnapshotVersion = 6;
@@ -469,6 +474,7 @@ namespace Lazpoly.Net.Messages
                     IsBankrupt = r.ReadBool(),
                     HasLookout = !legacy && r.ReadBool(),
                     Laps = version >= LapSnapshotVersion ? r.ReadInt() : -1,
+                    Figure = version >= SnapshotVersion ? r.ReadString() : string.Empty,
                 });
             }
 
@@ -487,7 +493,7 @@ namespace Lazpoly.Net.Messages
                 if (version < SaleSnapshotVersion) r.ReadBool();
             }
 
-            if (version < SnapshotVersion)
+            if (version < PlainSnapshotVersion)
             {
                 // Older layouts had room for an auction. A game saved mid-auction never gets this far (its
                 // phase no longer exists), so whatever is here is empty and is skipped.

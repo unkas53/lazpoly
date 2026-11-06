@@ -8,10 +8,9 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Pawns
 {
     /// <summary>
-    /// A player's piece: the business man or the business woman from <see cref="CharacterParts"/> (seats
-    /// alternate) with the jacket in the player's colour, standing on the square and facing the camera; or,
-    /// when no character model is in the build, one of the town's shapes from <see cref="PawnShapes"/> painted
-    /// whole. The model is a child of the pawn so the hop's squash and stretch scale the pawn, not the model's
+    /// A player's piece: the character they picked, a textured figure from <see cref="FigureModels"/> in its own
+    /// clothes, standing on the square and facing the camera; or, when no figure is in the build, one of the
+    /// town's shapes from <see cref="PawnShapes"/> painted in the player's colour. The model is a child of the pawn so the hop's squash and stretch scale the pawn, not the model's
     /// size; the character's own body language (breathing, leaning into a walk, cheering, sulking) is
     /// <see cref="CharacterMotion"/> on that child.
     /// </summary>
@@ -21,8 +20,9 @@ namespace Lazpoly.Presentation.Pawns
         /// The character's height on the board; the shapes are about 0.55. The owner asked for him
         /// large (at 0.9 he was about 60 pixels at 1080p): he stands over one and a half tiles tall,
         /// so the figure reads from across the room even though he may cover a name behind him.
+        /// Faz 21: the owner asked for half as tall again (1.8 to 2.7).
         /// </summary>
-        public const float CharacterHeight = 1.8f;
+        public const float CharacterHeight = 2.7f;
 
         /// <summary>The child that holds the character or the shape.</summary>
         public const string ModelName = "Model";
@@ -56,8 +56,8 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>True when the pawn is the character; false when it is one of the shapes.</summary>
         public bool IsCharacter { get; private set; }
 
-        /// <summary>Which figure the pawn is, when <see cref="IsCharacter"/>.</summary>
-        public CharacterKind Kind { get; private set; }
+        /// <summary>Which figure the pawn is (<see cref="FigureModels.Ids"/>), when <see cref="IsCharacter"/>.</summary>
+        public string Figure { get; private set; }
 
         /// <summary>Animation speed multiplier from the settings (1 = normal).</summary>
         public float Speed
@@ -73,22 +73,18 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>Raised each time the pawn lands on a square while walking; the scene plays a step sound.</summary>
         public event Action<int> Stepped;
 
-        /// <summary>Raised with the spot the pawn leaves at the start of every hop; the scene leaves a trail there.</summary>
-        public event Action<Vector3> Departed;
-
         /// <summary>The square the pawn stands on (or is walking from).</summary>
         public int Square => _square;
 
         /// <param name="crowd">Shared by every pawn on the board, so two never take the same slot of a square.</param>
         /// <param name="playerId">The pawn's key in <paramref name="crowd"/>.</param>
-        /// <param name="figure">The figure the player picked (see CharacterChoice); seats alternate between the two when none is given.</param>
-        public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId, CharacterKind? figure = null)
+        /// <param name="figure">The character the player plays as (a figure id); another figure stands in when its files are missing.</param>
+        public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId, string figure)
         {
             if (crowd == null) throw new ArgumentNullException(nameof(crowd));
-            CharacterKind kind = figure ?? CharacterParts.KindFor(seatIndex);
-            GameObject model = CharacterParts.Character(kind, ModelName, null);
+            GameObject model = FigureModels.CreateOrStandIn(figure, ModelName, null);
             bool character = model != null;
-            var root = new GameObject($"Pawn {seatIndex + 1} {(character ? CharacterParts.NameOf(kind) : PawnShapes.NameOf(seatIndex))}");
+            var root = new GameObject($"Pawn {seatIndex + 1} {(character ? figure : PawnShapes.NameOf(seatIndex))}");
             root.transform.SetParent(parent, false);
             CharacterMotion motion = null;
             if (character)
@@ -96,7 +92,6 @@ namespace Lazpoly.Presentation.Pawns
                 model.transform.SetParent(root.transform, false);
                 model.transform.localScale = Vector3.one * CharacterHeight;
                 model.transform.localRotation = Facing(BoardCameraRig.BaseYaw);
-                CharacterParts.Paint(model, color);
                 motion = CharacterMotion.Attach(model.transform, Vector3.one * CharacterHeight, seatIndex * 0.37f);
             }
             else
@@ -107,7 +102,7 @@ namespace Lazpoly.Presentation.Pawns
             var pawn = root.AddComponent<PawnView>();
             pawn._model = model.transform;
             pawn.IsCharacter = character;
-            pawn.Kind = kind;
+            pawn.Figure = character ? figure : null;
             pawn._motion = motion;
             pawn._board = board;
             pawn._crowd = crowd;
@@ -162,7 +157,6 @@ namespace Lazpoly.Presentation.Pawns
             {
                 int next = (_square + (backward ? count - 1 : 1)) % count;
                 Vector3 from = transform.position;
-                Departed?.Invoke(from);
                 Vector3 to = Reserve(next);
                 for (float t = 0f; t < 1f; t += Time.deltaTime * speed / StepSeconds)
                 {
@@ -196,7 +190,6 @@ namespace Lazpoly.Presentation.Pawns
             const float seconds = 0.8f;
             float speed = Mathf.Max(Speed, 0.1f);
             Vector3 from = transform.position;
-            Departed?.Invoke(from);
             Vector3 to = Reserve(destination);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / seconds)
             {

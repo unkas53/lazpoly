@@ -18,6 +18,9 @@ namespace Lazpoly.Core.State
             public bool IsBankrupt;
             public bool HasLookout;
             public int Laps;
+
+            /// <summary>The character the player plays as; empty when none was picked (older games).</summary>
+            public string Figure = string.Empty;
         }
 
         public GamePhase Phase;
@@ -75,6 +78,7 @@ namespace Lazpoly.Core.State
                     IsBankrupt = player.IsBankrupt,
                     HasLookout = player.HasLookout,
                     Laps = player.Laps,
+                    Figure = player.Figure,
                 });
             }
 
