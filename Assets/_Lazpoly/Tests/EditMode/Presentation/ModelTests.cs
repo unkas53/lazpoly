@@ -105,6 +105,15 @@ namespace Lazpoly.Presentation.Tests
             float expected = band.r * TileSkin.PatternValue(u, v / 0.6f) * TileSkin.FrameShade;
             Assert.That(skin.GetPixel(x, y).r, Is.EqualTo(expected).Within(0.01f), "the frame line runs over the colour");
 
+            // A line like the frame's runs between the two parts, from one side of the frame to the other.
+            // The row just past the band's end: all paving, on the line.
+            int row = Mathf.CeilToInt(0.6f * skin.height);
+            float du = (skin.width / 2 + 0.5f) / skin.width, dv = (row + 0.5f) / skin.height;
+            Assert.IsTrue(TileSkin.OnDivider(du, dv, 0.6f));
+            Assert.That(skin.GetPixel(skin.width / 2, row).b, Is.EqualTo(paving.b * TileSkin.Value(du, dv) * TileSkin.FrameShade).Within(0.01f),
+                "the dividing line is as dark as the frame line");
+            Assert.IsFalse(TileSkin.OnDivider(0.02f, 0.6f, 0.6f), "it stops at the frame line");
+
             Texture2D flipped = TileSkin.Town(band, paving, 0.4f, 1f, 1.4f);
             Assert.Greater(flipped.GetPixelBilinear(0.5f, 0.7f).r, flipped.GetPixelBilinear(0.5f, 0.7f).b + 0.1f, "the colour can lie at the other end");
         }
