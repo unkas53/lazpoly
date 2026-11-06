@@ -30,6 +30,9 @@ namespace Lazpoly.PlayTests
                     return new DeclineTravelCommand(me);
                 case GamePhase.AwaitingDiceChoice:
                     return new ChooseDiceCommand(me, 1);
+                case GamePhase.AwaitingJailDecision:
+                    var pay = new PayJailFeeCommand(me);
+                    return Legal(pay) ? pay : (GameCommand)new WaitInJailCommand(me);
                 case GamePhase.AwaitingDebtPayment:
                     if (Legal(new PayDebtCommand(me))) return new PayDebtCommand(me);
                     for (int square = 0; square < board.Count; square++)

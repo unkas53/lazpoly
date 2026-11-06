@@ -62,7 +62,7 @@ namespace Lazpoly.Presentation.Tests
                      {
                          typeof(BuildingLevelChangedEvent), typeof(TradeResolvedEvent),
                          typeof(DebtIncurredEvent), typeof(PlayerBankruptedEvent),
-                         typeof(CardDrawnEvent), typeof(PotChangedEvent), typeof(DiceOptionsEvent),
+                         typeof(CardDrawnEvent), typeof(JailChangedEvent), typeof(DiceOptionsEvent),
                      })
             {
                 Assert.IsTrue(seen.Contains(expected), $"The computer players never produced {expected.Name}.");

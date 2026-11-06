@@ -34,6 +34,11 @@ namespace Lazpoly.Core.Board
             }
 
             HasPot = Array.Exists(_squares, square => square.Type == SquareType.Pot);
+            JailIndex = Array.FindIndex(_squares, square => square.Type == SquareType.Jail);
+            if (JailIndex >= 0 && Array.FindLastIndex(_squares, square => square.Type == SquareType.Jail) != JailIndex)
+            {
+                throw new ArgumentException("A board has at most one jail.", nameof(squares));
+            }
             bool hasCardSquare = Array.Exists(_squares, square => square.Type == SquareType.Card);
             _cards = NoCards;
             if (cards != null && cards.Count > 0)
@@ -58,6 +63,11 @@ namespace Lazpoly.Core.Board
 
         /// <summary>Whether taxes and card fines collect in a pot (the board has a pot square) instead of going to the bank.</summary>
         public bool HasPot { get; }
+
+        /// <summary>The jail square, where three doubles in a row send a player; -1 when the board has none.</summary>
+        public int JailIndex { get; }
+
+        public bool HasJail => JailIndex >= 0;
 
         public int Count => _squares.Length;
 
@@ -156,6 +166,9 @@ namespace Lazpoly.Core.Board
                     break;
                 case SquareType.Travel:
                     if (square.Fee < 0) throw new ArgumentException($"Square {index} '{square.Name}': fee cannot be negative.");
+                    break;
+                case SquareType.Jail:
+                    if (square.Fee <= 0) throw new ArgumentException($"Square {index} '{square.Name}': leaving jail early needs a fee.");
                     break;
             }
         }

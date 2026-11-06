@@ -42,7 +42,7 @@ namespace Lazpoly.Core.Board
         /// <summary>Amount paid to the bank. Only meaningful for <see cref="SquareType.Tax"/>.</summary>
         public int TaxAmount { get; }
 
-        /// <summary>Price of a ride. Only meaningful for <see cref="SquareType.Travel"/>.</summary>
+        /// <summary>Price of a ride (<see cref="SquareType.Travel"/>), or of leaving jail early (<see cref="SquareType.Jail"/>).</summary>
         public int Fee { get; }
 
         /// <summary>Price of one building level (house or hotel). 0 means the property cannot be developed.</summary>
@@ -76,6 +76,10 @@ namespace Lazpoly.Core.Board
         /// <summary>Offers a ride to any other square for <paramref name="fee"/>.</summary>
         public static SquareDefinition Travel(string name, int fee) =>
             new SquareDefinition(name, SquareType.Travel, 0, 0, 0, 0, 0, null, fee);
+
+        /// <summary>Locks the player in for a few turns; <paramref name="fee"/> lets them out early.</summary>
+        public static SquareDefinition Jail(string name, int fee) =>
+            new SquareDefinition(name, SquareType.Jail, 0, 0, 0, 0, 0, null, fee);
 
         /// <summary>Gives the next roll a choice of two.</summary>
         public static SquareDefinition Lookout(string name) => new SquareDefinition(name, SquareType.Lookout, 0, 0, 0, 0, 0, null);

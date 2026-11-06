@@ -210,6 +210,7 @@ namespace Lazpoly.App.Tests
             Assert.IsInstanceOf<DeclinePurchaseCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingBuyDecision), 1));
             Assert.IsInstanceOf<RejectTradeCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTradeResponse), 1));
             Assert.IsInstanceOf<DeclineTravelCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingTravelDecision), 1));
+            Assert.IsInstanceOf<WaitInJailCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingJailDecision), 1), "Time running out in jail spends nothing.");
             Assert.IsInstanceOf<EndTurnCommand>(TimeoutPolicy.CommandFor(StateIn(GamePhase.TurnEnd), 1), "Nothing is built when time runs out.");
             Assert.IsNull(TimeoutPolicy.CommandFor(StateIn(GamePhase.AwaitingDebtPayment), 1), "A debt takes the automatic sale, not one move.");
             GameState noDebt = StateIn(GamePhase.AwaitingDebtPayment);

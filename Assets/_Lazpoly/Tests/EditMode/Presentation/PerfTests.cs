@@ -198,6 +198,9 @@ namespace Lazpoly.Presentation.Tests
             }
 
             CollectionAssert.AreEquivalent(ScreenTour.ResortsHeld, resortsHeld, "two stages of the beach stand on the board");
+            PlayerState jailed = state.Players[0].Id != ScreenTour.PersonId ? state.Players[0] : state.Players[1];
+            Assert.AreEqual(board.JailIndex, jailed.Position, "a computer stands in the cell");
+            Assert.AreEqual(ScreenTour.JailedTurns, jailed.JailTurns);
 
             Assert.AreEqual("03-ayarlar.png", ScreenTour.FileName(3, "ayarlar"));
             Assert.IsTrue(PerfRun.HasArgument(new[] { "Lazpoly.exe", "-SHOTS" }, ScreenTour.Flag));

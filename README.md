@@ -861,6 +861,17 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Ekran turu (`-shots`) masaya iki plaj kademesi koyar (bir bilgisayarda 3, birinde 1 tatil yeri) ve bir tatil yerinin kartının resmini çeker (`tatil-yeri-karti`); `-perf -built` bütün tatil yerlerini ilk oyuncuya verir, tam plaj görünür.
 - Testler: `ResortTests` (kira tablosu, başkasının tatil yeri, üzerine gelince ödeme, satın alma ve bina yasağı, sağlama değeri), `BoardDataLoaderTests` (her kenarda bir tatil yeri, binalı tatil yerinin reddi), `PropertyChoiceTests`, `SquareInfoTests`, `ResortViewTests` (kare genişliği, kademelerin parçaları ve sınırları, oyuncu rengi, kumsal kare, plajın büyümesi, kart resmi), `PerfTests` (turun ve `-built` masasının tatil yerleri).
 
+## Faz 23: hapis
+
+- Çay Molası kalktı, yerine Hapis geldi (`"type": "jail"`, köşe 7, çıkış ücreti 50; `board.json` içinde `"jailTurns": 3`). Kumbara da kalktı: vergiler ve kart cezaları bankaya gider, tahtanın ortasındaki kumbara yazısı ve kavanozu görünmez. Çay Molası'na götüren kart artık Bali'ye götürür.
+- Hapse gelen oyuncunun sırası hemen biter (çift atmış olsa bile). Sonraki üç sırasında önce seçim yapar (`GamePhase.AwaitingJailDecision`): "Öde ve çık" ile 50 öder ve hemen zar atar (`PayJailFeeCommand`) ya da parasız bekler ve sıra geçer (`WaitInJailCommand`). Üçüncü bekleyişten sonraki sırasında serbesttir. Hapisteyken çift atmak çıkarmaz; kira almak ve takas sürer.
+- Üst üste üç çift atan doğrudan hapse sıçrar (Başlangıç'tan geçmiş sayılmaz) ve aynı şekilde kilitlenir. Hapsi olmayan tahtalarda eski kural geçerli: hamle yanar.
+- Durum: her oyuncunun kalan hapis turu (`PlayerState.JailTurns`, `JailChangedEvent`), anlık görüntüde, kayıtta ve ağda taşınır. Protokol 13, anlık görüntü düzeni 9, kayıt biçimi 9; biçim 8 kayıtları herkes serbest olarak açılır. Hapis turu tahtanın sağlama değerine girer, bu yüzden önceki tahtayla kaydedilmiş oyunlar açılmaz.
+- Bilgisayar oyuncusu ücreti yedek parasını bozmadan ödeyebiliyorsa öder, yoksa bekler; süre dolarsa oyun bekler.
+- Ekran: köşede taş bir hücre, önü ve yanları demir parmaklıklı, pirinç kilitli (`CornerParts.Cell`); karede "çıkış 50". Sırası gelen insan oyuncuya kart: kaç tur kaldığı, "Öde ve çık (50)" (para yetmezse kapalı) ve "Bekle". Oyuncu kartında "Hapiste (n)", olay günlüğünde giriş, bekleme ve çıkış satırları, konuşma balonları ("Hapse düştüm!", "Bekliyorum...", "Özgürüm!"), bilgi kartı, Nasıl Oynanır bölümü ve bir ipucu.
+- Ekran turu (`-shots`) bir bilgisayarı hapse koyar (2 tur kaldı).
+- Testler: `JailTests` (girişte sıranın bitmesi, seçim aşaması, ödeyip çıkma, parasızken ödeyememe, üç bekleyişten sonra serbestlik, üç çiftte hapis, anlık görüntü ve özet, tahtanın doğrulanması), `AiPlayerTests`, `NetworkSessionTests` (süre dolunca bekleme), `MessageCodecTests`, `LocalGameAndSaveTests` (biçim 8 kaydı), `BoardDataLoaderTests`, `TipsTests`, `ModelTests` (hücre sahnesi, parmaklık işareti), `PerfTests`.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

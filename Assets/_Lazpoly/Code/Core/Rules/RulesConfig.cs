@@ -19,7 +19,8 @@ namespace Lazpoly.Core.Rules
             int fullGroupRentMultiplier,
             int buildingSellbackPercent,
             int roundLimit = 0,
-            int turnSeconds = TableRules.DefaultTurnSeconds)
+            int turnSeconds = TableRules.DefaultTurnSeconds,
+            int jailTurns = 0)
         {
             if (startingMoney <= 0) throw new ArgumentOutOfRangeException(nameof(startingMoney));
             if (passStartBonus < 0) throw new ArgumentOutOfRangeException(nameof(passStartBonus));
@@ -29,6 +30,7 @@ namespace Lazpoly.Core.Rules
             if (buildingSellbackPercent < 0 || buildingSellbackPercent > 100) throw new ArgumentOutOfRangeException(nameof(buildingSellbackPercent));
             if (roundLimit < 0) throw new ArgumentOutOfRangeException(nameof(roundLimit));
             if (turnSeconds < 0) throw new ArgumentOutOfRangeException(nameof(turnSeconds));
+            if (jailTurns < 0) throw new ArgumentOutOfRangeException(nameof(jailTurns));
 
             StartingMoney = startingMoney;
             PassStartBonus = passStartBonus;
@@ -38,6 +40,7 @@ namespace Lazpoly.Core.Rules
             BuildingSellbackPercent = buildingSellbackPercent;
             RoundLimit = roundLimit;
             TurnSeconds = turnSeconds;
+            JailTurns = jailTurns;
         }
 
         public int StartingMoney { get; }
@@ -48,7 +51,7 @@ namespace Lazpoly.Core.Rules
         /// <summary>Sides per die. Two dice are rolled each time.</summary>
         public int DiceSides { get; }
 
-        /// <summary>Rolling this many doubles in one turn forfeits the move and ends the turn.</summary>
+        /// <summary>Rolling this many doubles in one turn sends the player to jail (or, on a board without one, forfeits the move); the turn ends.</summary>
         public int MaxConsecutiveDoubles { get; }
 
         /// <summary>Rent multiplier when the owner holds every property of the group.</summary>
@@ -66,6 +69,9 @@ namespace Lazpoly.Core.Rules
         /// <summary>Seconds per move online (0 = no clock); see <see cref="TableRules.TurnSeconds"/>.</summary>
         public int TurnSeconds { get; }
 
+        /// <summary>How many of their turns a jailed player waits before walking out free (they may pay to leave sooner).</summary>
+        public int JailTurns { get; }
+
         /// <summary>The choices made at the table for this game.</summary>
         public TableRules Table => new TableRules(StartingMoney, RoundLimit, TurnSeconds);
 
@@ -75,7 +81,7 @@ namespace Lazpoly.Core.Rules
             if (table == null) throw new ArgumentNullException(nameof(table));
             return new RulesConfig(table.StartingMoney > 0 ? table.StartingMoney : StartingMoney, PassStartBonus, DiceSides,
                 MaxConsecutiveDoubles, FullGroupRentMultiplier, BuildingSellbackPercent,
-                table.RoundLimit, table.TurnSeconds);
+                table.RoundLimit, table.TurnSeconds, JailTurns);
         }
 
         /// <summary>What the bank pays for one building level that cost <paramref name="buildingCost"/>.</summary>

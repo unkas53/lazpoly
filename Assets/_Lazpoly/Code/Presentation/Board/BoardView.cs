@@ -66,6 +66,7 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color CardColor = new Color(0.98f, 0.80f, 0.42f);
         private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
         private static readonly Color TravelColor = new Color(0.62f, 0.74f, 0.95f);
+        private static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
         private static readonly Color RoadColor = new Color(0.72f, 0.68f, 0.60f);
@@ -1063,7 +1064,7 @@ namespace Lazpoly.Presentation.Tabletop
         public static float FitCharacterSize(float characterSize, Vector2 size, Vector2 maxSize) =>
             Mathf.Min(FitCharacterSize(characterSize, size.x, maxSize.x), FitCharacterSize(characterSize, size.y, maxSize.y));
 
-        /// <summary>The line under a square's name: the tax it takes or the fare; null when the square has none (a town for sale shows no figure).</summary>
+        /// <summary>The line under a square's name: the tax it takes, the fare or the jail's exit fee; null when the square has none (a town for sale shows no figure).</summary>
         public static string Subtitle(SquareDefinition square)
         {
             switch (square.Type)
@@ -1071,6 +1072,7 @@ namespace Lazpoly.Presentation.Tabletop
                 case SquareType.Property: return null; // For sale a town shows no figure; owned, its rent (the owner's wish, Faz 22).
                 case SquareType.Tax: return F($"-{square.TaxAmount}");
                 case SquareType.Travel: return F($"bilet {square.Fee}");
+                case SquareType.Jail: return F($"çıkış {square.Fee}");
                 default: return null;
             }
         }
@@ -1192,6 +1194,7 @@ namespace Lazpoly.Presentation.Tabletop
                 case SquareType.Property: return square.IsResort ? SandColor : data.GroupColor(square.GroupId);
                 case SquareType.Card: return CardColor;
                 case SquareType.Pot: return PotColor;
+                case SquareType.Jail: return JailColor;
                 case SquareType.Travel: return TravelColor;
                 case SquareType.Lookout: return LookoutColor;
                 default: return RestColor;

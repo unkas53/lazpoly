@@ -38,6 +38,7 @@ namespace Lazpoly.App.Session
                 case GamePhase.AwaitingTradeResponse: return new RejectTradeCommand(playerId);
                 case GamePhase.AwaitingTravelDecision: return new DeclineTravelCommand(playerId);
                 case GamePhase.AwaitingDiceChoice: return new ChooseDiceCommand(playerId, 0);
+                case GamePhase.AwaitingJailDecision: return new WaitInJailCommand(playerId);
                 default: return null;
             }
         }

@@ -106,6 +106,18 @@ namespace Lazpoly.Core.Commands
         public DeclineTravelCommand(int playerId) : base(playerId) { }
     }
 
+    /// <summary>Pays the jail's fee to leave it at once; the player then rolls as usual.</summary>
+    public sealed class PayJailFeeCommand : GameCommand
+    {
+        public PayJailFeeCommand(int playerId) : base(playerId) { }
+    }
+
+    /// <summary>Waits out this turn in jail; the turn ends.</summary>
+    public sealed class WaitInJailCommand : GameCommand
+    {
+        public WaitInJailCommand(int playerId) : base(playerId) { }
+    }
+
     /// <summary>Picks one of the two rolls a lookout gave: 0 for the first pair, 1 for the second.</summary>
     public sealed class ChooseDiceCommand : GameCommand
     {

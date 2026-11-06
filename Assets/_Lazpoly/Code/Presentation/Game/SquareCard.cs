@@ -123,6 +123,7 @@ namespace Lazpoly.Presentation.Game
                 case SquareType.Tax: return UiIcon.List;
                 case SquareType.Card: return UiIcon.Book;
                 case SquareType.Pot: return UiIcon.Bookmark;
+                case SquareType.Jail: return UiIcon.Door;
                 case SquareType.Travel: return UiIcon.Next;
                 case SquareType.Lookout: return UiIcon.Dice;
                 case SquareType.Property: return UiIcon.Home;

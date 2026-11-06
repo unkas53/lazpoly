@@ -33,7 +33,7 @@ namespace Lazpoly.Presentation.Data
             }
 
             var rules = new RulesConfig(file.startingMoney, file.passStartBonus, file.diceSides,
-                file.maxConsecutiveDoubles, file.fullGroupRentMultiplier, file.buildingSellbackPercent);
+                file.maxConsecutiveDoubles, file.fullGroupRentMultiplier, file.buildingSellbackPercent, jailTurns: file.jailTurns);
 
             var groupColors = new Dictionary<int, Color>();
             var groupNames = new Dictionary<int, string>();
@@ -101,6 +101,8 @@ namespace Lazpoly.Presentation.Data
                     return SquareDefinition.Pot(entry.name);
                 case "travel":
                     return SquareDefinition.Travel(entry.name, entry.fee);
+                case "jail":
+                    return SquareDefinition.Jail(entry.name, entry.fee);
                 case "lookout":
                     return SquareDefinition.Lookout(entry.name);
                 case "resort":

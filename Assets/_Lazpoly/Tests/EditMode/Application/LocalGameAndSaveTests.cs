@@ -170,6 +170,23 @@ namespace Lazpoly.App.Tests
             }
         }
 
+        [Test]
+        public void ASaveFromBeforeTheJailOpensWithEveryoneFree()
+        {
+            LocalGame game = AllAi(3, 12UL);
+            Steps(game, 30);
+            SavedGame original = game.Save(Checksum);
+            original.Snapshot.Players[1].Figure = "suit";
+
+            SavedGame read = SavedGameCodec.Decode(AuctionEraSave(original, 8));
+            Assert.AreEqual("suit", read.Snapshot.Players[1].Figure);
+            foreach (GameStateSnapshot.PlayerEntry player in read.Snapshot.Players) Assert.AreEqual(0, player.JailTurns, player.Name);
+            Assert.AreEqual(original.Snapshot.Players[2].Money, read.Snapshot.Players[2].Money);
+
+            LocalGame resumed = LocalGame.Resume(Board, Rules, Checksum, read);
+            Steps(resumed, 5);
+        }
+
         /// <summary>
         /// A save from before Faz 13b, when tables still had auctions: format 5 (Faz 9) wrote a three-value table,
         /// format 6 (Faz 10c-2) added the turn time, the bank rule and the queue of bank auctions to the snapshot.
@@ -231,6 +248,7 @@ namespace Lazpoly.App.Tests
                 w.WriteBool(p.IsBankrupt);
                 w.WriteBool(p.HasLookout);
                 w.WriteInt(p.Laps);
+                if (version >= 8) w.WriteString(p.Figure); // Format 8 (Faz 21) added the characters, not yet the jail.
             }
 
             w.WriteInt(s.Owners.Length);

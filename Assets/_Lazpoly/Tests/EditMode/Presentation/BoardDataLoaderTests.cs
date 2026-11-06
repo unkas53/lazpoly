@@ -47,14 +47,17 @@ namespace Lazpoly.Presentation.Tests
         public void ShippedBoardHasTheSpecialSquaresAndADeck()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
-            foreach (SquareType type in new[] { SquareType.Card, SquareType.Pot, SquareType.Travel, SquareType.Lookout })
+            foreach (SquareType type in new[] { SquareType.Card, SquareType.Jail, SquareType.Travel, SquareType.Lookout })
             {
                 bool found = false;
                 for (int i = 0; i < data.Board.Count; i++) found |= data.Board[i].Type == type;
                 Assert.IsTrue(found, $"The board has no {type} square.");
             }
 
-            Assert.IsTrue(data.Board.HasPot);
+            Assert.IsFalse(data.Board.HasPot, "the tea break gave way to the jail; taxes and fines go to the bank");
+            Assert.AreEqual(7, data.Board.JailIndex, "the jail stands on the first corner after the start");
+            Assert.AreEqual(50, data.Board[data.Board.JailIndex].Fee);
+            Assert.AreEqual(3, data.Rules.JailTurns);
             Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
             foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
         }
@@ -89,6 +92,13 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""to"": ""Otogar""", @"""to"": ""Yok""")));
             Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""kind"": ""collect""", @"""kind"": ""magic""")));
+
+            BoardData jailed = BoardDataLoader.Parse(json.Replace(@"""type"": ""pot"", ""name"": ""Kumbara""", @"""type"": ""jail"", ""name"": ""Hapis"", ""fee"": 30")
+                .Replace(@"""diceSides"": 6,", @"""diceSides"": 6, ""jailTurns"": 2,"));
+            Assert.AreEqual(SquareType.Jail, jailed.Board[2].Type);
+            Assert.AreEqual(2, jailed.Board.JailIndex);
+            Assert.AreEqual(30, jailed.Board[2].Fee);
+            Assert.AreEqual(2, jailed.Rules.JailTurns);
         }
 
         [Test]

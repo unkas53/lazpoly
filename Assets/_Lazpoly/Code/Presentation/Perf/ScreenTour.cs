@@ -101,10 +101,13 @@ namespace Lazpoly.Presentation.Perf
             return ai;
         }
 
+        /// <summary>The turns the jailed computer of the tour still waits.</summary>
+        public const int JailedTurns = 2;
+
         /// <summary>
         /// Sets the tour's table: the computers hold <see cref="TownsEach"/> towns each and the first two the
         /// <see cref="ResortsHeld"/> resorts, everyone has been round
-        /// the board once, and the person is on turn standing on the first town for sale with
+        /// the board once, the first computer sits in jail, and the person is on turn standing on the first town for sale with
         /// <see cref="PersonMoney"/>, deciding whether to buy it, at a table without a clock.
         /// </summary>
         public static void Stage(SavedGame save, BoardDefinition board)
@@ -142,6 +145,14 @@ namespace Lazpoly.Presentation.Perf
                 if (computer >= ResortsHeld.Length) break;
                 for (int n = 0; n < ResortsHeld[computer] && resort < resorts.Count; n++) snapshot.Owners[resorts[resort++]] = player.Id;
                 computer++;
+            }
+
+            // One computer sits in jail, so the pictures show the cell with a pawn in it and the card saying so.
+            GameStateSnapshot.PlayerEntry jailed = snapshot.Players.Find(p => p.Id != PersonId);
+            if (board.HasJail && jailed != null)
+            {
+                jailed.Position = board.JailIndex;
+                jailed.JailTurns = JailedTurns;
             }
 
             GameStateSnapshot.PlayerEntry here = snapshot.Players[person];

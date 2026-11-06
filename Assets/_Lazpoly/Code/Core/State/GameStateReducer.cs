@@ -46,6 +46,11 @@ namespace Lazpoly.Core.State
                     RequirePlayer(state, e.PlayerId).HasLookout = e.HasLookout;
                     break;
 
+                case JailChangedEvent e:
+                    if (e.Turns < 0) throw new InvalidOperationException("Jail turns cannot be negative.");
+                    RequirePlayer(state, e.PlayerId).JailTurns = e.Turns;
+                    break;
+
                 case PotChangedEvent e:
                     if (state.Pot + e.Delta < 0) throw new InvalidOperationException("The pot cannot go below zero.");
                     state.Pot += e.Delta;

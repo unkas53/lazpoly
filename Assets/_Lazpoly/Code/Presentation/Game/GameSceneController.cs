@@ -1119,6 +1119,10 @@ namespace Lazpoly.Presentation.Game
                         _board.NudgePot(pot.Delta > 0);
                         Revision++;
                         break;
+                    case JailChangedEvent jail:
+                        Say(jail.PlayerId, L(jail.Turns == 0 ? "Özgürüm!" : jail.Turns >= _session.Rules.JailTurns ? "Hapse düştüm!" : "Bekliyorum..."));
+                        Revision++;
+                        break;
                     case CardDrawnEvent card:
                         ShownCard = card.CardIndex;
                         ShownCardPlayer = card.PlayerId;

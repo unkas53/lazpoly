@@ -5,8 +5,8 @@ namespace Lazpoly.Presentation.Models
 {
     /// <summary>
     /// The little scenes that stand on the four corner squares and say what the corner is, in the
-    /// town's own words: a pier with its lighthouse at the start, a tea garden at the tea break, a
-    /// newspaper kiosk for the street news and a minibus stop at the bus station. Each is a parent
+    /// town's own words: a pier with its lighthouse at the start, a barred cell at the jail (a tea garden on
+    /// boards that still have a tea break), a newspaper kiosk for the street news and a minibus stop at the bus station. Each is a parent
     /// object with its base at y = 0, one unit wide (x) and deep (z), built from the game's own meshes
     /// so the board can scale and place it. The board turns a scene's +Z outward; the far corners' scenes
     /// (kiosk, bus stop) keep their open side at -Z, towards the camera.
@@ -25,10 +25,12 @@ namespace Lazpoly.Presentation.Models
         public static readonly Color Glass = new Color(0.72f, 0.84f, 0.92f);
         public static readonly Color Orange = new Color(0.93f, 0.55f, 0.18f);
         public static readonly Color Tea = new Color(0.72f, 0.30f, 0.16f);
+        public static readonly Color Stone = new Color(0.68f, 0.66f, 0.62f);
+        public static readonly Color Iron = new Color(0.22f, 0.24f, 0.28f);
 
         /// <summary>Whether a corner of this type carries a scene.</summary>
         public static bool Has(SquareType type) =>
-            type == SquareType.Start || type == SquareType.Pot || type == SquareType.Card || type == SquareType.Travel;
+            type == SquareType.Start || type == SquareType.Pot || type == SquareType.Jail || type == SquareType.Card || type == SquareType.Travel;
 
         /// <summary>The scene for a corner square's type, or null when the type has none.</summary>
         public static GameObject For(SquareType type, string name, Transform parent)
@@ -37,6 +39,7 @@ namespace Lazpoly.Presentation.Models
             {
                 case SquareType.Start: return Pier(name, parent);
                 case SquareType.Pot: return TeaGarden(name, parent);
+                case SquareType.Jail: return Cell(name, parent);
                 case SquareType.Card: return Kiosk(name, parent);
                 case SquareType.Travel: return Station(name, parent) ?? BusStop(name, parent);
                 default: return null;
@@ -100,6 +103,36 @@ namespace Lazpoly.Presentation.Models
             // Copper, not brass: brass reads as the yellow pawn from across the board.
             Part(root, "Samovar", Samovar(), Copper, table + new Vector3(-0.06f, 0.33f, -0.02f), Vector3.one * 0.3f);
             Part(root, "Tea glass", PawnShapes.TeaGlass(), Tea, table + new Vector3(0.1f, 0.33f, 0.07f), Vector3.one * 0.22f);
+            return root;
+        }
+
+        /// <summary>
+        /// A small stone cell: a solid wall at -Z (towards the lawn) under a slate roof, and iron bars on its other
+        /// three sides with a brass lock on the front, so the bars face the camera from the near corner.
+        /// </summary>
+        public static GameObject Cell(string name, Transform parent)
+        {
+            GameObject root = Root(name, parent);
+            const float halfWidth = 0.36f, front = 0.27f, back = -0.27f, barHeight = 0.6f, floor = 0.06f;
+            Part(root, "Floor", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Stone, new Vector3(0f, floor / 2f, 0f), new Vector3(0.8f, floor, 0.66f));
+            Part(root, "Wall", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Stone, new Vector3(0f, 0.36f, back), new Vector3(0.8f, 0.6f, 0.1f));
+            Part(root, "Roof", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Slate, new Vector3(0f, 0.7f, -0.01f), new Vector3(0.88f, 0.07f, 0.74f));
+            foreach (float x in new[] { -halfWidth, halfWidth })
+            {
+                Part(root, "Pillar", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Stone, new Vector3(x, 0.36f, front), new Vector3(0.08f, 0.6f, 0.08f));
+                foreach (float z in new[] { -0.12f, 0.01f, 0.14f })
+                {
+                    Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(x, floor, z), new Vector3(0.018f, barHeight, 0.018f));
+                }
+            }
+
+            for (int i = -3; i <= 3; i++)
+            {
+                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(i * 0.09f, floor, front), new Vector3(0.018f, barHeight, 0.018f));
+            }
+
+            Part(root, "Crossbar", MeshFactory.RoundedBox(Vector3.one, 0.005f, 2), Iron, new Vector3(0f, 0.38f, front), new Vector3(0.7f, 0.035f, 0.035f));
+            Part(root, "Lock", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Brass, new Vector3(0.1f, 0.33f, front + 0.03f), new Vector3(0.08f, 0.09f, 0.04f));
             return root;
         }
 

@@ -19,6 +19,9 @@ namespace Lazpoly.Core.State
             public bool HasLookout;
             public int Laps;
 
+            /// <summary>Turns still to wait in jail; 0 when free.</summary>
+            public int JailTurns;
+
             /// <summary>The character the player plays as; empty when none was picked (older games).</summary>
             public string Figure = string.Empty;
         }
@@ -78,6 +81,7 @@ namespace Lazpoly.Core.State
                     IsBankrupt = player.IsBankrupt,
                     HasLookout = player.HasLookout,
                     Laps = player.Laps,
+                    JailTurns = player.JailTurns,
                     Figure = player.Figure,
                 });
             }

@@ -28,5 +28,10 @@ namespace Lazpoly.Core.State
 
         /// <summary>The player's next roll is a choice of two (from a lookout square or card).</summary>
         public bool HasLookout { get; internal set; }
+
+        /// <summary>How many more of their turns the player waits in jail; 0 when free.</summary>
+        public int JailTurns { get; internal set; }
+
+        public bool InJail => JailTurns > 0;
     }
 }

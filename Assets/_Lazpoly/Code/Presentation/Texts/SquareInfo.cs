@@ -80,6 +80,16 @@ namespace Lazpoly.Presentation.Texts
                     return info;
                 }
 
+                case SquareType.Jail:
+                {
+                    var info = new SquareInfo(L(square.Name), L("Hapis"));
+                    info.Rows.Add(new SquareInfoRow(L("Bekleme"), F($"{rules.JailTurns} tur")));
+                    info.Rows.Add(new SquareInfoRow(L("Erken çıkış"), square.Fee.ToString()));
+                    info.Notes.Add(F($"Buraya gelen {rules.JailTurns} kez sırası gelene kadar burada bekler. Sırası gelince isterse {square.Fee} ödeyip hemen çıkar ve zar atar."));
+                    info.Notes.Add(F($"Üst üste {rules.MaxConsecutiveDoubles} çift atan da buraya düşer. Hapisteyken çift atmak çıkarmaz."));
+                    return info;
+                }
+
                 case SquareType.Travel:
                 {
                     var info = new SquareInfo(L(square.Name), L("Yolculuk"));

@@ -32,6 +32,9 @@ namespace Lazpoly.Core.Events
 
         /// <summary>The fare of a ride from a travel square.</summary>
         Travel = 13,
+
+        /// <summary>The fee for leaving jail early.</summary>
+        Jail = 14,
     }
 
     /// <summary>How a pawn gets to its new square, so every screen animates the move the same way.</summary>
@@ -44,8 +47,8 @@ namespace Lazpoly.Core.Events
         Back = 1,
 
         /// <summary>
-        /// Straight to the square. Rides used this until they became walks (Faz 15b); the engine no longer
-        /// emits it, and it keeps its number so events stay readable on the wire.
+        /// Straight to the square: a player sent to jail by three doubles in a row (rides used it until they became
+        /// walks, Faz 15b).
         /// </summary>
         Jump = 2,
     }
@@ -203,6 +206,19 @@ namespace Lazpoly.Core.Events
 
         public int PlayerId { get; }
         public bool StandInTookOver { get; }
+    }
+
+    /// <summary>A player went to jail (<see cref="Turns"/> to wait), waited a turn there, or left (<see cref="Turns"/> 0).</summary>
+    public sealed class JailChangedEvent : GameEvent
+    {
+        public JailChangedEvent(int playerId, int turns)
+        {
+            PlayerId = playerId;
+            Turns = turns;
+        }
+
+        public int PlayerId { get; }
+        public int Turns { get; }
     }
 
     /// <summary>A player gained (or used up) the choice of two rolls next time.</summary>

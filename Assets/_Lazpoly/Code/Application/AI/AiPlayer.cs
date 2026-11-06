@@ -69,6 +69,8 @@ namespace Lazpoly.App.AI
                     return DecideTravel(view);
                 case GamePhase.AwaitingDiceChoice:
                     return ChooseDice(view);
+                case GamePhase.AwaitingJailDecision:
+                    return DecideJail(view);
                 default:
                     return null;
             }
@@ -114,6 +116,14 @@ namespace Lazpoly.App.AI
 
             if (best < 0 || view.MakesMistake()) return stay;
             return new TravelCommand(PlayerId, best);
+        }
+
+        /// <summary>Pays its way out of jail when the fee leaves its reserve whole; otherwise waits the turn out.</summary>
+        private GameCommand DecideJail(View view)
+        {
+            var pay = new PayJailFeeCommand(PlayerId);
+            bool affordable = view.Legal(pay) && view.Me.Money - GameRules.JailFee(view.Board) >= view.Reserve;
+            return affordable && !view.MakesMistake() ? pay : (GameCommand)new WaitInJailCommand(PlayerId);
         }
 
         /// <summary>Of the two rolls a lookout offers, keeps the one whose landing looks better.</summary>
@@ -289,6 +299,10 @@ namespace Lazpoly.App.AI
                         break;
                     case SquareType.Pot:
                         score += State.Pot;
+                        break;
+                    case SquareType.Jail:
+                        // Turns lost in jail, or the fee to leave: worse than most rents.
+                        score -= definition.Fee * (Rules.JailTurns + 1);
                         break;
                 }
 

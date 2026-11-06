@@ -141,12 +141,14 @@ namespace Lazpoly.Core.State
                 }
 
                 if (entry.Laps < 0) throw new ArgumentException($"Player {entry.Id} has a negative lap count.", nameof(snapshot));
+                if (entry.JailTurns < 0) throw new ArgumentException($"Player {entry.Id} has negative jail turns.", nameof(snapshot));
                 players.Add(new PlayerState(entry.Id, entry.Name ?? string.Empty, entry.Money, entry.Figure)
                 {
                     Position = entry.Position,
                     IsBankrupt = entry.IsBankrupt,
                     HasLookout = entry.HasLookout,
                     Laps = entry.Laps,
+                    JailTurns = entry.JailTurns,
                 });
             }
 
@@ -320,6 +322,7 @@ namespace Lazpoly.Core.State
                 Mix(player.IsBankrupt ? 1 : 0);
                 Mix(player.HasLookout ? 1 : 0);
                 Mix(player.Laps);
+                Mix(player.JailTurns);
             }
 
             foreach (int owner in _owners)

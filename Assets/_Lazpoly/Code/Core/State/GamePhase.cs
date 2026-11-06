@@ -25,5 +25,8 @@ namespace Lazpoly.Core.State
 
         /// <summary>The current player rolled twice thanks to a lookout and must pick one roll.</summary>
         AwaitingDiceChoice = 8,
+
+        /// <summary>The current player is in jail: they pay the fee to leave and roll, or wait out this turn.</summary>
+        AwaitingJailDecision = 9,
     }
 }

@@ -130,6 +130,15 @@ namespace Lazpoly.Core.Engine
                     int[] chosen = GameRules.DiceOption(State, c.Option);
                     MoveWithDice(player, chosen[0], chosen[1]);
                     break;
+                case PayJailFeeCommand _:
+                    Transfer(player.Id, GameRules.FineCollector(Board), Board[Board.JailIndex].Fee, MoneyReason.Jail);
+                    Emit(new JailChangedEvent(player.Id, 0));
+                    Emit(new PhaseChangedEvent(GamePhase.WaitingForRoll));
+                    break;
+                case WaitInJailCommand _:
+                    Emit(new JailChangedEvent(player.Id, player.JailTurns - 1));
+                    Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                    break;
                 default:
                     throw new InvalidOperationException($"Validated command {command.GetType().Name} has no handler.");
             }
@@ -176,8 +185,17 @@ namespace Lazpoly.Core.Engine
 
             if (State.LastRollWasDouble && State.ConsecutiveDoubles >= Rules.MaxConsecutiveDoubles)
             {
-                // Too many doubles in a row: the move is forfeited and the turn ends.
-                Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                // Too many doubles in a row: straight to jail, or on a board without one the move is forfeited; the turn ends.
+                if (Board.HasJail)
+                {
+                    Emit(new PlayerMovedEvent(player.Id, player.Position, Board.JailIndex, false, MoveKind.Jump));
+                    LockUp(player);
+                }
+                else
+                {
+                    Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                }
+
                 return;
             }
 
@@ -252,12 +270,23 @@ namespace Lazpoly.Core.Engine
                     if (!player.HasLookout) Emit(new LookoutChangedEvent(player.Id, true));
                     return false;
 
+                case SquareType.Jail:
+                    LockUp(player);
+                    return true;
+
                 case SquareType.Card:
                     return drawCards && DrawCard(player);
 
                 default:
                     return false;
             }
+        }
+
+        /// <summary>Locks the player in jail for the rules' number of turns; their turn ends at once, even after a double.</summary>
+        private void LockUp(PlayerState player)
+        {
+            if (Rules.JailTurns > 0) Emit(new JailChangedEvent(player.Id, Rules.JailTurns));
+            Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
         }
 
         private bool DrawCard(PlayerState player)
@@ -472,8 +501,9 @@ namespace Lazpoly.Core.Engine
                         return;
                     }
 
+                    // A jailed player first chooses between paying to leave and waiting.
                     Emit(new TurnStartedEvent(next.Id));
-                    Emit(new PhaseChangedEvent(GamePhase.WaitingForRoll));
+                    Emit(new PhaseChangedEvent(next.InJail ? GamePhase.AwaitingJailDecision : GamePhase.WaitingForRoll));
                     return;
                 }
             }

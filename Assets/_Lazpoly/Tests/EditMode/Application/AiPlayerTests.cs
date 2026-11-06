@@ -80,6 +80,27 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
+        public void InJailTheComputerPaysToLeaveWhenItCanSpareTheFeeAndWaitsOtherwise()
+        {
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Start"), SquareDefinition.Property("A1", 100, 10, 1), SquareDefinition.Jail("Jail", 50),
+                SquareDefinition.Rest("Rest"),
+            });
+            var rules = new RulesConfig(1000, 0, 6, 3, 2, 50, jailTurns: 3);
+            GameState state = GameState.CreateInitial(board, rules, new[] { new PlayerSeat(Me, "Me"), new PlayerSeat(Other, "Other") });
+            Apply(state, new PlayerMovedEvent(Me, 0, 2, false), new JailChangedEvent(Me, 2), new PhaseChangedEvent(GamePhase.AwaitingJailDecision));
+            var ai = new AiPlayer(Me, AiDifficulty.Normal);
+
+            Assert.IsInstanceOf<PayJailFeeCommand>(ai.Decide(board, rules, state, new NoMistakes()));
+
+            Apply(state, new MoneyChangedEvent(Me, 100 - state.FindPlayer(Me).Money, MoneyReason.Rent));
+            GameCommand poor = ai.Decide(board, rules, state, new NoMistakes());
+            Assert.IsInstanceOf<WaitInJailCommand>(poor, "the fee would eat into its reserve");
+            Assert.AreEqual(RejectionReason.None, GameRules.Validate(board, rules, state, poor));
+        }
+
+        [Test]
         public void BuysWhenItKeepsItsReserve()
         {
             GameState state = NewState();

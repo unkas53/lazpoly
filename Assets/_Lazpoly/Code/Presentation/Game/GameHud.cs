@@ -1025,6 +1025,15 @@ namespace Lazpoly.Presentation.Game
         /// </summary>
         private void DescribeSeat(PlayerCardModel model, PlayerState player)
         {
+            DescribeConnection(model, player);
+            if (!player.InJail) return;
+            // A jailed player's resting card says so, with the turns still to wait, before who plays the seat.
+            string jail = F($"Hapiste ({player.JailTurns})");
+            model.Status = string.IsNullOrEmpty(model.Status) ? jail : $"{jail} · {model.Status}";
+        }
+
+        private void DescribeConnection(PlayerCardModel model, PlayerState player)
+        {
             IGameSession session = _controller.Session;
             bool ai = session.IsAiPlaying(player.Id);
             bool connected = session.IsConnected(player.Id);
@@ -1092,6 +1101,10 @@ namespace Lazpoly.Presentation.Game
 
                 case GamePhase.AwaitingDiceChoice:
                     RenderDiceChoice(ui, state, player);
+                    break;
+
+                case GamePhase.AwaitingJailDecision:
+                    RenderJail(ui, player);
                     break;
             }
         }
@@ -1229,6 +1242,28 @@ namespace Lazpoly.Presentation.Game
             }
 
             ui.Button(L("Burada kal"), () => _controller.Submit(new DeclineTravelCommand(player.Id)));
+        }
+
+        /// <summary>
+        /// A turn in jail: pay the exit fee and roll now, or wait the turn out. The last waited turn sets the
+        /// player free for the next one. When the clock runs out the player waits.
+        /// </summary>
+        private void RenderJail(UiBuilder ui, PlayerState player)
+        {
+            BoardDefinition board = _controller.Session.Board;
+            int fee = GameRules.JailFee(board);
+            UiBuilder card = ui.Card();
+            card.Label(F($"{L(board[board.JailIndex].Name)}: {player.JailTurns} tur daha beklemen gerekiyor."));
+            card.Label(player.JailTurns > 1
+                ? F($"{fee} ödersen hemen çıkıp zar atarsın; beklersen sıra sonraki oyuncuya geçer.")
+                : F($"{fee} ödersen hemen çıkıp zar atarsın; beklersen bu son bekleyişin, sonraki turda serbestsin."),
+                UiTextStyle.Small, UiTheme.Muted);
+
+            var pay = new PayJailFeeCommand(player.Id);
+            bool canPay = _controller.IsAllowed(pay);
+            ui.Button(canPay ? F($"Öde ve çık ({fee})") : F($"Paran yetmiyor ({fee})"), () => _controller.Submit(pay), canPay,
+                UiButtonStyle.Primary, CardButton);
+            ui.Button(L("Bekle"), () => _controller.Submit(new WaitInJailCommand(player.Id)));
         }
 
         /// <summary>The lookout's two rolls, each with where it would take the player.</summary>

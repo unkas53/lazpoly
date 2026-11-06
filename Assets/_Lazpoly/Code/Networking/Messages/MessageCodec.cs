@@ -14,11 +14,11 @@ namespace Lazpoly.Net.Messages
     public static class MessageCodec
     {
         /// <summary>
-        /// 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
+        /// 13: the jail (its commands, event and each player's turns to wait). 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
         /// not end on another player's town. 10: the engine
         /// ends an insolvent player's game at once and the turn ends by itself. Mixed builds must not share a table.
         /// </summary>
-        public const int ProtocolVersion = 12;
+        public const int ProtocolVersion = 13;
 
         private enum CommandTag : byte
         {
@@ -27,6 +27,7 @@ namespace Lazpoly.Net.Messages
             ProposeTrade = 11, AcceptTrade = 12, RejectTrade = 13, CancelTrade = 14,
             PayDebt = 15, Bankruptcy = 16,
             Travel = 17, DeclineTravel = 18, ChooseDice = 19,
+            PayJailFee = 20, WaitInJail = 21,
         }
 
         private enum EventTag : byte
@@ -36,6 +37,7 @@ namespace Lazpoly.Net.Messages
             BuildingLevel = 9,
             TradeProposed = 15, TradeResolved = 16, DebtIncurred = 17, DebtCleared = 18,
             PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22, TimedOut = 23,
+            Jail = 24,
         }
 
         public static byte[] Encode(NetMessage message)
@@ -184,6 +186,8 @@ namespace Lazpoly.Net.Messages
                 case TravelCommand _: w.WriteByte((byte)CommandTag.Travel); break;
                 case DeclineTravelCommand _: w.WriteByte((byte)CommandTag.DeclineTravel); break;
                 case ChooseDiceCommand _: w.WriteByte((byte)CommandTag.ChooseDice); break;
+                case PayJailFeeCommand _: w.WriteByte((byte)CommandTag.PayJailFee); break;
+                case WaitInJailCommand _: w.WriteByte((byte)CommandTag.WaitInJail); break;
                 default: throw new ArgumentException($"Cannot encode command {command?.GetType().Name}.");
             }
 
@@ -251,6 +255,8 @@ namespace Lazpoly.Net.Messages
                 case CommandTag.Travel: return new TravelCommand(playerId, r.ReadInt());
                 case CommandTag.DeclineTravel: return new DeclineTravelCommand(playerId);
                 case CommandTag.ChooseDice: return new ChooseDiceCommand(playerId, r.ReadInt());
+                case CommandTag.PayJailFee: return new PayJailFeeCommand(playerId);
+                case CommandTag.WaitInJail: return new WaitInJailCommand(playerId);
                 default: throw new FormatException($"Unknown command tag {(byte)tag}.");
             }
         }
@@ -310,6 +316,9 @@ namespace Lazpoly.Net.Messages
                 case LookoutChangedEvent e:
                     w.WriteByte((byte)EventTag.Lookout); w.WriteInt(e.PlayerId); w.WriteBool(e.HasLookout);
                     break;
+                case JailChangedEvent e:
+                    w.WriteByte((byte)EventTag.Jail); w.WriteInt(e.PlayerId); w.WriteInt(e.Turns);
+                    break;
                 case DiceOptionsEvent e:
                     w.WriteByte((byte)EventTag.DiceOptions); w.WriteInt(e.PlayerId);
                     w.WriteInt(e.FirstDie1); w.WriteInt(e.FirstDie2); w.WriteInt(e.SecondDie1); w.WriteInt(e.SecondDie2);
@@ -343,6 +352,7 @@ namespace Lazpoly.Net.Messages
                 case EventTag.PotChanged: return new PotChangedEvent(r.ReadInt());
                 case EventTag.CardDrawn: return new CardDrawnEvent(r.ReadInt(), r.ReadInt());
                 case EventTag.Lookout: return new LookoutChangedEvent(r.ReadInt(), r.ReadBool());
+                case EventTag.Jail: return new JailChangedEvent(r.ReadInt(), r.ReadInt());
                 case EventTag.DiceOptions: return new DiceOptionsEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.TimedOut: return new PlayerTimedOutEvent(r.ReadInt(), r.ReadBool());
                 default: throw new FormatException($"Unknown event tag {(byte)tag}.");
@@ -381,6 +391,7 @@ namespace Lazpoly.Net.Messages
                 w.WriteBool(p.HasLookout);
                 w.WriteInt(p.Laps);
                 w.WriteString(p.Figure ?? string.Empty);
+                w.WriteInt(p.JailTurns);
             }
 
             w.WriteInt(s.Owners.Length);
@@ -407,8 +418,14 @@ namespace Lazpoly.Net.Messages
             }
         }
 
-        /// <summary>The snapshot layout written today (Faz 21: each player's character).</summary>
-        public const int SnapshotVersion = 8;
+        /// <summary>The snapshot layout written today.</summary>
+        public const int SnapshotVersion = JailSnapshotVersion;
+
+        /// <summary>Layout 9 (Faz 23) added each player's turns left in jail.</summary>
+        public const int JailSnapshotVersion = 9;
+
+        /// <summary>Layout 8 (Faz 21) carried each player's character; it knows no jail.</summary>
+        public const int FigureSnapshotVersion = 8;
 
         /// <summary>Layout 7 (Faz 13b) dropped the auctions; it knows no characters.</summary>
         public const int PlainSnapshotVersion = 7;
@@ -474,7 +491,8 @@ namespace Lazpoly.Net.Messages
                     IsBankrupt = r.ReadBool(),
                     HasLookout = !legacy && r.ReadBool(),
                     Laps = version >= LapSnapshotVersion ? r.ReadInt() : -1,
-                    Figure = version >= SnapshotVersion ? r.ReadString() : string.Empty,
+                    Figure = version >= FigureSnapshotVersion ? r.ReadString() : string.Empty,
+                    JailTurns = version >= JailSnapshotVersion ? r.ReadInt() : 0,
                 });
             }
 
