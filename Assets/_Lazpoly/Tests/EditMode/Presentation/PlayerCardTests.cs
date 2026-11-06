@@ -133,9 +133,9 @@ namespace Lazpoly.Presentation.Tests
                 faces.Dispose();
             }
 
-            var nobody = new PlayerFaces(null, new Dictionary<int, ulong> { [1] = 55 }, 1, null);
+            var nobody = new PlayerFaces(null, new Dictionary<int, ulong> { [1] = 55 }, portraits);
             Assert.IsFalse(nobody.Update(1f), "without Steam nothing is asked");
-            Assert.IsNotNull(nobody.For(1, 0));
+            Assert.IsNotNull(nobody.For(1), "the character's face without Steam");
         }
 
         [Test]
