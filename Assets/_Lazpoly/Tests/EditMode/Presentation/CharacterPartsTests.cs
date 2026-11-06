@@ -114,16 +114,18 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void SeatsTakeTheSixFiguresInTurn()
+        public void SeatsTakeTheEightFiguresInTurn()
         {
             Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(0));
             Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(1));
             Assert.AreEqual(CharacterKind.Suit, CharacterParts.KindFor(2));
             Assert.AreEqual(CharacterKind.TealSuit, CharacterParts.KindFor(3));
-            Assert.AreEqual(CharacterKind.Gentleman, CharacterParts.KindFor(4));
+            Assert.AreEqual(CharacterKind.NavySuit, CharacterParts.KindFor(4));
             Assert.AreEqual(CharacterKind.HandOnHip, CharacterParts.KindFor(5));
-            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(6));
-            Assert.AreEqual(CharacterKind.Woman, CharacterParts.KindFor(7));
+            Assert.AreEqual(CharacterKind.Gentleman, CharacterParts.KindFor(6));
+            Assert.AreEqual(CharacterKind.PurpleBlazer, CharacterParts.KindFor(7));
+            Assert.AreEqual(CharacterKind.Man, CharacterParts.KindFor(8));
+            Assert.AreEqual(8, Enumerable.Range(0, 8).Select(CharacterParts.KindFor).Distinct().Count(), "eight players each get a figure of their own");
             Assert.AreNotEqual(CharacterParts.ResourceOf(CharacterKind.Man), CharacterParts.ResourceOf(CharacterKind.Woman));
 
             var root = new GameObject("Woman Test");
@@ -197,6 +199,8 @@ namespace Lazpoly.Presentation.Tests
         [TestCase(CharacterKind.Gentleman)]
         [TestCase(CharacterKind.TealSuit)]
         [TestCase(CharacterKind.HandOnHip)]
+        [TestCase(CharacterKind.NavySuit)]
+        [TestCase(CharacterKind.PurpleBlazer)]
         public void TheTexturedFiguresAreOneUnitTallAndLighterForMediumAndLow(CharacterKind kind)
         {
             string id = CharacterParts.FigureOf(kind);

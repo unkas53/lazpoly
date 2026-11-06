@@ -20,6 +20,12 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>The business woman in a burgundy blazer, a hand on her hip and a leather bag (textured, <see cref="FigureModels"/>).</summary>
         HandOnHip = 5,
+
+        /// <summary>The business man in a navy suit with a hand in his pocket and a dark bag (textured, <see cref="FigureModels"/>).</summary>
+        NavySuit = 6,
+
+        /// <summary>The bearded business man in a purple blazer and jeans with a leather bag (textured, <see cref="FigureModels"/>).</summary>
+        PurpleBlazer = 7,
     }
 
     /// <summary>
@@ -29,9 +35,9 @@ namespace Lazpoly.Presentation.Models
     /// moves them as one piece. One part per material; the jacket's four materials (and the woman's skirt)
     /// take the player's colour, everything else keeps the model's own palette. When a model is missing the
     /// other one stands in, and when both are, the pawns fall back to the town's shapes (<see cref="PawnShapes"/>).
-    /// Four more figures are textured models the owner made with Meshy AI (<see cref="FigureModels"/>): the
-    /// stylised man in a suit, the gentleman with a cane, the woman in a teal suit and the woman with a hand on her
-    /// hip keep their own clothes (nothing is painted on them);
+    /// Six more figures are textured models the owner made with Meshy AI (<see cref="FigureModels"/>): the
+    /// stylised man in a suit, the gentleman with a cane, the woman in a teal suit, the woman with a hand on her
+    /// hip, the man in a navy suit and the man in a purple blazer keep their own clothes (nothing is painted on them);
     /// when their files are missing the business man stands in.
     /// </summary>
     public static class CharacterParts
@@ -54,16 +60,24 @@ namespace Lazpoly.Presentation.Models
         public const string GentlemanFigure = "cane";
         public const string TealSuitFigure = "teal";
         public const string HandOnHipFigure = "hip";
+        public const string NavySuitFigure = "navy";
+        public const string PurpleBlazerFigure = "purple";
 
         public const string SuitName = "Takım Elbiseli";
         public const string GentlemanName = "Bastonlu Beyefendi";
         public const string TealSuitName = "Turkuaz Takımlı";
         public const string HandOnHipName = "Eli Belinde";
+        public const string NavySuitName = "Lacivert Takımlı";
+        public const string PurpleBlazerName = "Mor Ceketli";
 
-        /// <summary>The order the seats take the figures in: a man and a woman in turn, the painted pair first.</summary>
+        /// <summary>
+        /// The order the seats take the figures in: the painted pair first, then a man and a woman in turn as long
+        /// as there are women, so eight players each get a figure of their own.
+        /// </summary>
         public static readonly CharacterKind[] SeatOrder =
         {
-            CharacterKind.Man, CharacterKind.Woman, CharacterKind.Suit, CharacterKind.TealSuit, CharacterKind.Gentleman, CharacterKind.HandOnHip,
+            CharacterKind.Man, CharacterKind.Woman, CharacterKind.Suit, CharacterKind.TealSuit,
+            CharacterKind.NavySuit, CharacterKind.HandOnHip, CharacterKind.Gentleman, CharacterKind.PurpleBlazer,
         };
 
         /// <summary>The woman's skirt, painted a shade darker than the jacket like the other half of a suit.</summary>
@@ -86,7 +100,7 @@ namespace Lazpoly.Presentation.Models
         /// <summary>Whether a character model is in the build; false means the pawns are the town's shapes.</summary>
         public static bool IsAvailable => Load(CharacterKind.Man) != null || Load(CharacterKind.Woman) != null;
 
-        /// <summary>The figure at a seat: the four figures take turns round the table (<see cref="SeatOrder"/>).</summary>
+        /// <summary>The figure at a seat: the eight figures take turns round the table (<see cref="SeatOrder"/>).</summary>
         public static CharacterKind KindFor(int seatIndex) => SeatOrder[(seatIndex % SeatOrder.Length + SeatOrder.Length) % SeatOrder.Length];
 
         /// <summary>Whether a figure is one of the textured ones (<see cref="FigureModels"/>) rather than a painted model.</summary>
@@ -99,6 +113,8 @@ namespace Lazpoly.Presentation.Models
             CharacterKind.Gentleman => GentlemanFigure,
             CharacterKind.TealSuit => TealSuitFigure,
             CharacterKind.HandOnHip => HandOnHipFigure,
+            CharacterKind.NavySuit => NavySuitFigure,
+            CharacterKind.PurpleBlazer => PurpleBlazerFigure,
             _ => null,
         };
 
@@ -112,6 +128,8 @@ namespace Lazpoly.Presentation.Models
             CharacterKind.Gentleman => GentlemanName,
             CharacterKind.TealSuit => TealSuitName,
             CharacterKind.HandOnHip => HandOnHipName,
+            CharacterKind.NavySuit => NavySuitName,
+            CharacterKind.PurpleBlazer => PurpleBlazerName,
             _ => Name,
         };
 

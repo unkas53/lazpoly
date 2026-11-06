@@ -7,7 +7,8 @@ namespace Lazpoly.Presentation.Models
 {
     /// <summary>
     /// The owner's textured figures (made with Meshy AI from pictures): the stylised business man in a suit, the
-    /// gentleman with a cane, the business woman in a teal suit and the one with a hand on her hip. Tools/Art/make_figures.py turns each into figure_&lt;id&gt;.bytes (two levels of detail,
+    /// gentleman with a cane, the business woman in a teal suit, the one with a hand on her hip, the business man in a
+    /// navy suit and the one in a purple blazer. Tools/Art/make_figures.py turns each into figure_&lt;id&gt;.bytes (two levels of detail,
     /// one unit tall, soles at y = 0, facing +Z) and figure_&lt;id&gt;_skin.bytes (the colour map). A figure keeps its own
     /// clothes and stands right on the tile (the owner had the coloured disc under its feet taken away). The whole model shows at the High graphics quality and the light one at Medium and
     /// Low (<see cref="SetFullDetail"/>, switched in place like the buildings).
