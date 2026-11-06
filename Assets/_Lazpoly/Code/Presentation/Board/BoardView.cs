@@ -93,15 +93,16 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A holiday resort's tile: sand with a strip of sea along its top edge and white surf where the sea meets the
-        /// sand, so it reads as a beach and not a town. The sea's middle and depth in tile depths, the surf's scallop
-        /// radius in tile widths and how many scallops run along the edge, and where the owner's beach stands (a little
-        /// further down the tile than a town's buildings, clear of the sea).
+        /// sand, so it reads as a beach and not a town, all printed flat into the tile inside its frame
+        /// (<see cref="TileSkin.Resort"/>). The sea's middle and depth in tile depths (it starts just past the frame, which
+        /// clips it), the surf's scallop radius in tile widths and how many scallops run along the edge, and where the
+        /// owner's beach stands (a little further down the tile than a town's buildings, clear of the sea).
         /// </summary>
-        public const float SeaOffset = -0.415f;
-        public const float SeaDepth = 0.09f;
+        public const float SeaOffset = -0.40f;
+        public const float SeaDepth = 0.08f;
         public const float SurfRadius = 0.05f;
         public const int SurfScallops = 7;
-        public const float ResortOffset = -0.2f;
+        public const float ResortOffset = -0.19f;
 
         /// <summary>
         /// A town's tile: from its top edge down to the bottom of the name's line the group's colour with a pattern,
@@ -181,13 +182,14 @@ namespace Lazpoly.Presentation.Tabletop
         /// The bus station diorama (the owner's model, twice the drawn stop's size at the owner's wish): it fills the
         /// corner's back part, from one side nearly to the other, and the pawns that come to it stand in front of the
         /// bus (<see cref="StationPawnOffset"/>, back from the centre: a small negative step comes forward), clear of the
-        /// name. <see cref="StationDepth"/> is the model's depth for its width (Tools/Art/make_corner_models.py).
+        /// name. <see cref="StationDepth"/> is the model's depth for its width (Tools/Art/make_corner_models.py). The
+        /// cartoon bus stop is deeper than the first diorama, so it is a little narrower to leave the pawns and the name room.
         /// </summary>
-        public const float StationSize = 0.80f;
+        public const float StationSize = 0.68f;
         public const float StationOffset = 0.09f;
-        public const float StationInset = 0.24f;
-        public const float StationDepth = 0.63f;
-        public const float StationPawnOffset = -0.06f;
+        public const float StationInset = 0.20f;
+        public const float StationDepth = 0.87f;
+        public const float StationPawnOffset = -0.10f;
 
         // The corner that holds the bus station diorama; -1 when the drawn stop stands there.
         private int _stationCorner = -1;
@@ -681,15 +683,16 @@ namespace Lazpoly.Presentation.Tabletop
                 // colour with a pattern, and a light paved strip below where the rent and the pawns are, both printed into
                 // the tile (TownSkin); a resort is sand with its sea; the other squares one colour.
                 bool town = square.Type == SquareType.Property && !square.IsResort;
-                Color body = town ? Color.white : Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : Pastel);
+                bool printed = town || square.IsResort;
+                Color body = printed ? Color.white : Color.Lerp(TileColor(square, data), PaperColor, Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
-                ModelParts.Skin(tileObject, town ? TownSkin(outward, size, BandColor(TileColor(square, data))) : paper);
-                _printed[i] = town;
+                ModelParts.Skin(tileObject, town ? TownSkin(outward, size, BandColor(TileColor(square, data)))
+                    : square.IsResort ? ResortSkin(outward, size) : paper);
+                _printed[i] = printed;
                 tileObject.transform.localPosition = center + Vector3.up * (TileHeight / 2f);
                 tileObject.transform.localRotation = facing;
                 _tiles[i] = tileObject;
-                if (square.IsResort) CreateShore(i, center, outward, size);
                 _tileColors[i] = body;
                 _squareOfCollider[tileObject.AddComponent<BoxCollider>()] = i;
 
@@ -878,45 +881,16 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// Prints the sea along a resort tile's top edge (towards the top of the screen) with a row of white scallops of
-        /// surf where it meets the sand: the scallops lie just under the sea, so only their lower halves show on the sand.
+        /// A resort tile's skin: the sand, the sea along the tile's top edge on the screen and the surf below it, inside
+        /// the frame (<see cref="TileSkin.Resort"/>); the sea lies at the low or the high end of v as for a town.
         /// </summary>
-        private void CreateShore(int index, Vector3 center, Vector3 outward, Vector2 size)
+        private Texture2D ResortSkin(Vector3 outward, Vector2 size)
         {
-            var shore = new GameObject("Shore");
-            shore.transform.SetParent(transform, false);
-            Vector3 down = ScreenDown(outward);
-            float length = size.x - 0.06f;
-            float depth = _depth * SeaDepth;
-            // The sea lies 2-6 mm over the tile, the surf 1-4 mm: the surf shows on the sand and hides under the sea.
-            Vector3 sea = center + down * (_depth * SeaOffset) + Vector3.up * (TileHeight + 0.004f);
-            GameObject water = ModelParts.Create("Sea", shore.transform, MeshFactory.RoundedBox(new Vector3(length, 0.004f, depth), 0.0015f, 1), SeaColor, 0.6f);
-            water.transform.localPosition = sea;
-            water.transform.localRotation = Quaternion.LookRotation(down);
-            Flat(water);
-
-            // The scallops are one mesh, laid out along the sea's local x (the edge) at its sand-side edge.
-            float radius = _width * SurfRadius;
-            var scallops = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            for (int i = 0; i < SurfScallops; i++)
-            {
-                float t = SurfScallops == 1 ? 0.5f : i / (SurfScallops - 1f);
-                var at = new Vector3((t - 0.5f) * (length - 2f * radius), 0f, 0f);
-                scallops.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Disc(0.003f, 20), Matrix4x4.TRS(at, Quaternion.identity, new Vector3(radius, 1f, radius))));
-            }
-
-            GameObject surf = ModelParts.Create("Surf", shore.transform,
-                MeshFactory.Combine($"surf:{SurfScallops}:{length:F3}:{radius:F3}", scallops), SurfColor, 0.3f);
-            surf.transform.localPosition = center + down * (_depth * SeaOffset + depth / 2f) + Vector3.up * (TileHeight + 0.001f);
-            surf.transform.localRotation = Quaternion.LookRotation(down);
-            Flat(surf);
-
-            // The shore is part of the tile: it swells with it when the tile is pointed out.
-            shore.transform.SetParent(_tiles[index].transform, true);
+            float seaEnd = 0.5f + _depth * (SeaOffset + SeaDepth / 2f) / size.y;
+            bool withOutward = Vector3.Dot(ScreenDown(outward), outward) > 0f;
+            return TileSkin.Resort(Color.Lerp(SandColor, PaperColor, SandPastel), SeaColor, SurfColor, seaEnd,
+                _width * SurfRadius / size.x, SurfScallops, !withOutward, size.y / size.x);
         }
-
-        /// <summary>Something printed flat on a tile casts no shadow: it has no height to cast one with.</summary>
-        private static void Flat(GameObject part) => part.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
         /// <summary>
         /// Shows on a resort the beach for an owner who holds <paramref name="held"/> resorts; it pops up from the sand

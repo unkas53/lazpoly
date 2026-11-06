@@ -10,7 +10,7 @@ Writes Assets/_Lazpoly/Data/Resources/Lazpoly/Models/figure_<id>.bytes and figur
 FigureModels loads like a character (the corner scenes are not in its character list).
 
 Needs: pip install numpy pillow meshoptimizer. Run from the repository root:
-    python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/BusAtBusStopDiorama.glb
+    python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
 """
 import io
 import os

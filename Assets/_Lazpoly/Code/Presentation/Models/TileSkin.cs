@@ -190,6 +190,68 @@ namespace Lazpoly.Presentation.Models
             return texture;
         }
 
+        /// <summary>
+        /// A resort tile's whole skin, printed flat into the tile's own face like a town's: sand, the sea along the top
+        /// of the screen from the frame down to <paramref name="seaEnd"/> (a share of the tile's depth from its top edge
+        /// on the screen), a row of <paramref name="scallops"/> white surf scallops of <paramref name="surfRadius"/> (of
+        /// the tile's width) where the sea meets the sand, and the frame line over it all. The sea and the surf stay
+        /// inside the frame. <paramref name="seaAtHighV"/> puts the screen's top at v = 1 instead of v = 0.
+        /// </summary>
+        public static Texture2D Resort(Color sand, Color sea, Color surf, float seaEnd, float surfRadius, int scallops, bool seaAtHighV, float depthOverWidth)
+        {
+            int width = TownWidth;
+            int height = Mathf.Max(1, Mathf.RoundToInt(width * depthOverWidth));
+            string key = $"resort:{ColorUtility.ToHtmlStringRGB(sand)}:{ColorUtility.ToHtmlStringRGB(sea)}:{seaEnd:F3}:{surfRadius:F3}:{scallops}:{seaAtHighV}:{height}";
+            if (Towns.TryGetValue(key, out Texture2D cached) && cached != null) return cached;
+
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            {
+                name = $"tile-{key}",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Trilinear,
+            };
+            float[] paper = Grid($"grain:{width}:{height}", width, height, PaperGrain);
+            // The scallops' centres run along the sea's edge inside the frame; distances are measured in tile widths.
+            float first = FrameInset + surfRadius, last = 1f - FrameInset - surfRadius;
+            float pixel = 1f / width;
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                float v = (y + 0.5f) / height;
+                float down = seaAtHighV ? 1f - v : v;
+                for (int x = 0; x < width; x++)
+                {
+                    int i = y * width + x;
+                    float u = (x + 0.5f) / width;
+                    Color colour = sand * paper[i];
+                    if (FrameDistance(u, v) < 0f)
+                    {
+                        // The sea, with its lower edge smoothed over a pixel.
+                        float below = (down - seaEnd) * depthOverWidth;
+                        colour = Color.Lerp(colour, sea * paper[i], Mathf.Clamp01(0.5f - below / pixel));
+                        // The surf: the lower halves of round scallops hanging from the sea's edge.
+                        if (below > 0f && scallops > 0)
+                        {
+                            float step = scallops == 1 ? 0f : (last - first) / (scallops - 1);
+                            int nearest = scallops == 1 ? 0 : Mathf.Clamp(Mathf.RoundToInt((u - first) / step), 0, scallops - 1);
+                            float cx = scallops == 1 ? 0.5f : first + nearest * step;
+                            float distance = Mathf.Sqrt((u - cx) * (u - cx) + below * below);
+                            colour = Color.Lerp(colour, surf, Mathf.Clamp01(0.5f + (surfRadius - distance) / pixel));
+                        }
+                    }
+
+                    if (OnFrame(u, v)) colour = sand * paper[i] * FrameShade;
+                    colour.a = 1f;
+                    pixels[i] = colour;
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(true, false);
+            Towns[key] = texture;
+            return texture;
+        }
+
         private static readonly System.Collections.Generic.Dictionary<string, float[]> Grids = new System.Collections.Generic.Dictionary<string, float[]>();
 
         /// <summary>A brightness at every pixel's centre of a width x height texture, worked out once per key.</summary>

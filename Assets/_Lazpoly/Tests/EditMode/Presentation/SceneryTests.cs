@@ -84,7 +84,7 @@ namespace Lazpoly.Presentation.Tests
                     bool town = square.Type == SquareType.Property && !square.IsResort;
                     if (!town)
                     {
-                        Assert.AreSame(TileSkin.Paper(), material.mainTexture, $"{square.Name}: only towns have their colour printed in");
+                        if (!square.IsResort) Assert.AreSame(TileSkin.Paper(), material.mainTexture, $"{square.Name}: only towns and resorts have their colours printed in");
                         continue;
                     }
 
@@ -250,7 +250,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.LessOrEqual(BoardView.StationInset + BoardView.StationSize * BoardView.StationDepth / 2f, 0.5f, "the bus station stays on its corner across it");
             Assert.Less(BoardView.StationPawnOffset, BoardView.StationInset - BoardView.StationSize * BoardView.StationDepth / 2f, "pawns at the bus station stand in front of the bus");
             Assert.Less(-BoardView.StationPawnOffset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "and short of the corner's name");
-            Assert.AreEqual(2f, BoardView.StationSize / BoardView.SceneSize, 1e-4f, "twice the drawn stop");
+            Assert.GreaterOrEqual(BoardView.StationSize / BoardView.SceneSize, 1.7f, "nearly twice the drawn stop, as deep as the corner allows");
             Assert.Less(-BoardView.CornerPawnShift + pawnReach, BoardView.SceneOffset - BoardView.SceneSize / 2f, "the pawns stay clear of the scene");
             Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "the scene ends before the corner's name");
             Assert.LessOrEqual(BoardView.CornerPawnOffset + pawnReach, 0.5f, "on a far corner the pawns' outer row stays on the tile");

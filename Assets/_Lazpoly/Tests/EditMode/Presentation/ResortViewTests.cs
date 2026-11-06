@@ -160,20 +160,31 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 Assert.AreEqual(4, resorts.Count);
-                var shores = new List<Transform>();
                 foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
                 {
-                    if (child.name == "Shore") shores.Add(child);
+                    Assert.AreNotEqual("Shore", child.name, "the sea is printed into the tile, not laid over it");
                 }
 
-                Assert.AreEqual(resorts.Count, shores.Count, "a strip of sea on every resort, and on nothing else");
-                foreach (Transform shore in shores)
+                foreach (int resort in resorts)
                 {
-                    StringAssert.Contains("Square", shore.parent.name, "the shore belongs to its tile");
-                    Assert.IsNotNull(shore.Find("Sea"));
-                    Transform surf = shore.Find("Surf");
-                    Assert.IsNotNull(surf, "the surf's scallops are one mesh");
-                    Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, surf.GetComponent<Renderer>().shadowCastingMode, "print on the tile casts no shadow");
+                    Transform tile = null;
+                    foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (child.name.StartsWith($"Square {resort:00} ")) tile = child;
+                    }
+
+                    Material material = tile.GetComponent<Renderer>().sharedMaterial;
+                    Assert.AreEqual(Color.white, material.color, "the sand and the sea are in the texture");
+                    var skin = (Texture2D)material.mainTexture;
+                    Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(board.Layout.SquareCenter(resort)));
+                    bool lowEnd = Vector3.Dot(tile.forward, down) > 0f;
+                    float V(float fromTop) => lowEnd ? fromTop : 1f - fromTop;
+                    Color sea = skin.GetPixelBilinear(0.5f, V(0.5f + BoardView.SeaOffset + 0.01f));
+                    Assert.Greater(sea.b, sea.r + 0.2f, "the sea runs along the top inside the frame");
+                    Color edge = skin.GetPixelBilinear(0.5f, V(0.02f));
+                    Assert.Greater(edge.r, edge.b, "outside the frame it is sand: the sea stays inside the frame");
+                    Color sand = skin.GetPixelBilinear(0.5f, V(0.5f + BoardView.ResortOffset));
+                    Assert.Greater(sand.r, sand.b + 0.1f, "the beach stands on sand");
                 }
 
                 var beaches = new List<OwnerMarker>();
