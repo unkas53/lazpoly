@@ -1132,7 +1132,6 @@ namespace Lazpoly.Presentation.Game
 
                         _board.SetOwner(owner.SquareIndex, ColorOf(owner.NewOwnerId));
                         ShowRents();
-                        _board.PulseOwner(owner.SquareIndex);
                         _board.RaiseFlag(owner.SquareIndex);
                         Pawn(owner.NewOwnerId)?.Cheer();
                         // Bought from the bank on landing; a trade has its own lines.

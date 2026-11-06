@@ -62,7 +62,10 @@ namespace Lazpoly.Presentation.Tests
             {
                 BoardView board = BoardView.Create(holder.transform, data);
                 foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                {
                     Assert.AreNotEqual("Group strip", child.name, "the raised strip under the names is gone");
+                    Assert.AreNotEqual("Owner frame", child.name, "a bought town's edge keeps its own colour");
+                }
 
                 for (int i = 0; i < data.Board.Count; i++)
                 {

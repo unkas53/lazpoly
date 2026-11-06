@@ -142,7 +142,6 @@ namespace Lazpoly.Presentation.Tabletop
         private Color?[] _ownerColors;
         private GameObject[][] _buildings;
         private Vector3[][] _buildingRest;
-        private GameObject[] _ownerFrames;
         private GameObject[] _tiles;
         private Color[] _tileColors;
         private TextMesh[] _names;
@@ -539,13 +538,6 @@ namespace Lazpoly.Presentation.Tabletop
             }
         }
 
-        /// <summary>A short swell of a square's owner frame, when it is bought or changes hands.</summary>
-        public void PulseOwner(int squareIndex)
-        {
-            GameObject frame = _ownerFrames[squareIndex];
-            if (frame != null && frame.activeInHierarchy) StartCoroutine(Pulse(frame.transform));
-        }
-
         private static IEnumerator Drop(Transform piece, Vector3 rest)
         {
             const float seconds = 0.45f;
@@ -560,32 +552,14 @@ namespace Lazpoly.Presentation.Tabletop
             if (piece != null) piece.localPosition = rest;
         }
 
-        private static IEnumerator Pulse(Transform frame)
-        {
-            const float seconds = 0.4f;
-            Vector3 size = Vector3.one;
-            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
-            {
-                // Out to the sides only: rising, the frame's top came over the tile and hid its name and price.
-                float swell = 1f + 0.12f * Ease.Bump(t);
-                frame.localScale = new Vector3(size.x * swell, size.y, size.z * swell);
-                yield return null;
-            }
-
-            frame.localScale = size;
-        }
-
         private void RefreshOwnerMarker(int squareIndex)
         {
             OwnerMarker marker = _ownerMarkers[squareIndex];
             Color? color = _ownerColors[squareIndex];
-            GameObject frame = _ownerFrames[squareIndex];
             marker.gameObject.SetActive(color.HasValue && _levels[squareIndex] == 0);
-            frame.SetActive(color.HasValue);
             if (_buildings[squareIndex] != null) PaintBuildings(squareIndex);
             if (!color.HasValue) return;
-            marker.Paint(color.Value);
-            Paint(frame, color.Value);
+            marker.Paint(color.Value); // The plot and the buildings carry the owner's colour; the tile's edge does not (Faz 21).
         }
 
         private void Build(BoardData data)
@@ -613,7 +587,6 @@ namespace Lazpoly.Presentation.Tabletop
             _ownerColors = new Color?[board.Count];
             _buildings = new GameObject[board.Count][];
             _buildingRest = new Vector3[board.Count][];
-            _ownerFrames = new GameObject[board.Count];
             _tiles = new GameObject[board.Count];
             _tileColors = new Color[board.Count];
             _names = new TextMesh[board.Count];
@@ -695,14 +668,6 @@ namespace Lazpoly.Presentation.Tabletop
                     marker.transform.localScale = _flagScale[i];
                     marker.gameObject.SetActive(false);
                     _ownerMarkers[i] = marker;
-
-                    // Owner frame: a rim in the owner's colour just around the tile, seen from any angle.
-                    GameObject frame = ModelParts.Create("Owner frame", transform,
-                        MeshFactory.RoundedBox(new Vector3(size.x + Gap * 0.9f, TileHeight * 0.9f, size.y + Gap * 0.9f), 0.06f, 4), Color.white, 0.4f);
-                    frame.transform.localPosition = center + Vector3.up * (TileHeight * 0.45f);
-                    frame.transform.localRotation = facing;
-                    frame.SetActive(false);
-                    _ownerFrames[i] = frame;
                     if (square.IsDevelopable)
                     {
                         _buildings[i] = CreateBuildings(center);
@@ -1086,8 +1051,6 @@ namespace Lazpoly.Presentation.Tabletop
                 default: return RestColor;
             }
         }
-
-        private static void Paint(GameObject target, Color color) => ModelParts.Paint(target, color, 0.5f);
 
         /// <summary>Tiles are matte paper: the highlight must not polish them.</summary>
         private static void PaintTile(GameObject tile, Color color) => ModelParts.Paint(tile, color, 0.05f);
