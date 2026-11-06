@@ -211,14 +211,18 @@ namespace Lazpoly.Core.Events
     /// <summary>A player went to jail (<see cref="Turns"/> to wait), waited a turn there, or left (<see cref="Turns"/> 0).</summary>
     public sealed class JailChangedEvent : GameEvent
     {
-        public JailChangedEvent(int playerId, int turns)
+        public JailChangedEvent(int playerId, int turns, bool rolledOut = false)
         {
             PlayerId = playerId;
             Turns = turns;
+            RolledOut = rolledOut;
         }
 
         public int PlayerId { get; }
         public int Turns { get; }
+
+        /// <summary>The player left jail with a double: they move by it, but it earns no second roll.</summary>
+        public bool RolledOut { get; }
     }
 
     /// <summary>A player gained (or used up) the choice of two rolls next time.</summary>

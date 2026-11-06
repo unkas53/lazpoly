@@ -164,6 +164,13 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>A corner's name line, which has the room a price line would take elsewhere.</summary>
         public const float CornerNameDepth = 0.16f;
 
+        /// <summary>
+        /// The jail's name is printed larger, in capitals, with nothing under it (the owner's wish, Faz 23): its size and room
+        /// grow by this much, and its line sits between a corner's name line and its second line.
+        /// </summary>
+        public const float JailNameScale = 1.6f;
+        public const float JailNameOffset = 0.26f;
+
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
         public const float NameSize = 0.02f;
         public const float PriceSize = 0.034f;
@@ -726,10 +733,10 @@ namespace Lazpoly.Presentation.Tabletop
                 // A corner has no price: its name lies on the outer part, or the inner edge when the corner faces away,
                 // clear of its scene and pawns.
                 Vector3 namePlace = corner
-                    ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
+                    ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : CornerNameOffset))
                     : center + down * (_depth * NameOffset);
                 _names[i] = CreateLabel("Name", PrintedName(square), namePlace + Vector3.up * top, outward,
-                    _width * NameSize, NameRoom(i, size), InkColor);
+                    NameCharacterSize(i), NameRoom(i, size), InkColor);
                 string subtitle = Subtitle(square);
                 if (subtitle != null || property)
                 {
@@ -891,9 +898,14 @@ namespace Lazpoly.Presentation.Tabletop
             new Vector2(size.x * NameFill, _depth * (Layout.IsCorner(index) ? CornerPriceDepth : PriceDepth));
 
         /// <summary>The room a square's name may fill: the tile's width less a margin (and the group's letter, when shown), and its line's depth.</summary>
+        /// <summary>How much larger than other names a square's name is printed: the jail's, larger.</summary>
+        private float NameScale(int index) => _data.Board[index].Type == SquareType.Jail ? JailNameScale : 1f;
+
+        private float NameCharacterSize(int index) => _width * NameSize * NameScale(index);
+
         private Vector2 NameRoom(int index, Vector2 size)
         {
-            if (Layout.IsCorner(index)) return new Vector2(size.x * NameFill, _depth * CornerNameDepth);
+            if (Layout.IsCorner(index)) return new Vector2(size.x * NameFill, _depth * CornerNameDepth * NameScale(index));
             SquareDefinition square = _data.Board[index];
             bool marked = square.Type == SquareType.Property && _data.GroupMark(square.GroupId) != null;
             return new Vector2(size.x * (marked ? MarkedNameFill : NameFill), _depth * NameDepth);
@@ -1064,7 +1076,7 @@ namespace Lazpoly.Presentation.Tabletop
         public static float FitCharacterSize(float characterSize, Vector2 size, Vector2 maxSize) =>
             Mathf.Min(FitCharacterSize(characterSize, size.x, maxSize.x), FitCharacterSize(characterSize, size.y, maxSize.y));
 
-        /// <summary>The line under a square's name: the tax it takes, the fare or the jail's exit fee; null when the square has none (a town for sale shows no figure).</summary>
+        /// <summary>The line under a square's name: the tax it takes or the fare; null when the square has none (a town for sale shows no figure).</summary>
         public static string Subtitle(SquareDefinition square)
         {
             switch (square.Type)
@@ -1072,7 +1084,6 @@ namespace Lazpoly.Presentation.Tabletop
                 case SquareType.Property: return null; // For sale a town shows no figure; owned, its rent (the owner's wish, Faz 22).
                 case SquareType.Tax: return F($"-{square.TaxAmount}");
                 case SquareType.Travel: return F($"bilet {square.Fee}");
-                case SquareType.Jail: return F($"çıkış {square.Fee}");
                 default: return null;
             }
         }
@@ -1106,9 +1117,9 @@ namespace Lazpoly.Presentation.Tabletop
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
 
-        /// <summary>A square's name as printed on the board: a town's in capitals ("İSTANBUL", Turkish capitals in Turkish), the others as written.</summary>
+        /// <summary>A square's name as printed on the board: a town's and the jail's in capitals ("İSTANBUL", "HAPİS", Turkish capitals in Turkish), the others as written.</summary>
         public static string PrintedName(SquareDefinition square) =>
-            square.Type == SquareType.Property ? Upper(L(square.Name)) : L(square.Name);
+            square.Type == SquareType.Property || square.Type == SquareType.Jail ? Upper(L(square.Name)) : L(square.Name);
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>
         public void Relabel()
@@ -1122,7 +1133,7 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_names[i] != null)
                 {
                     _names[i].text = PrintedName(square);
-                    FitLabel(_names[i], _width * NameSize, NameRoom(i, size), outward);
+                    FitLabel(_names[i], NameCharacterSize(i), NameRoom(i, size), outward);
                 }
 
                 if (_prices[i] != null)

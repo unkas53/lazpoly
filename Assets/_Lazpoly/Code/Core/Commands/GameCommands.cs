@@ -112,10 +112,13 @@ namespace Lazpoly.Core.Commands
         public PayJailFeeCommand(int playerId) : base(playerId) { }
     }
 
-    /// <summary>Waits out this turn in jail; the turn ends.</summary>
-    public sealed class WaitInJailCommand : GameCommand
+    /// <summary>
+    /// Rolls the dice in jail for free: a double lets the player out to move by it (with no second roll);
+    /// any other roll waits out this turn and ends it.
+    /// </summary>
+    public sealed class RollInJailCommand : GameCommand
     {
-        public WaitInJailCommand(int playerId) : base(playerId) { }
+        public RollInJailCommand(int playerId) : base(playerId) { }
     }
 
     /// <summary>Picks one of the two rolls a lookout gave: 0 for the first pair, 1 for the second.</summary>

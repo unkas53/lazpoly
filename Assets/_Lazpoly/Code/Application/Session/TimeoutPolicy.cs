@@ -9,7 +9,7 @@ namespace Lazpoly.App.Session
 {
     /// <summary>
     /// What the game does for a person whose decision time ran out: the dice are rolled for them, a
-    /// town on sale is left to the bank, the turn ends without building, a ride or a trade is turned
+    /// town on sale is left to the bank, the turn ends without building, a jailed player rolls for a double for free, a ride or a trade is turned
     /// down, and a debt is covered by the automatic sale (<see cref="DebtSettlement"/>). Local games
     /// and the online host use the same moves.
     /// </summary>
@@ -38,7 +38,7 @@ namespace Lazpoly.App.Session
                 case GamePhase.AwaitingTradeResponse: return new RejectTradeCommand(playerId);
                 case GamePhase.AwaitingTravelDecision: return new DeclineTravelCommand(playerId);
                 case GamePhase.AwaitingDiceChoice: return new ChooseDiceCommand(playerId, 0);
-                case GamePhase.AwaitingJailDecision: return new WaitInJailCommand(playerId);
+                case GamePhase.AwaitingJailDecision: return new RollInJailCommand(playerId);
                 default: return null;
             }
         }

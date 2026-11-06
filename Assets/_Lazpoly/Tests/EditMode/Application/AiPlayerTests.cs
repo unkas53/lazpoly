@@ -96,7 +96,7 @@ namespace Lazpoly.App.Tests
 
             Apply(state, new MoneyChangedEvent(Me, 100 - state.FindPlayer(Me).Money, MoneyReason.Rent));
             GameCommand poor = ai.Decide(board, rules, state, new NoMistakes());
-            Assert.IsInstanceOf<WaitInJailCommand>(poor, "the fee would eat into its reserve");
+            Assert.IsInstanceOf<RollInJailCommand>(poor, "the fee would eat into its reserve");
             Assert.AreEqual(RejectionReason.None, GameRules.Validate(board, rules, state, poor));
         }
 

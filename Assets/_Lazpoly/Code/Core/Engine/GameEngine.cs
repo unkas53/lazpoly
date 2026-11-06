@@ -135,9 +135,8 @@ namespace Lazpoly.Core.Engine
                     Emit(new JailChangedEvent(player.Id, 0));
                     Emit(new PhaseChangedEvent(GamePhase.WaitingForRoll));
                     break;
-                case WaitInJailCommand _:
-                    Emit(new JailChangedEvent(player.Id, player.JailTurns - 1));
-                    Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                case RollInJailCommand _:
+                    RollInJail(player);
                     break;
                 default:
                     throw new InvalidOperationException($"Validated command {command.GetType().Name} has no handler.");
@@ -188,8 +187,7 @@ namespace Lazpoly.Core.Engine
                 // Too many doubles in a row: straight to jail, or on a board without one the move is forfeited; the turn ends.
                 if (Board.HasJail)
                 {
-                    Emit(new PlayerMovedEvent(player.Id, player.Position, Board.JailIndex, false, MoveKind.Jump));
-                    LockUp(player);
+                    SendToJail(player);
                 }
                 else
                 {
@@ -282,6 +280,34 @@ namespace Lazpoly.Core.Engine
             }
         }
 
+        /// <summary>
+        /// A free roll in jail: a double sets the player free to move by it, and that double earns no second roll
+        /// (<see cref="GameState.RolledOutOfJail"/>); any other roll uses up one of the jailed turns and ends the turn.
+        /// </summary>
+        private void RollInJail(PlayerState player)
+        {
+            int die1 = RollDie();
+            int die2 = RollDie();
+            Emit(new DiceRolledEvent(player.Id, die1, die2));
+            if (die1 != die2)
+            {
+                Emit(new JailChangedEvent(player.Id, player.JailTurns - 1));
+                Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                return;
+            }
+
+            Emit(new JailChangedEvent(player.Id, 0, rolledOut: true));
+            MovePlayer(player, die1 + die2);
+            if (!ResolveLanding(player, drawCards: true)) FinishMove();
+        }
+
+        /// <summary>Flies the player straight to the jail (never a lap: no start bonus) and locks them in.</summary>
+        private void SendToJail(PlayerState player)
+        {
+            Emit(new PlayerMovedEvent(player.Id, player.Position, Board.JailIndex, false, MoveKind.Jump));
+            LockUp(player);
+        }
+
         /// <summary>Locks the player in jail for the rules' number of turns; their turn ends at once, even after a double.</summary>
         private void LockUp(PlayerState player)
         {
@@ -328,6 +354,10 @@ namespace Lazpoly.Core.Engine
                     if (!player.HasLookout) Emit(new LookoutChangedEvent(player.Id, true));
                     return false;
 
+                case CardKind.GoToJail:
+                    SendToJail(player);
+                    return true;
+
                 default:
                     throw new InvalidOperationException($"Card kind {card.Kind} has no handler.");
             }
@@ -353,10 +383,11 @@ namespace Lazpoly.Core.Engine
             FinishMove();
         }
 
-        /// <summary>After landing is resolved: a double earns another roll, otherwise the turn can end.</summary>
+        /// <summary>After landing is resolved: a double earns another roll (not the one that got the player out of jail), otherwise the turn can end.</summary>
         private void FinishMove()
         {
-            Emit(new PhaseChangedEvent(State.LastRollWasDouble ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
+            bool again = State.LastRollWasDouble && !State.RolledOutOfJail;
+            Emit(new PhaseChangedEvent(again ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
         }
 
         /// <summary>

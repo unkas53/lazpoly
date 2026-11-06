@@ -37,6 +37,9 @@ namespace Lazpoly.Core.State
         public int Pot;
         public int BuiltThisVisit = GameState.NotArrived;
 
+        /// <summary>The player on turn left jail with a double this turn, which earns no second roll.</summary>
+        public bool RolledOutOfJail;
+
         /// <summary>Null unless a lookout's two rolls wait for a choice.</summary>
         public int[] DiceOptions;
         public List<PlayerEntry> Players = new List<PlayerEntry>();
@@ -62,6 +65,7 @@ namespace Lazpoly.Core.State
                 Round = state.Round,
                 Pot = state.Pot,
                 BuiltThisVisit = state.BuiltThisVisit,
+                RolledOutOfJail = state.RolledOutOfJail,
                 DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],

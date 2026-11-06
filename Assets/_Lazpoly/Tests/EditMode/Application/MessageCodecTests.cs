@@ -39,6 +39,7 @@ namespace Lazpoly.App.Tests
             busy.Players[1].HasLookout = true;
             busy.Players[0].JailTurns = 2;
             busy.Phase = GamePhase.AwaitingJailDecision;
+            busy.RolledOutOfJail = true;
             yield return new GameStartMessage
             {
                 ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 1UL, YourPlayerId = 1, Sequence = 3, Snapshot = busy,
@@ -62,7 +63,7 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new DeclineTravelCommand(2) };
             yield return new CommandMessage { Command = new ChooseDiceCommand(1, 1) };
             yield return new CommandMessage { Command = new PayJailFeeCommand(1) };
-            yield return new CommandMessage { Command = new WaitInJailCommand(2) };
+            yield return new CommandMessage { Command = new RollInJailCommand(2) };
             var events = new EventsMessage { Sequence = 9, StateHash = 0xDEADBEEFUL };
             events.Events.AddRange(new GameEvent[]
             {
@@ -88,6 +89,7 @@ namespace Lazpoly.App.Tests
                 new DebtIncurredEvent(1, GameState.PotId, 40, MoneyReason.Card),
                 new PlayerTimedOutEvent(2, true),
                 new JailChangedEvent(2, 3),
+                new JailChangedEvent(1, 0, rolledOut: true),
                 new MoneyChangedEvent(1, -50, MoneyReason.Jail),
             });
             yield return events;

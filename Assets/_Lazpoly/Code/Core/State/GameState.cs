@@ -70,6 +70,9 @@ namespace Lazpoly.Core.State
         /// <summary>Doubles rolled so far in the current turn.</summary>
         public int ConsecutiveDoubles { get; internal set; }
 
+        /// <summary>The player on turn left jail with a double this turn: they moved by it, but it earns no second roll.</summary>
+        public bool RolledOutOfJail { get; internal set; }
+
         public int WinnerId { get; internal set; }
 
         /// <summary>The open trade offer; null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingTradeResponse"/>.</summary>
@@ -164,6 +167,7 @@ namespace Lazpoly.Core.State
                 Round = snapshot.Round,
                 Pot = snapshot.Pot,
                 BuiltThisVisit = snapshot.BuiltThisVisit,
+                RolledOutOfJail = snapshot.RolledOutOfJail,
             };
 
             if (snapshot.BuiltThisVisit < NotArrived) throw new ArgumentException("Snapshot build count is out of range.", nameof(snapshot));
@@ -308,6 +312,7 @@ namespace Lazpoly.Core.State
             Mix(Round);
             Mix(Pot);
             Mix(BuiltThisVisit);
+            Mix(RolledOutOfJail ? 1 : 0);
             Mix(DiceOptions == null ? 0 : 1);
             if (DiceOptions != null)
             {

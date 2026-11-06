@@ -59,7 +59,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.Travel, myTurn && state.Phase == GamePhase.AwaitingTravelDecision,
                        F($"Otogardasın. Tahtada parlayan karelerden birine tıkla ve {board[me.Position].Fee} ödeyerek oraya yürü. İstemezsen \"Burada kal\"."))
                    ?? Offer(TipId.Jail, myTurn && state.Phase == GamePhase.AwaitingJailDecision && board.HasJail,
-                       F($"Hapistesin: {me.JailTurns} tur daha beklemen gerek. \"Öde ve çık\" ile {GameRules.JailFee(board)} ödeyip hemen zar atabilir ya da parasız bekleyebilirsin."))
+                       F($"Hapistesin: {me.JailTurns} tur daha beklemen gerek. \"Öde ve çık\" ile {GameRules.JailFee(board)} ödeyip hemen zar atabilirsin; ya da bedava zar at, çift gelirse çıkıp ilerlersin."))
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,
                        L("Seyir Terası sayesinde iki kez attın. Düğmelerde her atışın seni nereye götüreceği yazıyor; birini seç."))
                    ?? Offer(TipId.BuyOrDecline, myTurn && state.Phase == GamePhase.AwaitingBuyDecision,

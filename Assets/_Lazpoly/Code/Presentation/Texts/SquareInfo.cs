@@ -85,8 +85,8 @@ namespace Lazpoly.Presentation.Texts
                     var info = new SquareInfo(L(square.Name), L("Hapis"));
                     info.Rows.Add(new SquareInfoRow(L("Bekleme"), F($"{rules.JailTurns} tur")));
                     info.Rows.Add(new SquareInfoRow(L("Erken çıkış"), square.Fee.ToString()));
-                    info.Notes.Add(F($"Buraya gelen {rules.JailTurns} kez sırası gelene kadar burada bekler. Sırası gelince isterse {square.Fee} ödeyip hemen çıkar ve zar atar."));
-                    info.Notes.Add(F($"Üst üste {rules.MaxConsecutiveDoubles} çift atan da buraya düşer. Hapisteyken çift atmak çıkarmaz."));
+                    info.Notes.Add(F($"Buraya gelen {rules.JailTurns} kez sırası gelene kadar burada bekler. Sırası gelince isterse {square.Fee} ödeyip hemen çıkar ve zar atar ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler."));
+                    info.Notes.Add(F($"Üst üste {rules.MaxConsecutiveDoubles} çift atan ve hapse gönderen kartı çeken de buraya düşer; Başlangıç'tan geçmiş sayılmaz."));
                     return info;
                 }
 

@@ -43,7 +43,7 @@ namespace Lazpoly.Presentation.Texts
             if (board.HasPot) sections.Add(Section(L("Çay Molası"), L("Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır.")));
             if (board.HasJail)
             {
-                sections.Add(Section(L(board[board.JailIndex].Name), F($"Hapse gelen ya da üst üste {rules.MaxConsecutiveDoubles} çift atan, {rules.JailTurns} kez sırası gelene kadar orada bekler. Sırası gelince isterse {board[board.JailIndex].Fee} ödeyip hemen çıkar ve zar atar; beklemek parasızdır. Hapisteyken çift atmak çıkarmaz, kira almak sürer.")));
+                sections.Add(Section(L(board[board.JailIndex].Name), F($"Hapse gelen, üst üste {rules.MaxConsecutiveDoubles} çift atan ya da hapse gönderen kartı çeken, {rules.JailTurns} kez sırası gelene kadar orada bekler. Sırası gelince isterse {board[board.JailIndex].Fee} ödeyip hemen çıkar ve zar atar; ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler (bir daha atmaz), gelmezse sıra geçer. Hapisteyken kira almak sürer.")));
             }
 
             if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelen isterse {fare} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine gidilemez.")));

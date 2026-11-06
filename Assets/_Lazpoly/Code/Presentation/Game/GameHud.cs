@@ -1245,8 +1245,8 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
-        /// A turn in jail: pay the exit fee and roll now, or wait the turn out. The last waited turn sets the
-        /// player free for the next one. When the clock runs out the player waits.
+        /// A turn in jail: pay the exit fee and roll now, or roll for a double, which lets the player out for free.
+        /// Any other roll waits the turn out; after the last one the player is free. When the clock runs out the dice are rolled.
         /// </summary>
         private void RenderJail(UiBuilder ui, PlayerState player)
         {
@@ -1255,15 +1255,15 @@ namespace Lazpoly.Presentation.Game
             UiBuilder card = ui.Card();
             card.Label(F($"{L(board[board.JailIndex].Name)}: {player.JailTurns} tur daha beklemen gerekiyor."));
             card.Label(player.JailTurns > 1
-                ? F($"{fee} ödersen hemen çıkıp zar atarsın; beklersen sıra sonraki oyuncuya geçer.")
-                : F($"{fee} ödersen hemen çıkıp zar atarsın; beklersen bu son bekleyişin, sonraki turda serbestsin."),
+                ? F($"{fee} ödersen hemen çıkıp zar atarsın. Zar atarsan çift gelince bedava çıkıp ilerlersin; gelmezse sıra geçer.")
+                : F($"{fee} ödersen hemen çıkıp zar atarsın. Zar atarsan çift gelince bedava çıkıp ilerlersin; gelmezse bu son bekleyişin, sonraki turda serbestsin."),
                 UiTextStyle.Small, UiTheme.Muted);
 
             var pay = new PayJailFeeCommand(player.Id);
             bool canPay = _controller.IsAllowed(pay);
             ui.Button(canPay ? F($"Öde ve çık ({fee})") : F($"Paran yetmiyor ({fee})"), () => _controller.Submit(pay), canPay,
                 UiButtonStyle.Primary, CardButton);
-            ui.Button(L("Bekle"), () => _controller.Submit(new WaitInJailCommand(player.Id)));
+            ui.Button(L("Zar at (çift gelirse çık)"), () => _controller.Submit(new RollInJailCommand(player.Id)));
         }
 
         /// <summary>The lookout's two rolls, each with where it would take the player.</summary>

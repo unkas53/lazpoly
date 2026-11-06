@@ -76,6 +76,7 @@ namespace Lazpoly.Presentation.Data
                 case "moveBy": return CardDefinition.MoveBy(entry.text, entry.amount);
                 case "repairs": return CardDefinition.Repairs(entry.text, entry.amount, entry.hotel);
                 case "lookout": return CardDefinition.Lookout(entry.text);
+                case "goToJail": return CardDefinition.GoToJail(entry.text);
                 case "moveTo":
                     int target = squares.FindIndex(square => square.Name == entry.to);
                     if (target < 0) throw new FormatException($"Card {index} '{entry.text}' goes to unknown square '{entry.to}'.");

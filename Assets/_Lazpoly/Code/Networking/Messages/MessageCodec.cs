@@ -27,7 +27,7 @@ namespace Lazpoly.Net.Messages
             ProposeTrade = 11, AcceptTrade = 12, RejectTrade = 13, CancelTrade = 14,
             PayDebt = 15, Bankruptcy = 16,
             Travel = 17, DeclineTravel = 18, ChooseDice = 19,
-            PayJailFee = 20, WaitInJail = 21,
+            PayJailFee = 20, RollInJail = 21,
         }
 
         private enum EventTag : byte
@@ -187,7 +187,7 @@ namespace Lazpoly.Net.Messages
                 case DeclineTravelCommand _: w.WriteByte((byte)CommandTag.DeclineTravel); break;
                 case ChooseDiceCommand _: w.WriteByte((byte)CommandTag.ChooseDice); break;
                 case PayJailFeeCommand _: w.WriteByte((byte)CommandTag.PayJailFee); break;
-                case WaitInJailCommand _: w.WriteByte((byte)CommandTag.WaitInJail); break;
+                case RollInJailCommand _: w.WriteByte((byte)CommandTag.RollInJail); break;
                 default: throw new ArgumentException($"Cannot encode command {command?.GetType().Name}.");
             }
 
@@ -256,7 +256,7 @@ namespace Lazpoly.Net.Messages
                 case CommandTag.DeclineTravel: return new DeclineTravelCommand(playerId);
                 case CommandTag.ChooseDice: return new ChooseDiceCommand(playerId, r.ReadInt());
                 case CommandTag.PayJailFee: return new PayJailFeeCommand(playerId);
-                case CommandTag.WaitInJail: return new WaitInJailCommand(playerId);
+                case CommandTag.RollInJail: return new RollInJailCommand(playerId);
                 default: throw new FormatException($"Unknown command tag {(byte)tag}.");
             }
         }
@@ -317,7 +317,7 @@ namespace Lazpoly.Net.Messages
                     w.WriteByte((byte)EventTag.Lookout); w.WriteInt(e.PlayerId); w.WriteBool(e.HasLookout);
                     break;
                 case JailChangedEvent e:
-                    w.WriteByte((byte)EventTag.Jail); w.WriteInt(e.PlayerId); w.WriteInt(e.Turns);
+                    w.WriteByte((byte)EventTag.Jail); w.WriteInt(e.PlayerId); w.WriteInt(e.Turns); w.WriteBool(e.RolledOut);
                     break;
                 case DiceOptionsEvent e:
                     w.WriteByte((byte)EventTag.DiceOptions); w.WriteInt(e.PlayerId);
@@ -352,7 +352,7 @@ namespace Lazpoly.Net.Messages
                 case EventTag.PotChanged: return new PotChangedEvent(r.ReadInt());
                 case EventTag.CardDrawn: return new CardDrawnEvent(r.ReadInt(), r.ReadInt());
                 case EventTag.Lookout: return new LookoutChangedEvent(r.ReadInt(), r.ReadBool());
-                case EventTag.Jail: return new JailChangedEvent(r.ReadInt(), r.ReadInt());
+                case EventTag.Jail: return new JailChangedEvent(r.ReadInt(), r.ReadInt(), r.ReadBool());
                 case EventTag.DiceOptions: return new DiceOptionsEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.TimedOut: return new PlayerTimedOutEvent(r.ReadInt(), r.ReadBool());
                 default: throw new FormatException($"Unknown event tag {(byte)tag}.");
@@ -416,12 +416,14 @@ namespace Lazpoly.Net.Messages
                 w.WriteInt(s.Debt.Amount);
                 w.WriteInt((int)s.Debt.Reason);
             }
+
+            w.WriteBool(s.RolledOutOfJail);
         }
 
         /// <summary>The snapshot layout written today.</summary>
         public const int SnapshotVersion = JailSnapshotVersion;
 
-        /// <summary>Layout 9 (Faz 23) added each player's turns left in jail.</summary>
+        /// <summary>Layout 9 (Faz 23) added each player's turns left in jail and whether the player on turn rolled out of it.</summary>
         public const int JailSnapshotVersion = 9;
 
         /// <summary>Layout 8 (Faz 21) carried each player's character; it knows no jail.</summary>
@@ -537,6 +539,7 @@ namespace Lazpoly.Net.Messages
                 s.Debt = new DebtState(r.ReadInt(), r.ReadInt(), r.ReadInt(), ReadEnum<MoneyReason>(r));
             }
 
+            if (version >= JailSnapshotVersion) s.RolledOutOfJail = r.ReadBool();
             return s;
         }
 

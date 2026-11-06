@@ -12,8 +12,9 @@ using static Lazpoly.Core.Tests.TestData;
 namespace Lazpoly.Core.Tests
 {
     /// <summary>
-    /// Faz 23 jail: landing there or rolling three doubles in a row locks a player in for three of their
-    /// turns; on each of them they may pay the fee and roll at once, or wait.
+    /// Faz 23 jail: landing there, rolling three doubles in a row or drawing the jail card locks a player in
+    /// for three of their turns; on each of them they may pay the fee and roll at once, or roll for free
+    /// and leave on a double.
     /// </summary>
     public class JailTests
     {
@@ -21,7 +22,10 @@ namespace Lazpoly.Core.Tests
         private const int Fee = 50;
         private const int Turns = 3;
 
-        // 0 Start, 1 P1, 2-3 Rest, 4 Jail 50, 5-11 Rest.
+        private const int P2 = 10;
+        private const int CardSquare = 11;
+
+        // 0 Start, 1 P1, 2-3 Rest, 4 Jail 50, 5-9 Rest, 10 P2, 11 Card (the jail card).
         private static BoardDefinition Board()
         {
             var squares = new SquareDefinition[12];
@@ -29,7 +33,9 @@ namespace Lazpoly.Core.Tests
             squares[1] = SquareDefinition.Property("P1", 60, 10, 0);
             for (int i = 2; i < squares.Length; i++) squares[i] = SquareDefinition.Rest($"Rest {i}");
             squares[JailSquare] = SquareDefinition.Jail("Jail", Fee);
-            return new BoardDefinition(squares);
+            squares[P2] = SquareDefinition.Property("P2", 100, 10, 0);
+            squares[CardSquare] = SquareDefinition.Card("News");
+            return new BoardDefinition(squares, new[] { CardDefinition.GoToJail("Straight to jail") });
         }
 
         private static RulesConfig Rules(int startingMoney = 1000) =>
@@ -90,7 +96,7 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(GamePhase.AwaitingJailDecision, engine.State.Phase);
             Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new RollDiceCommand(Alice)));
             Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new EndTurnCommand(Alice)));
-            Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new WaitInJailCommand(Bob)));
+            Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new RollInJailCommand(Bob)));
             Assert.AreEqual(Fee, GameRules.JailFee(engine.Board));
         }
 
@@ -110,24 +116,25 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void PayingNeedsTheFeeInHandButWaitingIsFree()
+        public void PayingNeedsTheFeeInHandButRollingIsFree()
         {
-            GameEngine engine = AliceJailedOnHerTurn(Rules(startingMoney: Fee - 1));
+            GameEngine engine = AliceJailedOnHerTurn(Rules(startingMoney: Fee - 1), 1, 2);
 
             Assert.AreEqual(RejectionReason.InsufficientFunds, Reason(engine, new PayJailFeeCommand(Alice)));
-            Accept(engine, new WaitInJailCommand(Alice));
-            Assert.AreEqual(Fee - 1, Player(engine, Alice).Money);
+            Accept(engine, new RollInJailCommand(Alice));
+            Assert.AreEqual(Fee - 1, Player(engine, Alice).Money, "rolling in jail is free");
         }
 
         [Test]
-        public void AfterWaitingThreeTurnsThePlayerIsFree()
+        public void AfterThreeRollsWithoutADoubleThePlayerIsFree()
         {
-            GameEngine engine = AliceJailedOnHerTurn(Rules(), 1, 2, 1, 2, 1, 2, 1, 3);
+            GameEngine engine = AliceJailedOnHerTurn(Rules(), 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 3);
 
             for (int wait = Turns - 1; wait >= 0; wait--)
             {
                 Assert.AreEqual(GamePhase.AwaitingJailDecision, engine.State.Phase);
-                Accept(engine, new WaitInJailCommand(Alice));
+                CommandResult rolled = Accept(engine, new RollInJailCommand(Alice));
+                Assert.IsTrue(rolled.Events.OfType<DiceRolledEvent>().Any(e => !e.IsDouble), "the dice are rolled every jailed turn");
                 Assert.AreEqual(wait, Player(engine, Alice).JailTurns);
                 Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "waiting ends the turn");
                 Assert.AreEqual(JailSquare, Player(engine, Alice).Position);
@@ -136,10 +143,48 @@ namespace Lazpoly.Core.Tests
                 Accept(engine, new EndTurnCommand(Bob));
             }
 
-            Assert.AreEqual(1000, Player(engine, Alice).Money, "waiting costs nothing");
+            Assert.AreEqual(1000, Player(engine, Alice).Money, "rolling in jail costs nothing");
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "the fourth turn is free");
             Accept(engine, new RollDiceCommand(Alice));
             Assert.AreEqual(JailSquare + 4, Player(engine, Alice).Position);
+        }
+
+        [Test]
+        public void ADoubleInJailLetsThePlayerOutToMoveByItWithoutASecondRoll()
+        {
+            GameEngine engine = AliceJailedOnHerTurn(Rules(), 3, 3);
+            CommandResult rolled = Accept(engine, new RollInJailCommand(Alice));
+
+            Assert.IsFalse(Player(engine, Alice).InJail);
+            Assert.AreEqual(P2, Player(engine, Alice).Position, "the double moves the player");
+            Assert.AreEqual(1000, Player(engine, Alice).Money, "leaving on a double is free");
+            Assert.IsTrue(rolled.Events.OfType<JailChangedEvent>().Any(e => e.Turns == 0 && e.RolledOut));
+            Assert.IsTrue(engine.State.RolledOutOfJail);
+            Assert.AreEqual(GamePhase.AwaitingBuyDecision, engine.State.Phase);
+
+            Accept(engine, new BuyPropertyCommand(Alice));
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "the double that opened the cell earns no second roll");
+            Accept(engine, new EndTurnCommand(Alice));
+            Assert.IsFalse(engine.State.RolledOutOfJail, "a new turn forgets it");
+        }
+
+        [Test]
+        public void TheJailCardFliesThePlayerToJailWithoutPassingStart()
+        {
+            GameEngine engine = NewGame(Rules(), 5, 6, 0);
+            CommandResult drawn = Accept(engine, new RollDiceCommand(Alice));
+
+            Assert.AreEqual(JailSquare, Player(engine, Alice).Position);
+            Assert.AreEqual(Turns, Player(engine, Alice).JailTurns);
+            Assert.AreEqual(1000, Player(engine, Alice).Money, "no start bonus");
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
+            PlayerMovedEvent flight = drawn.Events.OfType<PlayerMovedEvent>().Last();
+            Assert.AreEqual(MoveKind.Jump, flight.Kind, "a flight, not a walk");
+            Assert.IsFalse(flight.PassedStart);
+
+            Assert.Throws<ArgumentException>(() => new BoardDefinition(
+                new[] { SquareDefinition.Start("S"), SquareDefinition.Card("C") }, new[] { CardDefinition.GoToJail("Go") }),
+                "a jail card needs a jail");
         }
 
         [Test]
@@ -171,6 +216,11 @@ namespace Lazpoly.Core.Tests
 
             GameStateReducer.Apply(copy, new JailChangedEvent(Alice, 1));
             Assert.AreNotEqual(engine.State.ComputeHash(), copy.ComputeHash());
+
+            GameState out_ = GameStateSnapshot.Capture(engine.State).Restore();
+            GameStateReducer.Apply(out_, new JailChangedEvent(Alice, 0, rolledOut: true));
+            Assert.IsTrue(GameStateSnapshot.Capture(out_).Restore().RolledOutOfJail);
+            Assert.AreNotEqual(engine.State.ComputeHash(), out_.ComputeHash());
             Assert.Throws<InvalidOperationException>(() => GameStateReducer.Apply(copy, new JailChangedEvent(Alice, -1)));
 
             snapshot.Players[0].JailTurns = -1;

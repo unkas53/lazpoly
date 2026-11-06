@@ -140,6 +140,9 @@ namespace Lazpoly.Core.Board
                     break;
                 case CardKind.Lookout:
                     break;
+                case CardKind.GoToJail:
+                    if (JailIndex < 0) throw new ArgumentException($"{name}: the board has no jail to send a player to.");
+                    break;
                 default:
                     throw new ArgumentException($"{name}: unknown kind {card.Kind}.");
             }

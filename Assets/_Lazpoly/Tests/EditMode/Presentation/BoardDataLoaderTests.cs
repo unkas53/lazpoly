@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Lazpoly.Core.Board;
 using Lazpoly.Presentation.Data;
 using NUnit.Framework;
@@ -58,6 +59,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(7, data.Board.JailIndex, "the jail stands on the first corner after the start");
             Assert.AreEqual(50, data.Board[data.Board.JailIndex].Fee);
             Assert.AreEqual(3, data.Rules.JailTurns);
+            Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == CardKind.GoToJail), "the card that led to the tea break now leads to jail");
             Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
             foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
         }
@@ -94,7 +96,11 @@ namespace Lazpoly.Presentation.Tests
             Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""kind"": ""collect""", @"""kind"": ""magic""")));
 
             BoardData jailed = BoardDataLoader.Parse(json.Replace(@"""type"": ""pot"", ""name"": ""Kumbara""", @"""type"": ""jail"", ""name"": ""Hapis"", ""fee"": 30")
-                .Replace(@"""diceSides"": 6,", @"""diceSides"": 6, ""jailTurns"": 2,"));
+                .Replace(@"""diceSides"": 6,", @"""diceSides"": 6, ""jailTurns"": 2,")
+                .Replace(@"""kind"": ""repairs"", ""amount"": 5, ""hotel"": 20, ""text"": ""Tamir""", @"""kind"": ""goToJail"", ""text"": ""Hapse"""));
+            Assert.AreEqual(CardKind.GoToJail, jailed.Board.Cards[2].Kind);
+            Assert.Throws<ArgumentException>(() => BoardDataLoader.Parse(json.Replace(@"""kind"": ""repairs"", ""amount"": 5, ""hotel"": 20, ""text"": ""Tamir""", @"""kind"": ""goToJail"", ""text"": ""Hapse""")),
+                "a jail card on a board without a jail");
             Assert.AreEqual(SquareType.Jail, jailed.Board[2].Type);
             Assert.AreEqual(2, jailed.Board.JailIndex);
             Assert.AreEqual(30, jailed.Board[2].Fee);

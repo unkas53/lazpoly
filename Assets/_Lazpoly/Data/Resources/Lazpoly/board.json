@@ -64,7 +64,7 @@
         { "kind": "moveTo", "to": "Rio de Janeiro", "text": "Rio de Janeiro'da karnaval başladı, hemen git." },
         { "kind": "moveTo", "to": "Singapur", "text": "Singapur'da bir iş görüşmen var." },
         { "kind": "moveTo", "to": "İstanbul", "text": "İstanbul'da Boğaz kıyısındaki davete çağrıldın." },
-        { "kind": "moveTo", "to": "Bali", "text": "Bali'de bir tatil fırsatı yakaladın, hemen git." },
+        { "kind": "goToJail", "text": "Trafik cezalarını hiç ödememişsin: doğrudan hapse gir, Başlangıç'tan geçme." },
         { "kind": "moveTo", "to": "Otogar", "text": "Otogara koş, otobüs kalkıyor." },
         { "kind": "moveBy", "amount": -3, "text": "Yol çalışması var, 3 kare geri git." },
         { "kind": "moveBy", "amount": 4, "text": "Bisiklete bindin, 4 kare ilerle." },

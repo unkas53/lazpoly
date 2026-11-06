@@ -113,6 +113,7 @@ namespace Lazpoly.Presentation.Texts
                 case LookoutChangedEvent e:
                     return e.HasLookout ? F($"{NameOf(state, e.PlayerId)} sonraki zarında iki atıştan birini seçecek") : null;
                 case JailChangedEvent e:
+                    if (e.RolledOut) return F($"{NameOf(state, e.PlayerId)} çift attı, hapisten çıktı");
                     return e.Turns > 0
                         ? F($"{NameOf(state, e.PlayerId)} hapiste: {e.Turns} tur bekleyecek")
                         : F($"{NameOf(state, e.PlayerId)} hapisten çıktı");

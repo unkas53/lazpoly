@@ -105,7 +105,7 @@ namespace Lazpoly.Core.Engine
                     return player.Money >= JailFee(board) ? RejectionReason.None : RejectionReason.InsufficientFunds;
                 }
 
-                case WaitInJailCommand _:
+                case RollInJailCommand _:
                     return OnTurn(state, player, GamePhase.AwaitingJailDecision);
 
                 case ChooseDiceCommand c:
