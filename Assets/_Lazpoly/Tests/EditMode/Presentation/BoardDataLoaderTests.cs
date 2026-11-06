@@ -88,7 +88,14 @@ namespace Lazpoly.Presentation.Tests
             // North Africa has a third city where the property tax was (the owner's wish, Faz 24); one tax is left.
             CollectionAssert.AreEqual(new[] { "Kahire", "Marakeş", "Tunus" }, new[] { 1, 2, 3 }.Select(i => board[i].Name).ToArray());
             Assert.AreEqual(3, board.CountInGroup(board[1].GroupId));
-            Assert.AreEqual(1, Enumerable.Range(0, board.Count).Count(i => board[i].Type == SquareType.Tax), "only the luxury tax is left");
+            Assert.AreEqual(0, Enumerable.Range(0, board.Count).Count(i => board[i].Type == SquareType.Tax), "both taxes gave way to cities");
+
+            // East Asia too: Santorini moved up a square and Pekin took the luxury tax's place, next to Seul and Tokyo.
+            int seoul = Enumerable.Range(0, board.Count).Single(i => board[i].Name == "Seul");
+            CollectionAssert.AreEqual(new[] { "Roma", "Santorini", "Pekin", "Seul", "Tokyo" },
+                Enumerable.Range(seoul - 3, 5).Select(i => board[i].Name).ToArray());
+            Assert.AreEqual(3, board.CountInGroup(board[seoul].GroupId));
+            Assert.AreEqual(board[seoul].GroupId, board[seoul - 1].GroupId);
 
             // Eight squares a side: the corners stay where the board's corners are.
             CollectionAssert.AreEqual(new[] { "Başlangıç", "Hapis", "Sokak Haberi", "Otogar" },
