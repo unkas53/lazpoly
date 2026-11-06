@@ -85,6 +85,11 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("Lima", board[rio + 2].Name, "next to Rio de Janeiro and Buenos Aires");
             Assert.AreEqual(board[rio].GroupId, board[rio + 2].GroupId);
 
+            // North Africa has a third city where the property tax was (the owner's wish, Faz 24); one tax is left.
+            CollectionAssert.AreEqual(new[] { "Kahire", "Marakeş", "Tunus" }, new[] { 1, 2, 3 }.Select(i => board[i].Name).ToArray());
+            Assert.AreEqual(3, board.CountInGroup(board[1].GroupId));
+            Assert.AreEqual(1, Enumerable.Range(0, board.Count).Count(i => board[i].Type == SquareType.Tax), "only the luxury tax is left");
+
             // Eight squares a side: the corners stay where the board's corners are.
             CollectionAssert.AreEqual(new[] { "Başlangıç", "Hapis", "Sokak Haberi", "Otogar" },
                 new[] { 0, 8, 16, 24 }.Select(corner => board[corner].Name).ToArray());

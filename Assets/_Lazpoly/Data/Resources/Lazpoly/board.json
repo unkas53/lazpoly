@@ -21,7 +21,7 @@
         { "type": "start", "name": "Başlangıç" },
         { "type": "property", "name": "Kahire", "price": 60, "rent": 4, "group": 1, "buildingCost": 35, "rents": [30, 85, 220, 310, 390] },
         { "type": "property", "name": "Marakeş", "price": 60, "rent": 6, "group": 1, "buildingCost": 35, "rents": [45, 120, 340, 460, 580] },
-        { "type": "tax", "name": "Emlak Vergisi", "amount": 100 },
+        { "type": "property", "name": "Tunus", "price": 80, "rent": 8, "group": 1, "buildingCost": 35, "rents": [60, 160, 460, 620, 780] },
         { "type": "resort", "name": "Bodrum", "price": 200, "rent": 50, "group": 9 },
         { "type": "property", "name": "Rio de Janeiro", "price": 120, "rent": 8, "group": 2, "buildingCost": 50, "rents": [50, 130, 390, 560, 690] },
         { "type": "property", "name": "Buenos Aires", "price": 120, "rent": 8, "group": 2, "buildingCost": 50, "rents": [50, 130, 390, 560, 690] },
