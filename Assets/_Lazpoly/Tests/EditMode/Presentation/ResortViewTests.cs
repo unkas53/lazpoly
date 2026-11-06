@@ -55,8 +55,7 @@ namespace Lazpoly.Presentation.Tests
                     Assert.Greater(parts.Length, previous, $"stage {stage} has more on it than the one before");
                     previous = parts.Length;
 
-                    Bounds bounds = parts[0].bounds;
-                    foreach (Renderer part in parts) bounds.Encapsulate(part.bounds);
+                    Bounds bounds = Extent(parts);
                     Assert.LessOrEqual(bounds.extents.x, ResortParts.Width / 2f, $"stage {stage} stays within its width");
                     Assert.LessOrEqual(bounds.extents.z * 2f, ResortParts.Depth + 1e-3f, $"stage {stage} stays within its depth");
                     Assert.LessOrEqual(Mathf.Abs(bounds.center.z) + bounds.extents.z, ResortParts.Depth / 2f + 1e-3f, $"stage {stage} is centred on its spot");
@@ -206,6 +205,36 @@ namespace Lazpoly.Presentation.Tests
             {
                 Object.DestroyImmediate(holder);
             }
+        }
+
+        /// <summary>
+        /// The box round the parts' vertices themselves: a renderer's own bounds turn the mesh's box with the part,
+        /// which makes a turned part (the bar's roof) look wider than it is.
+        /// </summary>
+        private static Bounds Extent(IEnumerable<Renderer> parts)
+        {
+            Bounds? bounds = null;
+            foreach (Renderer part in parts)
+            {
+                Mesh mesh = part.GetComponent<MeshFilter>().sharedMesh;
+                Matrix4x4 toWorld = part.transform.localToWorldMatrix;
+                foreach (Vector3 vertex in mesh.vertices)
+                {
+                    Vector3 point = toWorld.MultiplyPoint3x4(vertex);
+                    if (bounds.HasValue)
+                    {
+                        Bounds grown = bounds.Value;
+                        grown.Encapsulate(point);
+                        bounds = grown;
+                    }
+                    else
+                    {
+                        bounds = new Bounds(point, Vector3.zero);
+                    }
+                }
+            }
+
+            return bounds ?? new Bounds();
         }
 
         private static int Count(GameObject root, string name)
