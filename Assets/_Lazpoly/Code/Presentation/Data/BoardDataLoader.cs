@@ -103,6 +103,18 @@ namespace Lazpoly.Presentation.Data
                     return SquareDefinition.Travel(entry.name, entry.fee);
                 case "lookout":
                     return SquareDefinition.Lookout(entry.name);
+                case "resort":
+                    if (entry.group != 0 && !groups.ContainsKey(entry.group))
+                    {
+                        throw new FormatException($"Square {index} '{entry.name}' uses undefined group {entry.group}.");
+                    }
+
+                    if (entry.buildingCost > 0 || (entry.rents != null && entry.rents.Length > 0))
+                    {
+                        throw new FormatException($"Square {index} '{entry.name}': a resort takes no buildings.");
+                    }
+
+                    return SquareDefinition.Resort(entry.name, entry.price, entry.rent, entry.group);
                 case "property":
                     if (entry.group != 0 && !groups.ContainsKey(entry.group))
                     {

@@ -868,6 +868,15 @@ namespace Lazpoly.Presentation.Game
             yield return ScreenTour.Take("kare-karti");
             hud.CloseTop();
 
+            for (int i = 0; i < _session.Board.Count; i++)
+            {
+                if (!_session.Board[i].IsResort || _session.State.GetOwner(i) == GameState.NoOwner) continue;
+                hud.PinSquare(i);
+                yield return ScreenTour.Take("tatil-yeri-karti");
+                hud.CloseTop();
+                break;
+            }
+
             yield return ScreenTour.Until(() => !IsBusy && _session.State.CurrentPlayer.Id == person && _session.State.Phase == GamePhase.WaitingForRoll, 120f);
             yield return ScreenTour.Take("masa");
             foreach ((HudWindow window, string name) in new[]
@@ -930,20 +939,23 @@ namespace Lazpoly.Presentation.Game
                 _board.SetBuildingLevel(i, state.GetBuildingLevel(i));
             }
 
-            ShowRents();
+            ShowRents(animate: false);
         }
 
         /// <summary>
         /// Prints on every owned town the rent a visitor pays now (it changes with buildings and with a whole
-        /// group, so every town is asked again); towns for sale show their price.
+        /// group, so every town is asked again); towns for sale show their price. Each owned resort's beach
+        /// shows the stage of the resorts its owner holds, which is what its rent counts too.
         /// </summary>
-        private void ShowRents()
+        private void ShowRents(bool animate = true)
         {
             GameState state = _session.State;
             for (int i = 0; i < state.SquareCount; i++)
             {
-                bool owned = _session.Board[i].Type == SquareType.Property && state.GetOwner(i) != GameState.NoOwner;
+                int owner = state.GetOwner(i);
+                bool owned = _session.Board[i].Type == SquareType.Property && owner != GameState.NoOwner;
                 _board.SetRent(i, owned ? GameRules.CalculateRent(_session.Board, _session.Rules, state, i) : (int?)null);
+                if (owned && _session.Board[i].IsResort) _board.SetResortStage(i, GameRules.ResortsOwned(_session.Board, state, owner), animate);
             }
         }
 

@@ -54,6 +54,76 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ATownsColourIsPrintedFlatInsideItsFrameOnTopWithTheLightStripBelow()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var light = new Color(1f, 0.84f, 0.31f);
+            Assert.AreEqual(Color.Lerp(light, BoardView.PaperColor, BoardView.BandPastel), BoardView.BandColor(light), "a light group keeps its strong colour");
+            Assert.GreaterOrEqual(BoardView.Contrast(BoardView.BandColor(new Color(0.2f, 0.2f, 0.5f)), BoardView.InkColor), BoardView.BandContrast, "a dark group is washed until the ink reads");
+
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView view = BoardView.Create(holder.transform, data);
+                foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                {
+                    Assert.AreNotEqual("Name band", child.name, "the colour is no raised layer of its own");
+                }
+
+                for (int i = 0; i < data.Board.Count; i++)
+                {
+                    SquareDefinition square = data.Board[i];
+                    Transform tile = null;
+                    foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (child.name.StartsWith($"Square {i:00} ")) tile = child;
+                    }
+
+                    Assert.IsNotNull(tile, $"square {i}");
+                    Material material = tile.GetComponent<Renderer>().sharedMaterial;
+                    bool town = square.Type == SquareType.Property && !square.IsResort;
+                    if (!town)
+                    {
+                        if (!square.IsResort) Assert.AreSame(TileSkin.Paper(), material.mainTexture, $"{square.Name}: only towns and resorts have their colours printed in");
+                        continue;
+                    }
+
+                    Assert.AreEqual(Color.white, material.color, $"{square.Name}: the colours are in the texture");
+                    var skin = (Texture2D)material.mainTexture;
+                    Vector3 size = tile.GetComponent<MeshFilter>().sharedMesh.bounds.size;
+                    Vector2 At(Vector3 world)
+                    {
+                        Vector3 local = tile.InverseTransformPoint(world);
+                        return new Vector2(local.x / size.x + 0.5f, local.z / size.z + 0.5f);
+                    }
+
+                    // Up the screen the colour, with the name on it; down the screen the strip with the rent and the pawns.
+                    Vector2 name = At(view.NameLabel(i).transform.position);
+                    Vector2 price = At(view.PriceLabel(i).transform.position);
+                    Color underName = skin.GetPixelBilinear(0.5f, name.y);
+                    Color underPrice = skin.GetPixelBilinear(0.5f, price.y);
+                    Assert.Greater(Mathf.Abs(underName.r - underPrice.r) + Mathf.Abs(underName.g - underPrice.g) + Mathf.Abs(underName.b - underPrice.b), 0.1f,
+                        $"{square.Name}: the colour stands apart from the light strip");
+                    Assert.That(underPrice.r, Is.GreaterThan(0.75f), $"{square.Name}: the strip is light");
+                    Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(view.Layout.SquareCenter(i)));
+                    bool lowEnd = Vector3.Dot(tile.forward, down) > 0f;
+                    float insideTop = TileSkin.FrameInset + 3f * TileSkin.FrameWidth;
+                    Color atTop = skin.GetPixelBilinear(0.5f, lowEnd ? insideTop : 1f - insideTop);
+                    Assert.Greater(Mathf.Abs(atTop.r - underPrice.r) + Mathf.Abs(atTop.g - underPrice.g) + Mathf.Abs(atTop.b - underPrice.b), 0.1f,
+                        $"{square.Name}: the colour runs up to the frame line at the top");
+                    Color edge = skin.GetPixelBilinear(0.5f, lowEnd ? 0.02f : 0.98f);
+                    float spread = Mathf.Max(edge.r, Mathf.Max(edge.g, edge.b)) - Mathf.Min(edge.r, Mathf.Min(edge.g, edge.b));
+                    Assert.That(spread, Is.LessThan(0.06f), $"{square.Name}: outside the frame the tile is the plain grey paving");
+                    Assert.That(edge.g, Is.GreaterThan(0.7f), $"{square.Name}: and light");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void TownNamesLieOnTheTileWithoutAStripInADarkInk()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
@@ -129,7 +199,8 @@ namespace Lazpoly.Presentation.Tests
 
                 Assert.Greater(towns, 0);
                 const int town = 1;
-                Assert.AreEqual(BoardView.Subtitle(data.Board[town]), board.PriceLabel(town).text, "for sale, the town shows its price");
+                Assert.IsNull(BoardView.Subtitle(data.Board[town]));
+                Assert.AreEqual(string.Empty, board.PriceLabel(town).text, "for sale, the town shows no figure");
                 Assert.IsNull(board.RentShown(town));
                 Color32 ink = board.PriceLabel(town).color;
 
@@ -142,7 +213,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(ink, (Color32)board.PriceLabel(town).color, "in the same ink as the price, not the owner's colour");
 
                 board.SetRent(town, null);
-                Assert.AreEqual(BoardView.Subtitle(data.Board[town]), board.PriceLabel(town).text, "back on sale, the price returns");
+                Assert.AreEqual(string.Empty, board.PriceLabel(town).text, "back on sale, the figure goes again");
             }
             finally
             {
@@ -153,7 +224,7 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void EverythingOnASquareHasItsOwnStripFromTheScreensTopToItsBottom()
         {
-            var layout = new BoardLayout(24, 6f, BoardView.DepthRatio);
+            var layout = new BoardLayout(28, 6f, BoardView.DepthRatio);
             float widthInDepths = layout.Width / layout.Depth;
             float pawnReach = PawnSlots.Pitch * widthInDepths; // Half the 3x3 slot grid, in tile depths.
             float buildingHalf = BuildingModels.Depth * BoardView.BuildingScale * widthInDepths / 2f;
@@ -179,7 +250,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.LessOrEqual(BoardView.StationInset + BoardView.StationSize * BoardView.StationDepth / 2f, 0.5f, "the bus station stays on its corner across it");
             Assert.Less(BoardView.StationPawnOffset, BoardView.StationInset - BoardView.StationSize * BoardView.StationDepth / 2f, "pawns at the bus station stand in front of the bus");
             Assert.Less(-BoardView.StationPawnOffset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "and short of the corner's name");
-            Assert.AreEqual(2f, BoardView.StationSize / BoardView.SceneSize, 1e-4f, "twice the drawn stop");
+            Assert.GreaterOrEqual(BoardView.StationSize / BoardView.SceneSize, 1.7f, "nearly twice the drawn stop, as deep as the corner allows");
             Assert.Less(-BoardView.CornerPawnShift + pawnReach, BoardView.SceneOffset - BoardView.SceneSize / 2f, "the pawns stay clear of the scene");
             Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "the scene ends before the corner's name");
             Assert.LessOrEqual(BoardView.CornerPawnOffset + pawnReach, 0.5f, "on a far corner the pawns' outer row stays on the tile");
@@ -235,54 +306,27 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void NothingOnTheLawnFallsOverTheSquaresUpTheScreen()
+        public void TheLawnIsPlainGrass()
         {
-            const float inner = 9.8f;
-            float yaw = BoardCameraRig.BaseYaw;
-            float lawnHalf = LawnDressing.LawnHalf * inner;
-            float pathHalf = LawnDressing.PathHalf * inner;
-            Assert.AreEqual(LawnDressing.TreeSpots.Length, LawnDressing.TreeKinds.Length);
-            for (int i = 0; i < LawnDressing.TreeSpots.Length; i++)
-            {
-                Vector3 foot = LawnDressing.Ground(LawnDressing.TreeSpots[i], inner, 0f);
-                Vector3 top = LawnDressing.GroundUnderTop(foot, LawnParts.TreeHeight, yaw);
-                Assert.Less(Mathf.Max(Mathf.Abs(top.x), Mathf.Abs(top.z)), lawnHalf, $"tree {i}'s crown reaches past the lawn up the screen");
-                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf + 0.3f, $"tree {i} stands on the path");
-                Assert.Less(Vector3.Dot(foot, BoardView.ScreenUp(yaw)), 0.3f * inner, $"tree {i} stands at the top of the screen, over the title");
-            }
-
-            for (int i = 0; i < LawnDressing.BushSpots.Length; i++)
-            {
-                Vector3 foot = LawnDressing.Ground(LawnDressing.BushSpots[i], inner, 0f);
-                Vector3 top = LawnDressing.GroundUnderTop(foot, LawnDressing.BushHeight, yaw);
-                Assert.Less(Mathf.Max(Mathf.Abs(top.x), Mathf.Abs(top.z)), lawnHalf, $"bush {i} reaches past the lawn up the screen");
-                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf + 0.2f, $"bush {i} sits on the path");
-            }
-
-            foreach (Vector2 spot in LawnDressing.PostSpots)
-            {
-                Vector3 foot = LawnDressing.Ground(spot, inner, 0f);
-                Assert.LessOrEqual(Vector3.Dot(foot, BoardView.ScreenUp(yaw)), 1e-3f, "the bunting runs along the near sides of the path, below the score");
-                Assert.Greater(Mathf.Min(Mathf.Abs(foot.x), Mathf.Abs(foot.z)), pathHalf, "a post stands just outside the path's corner");
-            }
-
-            var root = new GameObject("Lawn");
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
             try
             {
-                LawnDressing.Dress(root.transform, inner, 0.08f);
-                int trees = 0, pennants = 0;
-                foreach (MeshFilter part in root.GetComponentsInChildren<MeshFilter>())
+                BoardView.Create(holder.transform, data);
+                Transform lawn = null;
+                foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
                 {
-                    if (part.name == "Trunk") trees++;
-                    if (part.sharedMesh == MeshFactory.Pennant()) pennants++;
+                    if (child.name == "Lawn") lawn = child;
                 }
 
-                Assert.AreEqual(LawnDressing.TreeSpots.Length, trees);
-                Assert.AreEqual((LawnDressing.PostSpots.Length - 1) * LawnDressing.PennantsPerString, pennants);
+                Assert.IsNotNull(lawn);
+                var names = new List<string>();
+                foreach (Transform child in lawn) names.Add(child.name);
+                CollectionAssert.AreEquivalent(new[] { "Gravel", "Grass" }, names, "no trees, bushes, bunting, paths or patches: the owner wants plain grass");
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(root);
+                Object.DestroyImmediate(holder);
             }
         }
 

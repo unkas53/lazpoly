@@ -17,7 +17,7 @@ namespace Lazpoly.Presentation.Perf
     /// be checked on a build without a hand on the mouse. The menu shows its home screen, characters, settings,
     /// how to play, each mode's sheet and the table rules; then a table of a person and three computers opens
     /// with the person on a town for sale (<see cref="Stage"/>), for the city card, the building card, a square's
-    /// card, the table, the properties, a trade, the log, the pause menu and its settings and help. The tour
+    /// card, a resort's card, the table, the properties, a trade, the log, the pause menu and its settings and help. The tour
     /// never touches the save slot. The debt's sale screen has its own run (<c>-perf -debt</c>).
     /// </summary>
     public static class ScreenTour
@@ -37,6 +37,9 @@ namespace Lazpoly.Presentation.Perf
 
         /// <summary>How many towns each computer holds at the start, so the corner cards and the board show owners.</summary>
         public const int TownsEach = 2;
+
+        /// <summary>The resorts the first two computers hold, so the board shows two stages of the beach.</summary>
+        public static readonly int[] ResortsHeld = { 3, 1 };
 
         private static bool? _requested;
         private static bool _menuShown;
@@ -99,7 +102,8 @@ namespace Lazpoly.Presentation.Perf
         }
 
         /// <summary>
-        /// Sets the tour's table: the computers hold <see cref="TownsEach"/> towns each, everyone has been round
+        /// Sets the tour's table: the computers hold <see cref="TownsEach"/> towns each and the first two the
+        /// <see cref="ResortsHeld"/> resorts, everyone has been round
         /// the board once, and the person is on turn standing on the first town for sale with
         /// <see cref="PersonMoney"/>, deciding whether to buy it, at a table without a clock.
         /// </summary>
@@ -123,6 +127,21 @@ namespace Lazpoly.Presentation.Perf
                 player.Laps = Math.Max(player.Laps, 1);
                 if (player.Id == PersonId) continue;
                 for (int n = 0; n < TownsEach && next < towns.Count; n++) snapshot.Owners[towns[next++]] = player.Id;
+            }
+
+            var resorts = new List<int>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].IsResort) resorts.Add(i);
+            }
+
+            int resort = 0, computer = 0;
+            foreach (GameStateSnapshot.PlayerEntry player in snapshot.Players)
+            {
+                if (player.Id == PersonId) continue;
+                if (computer >= ResortsHeld.Length) break;
+                for (int n = 0; n < ResortsHeld[computer] && resort < resorts.Count; n++) snapshot.Owners[resorts[resort++]] = player.Id;
+                computer++;
             }
 
             GameStateSnapshot.PlayerEntry here = snapshot.Players[person];

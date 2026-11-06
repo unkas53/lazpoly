@@ -125,6 +125,10 @@ namespace Lazpoly.Presentation.Tests
             }
 
             CollectionAssert.AreEquivalent(new[] { 0, 1, 2, 3, 4, 5 }, levels, "every building level, and the bare plot, stands somewhere");
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].IsResort) Assert.AreEqual(built.State.Players[0].Id, built.State.GetOwner(i), "one player holds every resort");
+            }
             foreach (PlayerState player in built.State.Players) Assert.AreEqual(PerfRun.BuiltMoney, player.Money);
         }
 
@@ -178,12 +182,22 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsTrue(board[square].IsDevelopable, "a town with buildings to show on the cards");
             Assert.AreEqual(GameState.NoOwner, state.GetOwner(square), "for sale");
             Assert.AreEqual(RejectionReason.None, table.Validate(new BuyPropertyCommand(ScreenTour.PersonId)), "the person can buy it");
+            var resortsHeld = new List<int>();
             foreach (PlayerState player in state.Players)
             {
-                int towns = 0;
-                for (int i = 0; i < board.Count; i++) towns += state.GetOwner(i) == player.Id ? 1 : 0;
+                int towns = 0, resorts = 0;
+                for (int i = 0; i < board.Count; i++)
+                {
+                    if (state.GetOwner(i) != player.Id) continue;
+                    if (board[i].IsResort) resorts++;
+                    else towns++;
+                }
+
                 Assert.AreEqual(player.Id == ScreenTour.PersonId ? 0 : ScreenTour.TownsEach, towns, player.Name);
+                if (resorts > 0) resortsHeld.Add(resorts);
             }
+
+            CollectionAssert.AreEquivalent(ScreenTour.ResortsHeld, resortsHeld, "two stages of the beach stand on the board");
 
             Assert.AreEqual("03-ayarlar.png", ScreenTour.FileName(3, "ayarlar"));
             Assert.IsTrue(PerfRun.HasArgument(new[] { "Lazpoly.exe", "-SHOTS" }, ScreenTour.Flag));

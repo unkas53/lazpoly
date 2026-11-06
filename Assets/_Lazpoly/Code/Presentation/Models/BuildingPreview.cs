@@ -11,7 +11,8 @@ namespace Lazpoly.Presentation.Models
     /// <summary>
     /// The little pictures on the property card: a paper tile with the empty plot, a house of one to
     /// four storeys or the hotel on it (<see cref="BuildingModels"/>; the drawn houses and mansion when the
-    /// models are missing), from the board's camera angle.
+    /// models are missing), from the board's camera angle; on a holiday resort, its beach at the stage the
+    /// player's resorts reach, in their colour (<see cref="BeachPicture"/>).
     /// A stage far below the board holds one tile and the pieces; a camera of its own renders it
     /// into one texture per level the first time a card needs them, and again when the tile's
     /// colour changes. Nothing renders every frame. In the editor, or where the render pipeline
@@ -55,6 +56,11 @@ namespace Lazpoly.Presentation.Models
         private readonly GameObject[] _models;
         private readonly Camera _camera;
         private readonly RenderTexture[] _pictures = new RenderTexture[Levels];
+        private readonly GameObject[] _beaches = new GameObject[ResortParts.Stages];
+        private RenderTexture _beachPicture;
+        private int _beachShown;
+        private Color _beachTint = new Color(-1f, 0f, 0f);
+        private Color _beachOwner = new Color(-1f, 0f, 0f);
         private Color _tint = new Color(-1f, 0f, 0f);
         private bool _failed;
 
@@ -85,6 +91,16 @@ namespace Lazpoly.Presentation.Models
             else
             {
                 CreateStandIns();
+            }
+
+            for (int i = 0; i < _beaches.Length; i++)
+            {
+                GameObject beach = ResortParts.Stage(i + 1, $"Beach {i + 1}", _root.transform);
+                beach.transform.localPosition = new Vector3(0f, 0f, RowDepth);
+                beach.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                beach.transform.localScale = Vector3.one * ModelScale;
+                beach.SetActive(false);
+                _beaches[i] = beach;
             }
 
             _camera = new GameObject("Preview Camera").AddComponent<Camera>();
@@ -161,7 +177,87 @@ namespace Lazpoly.Presentation.Models
             return _pictures[level];
         }
 
-        private bool Render()
+        /// <summary>
+        /// The picture of a resort's beach at <paramref name="stage"/> (1 to <see cref="ResortParts.Stages"/>) in
+        /// <paramref name="owner"/>'s colour on a tile tinted <paramref name="tint"/>, drawn again when any of them
+        /// changes. Null when the pictures cannot be made here.
+        /// </summary>
+        public Texture BeachPicture(int stage, Color tint, Color owner)
+        {
+            stage = Mathf.Clamp(stage, 1, ResortParts.Stages);
+            if (_beachPicture != null && stage == _beachShown && tint == _beachTint && owner == _beachOwner) return _beachPicture;
+            if (!CanRender()) return null;
+            try
+            {
+                var request = new RenderPipeline.StandardRequest();
+                if (!RenderPipeline.SupportsRenderRequest(_camera, request))
+                {
+                    Fail("the render pipeline takes no render requests");
+                    return null;
+                }
+
+                if (_beachPicture == null)
+                {
+                    _beachPicture = new RenderTexture(PictureSize, PictureSize, 24, RenderTextureFormat.ARGB32) { name = "beach" };
+                    if (!_beachPicture.Create())
+                    {
+                        Fail("a render texture could not be made");
+                        return null;
+                    }
+                }
+
+                // The town models step aside while the beach stands on the tile; the tile's tint is put back after.
+                bool[] shown = HideTown();
+                ModelParts.Paint(_tile, tint, 0.05f);
+                for (int i = 0; i < _beaches.Length; i++)
+                {
+                    _beaches[i].SetActive(i == stage - 1);
+                    ResortParts.PaintOwner(_beaches[i], owner);
+                }
+
+                request.destination = _beachPicture;
+                RenderPipeline.SubmitRenderRequest(_camera, request);
+                foreach (GameObject beach in _beaches) beach.SetActive(false);
+                RestoreTown(shown);
+                if (_tint.r >= 0f) ModelParts.Paint(_tile, _tint, 0.05f);
+                _beachShown = stage;
+                _beachTint = tint;
+                _beachOwner = owner;
+                return _beachPicture;
+            }
+            catch (Exception exception)
+            {
+                Fail(exception.Message);
+                return null;
+            }
+        }
+
+        /// <summary>Hides every town piece on the stage and says which were showing.</summary>
+        private bool[] HideTown()
+        {
+            Transform root = _root.transform;
+            var shown = new bool[root.childCount];
+            for (int i = 0; i < root.childCount; i++)
+            {
+                GameObject child = root.GetChild(i).gameObject;
+                if (child == _tile || child == _camera.gameObject || System.Array.IndexOf(_beaches, child) >= 0) continue;
+                shown[i] = child.activeSelf;
+                child.SetActive(false);
+            }
+
+            return shown;
+        }
+
+        private void RestoreTown(bool[] shown)
+        {
+            Transform root = _root.transform;
+            for (int i = 0; i < shown.Length && i < root.childCount; i++)
+            {
+                if (shown[i]) root.GetChild(i).gameObject.SetActive(true);
+            }
+        }
+
+        private bool CanRender()
         {
             if (_failed || !Application.isPlaying) return false;
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
@@ -170,6 +266,12 @@ namespace Lazpoly.Presentation.Models
                 return false;
             }
 
+            return true;
+        }
+
+        private bool Render()
+        {
+            if (!CanRender()) return false;
             try
             {
                 var request = new RenderPipeline.StandardRequest();
@@ -215,6 +317,14 @@ namespace Lazpoly.Presentation.Models
 
         private void Release()
         {
+            if (_beachPicture != null)
+            {
+                _beachPicture.Release();
+                if (Application.isPlaying) UnityEngine.Object.Destroy(_beachPicture);
+                else UnityEngine.Object.DestroyImmediate(_beachPicture);
+                _beachPicture = null;
+            }
+
             for (int i = 0; i < _pictures.Length; i++)
             {
                 if (_pictures[i] == null) continue;

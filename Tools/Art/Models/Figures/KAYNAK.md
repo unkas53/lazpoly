@@ -25,9 +25,9 @@ Menüde, lobide ve oyuncu kartlarında görünen karakter resimleri (`Figure_<ki
 
 ## Otogar dioraması
 
-Otogar köşesindeki sahne de proje sahibinin Meshy AI ile ürettiği bir modeldir: `Meshy_AI_BusAtBusStopDiorama_1106131802_image-to-3d-texture.glb` (45 MB, 316.852 üçgen, 8192 doku), durakta bekleyen mavi beyaz bir otobüs. Bu klasöre `BusAtBusStopDiorama.glb` adıyla koyup çalıştır:
+Otogar köşesindeki sahne de proje sahibinin Meshy AI ile ürettiği bir modeldir: `Meshy_AI_CartoonBusStopDiorama_1106180721_image-to-3d-texture.glb` (52 MB, 615.500 üçgen), çizgi film tarzı sarı bir şehir otobüsü ve durak (ilk `BusAtBusStopDiorama` modelinin yerine, 2026-11-06). Bu klasöre `CartoonBusStopDiorama.glb` adıyla koyup çalıştır:
 
-    python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/BusAtBusStopDiorama.glb
+    python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
 
 Araç modeli boyuna göre değil genişliğine göre ölçekler (bir birim genişlik, taban y = 0, önü +Z), aynı iki ayrıntı düzeyini ve 2048'lik dokuyu yazar (`figure_station.bytes`, `figure_station_skin.bytes`). Dosyalar yoksa oyun çizilmiş durağı gösterir.
 

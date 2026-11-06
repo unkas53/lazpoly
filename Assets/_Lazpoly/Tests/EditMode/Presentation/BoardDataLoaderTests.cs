@@ -13,7 +13,7 @@ namespace Lazpoly.Presentation.Tests
         {
             BoardData data = BoardDataLoader.LoadFromResources();
 
-            Assert.AreEqual(24, data.Board.Count);
+            Assert.AreEqual(28, data.Board.Count);
             Assert.AreEqual(SquareType.Start, data.Board[0].Type);
             Assert.That(data.Rules.StartingMoney, Is.GreaterThan(0));
 
@@ -100,10 +100,59 @@ namespace Lazpoly.Presentation.Tests
             for (int i = 0; i < data.Board.Count; i++)
             {
                 SquareDefinition square = data.Board[i];
-                if (square.Type != SquareType.Property) continue;
+                if (square.Type != SquareType.Property || square.IsResort) continue;
                 Assert.IsTrue(square.IsDevelopable, $"Square {i} '{square.Name}' takes no buildings.");
                 Assert.AreEqual(SquareDefinition.MaxBuildingLevel, square.DevelopedRents.Count);
             }
+        }
+
+        [Test]
+        public void TheShippedBoardHasOneResortOnEachSide()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            int side = data.Board.Count / 4;
+            var sides = new bool[4];
+            int resorts = 0;
+            for (int i = 0; i < data.Board.Count; i++)
+            {
+                SquareDefinition square = data.Board[i];
+                if (!square.IsResort) continue;
+                resorts++;
+                Assert.AreNotEqual(0, i % side, $"{square.Name} is not on a corner");
+                Assert.IsFalse(sides[i / side], $"{square.Name} shares its side with another resort");
+                sides[i / side] = true;
+                Assert.IsFalse(square.IsDevelopable, $"{square.Name} takes no buildings");
+                Assert.AreEqual(50, square.BaseRent);
+                Assert.AreEqual(200, square.Price);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(data.GroupName(square.GroupId)));
+            }
+
+            Assert.AreEqual(4, resorts);
+        }
+
+        [Test]
+        public void ReadsAResortAndRefusesOneWithBuildings()
+        {
+            const string json = @"{
+                ""startingMoney"": 500, ""passStartBonus"": 50, ""diceSides"": 6,
+                ""maxConsecutiveDoubles"": 3, ""fullGroupRentMultiplier"": 2,
+                ""groups"": [ { ""id"": 9, ""name"": ""Tatil"", ""color"": ""#26A69A"" } ],
+                ""squares"": [
+                    { ""type"": ""start"", ""name"": ""S"" },
+                    { ""type"": ""resort"", ""name"": ""Bodrum"", ""price"": 200, ""rent"": 50, ""group"": 9 },
+                    { ""type"": ""resort"", ""name"": ""Bali"", ""price"": 200, ""rent"": 50, ""group"": 9 }
+                ]
+            }";
+
+            BoardData data = BoardDataLoader.Parse(json);
+            Assert.AreEqual(SquareType.Property, data.Board[1].Type);
+            Assert.IsTrue(data.Board[1].IsResort);
+            Assert.IsFalse(data.Board[1].IsDevelopable);
+            Assert.AreEqual(200, data.Board[2].Price);
+            Assert.AreEqual(50, data.Board[2].BaseRent);
+
+            Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""rent"": 50, ""group"": 9 },", @"""rent"": 50, ""group"": 9, ""buildingCost"": 50 },")));
+            Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""group"": 9 }", @"""group"": 7 }")));
         }
 
         [Test]

@@ -78,14 +78,24 @@ namespace Lazpoly.Presentation.Game
             ui.Actions(null, null, L("Kapat"), close);
         }
 
-        /// <summary>The square as it stands: its tile with what is built on it; special squares show a sign instead.</summary>
+        /// <summary>The square as it stands: its tile with what is built on it, a resort with its beach; special squares show a sign instead.</summary>
         private void RenderPicture(UiBuilder row, SquareDefinition square, int squareIndex, bool property, Color band)
         {
             RectTransform box = UiRoot.Rect(row.Container, "Picture", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             UiBuilder.Fix(box.gameObject, PictureSize, PictureSize);
             UiRoot.Background(box, UiTheme.Field).raycastTarget = false;
             Texture picture = null;
-            if (property)
+            if (property && square.IsResort)
+            {
+                // A resort shows its beach at the stage its owner's resorts reach, in their colour; for sale, the first stage unpainted.
+                GameState state = _controller.Session.State;
+                int owner = state.GetOwner(squareIndex);
+                bool owned = owner != GameState.NoOwner;
+                int held = owned ? GameRules.ResortsOwned(_controller.Session.Board, state, owner) : 1;
+                picture = _preview?.BeachPicture(held, Color.Lerp(BoardView.SandColor, BoardView.PaperColor, BoardView.SandPastel),
+                    owned ? _controller.ColorOf(owner) : ResortParts.Unowned);
+            }
+            else if (property)
             {
                 int level = _controller.Session.State.GetBuildingLevel(squareIndex);
                 picture = _preview?.Picture(level, Color.Lerp(band, BoardView.PaperColor, BoardView.Pastel));

@@ -187,5 +187,38 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("Ev 4", PropertyCard.LevelName(4));
             Assert.AreEqual("Otel", PropertyCard.LevelName(5));
         }
+
+        [Test]
+        public void BuyingAResortOffersOnlyTheLandWithTheRentItWouldEarn()
+        {
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Başlangıç"),
+                SquareDefinition.Resort("Bodrum", 200, 50, 9),
+                SquareDefinition.Resort("Bali", 200, 50, 9),
+                SquareDefinition.Resort("Santorini", 200, 50, 9),
+            });
+            GameState state = GameState.CreateInitial(board, Rules, new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
+            GameStateReducer.Apply(state, new PlayerMovedEvent(1, 0, 3, true));
+            GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.TurnEnd));
+
+            PropertyChoice first = PropertyChoice.For(board, Rules, state, state.FindPlayer(1), 3, buying: true);
+            Assert.IsTrue(first.Resort);
+            Assert.IsFalse(first.Developable);
+            Assert.AreEqual(0, first.Most, "no houses on a resort, even after a lap");
+            Assert.AreEqual(200, first.CostOf(0));
+            Assert.AreEqual(50, first.RentAt(0), "the first resort asks 50");
+
+            GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(1, GameState.NoOwner, 1));
+            GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(2, GameState.NoOwner, 2));
+            Assert.AreEqual(100, PropertyChoice.For(board, Rules, state, state.FindPlayer(1), 3, buying: true).RentAt(0),
+                "with the one already held, each of the two asks 100; the other player's resort does not count");
+
+            GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(3, GameState.NoOwner, 1));
+            PropertyChoice owned = PropertyChoice.For(board, Rules, state, state.FindPlayer(1), 3, buying: false);
+            Assert.AreEqual(100, owned.RentAt(0), "once bought it is not counted twice");
+            Assert.AreEqual(0, owned.Top);
+            Assert.IsFalse(Choice(State(), 3, buying: true).Resort, "a town is not a resort");
+        }
     }
 }

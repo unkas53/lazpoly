@@ -13,9 +13,10 @@ namespace Lazpoly.Core.Board
         private readonly int[] _developedRents;
 
         private SquareDefinition(string name, SquareType type, int price, int baseRent, int groupId, int taxAmount,
-            int buildingCost, int[] developedRents, int fee = 0)
+            int buildingCost, int[] developedRents, int fee = 0, bool isResort = false)
         {
             Fee = fee;
+            IsResort = isResort;
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Type = type;
             Price = price;
@@ -49,6 +50,12 @@ namespace Lazpoly.Core.Board
 
         public bool IsDevelopable => BuildingCost > 0;
 
+        /// <summary>
+        /// A holiday resort ("tatil yeri"): a property that takes no buildings, whose rent is <see cref="BaseRent"/>
+        /// times the number of resorts its owner holds (one 50, two 100 each, three 150 each, four 200 each).
+        /// </summary>
+        public bool IsResort { get; }
+
         /// <summary>Rent at building levels 1..<see cref="MaxBuildingLevel"/>; empty when not developable.</summary>
         public IReadOnlyList<int> DevelopedRents => _developedRents;
 
@@ -79,6 +86,10 @@ namespace Lazpoly.Core.Board
         /// <summary>A property without buildings.</summary>
         public static SquareDefinition Property(string name, int price, int baseRent, int groupId) =>
             new SquareDefinition(name, SquareType.Property, price, baseRent, groupId, 0, 0, null);
+
+        /// <summary>A holiday resort: bought like a town, never built on, its rent <paramref name="rentPerResort"/> per resort the owner holds.</summary>
+        public static SquareDefinition Resort(string name, int price, int rentPerResort, int groupId) =>
+            new SquareDefinition(name, SquareType.Property, price, rentPerResort, groupId, 0, 0, null, 0, isResort: true);
 
         /// <summary>A property that takes up to <see cref="MaxBuildingLevel"/> buildings once its whole group is owned.</summary>
         /// <param name="developedRents">Rent at levels 1..<see cref="MaxBuildingLevel"/>.</param>

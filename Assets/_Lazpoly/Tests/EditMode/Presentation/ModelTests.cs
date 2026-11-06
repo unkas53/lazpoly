@@ -66,8 +66,8 @@ namespace Lazpoly.Presentation.Tests
                     sum += pixel.r;
                 }
 
-                Assert.Greater(darkest, 0.65f, "nothing on the paper is dark");
-                Assert.Greater(sum / (32 * 32), 0.9f, "the paper is light");
+                Assert.Greater(darkest, 0.45f, "nothing on the paper is dark: the frame line is the darkest part");
+                Assert.Greater(sum / (32 * 32), 0.85f, "the paper is light");
             }
             finally
             {
@@ -81,6 +81,56 @@ namespace Lazpoly.Presentation.Tests
             Assert.Less(TileSkin.Value(TileSkin.FrameInset, 0.5f), middle * (TileSkin.FrameShade + 0.02f), "the frame line is darker than the paper");
             Assert.Less(TileSkin.Value(0.5f, 1f - TileSkin.FrameInset), middle * (TileSkin.FrameShade + 0.02f), "the frame runs round all four sides");
             Assert.AreSame(TileSkin.Paper(), TileSkin.Paper(), "every tile shares one texture");
+
+            // The frame's corners are rounded: the sharp corner is off the line, the arc through it on it.
+            Assert.IsFalse(TileSkin.OnFrame(TileSkin.FrameInset, TileSkin.FrameInset), "no sharp corner");
+            float centre = TileSkin.FrameInset + TileSkin.FrameCorner;
+            float arc = centre - TileSkin.FrameCorner * Mathf.Sqrt(0.5f);
+            Assert.IsTrue(TileSkin.OnFrame(arc, arc), "the frame turns the corner on an arc");
+            Assert.IsTrue(TileSkin.OnFrame(1f - arc, arc) && TileSkin.OnFrame(arc, 1f - arc) && TileSkin.OnFrame(1f - arc, 1f - arc), "at all four corners");
+        }
+
+        [Test]
+        public void ATownsSkinHasItsColourOnOneEndAndTheFrameLineOverIt()
+        {
+            var band = new Color(0.9f, 0.4f, 0.3f);
+            var paving = new Color(0.91f, 0.90f, 0.91f);
+            Texture2D skin = TileSkin.Town(band, paving, 0f, 0.6f, 1.4f);
+            Assert.AreEqual(TileSkin.TownWidth, skin.width);
+            Assert.AreEqual(Mathf.RoundToInt(TileSkin.TownWidth * 1.4f), skin.height, "the pixels stay square on a deep tile");
+            Assert.AreSame(skin, TileSkin.Town(band, paving, 0f, 0.6f, 1.4f), "towns of one colour share a texture");
+
+            Color coloured = skin.GetPixelBilinear(0.5f, 0.3f);
+            Assert.Greater(coloured.r, coloured.b + 0.1f, "the colour is printed in from v 0 to the band's end");
+            Color strip = skin.GetPixelBilinear(0.5f, 0.85f);
+            Assert.That(strip.b, Is.GreaterThan(0.75f), "beyond it the light paving");
+
+            // The frame line runs round the colour in the paper's frame tone, as on every square.
+            int x = Mathf.RoundToInt(TileSkin.FrameInset * skin.width - 0.5f), y = Mathf.RoundToInt(0.3f * skin.height);
+            float u = (x + 0.5f) / skin.width, v = (y + 0.5f) / skin.height;
+            Assert.IsTrue(TileSkin.OnFrame(u, v));
+            Assert.That(skin.GetPixel(x, y).r, Is.EqualTo(paving.r * TileSkin.Value(u, v)).Within(0.01f), "the frame line keeps the paper's tone");
+            Color outside = skin.GetPixelBilinear(0.02f, 0.3f);
+            Assert.That(outside.b, Is.GreaterThan(0.75f), "outside the frame the tile is plain: the colour stays inside the frame");
+
+            // A line like the frame's runs between the two parts, from one side of the frame to the other.
+            // The row just past the band's end: paving, but on the line.
+            int row = Mathf.CeilToInt(0.6f * skin.height);
+            float du = (skin.width / 2 + 0.5f) / skin.width, dv = (row + 0.5f) / skin.height;
+            Assert.IsTrue(TileSkin.OnDivider(du, dv, 0.6f));
+            Assert.That(skin.GetPixel(skin.width / 2, row).b, Is.EqualTo(paving.b * TileSkin.Value(du, dv) * TileSkin.FrameShade).Within(0.01f),
+                "the dividing line is in the frame's tone");
+            Assert.IsFalse(TileSkin.OnDivider(0.02f, 0.6f, 0.6f), "it stops at the frame line");
+
+            // Round the strip the same frame tone.
+            int fx = Mathf.RoundToInt(TileSkin.FrameInset * skin.width - 0.5f), fy = Mathf.RoundToInt(0.8f * skin.height);
+            float fu = (fx + 0.5f) / skin.width, fv = (fy + 0.5f) / skin.height;
+            Assert.IsTrue(TileSkin.OnFrame(fu, fv));
+            Assert.That(skin.GetPixel(fx, fy).b, Is.EqualTo(paving.b * TileSkin.Value(fu, fv)).Within(0.01f),
+                "the strip's frame is in the same tone");
+
+            Texture2D flipped = TileSkin.Town(band, paving, 0.4f, 1f, 1.4f);
+            Assert.Greater(flipped.GetPixelBilinear(0.5f, 0.7f).r, flipped.GetPixelBilinear(0.5f, 0.7f).b + 0.1f, "the colour can lie at the other end");
         }
 
         [Test]
@@ -140,47 +190,11 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void LawnPiecesStandOnTheGrassAndThePennantsHangFromTheirString()
+        public void TheJarStandsOnTheGrass()
         {
             var root = new GameObject("Lawn");
             try
             {
-                for (int kind = 0; kind < LawnParts.TreeKinds; kind++)
-                {
-                    GameObject tree = LawnParts.Tree("Tree", root.transform, kind);
-                    Bounds bounds = Extent(tree);
-                    Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.02f), $"tree {kind} floats or sinks");
-                    Assert.LessOrEqual(bounds.max.y, LawnParts.TreeHeight + 1e-3f, $"tree {kind} is taller than the lawn allows for");
-                    Assert.Greater(bounds.max.y, 0.5f, $"tree {kind} is a shrub");
-                }
-
-                Bounds bush = Extent(LawnParts.Bush("Bush", root.transform));
-                Assert.That(bush.min.y, Is.EqualTo(0f).Within(0.02f));
-                Assert.LessOrEqual(bush.max.y, LawnDressing.BushHeight + 1e-3f, "a bush is low");
-
-                Bounds post = Extent(LawnParts.BuntingPost("Post", root.transform));
-                Assert.That(post.max.y, Is.EqualTo(LawnParts.PostHeight).Within(0.05f));
-                Assert.Less(LawnParts.StringHeight, LawnParts.PostHeight, "the string ties on below the post's top");
-
-                var from = new Vector3(-1f, LawnParts.StringHeight, 0f);
-                var to = new Vector3(1f, LawnParts.StringHeight, 0f);
-                GameObject bunting = LawnParts.Bunting("Bunting", root.transform, from, to, 9);
-                int pennants = 0;
-                foreach (MeshFilter part in bunting.GetComponentsInChildren<MeshFilter>())
-                {
-                    if (part.sharedMesh != MeshFactory.Pennant()) continue;
-                    pennants++;
-                    Vector3 top = part.transform.TransformPoint(new Vector3(0f, 1f, 0f));
-                    Vector3 tip = part.transform.TransformPoint(Vector3.zero);
-                    Assert.LessOrEqual(top.y, LawnParts.StringHeight + 1e-3f, "a pennant hangs from the string, not above it");
-                    Assert.GreaterOrEqual(top.y, LawnParts.StringHeight - LawnParts.Sag - 1e-3f, "a pennant's top is on the string");
-                    Assert.That(tip.y, Is.EqualTo(top.y - LawnParts.PennantDrop).Within(1e-3f), "a pennant hangs straight down");
-                    Assert.That(Mathf.Abs(tip.x), Is.LessThan(1f), "a pennant hangs between the posts");
-                }
-
-                Assert.AreEqual(9, pennants);
-                Assert.AreEqual(6, MeshFactory.Pennant().vertexCount, "a pennant has two faces");
-
                 Bounds jar = Extent(LawnParts.Jar("Jar", root.transform));
                 Assert.That(jar.min.y, Is.EqualTo(0f).Within(0.02f));
                 Assert.That(jar.max.y, Is.EqualTo(1f).Within(0.02f), "the jar is one unit tall, scaled by the board");

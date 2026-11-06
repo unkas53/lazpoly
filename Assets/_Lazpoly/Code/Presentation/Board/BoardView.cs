@@ -18,8 +18,18 @@ namespace Lazpoly.Presentation.Tabletop
     /// </summary>
     public sealed class BoardView : MonoBehaviour
     {
-        /// <summary>Distance from the board's centre to the line the square centres lie on.</summary>
-        private const float HalfSize = 5.7f;
+        /// <summary>
+        /// An edge square's width along the edge: the width the 24-square board had. A board with more squares grows
+        /// instead of narrowing its squares (the owner's wish, Faz 22), and the camera frames whatever size it comes to.
+        /// </summary>
+        public const float SquareWidth = 5.7f * 2f / (5f + DepthRatio);
+
+        /// <summary>Distance from the board's centre to the line the square centres lie on, for squares <see cref="SquareWidth"/> wide.</summary>
+        public static float HalfSizeFor(int squareCount)
+        {
+            if (squareCount % 4 != 0) return SquareWidth * squareCount / 8f;
+            return SquareWidth * (squareCount / 4 - 1 + DepthRatio) / 2f;
+        }
 
         /// <summary>How much deeper than wide an edge square is; the corners are squares of that depth.</summary>
         public const float DepthRatio = 1.4f;
@@ -60,8 +70,6 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
         private static readonly Color RoadColor = new Color(0.72f, 0.68f, 0.60f);
         private static readonly Color GrassColor = new Color(0.47f, 0.70f, 0.36f);
-        private static readonly Color LightGrassColor = new Color(0.55f, 0.76f, 0.42f);
-        private static readonly Color PathColor = new Color(0.86f, 0.80f, 0.66f);
         /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
         public static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
 
@@ -70,7 +78,8 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color TitleColor = new Color(0.16f, 0.32f, 0.20f);
         private static readonly Color ScoreColor = new Color(0.14f, 0.18f, 0.15f);
         private static readonly Color PotTextColor = new Color(0.20f, 0.26f, 0.20f);
-        private static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
+        /// <summary>The one dark ink every name on the board is printed in.</summary>
+        public static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
         private static readonly Color PriceColor = new Color(0.21f, 0.19f, 0.17f);
 
         // Where things sit across a square, in tile depths from its centre towards the edge that lies lower on the
@@ -79,6 +88,37 @@ namespace Lazpoly.Presentation.Tabletop
         // top part. The camera looks down at 35 degrees, so a piece's height rises up the screen, away from the writing.
         /// <summary>The building row's centre, towards the screen's top edge of the square (negative: up the screen).</summary>
         public const float BuildingOffset = -0.27f;
+
+        /// <summary>
+        /// A holiday resort's tile: sand with a strip of sea along its top edge and white surf where the sea meets the
+        /// sand, so it reads as a beach and not a town, all printed flat into the tile inside its frame
+        /// (<see cref="TileSkin.Resort"/>). The sea's middle and depth in tile depths (it starts just past the frame, which
+        /// clips it), the surf's scallop radius in tile widths and how many scallops run along the edge, and where the
+        /// owner's beach stands (a little further down the tile than a town's buildings, clear of the sea).
+        /// </summary>
+        public const float SeaOffset = -0.40f;
+        public const float SeaDepth = 0.08f;
+        public const float SurfRadius = 0.05f;
+        public const int SurfScallops = 7;
+        public const float ResortOffset = -0.19f;
+
+        /// <summary>
+        /// A town's tile: from its top edge down to the bottom of the name's line the group's colour with a pattern,
+        /// washed only as far as the dark ink needs to read on it (<see cref="BandColor"/>); below it a light paved
+        /// strip for the rent and the pawns. Both are printed into the tile's own face (<see cref="TileSkin.Town"/>),
+        /// flat, with the frame line running round over the colour.
+        /// </summary>
+        public static readonly Color PavingColor = new Color(0.91f, 0.90f, 0.91f);
+        public const float BandPastel = 0.2f;
+        public const float BandContrast = 4.5f;
+
+        /// <summary>The sand of a resort's tile, and the sea and surf printed on it.</summary>
+        public static readonly Color SandColor = new Color(0.97f, 0.86f, 0.58f);
+        public static readonly Color SeaColor = new Color(0.30f, 0.70f, 0.84f);
+        public static readonly Color SurfColor = new Color(0.98f, 0.98f, 0.96f);
+
+        /// <summary>How far a resort's sand is washed towards the paper: less than a town's, so the beach stands out.</summary>
+        public const float SandPastel = 0.25f;
 
         /// <summary>Where pawns stand: on the price line.</summary>
         public const float PawnOffset = 0.31f;
@@ -140,13 +180,14 @@ namespace Lazpoly.Presentation.Tabletop
         /// The bus station diorama (the owner's model, twice the drawn stop's size at the owner's wish): it fills the
         /// corner's back part, from one side nearly to the other, and the pawns that come to it stand in front of the
         /// bus (<see cref="StationPawnOffset"/>, back from the centre: a small negative step comes forward), clear of the
-        /// name. <see cref="StationDepth"/> is the model's depth for its width (Tools/Art/make_corner_models.py).
+        /// name. <see cref="StationDepth"/> is the model's depth for its width (Tools/Art/make_corner_models.py). The
+        /// cartoon bus stop is deeper than the first diorama, so it is a little narrower to leave the pawns and the name room.
         /// </summary>
-        public const float StationSize = 0.80f;
+        public const float StationSize = 0.68f;
         public const float StationOffset = 0.09f;
-        public const float StationInset = 0.24f;
-        public const float StationDepth = 0.63f;
-        public const float StationPawnOffset = -0.06f;
+        public const float StationInset = 0.20f;
+        public const float StationDepth = 0.87f;
+        public const float StationPawnOffset = -0.10f;
 
         // The corner that holds the bus station diorama; -1 when the drawn stop stands there.
         private int _stationCorner = -1;
@@ -162,6 +203,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Vector3[][] _buildingRest;
         private GameObject[] _tiles;
         private Color[] _tileColors;
+        private bool[] _printed;
         private TextMesh[] _names;
         private TextMesh[] _prices;
         private int?[] _rents;
@@ -258,7 +300,7 @@ namespace Lazpoly.Presentation.Tabletop
         {
             _highlighted = squares == null || squares.Count == 0 ? null : new HashSet<int>(squares);
             _dimOthers = dimOthers && _highlighted != null;
-            for (int i = 0; i < _tiles.Length; i++) PaintTile(_tiles[i], ShownTileColor(i));
+            for (int i = 0; i < _tiles.Length; i++) PaintSquare(i);
         }
 
         /// <summary>
@@ -267,23 +309,34 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public void Glow(int square, Color color)
         {
-            if (_glowSquare >= 0 && _glowSquare != square) PaintTile(_tiles[_glowSquare], ShownTileColor(_glowSquare));
+            if (_glowSquare >= 0 && _glowSquare != square) PaintSquare(_glowSquare);
             _glowSquare = square >= 0 && square < _tiles.Length ? square : -1;
             _glowColor = Color.Lerp(color, Color.white, 0.15f);
         }
 
         public void StopGlow()
         {
-            if (_glowSquare >= 0) PaintTile(_tiles[_glowSquare], ShownTileColor(_glowSquare));
+            if (_glowSquare >= 0) PaintSquare(_glowSquare);
             _glowSquare = -1;
         }
 
-        /// <summary>A tile's colour with the current highlight: lit when chosen, dark when a choice leaves it out.</summary>
-        private Color ShownTileColor(int square)
+        /// <summary>Paints a square's tile with the current highlight, brightened by <paramref name="glow"/> towards the glow's colour.</summary>
+        private void PaintSquare(int square, float glow = 0f)
         {
-            Color color = _tileColors[square];
+            PaintTile(_tiles[square], Color.Lerp(Shown(square, _tileColors[square]), _glowColor, glow));
+        }
+
+        /// <summary>A colour of a square with the current highlight: lit when chosen, dark when a choice leaves it out.</summary>
+        private Color Shown(int square, Color color)
+        {
             if (_highlighted == null) return color;
-            if (_highlighted.Contains(square)) return Color.Lerp(color, Color.white, _dimOthers ? 0.35f : 0.25f);
+            if (_highlighted.Contains(square))
+            {
+                float lift = _dimOthers ? 0.35f : 0.25f;
+                // A town's colours are in its texture and it is drawn white, so it is lit by drawing it brighter than white.
+                if (_printed[square]) return new Color(1f + lift, 1f + lift, 1f + lift, 1f);
+                return Color.Lerp(color, Color.white, lift);
+            }
             return _dimOthers ? Color.Lerp(color, Color.black, DimAmount) : color;
         }
 
@@ -292,7 +345,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (_glowSquare < 0) return;
             // A soft beat: up to full brightness and back to the tile's own colour, never below it.
             float beat = 0.5f - 0.5f * Mathf.Cos(Time.unscaledTime * GlowPulsesPerSecond * 2f * Mathf.PI);
-            PaintTile(_tiles[_glowSquare], Color.Lerp(ShownTileColor(_glowSquare), _glowColor, GlowAmount * beat));
+            PaintSquare(_glowSquare, GlowAmount * beat);
         }
 
         /// <summary>Shows what the pot holds under the dice score (boards without a pot show nothing).</summary>
@@ -584,7 +637,7 @@ namespace Lazpoly.Presentation.Tabletop
         private void Build(BoardData data)
         {
             BoardDefinition board = data.Board;
-            Layout = new BoardLayout(board.Count, HalfSize, DepthRatio);
+            Layout = new BoardLayout(board.Count, HalfSizeFor(board.Count), DepthRatio);
             _width = Layout.Width - Gap;
             _depth = Layout.Depth - Gap;
 
@@ -594,7 +647,7 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.RoundedBox(new Vector3(width, PlateThickness, width), 0.2f), PlateColor, 0.25f);
             plate.transform.localPosition = new Vector3(0f, -PlateThickness / 2f, 0f);
 
-            _inner = 2f * HalfSize - Layout.Depth * 1.05f;
+            _inner = 2f * Layout.HalfSize - Layout.Depth * 1.05f;
             // The middle of the board is a lawn that carries the dice score, the pot and the title.
             CreateLawn(_inner);
             CreateTitle(_inner);
@@ -608,6 +661,7 @@ namespace Lazpoly.Presentation.Tabletop
             _buildingRest = new Vector3[board.Count][];
             _tiles = new GameObject[board.Count];
             _tileColors = new Color[board.Count];
+            _printed = new bool[board.Count];
             _names = new TextMesh[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
@@ -623,10 +677,17 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector2 size = Layout.SquareSize(i) - Vector2.one * Gap;
 
                 // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint; every name is in the one dark ink.
-                Color body = Color.Lerp(TileColor(square, data), PaperColor, Pastel);
+                // A town is two parts, like the owner's reference: the top, with the buildings and the name, in the group's
+                // colour with a pattern, and a light paved strip below where the rent and the pawns are, both printed into
+                // the tile (TownSkin); a resort is sand with its sea; the other squares one colour.
+                bool town = square.Type == SquareType.Property && !square.IsResort;
+                bool printed = town || square.IsResort;
+                Color body = printed ? Color.white : Color.Lerp(TileColor(square, data), PaperColor, Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
-                ModelParts.Skin(tileObject, paper);
+                ModelParts.Skin(tileObject, town ? TownSkin(outward, size, BandColor(TileColor(square, data)))
+                    : square.IsResort ? ResortSkin(outward, size) : paper);
+                _printed[i] = printed;
                 tileObject.transform.localPosition = center + Vector3.up * (TileHeight / 2f);
                 tileObject.transform.localRotation = facing;
                 _tiles[i] = tileObject;
@@ -669,20 +730,21 @@ namespace Lazpoly.Presentation.Tabletop
                 _names[i] = CreateLabel("Name", PrintedName(square), namePlace + Vector3.up * top, outward,
                     _width * NameSize, NameRoom(i, size), InkColor);
                 string subtitle = Subtitle(square);
-                if (subtitle != null)
+                if (subtitle != null || property)
                 {
                     Vector3 pricePlace = corner
                         ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerPriceOffset)
                         : center + down * (_depth * PriceOffset);
-                    _prices[i] = CreateLabel("Price", subtitle, pricePlace + Vector3.up * (TileHeight + PrintHeight), outward,
+                    _prices[i] = CreateLabel("Price", subtitle ?? string.Empty, pricePlace + Vector3.up * (TileHeight + PrintHeight), outward,
                         PriceCharacterSize(i), PriceRoom(i, size), PriceColor);
                 }
 
                 if (property)
                 {
                     // Owner marker: the owner's plot (or the flag) on the tile's top part, where the buildings will stand.
-                    OwnerMarker marker = OwnerMarker.Create("Owner marker", transform, i * 0.9f);
-                    marker.Place(outward, BuildingRowCenter(center), _yaw);
+                    // On a resort it is the owner's beach, which grows with the resorts they hold (SetResortStage).
+                    OwnerMarker marker = square.IsResort ? OwnerMarker.CreateResort("Owner marker", transform) : OwnerMarker.Create("Owner marker", transform, i * 0.9f);
+                    marker.Place(outward, square.IsResort ? ResortSpot(center) : BuildingRowCenter(center), _yaw);
                     _flagScale[i] = marker.RestScale(_width);
                     marker.transform.localScale = _flagScale[i];
                     marker.gameObject.SetActive(false);
@@ -719,7 +781,7 @@ namespace Lazpoly.Presentation.Tabletop
             _frontScenes.Add(new KeyValuePair<Transform, Vector3>(scene.transform, outward));
         }
 
-        /// <summary>The lawn in the middle: a gravel ring where the squares end, grass with lighter patches, a path round the park, and <see cref="LawnDressing"/> on it.</summary>
+        /// <summary>The lawn in the middle: a gravel ring where the squares end and plain grass (the owner had the trees, bunting and paths taken away).</summary>
         private void CreateLawn(float inner)
         {
             var lawn = new GameObject("Lawn");
@@ -732,26 +794,6 @@ namespace Lazpoly.Presentation.Tabletop
             float grass = inner * 0.9f;
             GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), GrassColor, 0.05f);
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
-
-            // A path runs round the park, a little way in from the gravel.
-            float path = inner * 0.44f;
-            for (int side = 0; side < 4; side++)
-            {
-                GameObject piece = ModelParts.Create("Path", root, MeshFactory.RoundedBox(new Vector3(path + inner * 0.03f, 0.01f, inner * 0.03f), 0.005f, 1), PathColor, 0.1f);
-                piece.transform.localRotation = Quaternion.Euler(0f, side * 90f, 0f);
-                piece.transform.localPosition = piece.transform.localRotation * new Vector3(0f, LawnHeight + 0.004f, path / 2f);
-            }
-
-            Vector2[] patches = { new Vector2(-0.34f, 0.22f), new Vector2(0.3f, 0.3f), new Vector2(0.36f, -0.2f), new Vector2(-0.2f, -0.36f), new Vector2(0.05f, 0.4f) };
-            float[] sizes = { 0.09f, 0.06f, 0.08f, 0.07f, 0.05f };
-            for (int i = 0; i < patches.Length; i++)
-            {
-                GameObject patch = ModelParts.Create("Light grass", root, MeshFactory.Disc(0.004f, 28), LightGrassColor, 0.05f);
-                patch.transform.localPosition = new Vector3(patches[i].x * inner, LawnHeight + 0.002f, patches[i].y * inner);
-                patch.transform.localScale = new Vector3(inner * sizes[i], 1f, inner * sizes[i] * 0.8f);
-            }
-
-            LawnDressing.Dress(root, inner, LawnHeight);
         }
 
         /// <summary>The dice score large on the lawn with the pot's line under it; <see cref="FaceCamera"/> places and turns it.</summary>
@@ -772,6 +814,74 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Middle of the building row on a square: along its inner edge, on the tile's top.</summary>
         private Vector3 BuildingRowCenter(Vector3 center) => center + ScreenDown(Outward(center)) * (_depth * BuildingOffset) + Vector3.up * TileHeight;
+
+        /// <summary>Where a resort's beach stands: on the sand between the sea and the name.</summary>
+        private Vector3 ResortSpot(Vector3 center) => center + ScreenDown(Outward(center)) * (_depth * ResortOffset) + Vector3.up * TileHeight;
+
+        /// <summary>
+        /// The group's colour for a town's name band: washed towards the paper from <see cref="BandPastel"/> on, only as far as
+        /// the dark ink needs to reach <see cref="BandContrast"/> on it, so the light groups stay bright and the dark ones still read.
+        /// </summary>
+        public static Color BandColor(Color group)
+        {
+            for (float wash = BandPastel; wash < 1f; wash += 0.05f)
+            {
+                Color band = Color.Lerp(group, PaperColor, wash);
+                if (Contrast(band, InkColor) >= BandContrast) return band;
+            }
+
+            return PaperColor;
+        }
+
+        /// <summary>The contrast ratio of two colours (WCAG), 1 to 21.</summary>
+        public static float Contrast(Color a, Color b)
+        {
+            float la = RelativeLuminance(a), lb = RelativeLuminance(b);
+            return (Mathf.Max(la, lb) + 0.05f) / (Mathf.Min(la, lb) + 0.05f);
+        }
+
+        private static float RelativeLuminance(Color c) => 0.2126f * Linear(c.r) + 0.7152f * Linear(c.g) + 0.0722f * Linear(c.b);
+
+        private static float Linear(float channel) => channel <= 0.04045f ? channel / 12.92f : Mathf.Pow((channel + 0.055f) / 1.055f, 2.4f);
+
+        /// <summary>
+        /// A town tile's skin: the group's colour from the tile's top edge on the screen down to the bottom of the name's
+        /// line, across its whole width, and the light paving below. The tile's local Z runs outward and its texture's v
+        /// with it, so the colour lies at the low or the high end of v as the screen's down runs with or against outward.
+        /// </summary>
+        private Texture2D TownSkin(Vector3 outward, Vector2 size, Color color)
+        {
+            float bottom = _depth * (NameOffset + StripDepth / 2f) / size.y + 0.5f;
+            bool withOutward = Vector3.Dot(ScreenDown(outward), outward) > 0f;
+            return withOutward
+                ? TileSkin.Town(color, PavingColor, 0f, bottom, size.y / size.x)
+                : TileSkin.Town(color, PavingColor, 1f - bottom, 1f, size.y / size.x);
+        }
+
+        /// <summary>
+        /// A resort tile's skin: the sand, the sea along the tile's top edge on the screen and the surf below it, inside
+        /// the frame (<see cref="TileSkin.Resort"/>); the sea lies at the low or the high end of v as for a town.
+        /// </summary>
+        private Texture2D ResortSkin(Vector3 outward, Vector2 size)
+        {
+            float seaEnd = 0.5f + _depth * (SeaOffset + SeaDepth / 2f) / size.y;
+            bool withOutward = Vector3.Dot(ScreenDown(outward), outward) > 0f;
+            return TileSkin.Resort(Color.Lerp(SandColor, PaperColor, SandPastel), SeaColor, SurfColor, seaEnd,
+                _width * SurfRadius / size.x, SurfScallops, !withOutward, size.y / size.x);
+        }
+
+        /// <summary>
+        /// Shows on a resort the beach for an owner who holds <paramref name="held"/> resorts; it pops up from the sand
+        /// when it grows or shrinks while in view and <paramref name="animate"/> is set. Nothing happens on a square that is not a resort.
+        /// </summary>
+        public void SetResortStage(int squareIndex, int held, bool animate = false)
+        {
+            OwnerMarker marker = _ownerMarkers[squareIndex];
+            if (marker == null || !marker.IsResort) return;
+            int before = marker.Stage;
+            marker.ShowStage(held);
+            if (animate && marker.Stage != before && marker.gameObject.activeInHierarchy) StartCoroutine(Raise(marker.transform, _flagScale[squareIndex]));
+        }
 
         /// <summary>A square's price line: big at the bottom of a town or tax square, small under a corner's name.</summary>
         private float PriceCharacterSize(int index) => _width * (Layout.IsCorner(index) ? CornerPriceSize : PriceSize);
@@ -953,12 +1063,12 @@ namespace Lazpoly.Presentation.Tabletop
         public static float FitCharacterSize(float characterSize, Vector2 size, Vector2 maxSize) =>
             Mathf.Min(FitCharacterSize(characterSize, size.x, maxSize.x), FitCharacterSize(characterSize, size.y, maxSize.y));
 
-        /// <summary>The line under a square's name: its price, the tax it takes or the fare; null when the square has none.</summary>
+        /// <summary>The line under a square's name: the tax it takes or the fare; null when the square has none (a town for sale shows no figure).</summary>
         public static string Subtitle(SquareDefinition square)
         {
             switch (square.Type)
             {
-                case SquareType.Property: return F($"{square.Price}");
+                case SquareType.Property: return null; // For sale a town shows no figure; owned, its rent (the owner's wish, Faz 22).
                 case SquareType.Tax: return F($"-{square.TaxAmount}");
                 case SquareType.Travel: return F($"bilet {square.Fee}");
                 default: return null;
@@ -966,8 +1076,8 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// What a town's price line says: its price while it is for sale, or, once owned, the rent a visitor pays
-        /// (<paramref name="rent"/>), printed in the owner's colour. Null puts the price back.
+        /// What a town's price line says: nothing while it is for sale, or, once owned, the rent a visitor pays
+        /// (<paramref name="rent"/>), in the print's ink. Null clears it again.
         /// </summary>
         public void SetRent(int squareIndex, int? rent)
         {
@@ -988,7 +1098,7 @@ namespace Lazpoly.Presentation.Tabletop
             TextMesh price = _prices[index];
             if (price == null) return;
             int? rent = _rents[index];
-            price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]);
+            price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]) ?? string.Empty;
             price.color = PriceColor; // The rent stays in the print's ink, never the owner's colour (the owner's wish, Faz 21).
             Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
@@ -1079,7 +1189,7 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 case SquareType.Start: return StartColor;
                 case SquareType.Tax: return TaxColor;
-                case SquareType.Property: return data.GroupColor(square.GroupId);
+                case SquareType.Property: return square.IsResort ? SandColor : data.GroupColor(square.GroupId);
                 case SquareType.Card: return CardColor;
                 case SquareType.Pot: return PotColor;
                 case SquareType.Travel: return TravelColor;
