@@ -39,7 +39,7 @@ namespace Lazpoly.Presentation.Texts
                 sections.Insert(2, Section(L("Süre"), F($"Zar atmak, satın almak ve bina kurmak için {decision} sn, borç için satışa ve takas cevabına {sale} sn var. Süre dolunca oyun senin yerine karar verir: zarı atar, şehri almaz, sırayı bitirir, borcunu otomatik satışla öder.")));
             }
 
-            if (HasType(board, SquareType.Card)) sections.Add(Section(L("Sokak Haberi"), L("Bu kareye gelen bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));
+            if (HasType(board, SquareType.Card)) sections.Add(Section(CardSquaresTitle(board), L("Bu kareye gelen desteden rastgele bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));
             if (board.HasPot) sections.Add(Section(L("Çay Molası"), L("Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır.")));
             if (board.HasJail)
             {
@@ -53,6 +53,18 @@ namespace Lazpoly.Presentation.Texts
         }
 
         private static KeyValuePair<string, string> Section(string title, string body) => new KeyValuePair<string, string>(title, body);
+
+        /// <summary>The card squares' names, once each: "Sokak Haberi", or "Sokak Haberi ve Şans" when the board has both (Faz 24).</summary>
+        private static string CardSquaresTitle(BoardDefinition board)
+        {
+            var names = new List<string>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Card && !names.Contains(board[i].Name)) names.Add(board[i].Name);
+            }
+
+            return names.Count == 2 ? F($"{L(names[0])} ve {L(names[1])}") : string.Join(", ", names.ConvertAll(name => L(name)));
+        }
 
         private static bool HasType(BoardDefinition board, SquareType type)
         {

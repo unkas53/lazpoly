@@ -14,7 +14,7 @@ namespace Lazpoly.Presentation.Tests
         {
             BoardData data = BoardDataLoader.LoadFromResources();
 
-            Assert.AreEqual(28, data.Board.Count);
+            Assert.AreEqual(32, data.Board.Count);
             Assert.AreEqual(SquareType.Start, data.Board[0].Type);
             Assert.That(data.Rules.StartingMoney, Is.GreaterThan(0));
 
@@ -56,12 +56,38 @@ namespace Lazpoly.Presentation.Tests
             }
 
             Assert.IsFalse(data.Board.HasPot, "the tea break gave way to the jail; taxes and fines go to the bank");
-            Assert.AreEqual(7, data.Board.JailIndex, "the jail stands on the first corner after the start");
+            Assert.AreEqual(8, data.Board.JailIndex, "the jail stands on the first corner after the start");
             Assert.AreEqual(50, data.Board[data.Board.JailIndex].Fee);
             Assert.AreEqual(3, data.Rules.JailTurns);
             Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == CardKind.GoToJail), "the card that led to the tea break now leads to jail");
             Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
             foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
+        }
+
+        [Test]
+        public void ShippedBoardHasThreeChanceSquaresAndThreeSouthAmericanCities()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            BoardDefinition board = data.Board;
+            var chances = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Name == "Şans") chances.Add(i);
+            }
+
+            Assert.AreEqual(3, chances.Count, "three Şans squares (the owner's wish, Faz 24)");
+            foreach (int i in chances) Assert.AreEqual(SquareType.Card, board[i].Type, "a Şans square draws a card");
+            string Around(int i) => board[i - 1].Name + "|" + board[i + 1].Name;
+            CollectionAssert.AreEquivalent(new[] { "Prag|Viyana", "Barselona|Roma", "Otogar|Paris" }, chances.Select(Around).ToArray());
+
+            int rio = Enumerable.Range(0, board.Count).Single(i => board[i].Name == "Rio de Janeiro");
+            Assert.AreEqual(3, board.CountInGroup(board[rio].GroupId), "South America has a third city");
+            Assert.AreEqual("Lima", board[rio + 2].Name, "next to Rio de Janeiro and Buenos Aires");
+            Assert.AreEqual(board[rio].GroupId, board[rio + 2].GroupId);
+
+            // Eight squares a side: the corners stay where the board's corners are.
+            CollectionAssert.AreEqual(new[] { "Başlangıç", "Hapis", "Sokak Haberi", "Otogar" },
+                new[] { 0, 8, 16, 24 }.Select(corner => board[corner].Name).ToArray());
         }
 
         [Test]

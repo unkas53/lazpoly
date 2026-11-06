@@ -109,7 +109,7 @@ namespace Lazpoly.Presentation.Texts
                 case DebtClearedEvent _:
                     return null;
                 case CardDrawnEvent e:
-                    return F($"{NameOf(state, e.PlayerId)}, Sokak Haberi: {L(CardText(board, e.CardIndex))}");
+                    return F($"{NameOf(state, e.PlayerId)} kart çekti: {L(CardText(board, e.CardIndex))}");
                 case LookoutChangedEvent e:
                     return e.HasLookout ? F($"{NameOf(state, e.PlayerId)} sonraki zarında iki atıştan birini seçecek") : null;
                 case JailChangedEvent e:
@@ -143,7 +143,7 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.BuildingSale: return L("bina satışı");
                 case MoneyReason.PropertySale: return L("mülk satışı");
                 case MoneyReason.Trade: return L("takas");
-                case MoneyReason.Card: return L("Sokak Haberi");
+                case MoneyReason.Card: return L("kart");
                 case MoneyReason.Pot: return L("çay kumbarası");
                 case MoneyReason.Travel: return L("otogar bileti");
                 case MoneyReason.Jail: return L("hapisten çıkış");

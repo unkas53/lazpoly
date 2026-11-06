@@ -249,6 +249,12 @@ namespace Lazpoly.Presentation.Game
         public int ShownCard { get; private set; } = -1;
         public int ShownCardPlayer { get; private set; } = -1;
 
+        /// <summary>The square the shown card was drawn on (Sokak Haberi or a Şans square), for the card's title; -1 when none.</summary>
+        public int ShownCardSquare { get; private set; } = -1;
+
+        /// <summary>Where each pawn last stopped on the table, as shown (the state may already be further on).</summary>
+        private readonly Dictionary<int, int> _shownSquares = new Dictionary<int, int>();
+
         /// <summary>Real time the shown card was drawn, so the HUD can fade it.</summary>
         public float ShownCardTime { get; private set; }
 
@@ -1112,6 +1118,7 @@ namespace Lazpoly.Presentation.Game
                         break;
                     case PlayerMovedEvent moved:
                         _lastMover = moved.PlayerId;
+                        _shownSquares[moved.PlayerId] = moved.ToSquare;
                         PawnView pawn = _pawns[moved.PlayerId];
                         Markers.ShowTarget(moved.ToSquare, ColorOf(moved.PlayerId));
                         if (moved.Kind == MoveKind.Jump) yield return pawn.JumpTo(moved.ToSquare);
@@ -1132,6 +1139,7 @@ namespace Lazpoly.Presentation.Game
                     case CardDrawnEvent card:
                         ShownCard = card.CardIndex;
                         ShownCardPlayer = card.PlayerId;
+                        ShownCardSquare = _shownSquares.TryGetValue(card.PlayerId, out int drawnOn) ? drawnOn : _session.State.FindPlayer(card.PlayerId)?.Position ?? -1;
                         ShownCardTime = Time.unscaledTime;
                         Revision++;
                         // A moment to read the card before its effect plays.

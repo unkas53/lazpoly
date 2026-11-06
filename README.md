@@ -878,6 +878,14 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - İflas kuralı: iflas edenin şehirleri artık alacaklıya geçmez. Bütün binaları geri satış değerinden, şehirleri satış değerinden (fiyatın yarısı) bankaya satılır, şehirler sahipsiz kalır ve yeniden alınabilir; elde kalan para ne kadarsa alacaklıya o kadar ödenir (`GameEngine.GoBankrupt`).
 - Testler: `CenterNoticeTests`, `EconomyTests` ve `GameEngineTests` (iflasta satış, alacaklıya yalnız para), `JailTests` (girişte sıranın bitmesi, seçim aşaması, ödeyip çıkma, parasızken ödeyememe, üç denemeden sonra serbestlik, çiftle çıkıp ikinci atış olmadan ilerleme, hapis kartıyla uçuş, üç çiftte hapis, anlık görüntü ve özet, tahtanın doğrulanması), `AiPlayerTests`, `NetworkSessionTests` (süre dolunca bekleme), `MessageCodecTests`, `LocalGameAndSaveTests` (biçim 8 kaydı), `BoardDataLoaderTests`, `TipsTests`, `ModelTests` (hücre sahnesi, parmaklık işareti), `PerfTests`.
 
+## Faz 24: şans kareleri ve Lima
+
+- Tahtaya üç Şans karesi geldi (`"type": "card"`, adı "Şans"): Prag ile Viyana, Barselona ile Roma, Otogar ile Paris arasında. Gelen oyuncu Sokak Haberi destesinden rastgele bir kart çeker; kartın başlığı çekildiği karenin adını taşır ("ŞANS · Ayşe", `GameSceneController.ShownCardSquare`). Olay günlüğünde "X kart çekti: ...", para satırlarında "(kart)".
+- Güney Amerika grubuna üçüncü şehir: Lima (140, kira 10, bina 50), Rio de Janeiro ve Buenos Aires'in hemen ardında.
+- Tahta 28'den 32 kareye çıktı, her kenarda 7 kare; köşeler 0, 8, 16, 24 (Başlangıç, Hapis, Sokak Haberi, Otogar). Kareler daralmadı, tahta büyüdü (`BoardView.HalfSizeFor`). Tahtanın sağlama değeri değişti: eski kayıtlar açılmaz, ağda Hello eşleşmeyen tahtayı zaten reddeder.
+- Şans karesinde gazete yerine mor, büyük bir soru işareti durur (`SquareIcons.QuestionMark`). Nasıl Oynanır bölümü "Sokak Haberi ve Şans".
+- Testler: `BoardDataLoaderTests` (32 kare, köşeler, üç Şans karesinin komşuları, Lima), `TipsTests` (ortak bölüm başlığı).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

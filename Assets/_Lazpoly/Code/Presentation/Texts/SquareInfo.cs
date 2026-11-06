@@ -66,7 +66,7 @@ namespace Lazpoly.Presentation.Texts
 
                 case SquareType.Card:
                 {
-                    var info = new SquareInfo(L(square.Name), L("Sokak Haberi"));
+                    var info = new SquareInfo(L(square.Name), L(square.Name));
                     info.Rows.Add(new SquareInfoRow(L("Destedeki kart"), board.Cards.Count.ToString()));
                     info.Notes.Add(L("Buraya gelen bir kart çeker: para kazanabilir, ödeyebilir ya da başka kareye gidebilir."));
                     return info;

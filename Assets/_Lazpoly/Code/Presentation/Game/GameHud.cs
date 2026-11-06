@@ -326,7 +326,7 @@ namespace Lazpoly.Presentation.Game
             _offerLayer.SetActive(false);
         }
 
-        /// <summary>The drawn "Sokak Haberi" card, shown in the middle for a few seconds. It never takes the mouse.</summary>
+        /// <summary>The drawn card, titled after the square it came from ("SOKAK HABERİ" or "ŞANS"), shown in the middle for a few seconds. It never takes the mouse.</summary>
         private void BuildCardPopup()
         {
             RectTransform card = UiRoot.Rect(_canvas.transform, "Card Popup", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
@@ -640,7 +640,10 @@ namespace Lazpoly.Presentation.Game
             }
 
             string player = _controller.Session.State.FindPlayer(_controller.ShownCardPlayer)?.Name;
-            _cardTitle.text = player == null ? L("SOKAK HABERİ") : F($"SOKAK HABERİ · {player}");
+            BoardDefinition board = _controller.Session.Board;
+            int square = _controller.ShownCardSquare;
+            string deck = square >= 0 && square < board.Count && board[square].Type == SquareType.Card ? Lang.Upper(L(board[square].Name)) : L("SOKAK HABERİ");
+            _cardTitle.text = player == null ? deck : $"{deck} · {player}";
             _cardText.text = L(EventDescriber.CardText(_controller.Session.Board, card));
             _cardGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
             _cardRect.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.3f)));

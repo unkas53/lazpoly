@@ -151,7 +151,7 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 BoardView board = BoardView.Create(holder.transform, data);
-                Assert.That(board.Layout.Width, Is.EqualTo(BoardView.SquareWidth).Within(1e-4f), "the squares keep their width on the 28-square board");
+                Assert.That(board.Layout.Width, Is.EqualTo(BoardView.SquareWidth).Within(1e-4f), "the squares keep their width on the 32-square board");
 
                 var resorts = new List<int>();
                 for (int i = 0; i < data.Board.Count; i++)
