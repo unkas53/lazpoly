@@ -59,7 +59,16 @@ namespace Lazpoly.Presentation.Texts
                 case SquareType.Tax:
                 {
                     var info = new SquareInfo(L(square.Name), L("Vergi"));
-                    info.Rows.Add(new SquareInfoRow(L("Ödenecek"), square.TaxAmount.ToString()));
+                    if (square.TaxPercent > 0)
+                    {
+                        info.Rows.Add(new SquareInfoRow(L("Oran"), F($"%{square.TaxPercent}")));
+                        info.Notes.Add(L("Mülk değerinden alınır: şehirlerin ve tatil yerlerinin fiyatı ile binaların maliyeti. Nakit sayılmaz; mülkü olmayan ödemez."));
+                    }
+                    else
+                    {
+                        info.Rows.Add(new SquareInfoRow(L("Ödenecek"), square.TaxAmount.ToString()));
+                    }
+
                     info.Notes.Add(board.HasPot ? L("Buraya gelen öder; para çay kumbarasına girer.") : L("Buraya gelen bankaya öder."));
                     return info;
                 }

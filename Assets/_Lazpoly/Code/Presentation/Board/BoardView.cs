@@ -177,6 +177,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <see cref="ChanceMarkColor"/>, in place of a standing sign. Offsets and depth are in tile depths, towards the screen's bottom.
         /// </summary>
         public const float ChanceNameScale = 1.6f;
+
+        /// <summary>A tax square's name, in capitals and larger too ("VERGİ", the owner's wish, Faz 24), with its rate or amount under it.</summary>
+        public const float TaxNameScale = 1.6f;
         public const float ChanceNameOffset = 0.3f;
         public const float ChanceMarkOffset = -0.15f;
         public const float ChanceMarkSize = 0.3f;
@@ -920,7 +923,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The room a square's name may fill: the tile's width less a margin (and the group's letter, when shown), and its line's depth.</summary>
         /// <summary>How much larger than other names a square's name is printed: the jail's, larger.</summary>
         private float NameScale(int index) =>
-            _data.Board[index].Type == SquareType.Jail ? JailNameScale : IsChance(index) ? ChanceNameScale : 1f;
+            _data.Board[index].Type == SquareType.Jail ? JailNameScale
+            : IsChance(index) ? ChanceNameScale
+            : _data.Board[index].Type == SquareType.Tax ? TaxNameScale : 1f;
 
         /// <summary>A Şans square: a card square along an edge (the card corner is Sokak Haberi, with its kiosk).</summary>
         private bool IsChance(int index) => _data.Board[index].Type == SquareType.Card && !Layout.IsCorner(index);
@@ -1109,7 +1114,7 @@ namespace Lazpoly.Presentation.Tabletop
             switch (square.Type)
             {
                 case SquareType.Property: return null; // For sale a town shows no figure; owned, its rent (the owner's wish, Faz 22).
-                case SquareType.Tax: return F($"-{square.TaxAmount}");
+                case SquareType.Tax: return square.TaxPercent > 0 ? F($"%{square.TaxPercent}") : F($"-{square.TaxAmount}");
                 case SquareType.Travel: return F($"bilet {square.Fee}");
                 default: return null;
             }
@@ -1145,11 +1150,11 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// A square's name as printed on the board: a town's, the jail's and a Şans square's (a card square off the corners) in
-        /// capitals ("İSTANBUL", "HAPİS", "ŞANS", Turkish capitals in Turkish), the others as written.
+        /// A square's name as printed on the board: a town's, the jail's, a tax's and a Şans square's (a card square off the
+        /// corners) in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", Turkish capitals in Turkish), the others as written.
         /// </summary>
         public static string PrintedName(SquareDefinition square, bool corner) =>
-            square.Type == SquareType.Property || square.Type == SquareType.Jail || (square.Type == SquareType.Card && !corner)
+            square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || (square.Type == SquareType.Card && !corner)
                 ? Upper(L(square.Name)) : L(square.Name);
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>

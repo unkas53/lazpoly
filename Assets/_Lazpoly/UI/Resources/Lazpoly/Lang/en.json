@@ -616,5 +616,9 @@
   "kart": "card",
   "{0} kart çekti: {1}": "{0} drew a card: {1}",
   "{0} ve {1}": "{0} and {1}",
+  "Oran": "Rate",
+  "Mülk değerinden alınır: şehirlerin ve tatil yerlerinin fiyatı ile binaların maliyeti. Nakit sayılmaz; mülkü olmayan ödemez.": "Taken from property value: the price of your cities and resorts plus the cost of their buildings. Cash does not count; with no property you pay nothing.",
+  "Vergi karesine gelen, sahip olduğu şehirlerin ve tatil yerlerinin fiyatı ile üstlerindeki binaların maliyeti toplamının %{0} kadarını bankaya öder. Nakit sayılmaz; mülkü olmayan bir şey ödemez.": "Whoever lands on the tax square pays the bank {0}% of the total price of the cities and resorts they own plus the cost of the buildings on them. Cash does not count; with no property you pay nothing.",
+  "%{0}": "{0}%",
   "Takas yapıyoruz...": "Trading..."
 }

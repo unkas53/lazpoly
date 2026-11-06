@@ -48,7 +48,7 @@ namespace Lazpoly.Presentation.Tests
         public void ShippedBoardHasTheSpecialSquaresAndADeck()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
-            foreach (SquareType type in new[] { SquareType.Card, SquareType.Jail, SquareType.Travel, SquareType.Lookout })
+            foreach (SquareType type in new[] { SquareType.Card, SquareType.Jail, SquareType.Travel, SquareType.Tax })
             {
                 bool found = false;
                 for (int i = 0; i < data.Board.Count; i++) found |= data.Board[i].Type == type;
@@ -88,7 +88,13 @@ namespace Lazpoly.Presentation.Tests
             // North Africa has a third city where the property tax was (the owner's wish, Faz 24); one tax is left.
             CollectionAssert.AreEqual(new[] { "Kahire", "Marakeş", "Tunus" }, new[] { 1, 2, 3 }.Select(i => board[i].Name).ToArray());
             Assert.AreEqual(3, board.CountInGroup(board[1].GroupId));
-            Assert.AreEqual(0, Enumerable.Range(0, board.Count).Count(i => board[i].Type == SquareType.Tax), "both taxes gave way to cities");
+            // Both fixed taxes gave way to cities; the lookout terrace became a tax of 10% of property value.
+            int[] taxes = Enumerable.Range(0, board.Count).Where(i => board[i].Type == SquareType.Tax).ToArray();
+            CollectionAssert.AreEqual(new[] { board.Count - 1 }, taxes, "one tax, where the lookout terrace was");
+            Assert.AreEqual("Vergi", board[board.Count - 1].Name);
+            Assert.AreEqual(10, board[board.Count - 1].TaxPercent);
+            Assert.AreEqual(0, board[board.Count - 1].TaxAmount);
+            Assert.IsFalse(Enumerable.Range(0, board.Count).Any(i => board[i].Type == SquareType.Lookout), "the lookout terrace is gone");
 
             // East Asia too: Santorini moved up a square and Pekin took the luxury tax's place, next to Seul and Tokyo.
             int seoul = Enumerable.Range(0, board.Count).Single(i => board[i].Name == "Seul");
@@ -270,7 +276,13 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(60, data.Board[1].Price);
             Assert.AreEqual(5, data.Board[1].BaseRent);
             Assert.AreEqual(20, data.Board[2].TaxAmount);
+            Assert.AreEqual(0, data.Board[2].TaxPercent);
             Assert.AreEqual(500, data.Rules.StartingMoney);
+
+            BoardData share = BoardDataLoader.Parse(json.Replace(@"""amount"": 20", @"""percent"": 10"));
+            Assert.AreEqual(10, share.Board[2].TaxPercent);
+            Assert.AreEqual(0, share.Board[2].TaxAmount);
+            Assert.AreNotEqual(data.Checksum, share.Checksum, "the rate is part of the board's checksum");
             Assert.AreEqual(Color.red, data.GroupColor(1));
         }
 

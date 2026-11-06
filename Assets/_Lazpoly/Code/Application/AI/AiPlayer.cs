@@ -295,7 +295,7 @@ namespace Lazpoly.App.AI
 
                         break;
                     case SquareType.Tax:
-                        score -= definition.TaxAmount;
+                        score -= GameRules.TaxDue(Board, State, square, Me.Id);
                         break;
                     case SquareType.Pot:
                         score += State.Pot;

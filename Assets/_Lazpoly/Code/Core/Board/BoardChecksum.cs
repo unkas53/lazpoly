@@ -59,6 +59,7 @@ namespace Lazpoly.Core.Board
                 foreach (int rent in square.DevelopedRents) Mix(rent);
                 Mix(square.Fee);
                 Mix(square.IsResort ? 1 : 0);
+                Mix(square.TaxPercent);
             }
 
             Mix(board.Cards.Count);

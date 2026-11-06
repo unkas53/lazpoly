@@ -13,9 +13,10 @@ namespace Lazpoly.Core.Board
         private readonly int[] _developedRents;
 
         private SquareDefinition(string name, SquareType type, int price, int baseRent, int groupId, int taxAmount,
-            int buildingCost, int[] developedRents, int fee = 0, bool isResort = false)
+            int buildingCost, int[] developedRents, int fee = 0, bool isResort = false, int taxPercent = 0)
         {
             Fee = fee;
+            TaxPercent = taxPercent;
             IsResort = isResort;
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Type = type;
@@ -39,8 +40,14 @@ namespace Lazpoly.Core.Board
         /// <summary>Colour/district group. 0 means the property belongs to no group.</summary>
         public int GroupId { get; }
 
-        /// <summary>Amount paid to the bank. Only meaningful for <see cref="SquareType.Tax"/>.</summary>
+        /// <summary>Amount paid to the bank. Only meaningful for <see cref="SquareType.Tax"/>; 0 on a tax taken as a share (<see cref="TaxPercent"/>).</summary>
         public int TaxAmount { get; }
+
+        /// <summary>
+        /// On a tax square without a fixed <see cref="TaxAmount"/>: the share, in percent, of the visitor's property value
+        /// that the tax takes (GameRules.TaxDue; Faz 24). 0 otherwise.
+        /// </summary>
+        public int TaxPercent { get; }
 
         /// <summary>Price of a ride (<see cref="SquareType.Travel"/>), or of leaving jail early (<see cref="SquareType.Jail"/>).</summary>
         public int Fee { get; }
@@ -86,6 +93,10 @@ namespace Lazpoly.Core.Board
 
         public static SquareDefinition Tax(string name, int amount) =>
             new SquareDefinition(name, SquareType.Tax, 0, 0, 0, amount, 0, null);
+
+        /// <summary>A tax of <paramref name="percent"/> per cent of the visitor's property value (towns and resorts at their price, buildings at their cost).</summary>
+        public static SquareDefinition PercentTax(string name, int percent) =>
+            new SquareDefinition(name, SquareType.Tax, 0, 0, 0, 0, 0, null, taxPercent: percent);
 
         /// <summary>A property without buildings.</summary>
         public static SquareDefinition Property(string name, int price, int baseRent, int groupId) =>

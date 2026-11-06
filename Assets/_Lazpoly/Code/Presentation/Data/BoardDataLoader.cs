@@ -95,7 +95,7 @@ namespace Lazpoly.Presentation.Data
                 case "rest":
                     return SquareDefinition.Rest(entry.name);
                 case "tax":
-                    return SquareDefinition.Tax(entry.name, entry.amount);
+                    return entry.percent > 0 ? SquareDefinition.PercentTax(entry.name, entry.percent) : SquareDefinition.Tax(entry.name, entry.amount);
                 case "card":
                     return SquareDefinition.Card(entry.name);
                 case "pot":

@@ -198,8 +198,13 @@ namespace Lazpoly.Core.Engine
         {
             PlayerState player = state.FindPlayer(playerId);
             if (player == null || player.IsBankrupt) return 0;
+            return player.Money + PropertyValue(board, state, playerId);
+        }
 
-            int total = player.Money;
+        /// <summary>What a player's properties are worth, cash left out: each property at its price and each building level at its cost.</summary>
+        public static int PropertyValue(BoardDefinition board, GameState state, int playerId)
+        {
+            int total = 0;
             for (int i = 0; i < board.Count; i++)
             {
                 if (state.GetOwner(i) != playerId) continue;
@@ -208,6 +213,17 @@ namespace Lazpoly.Core.Engine
             }
 
             return total;
+        }
+
+        /// <summary>
+        /// What a tax square takes from a player: its fixed amount, or its share of the player's
+        /// <see cref="PropertyValue"/> rounded down (someone with no property pays nothing).
+        /// </summary>
+        public static int TaxDue(BoardDefinition board, GameState state, int squareIndex, int playerId)
+        {
+            SquareDefinition square = board[squareIndex];
+            if (square.Type != SquareType.Tax) return 0;
+            return square.TaxPercent > 0 ? PropertyValue(board, state, playerId) * square.TaxPercent / 100 : square.TaxAmount;
         }
 
         /// <summary>The solvent player with the highest <see cref="NetWorth"/>; a tie goes to the earlier seat.</summary>

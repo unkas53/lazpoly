@@ -58,6 +58,9 @@ namespace Lazpoly.Presentation.Data
         public int group;
         public int amount;
 
+        /// <summary>On a tax square instead of an amount: the share of the visitor's property value it takes, in percent.</summary>
+        public int percent;
+
         /// <summary>Price of a ride from a travel square.</summary>
         public int fee;
 

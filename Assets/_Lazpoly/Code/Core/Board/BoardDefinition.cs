@@ -165,7 +165,11 @@ namespace Lazpoly.Core.Board
                     if (square.IsResort && square.IsDevelopable) throw new ArgumentException($"Square {index} '{square.Name}': a resort takes no buildings.");
                     break;
                 case SquareType.Tax:
-                    if (square.TaxAmount <= 0) throw new ArgumentException($"Square {index} '{square.Name}': tax must be positive.");
+                    if ((square.TaxAmount > 0) == (square.TaxPercent > 0) || square.TaxAmount < 0 || square.TaxPercent < 0 || square.TaxPercent > 100)
+                    {
+                        throw new ArgumentException($"Square {index} '{square.Name}': a tax needs either a positive amount or a percent from 1 to 100.");
+                    }
+
                     break;
                 case SquareType.Travel:
                     if (square.Fee < 0) throw new ArgumentException($"Square {index} '{square.Name}': fee cannot be negative.");

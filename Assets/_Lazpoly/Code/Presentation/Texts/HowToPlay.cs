@@ -47,6 +47,12 @@ namespace Lazpoly.Presentation.Texts
             }
 
             if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelen isterse {fare} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine gidilemez.")));
+            int taxPercent = TaxPercent(board);
+            if (taxPercent > 0)
+            {
+                sections.Add(Section(L("Vergi"), F($"Vergi karesine gelen, sahip olduğu şehirlerin ve tatil yerlerinin fiyatı ile üstlerindeki binaların maliyeti toplamının %{taxPercent} kadarını bankaya öder. Nakit sayılmaz; mülkü olmayan bir şey ödemez.")));
+            }
+
             if (HasType(board, SquareType.Lookout)) sections.Add(Section(L("Seyir Terası"), L("Buraya gelen bir sonraki sırasında iki kez zar atar ve hangisiyle gideceğini seçer.")));
             sections.Add(Section(L("İpucu"), L("Bir kareye fareyle gel ya da tıkla: fiyatı, kira tablosu ve sahibi kartında görünür. Fare tekeriyle yakınlaş, Home ile başa dön.")));
             return sections;
@@ -64,6 +70,17 @@ namespace Lazpoly.Presentation.Texts
             }
 
             return names.Count == 2 ? F($"{L(names[0])} ve {L(names[1])}") : string.Join(", ", names.ConvertAll(name => L(name)));
+        }
+
+        /// <summary>The rate of the board's first tax taken as a share of property value; 0 when every tax is a fixed amount.</summary>
+        private static int TaxPercent(BoardDefinition board)
+        {
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Tax && board[i].TaxPercent > 0) return board[i].TaxPercent;
+            }
+
+            return 0;
         }
 
         private static bool HasType(BoardDefinition board, SquareType type)

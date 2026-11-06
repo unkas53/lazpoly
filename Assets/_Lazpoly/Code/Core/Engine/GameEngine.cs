@@ -246,7 +246,7 @@ namespace Lazpoly.Core.Engine
                     return ownerId != player.Id && Charge(player, ownerId, CalculateRent(player.Position), MoneyReason.Rent);
 
                 case SquareType.Tax:
-                    return Charge(player, GameRules.FineCollector(Board), square.TaxAmount, MoneyReason.Tax);
+                    return Charge(player, GameRules.FineCollector(Board), GameRules.TaxDue(Board, State, player.Position, player.Id), MoneyReason.Tax);
 
                 case SquareType.Pot:
                     if (State.Pot > 0)
