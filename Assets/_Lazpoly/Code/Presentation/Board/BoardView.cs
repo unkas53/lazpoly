@@ -184,7 +184,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// a fixed tax keeps its amount on the price line.
         /// </summary>
         public const float TaxNameScale = 1.6f;
-        public const float DocumentDepth = 0.56f;
+        public const float DocumentDepth = 0.46f;
+        public const float DocumentOffset = -0.12f;
         public const float ChanceNameOffset = 0.3f;
         public const float ChanceMarkOffset = -0.15f;
         public const float ChanceMarkSize = 0.3f;
@@ -754,7 +755,7 @@ namespace Lazpoly.Presentation.Tabletop
                 {
                     float fit = Mathf.Min(size.x * NameFill / FloorPrint.DocumentSize.x, _depth * DocumentDepth / FloorPrint.DocumentSize.y);
                     GameObject document = FloorPrint.Document("Tax document", transform, fit, InkColor);
-                    document.transform.localPosition = center + down * (_depth * ChanceMarkOffset) + Vector3.up * (TileHeight + 0.001f);
+                    document.transform.localPosition = center + down * (_depth * DocumentOffset) + Vector3.up * (TileHeight + 0.001f);
                     document.transform.localRotation = PrintRotation(outward, _yaw);
                     _documents[i] = document.transform;
                 }
