@@ -63,7 +63,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Bar(new Vector2(halfX, (FoldZ - halfZ) / 2f), new Vector2(Stroke, FoldZ + halfZ + Stroke), 0f, Sheet),
                 // The fold: a diagonal across the corner and the flap's two edges.
                 Bar(new Vector2((FoldX + halfX) / 2f, (FoldZ + halfZ) / 2f),
-                    new Vector2(Mathf.Sqrt(2f) * (halfX - FoldX) + Stroke, Stroke), 45f, Sheet),
+                    new Vector2(Mathf.Sqrt(2f) * (halfX - FoldX), Stroke), 45f, Sheet), // No longer than the fold, so its ends stay inside the sheet.
                 Bar(new Vector2(FoldX, (FoldZ + halfZ) / 2f), new Vector2(Stroke * 0.7f, halfZ - FoldZ), 0f, Sheet),
                 Bar(new Vector2((FoldX + halfX) / 2f, FoldZ), new Vector2(halfX - FoldX, Stroke * 0.7f), 0f, Sheet),
             };
