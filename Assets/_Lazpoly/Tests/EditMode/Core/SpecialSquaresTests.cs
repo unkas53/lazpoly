@@ -163,12 +163,12 @@ namespace Lazpoly.Core.Tests
             GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(P3, GameState.NoOwner, Alice));
             CommandResult result = Accept(engine, new RollDiceCommand(Alice));
 
-            // Going bankrupt to the pot at once: the money goes into the pot, the properties back to the bank.
+            // Going bankrupt to the pot at once: P3 is sold to the bank and all the money (100 + 100) goes into the pot.
             DebtIncurredEvent debt = result.Events.OfType<DebtIncurredEvent>().Single();
             Assert.AreEqual(GameState.PotId, debt.CreditorId);
             Assert.AreEqual(MoneyReason.Card, debt.Reason);
             Assert.IsTrue(Player(engine, Alice).IsBankrupt);
-            Assert.AreEqual(100, engine.State.Pot);
+            Assert.AreEqual(200, engine.State.Pot);
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(P3));
             Assert.AreEqual(GamePhase.GameOver, engine.State.Phase);
             Assert.AreEqual(Bob, engine.State.WinnerId);

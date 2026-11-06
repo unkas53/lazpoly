@@ -333,7 +333,7 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void BankruptcySellsBuildingsAndHandsEverythingToTheCreditor()
+        public void BankruptcySellsEverythingToTheBankAndHandsTheMoneyToTheCreditor()
         {
             GameEngine engine = AliceOwesCem();
             Give(engine, A1, Alice);
@@ -347,9 +347,9 @@ namespace Lazpoly.Core.Tests
 
             Assert.IsTrue(engine.State.FindPlayer(Alice).IsBankrupt);
             Assert.AreEqual(0, Money(engine, Alice));
-            Assert.AreEqual(1000 + 10 + 4 * 25, Money(engine, Cem), "Cash plus the buildings' sell-back value.");
-            Assert.AreEqual(Cem, engine.State.GetOwner(A1));
-            Assert.AreEqual(Cem, engine.State.GetOwner(A2));
+            Assert.AreEqual(1000 + 10 + 4 * 25 + 30 + 40, Money(engine, Cem), "Cash, the buildings' sell-back value and the towns' sale value.");
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1), "The towns are sold to the bank, not handed over.");
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A2));
             Assert.AreEqual(0, engine.State.GetBuildingLevel(A1));
             Assert.AreEqual(0, engine.State.GetBuildingLevel(A2));
             Assert.IsNull(engine.State.Debt);
@@ -383,15 +383,18 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void TheCreditorTakesOverTheBankruptPlayersProperties()
+        public void TheCreditorGetsTheSaleMoneyNotTheProperties()
         {
             GameEngine engine = AliceOwesCem();
             Give(engine, A1, Alice);
 
             Accept(engine, new RollDiceCommand(Alice));
-            Accept(engine, new DeclareBankruptcyCommand(Alice));
+            CommandResult result = Accept(engine, new DeclareBankruptcyCommand(Alice));
 
-            Assert.AreEqual(Cem, engine.State.GetOwner(A1));
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1), "The creditor no longer inherits the towns (the owner's rule, Faz 23).");
+            Assert.IsFalse(result.Events.OfType<PropertyOwnerChangedEvent>().Any(e => e.NewOwnerId == Cem));
+            Assert.AreEqual(1000 + 10 + 30, Money(engine, Cem), "All she had: 10 in hand and the 30 the bank paid for A1.");
+            Assert.AreEqual(0, Money(engine, Alice));
         }
 
         // ---- Automatic sale ----

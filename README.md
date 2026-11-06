@@ -304,7 +304,7 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   mülkünü bankaya satar (`SellPropertyCommand`): banka fiyatın yarısını (`SquareDefinition.SaleValue`) ve
   üstündeki binaların geri satış değerini tek ödemede verir (`GameRules.PropertySaleProceeds`); binalar iner,
   şehir yeniden sahipsiz kalır ve üstüne gelen alabilir. Olay sırası: bina seviyesi 0 → sahip bankaya → para
-  (`MoneyReason.PropertySale`). İflasta artık ipotek temizliği yok, mülkler alacaklıya olduğu gibi geçer.
+  (`MoneyReason.PropertySale`). İflasta artık ipotek temizliği yok, mülkler alacaklıya olduğu gibi geçer (Faz 23'ten beri geçmez, bankaya satılır).
 - **Arayüz:** "Mülklerin" listesinde **Sat +tutar** düğmesi; kare kartında "İpotek değeri" yerine
   "Satış değeri"; borç kartı, ipuçları ve "Nasıl Oynanır" satış kuralına göre; takas listesinde ve tahtada
   ipotek karartması yok. Satış sesi bina satışıyla aynı.
@@ -872,8 +872,11 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Ekran turu (`-shots`) bir bilgisayarı hapse koyar (2 tur kaldı).
 - Hapisteki insan oyuncunun seçim kartı ekranın ortasında açılır (`GameHud.RenderJailCard`); ilk düğme "Zar at (çift gelirse çık)", ikincisi "Öde ve çık (50)". Tahtanın ortasındaki "ZAR AT" düğmesi kırmızı ve beyaz yazılı (`GameHud.RollPromptRed`), biraz daha yukarıda (`UiLayout.RollPromptDrop` 170'ten 135'e).
 - Takas teklifinin cevap kartı da ekranın ortasında açılır, teklifi gönderen ya da alan bu ekrandaysa (`GameHud.OffersAnswerHere`, `RenderOffer`); Oyun bitince alttaki "Kazanan / Ana Menü" kartı kalktı: oyun sonu penceresi ("Ana Menü", "Yeniden Oyna", "Tahtaya Bak") ve menü düğmesi yeter.
-- Başka iki oyuncu takas yaparken altta kart açılmaz: ikisinin başında "Takas yapıyoruz..." balonu çıkar. Takas bitince ekranın ortasında birkaç saniye bir sonuç kartı görünür ve kendiliğinden kapanır (`GameHud.BuildTradePopup`, `GameSceneController.ShownTrade`): başlıkta "TAKAS KABUL EDİLDİ / REDDEDİLDİ / GERİ ÇEKİLDİ", altında kim kime, ne verir, ne ister. Masa okunabilsin diye bir an bekler (`TradeReadSeconds`).
-- Testler: `JailTests` (girişte sıranın bitmesi, seçim aşaması, ödeyip çıkma, parasızken ödeyememe, üç denemeden sonra serbestlik, çiftle çıkıp ikinci atış olmadan ilerleme, hapis kartıyla uçuş, üç çiftte hapis, anlık görüntü ve özet, tahtanın doğrulanması), `AiPlayerTests`, `NetworkSessionTests` (süre dolunca bekleme), `MessageCodecTests`, `LocalGameAndSaveTests` (biçim 8 kaydı), `BoardDataLoaderTests`, `TipsTests`, `ModelTests` (hücre sahnesi, parmaklık işareti), `PerfTests`.
+- Başka iki oyuncu takas yaparken altta kart açılmaz: ikisinin başında "Takas yapıyoruz..." balonu çıkar. Takas bitince ekranın ortasında bir sonuç kartı görünür ve kendiliğinden kapanır (`GameHud.UpdateTradePopup`, `GameSceneController.ShownTrade`): başlıkta "TAKAS KABUL EDİLDİ / REDDEDİLDİ / GERİ ÇEKİLDİ", altında kim kime, ne verir, ne ister.
+- Ortadaki bilgi kartları (`CenterNotice`) 5 saniye açık kalır, son yarım saniyede solar; masa da 5 saniye bekler, oyun kart kaybolmadan devam etmez.
+- Parası yetmeyen oyuncu: önce herkese ortada 5 saniye "X kirayı ödeyecek parası yok" kartı çıkar (vergi, ceza ya da borç için de; altında ödenecek tutar ve alacaklı; `GameSceneController.ShownDebt`). Kart kapanınca, satarak ödeyebiliyorsa satış ekranı açılır, ödeyemiyorsa iflas eder (devrilme ve "Battım..."). Üstteki iflas şeridi kalktı.
+- İflas kuralı: iflas edenin şehirleri artık alacaklıya geçmez. Bütün binaları geri satış değerinden, şehirleri satış değerinden (fiyatın yarısı) bankaya satılır, şehirler sahipsiz kalır ve yeniden alınabilir; elde kalan para ne kadarsa alacaklıya o kadar ödenir (`GameEngine.GoBankrupt`).
+- Testler: `CenterNoticeTests`, `EconomyTests` ve `GameEngineTests` (iflasta satış, alacaklıya yalnız para), `JailTests` (girişte sıranın bitmesi, seçim aşaması, ödeyip çıkma, parasızken ödeyememe, üç denemeden sonra serbestlik, çiftle çıkıp ikinci atış olmadan ilerleme, hapis kartıyla uçuş, üç çiftte hapis, anlık görüntü ve özet, tahtanın doğrulanması), `AiPlayerTests`, `NetworkSessionTests` (süre dolunca bekleme), `MessageCodecTests`, `LocalGameAndSaveTests` (biçim 8 kaydı), `BoardDataLoaderTests`, `TipsTests`, `ModelTests` (hücre sahnesi, parmaklık işareti), `PerfTests`.
 
 ## Kurallar
 

@@ -76,10 +76,8 @@ namespace Lazpoly.Presentation.Game
         private float _bannerUntil;
         private int _lastTurnPlayer = -1;
         private int _lastTurnNumber = -1;
-        private Text _tradeTitle;
-        private Text _tradeText;
-        private CanvasGroup _tradeGroup;
-        private RectTransform _tradeRect;
+        private CenterNotice _tradeNotice;
+        private CenterNotice _debtNotice;
         private Text _cardTitle;
         private Text _cardText;
         private CanvasGroup _cardGroup;
@@ -276,7 +274,8 @@ namespace Lazpoly.Presentation.Game
             _banner.fontSize = 34;
 
             BuildCardPopup();
-            BuildTradePopup();
+            _tradeNotice = new CenterNotice(_canvas.transform, "Trade Popup");
+            _debtNotice = new CenterNotice(_canvas.transform, "Debt Popup");
             BuildRollPopup();
             BuildRollPrompt();
 
@@ -345,34 +344,14 @@ namespace Lazpoly.Presentation.Game
             _cardText.fontSize = 22;
         }
 
-        /// <summary>
-        /// A trade's result, shown in the middle for a few seconds after it ends (the owner's wish, Faz 23): who offered
-        /// what to whom, and whether it was taken. It never takes the mouse and closes by itself, so no turn waits on it.
-        /// </summary>
-        private void BuildTradePopup()
-        {
-            RectTransform card = UiRoot.Rect(_canvas.transform, "Trade Popup", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(-300f, -70f), new Vector2(300f, 170f));
-            UiRoot.Panel(card).raycastTarget = false;
-            _tradeGroup = card.gameObject.AddComponent<CanvasGroup>();
-            _tradeGroup.blocksRaycasts = false;
-            _tradeGroup.interactable = false;
-            _tradeGroup.alpha = 0f;
-            _tradeRect = card;
-            UiBuilder.AddColumnLayout(card.gameObject, 18, 8f);
-            var builder = new UiBuilder(card);
-            _tradeTitle = builder.Label("", UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
-            _tradeText = builder.Label("", UiTextStyle.Body, UiTheme.Text, TextAnchor.MiddleCenter);
-        }
-
+        /// <summary>A trade's result in the middle (the owner's wish, Faz 23): who offered what to whom, and whether it was taken.</summary>
         private void UpdateTradePopup()
         {
             TradeOffer offer = _controller.ShownTrade;
-            float age = Time.unscaledTime - _controller.ShownTradeTime;
-            float visible = GameSceneController.TradeReadSeconds + 1.6f;
-            if (offer == null || age > visible)
+            float age = Time.time - _controller.ShownTradeTime;
+            if (offer == null || !CenterNotice.Showing(age))
             {
-                _tradeGroup.alpha = 0f;
+                _tradeNotice.Hide();
                 return;
             }
 
@@ -380,13 +359,33 @@ namespace Lazpoly.Presentation.Game
             string from = state.FindPlayer(offer.FromPlayerId)?.Name;
             string to = state.FindPlayer(offer.ToPlayerId)?.Name;
             TradeOutcome outcome = _controller.ShownTradeOutcome;
-            _tradeTitle.text = outcome == TradeOutcome.Accepted ? L("TAKAS KABUL EDİLDİ")
+            _tradeNotice.Title.text = outcome == TradeOutcome.Accepted ? L("TAKAS KABUL EDİLDİ")
                 : outcome == TradeOutcome.Rejected ? L("TAKAS REDDEDİLDİ") : L("TAKAS GERİ ÇEKİLDİ");
-            _tradeTitle.color = outcome == TradeOutcome.Accepted ? UiTheme.Gain : UiTheme.Warning;
-            _tradeText.text = $"{from} → {to}\n" + F($"{from} verir: {_trade.Describe(offer.GiveSquares, offer.GiveMoney)}") + "\n" +
-                              F($"{from} ister: {_trade.Describe(offer.TakeSquares, offer.TakeMoney)}");
-            _tradeGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
-            _tradeRect.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.3f)));
+            _tradeNotice.Title.color = outcome == TradeOutcome.Accepted ? UiTheme.Gain : UiTheme.Warning;
+            _tradeNotice.Body.text = $"{from} → {to}\n" + F($"{from} verir: {_trade.Describe(offer.GiveSquares, offer.GiveMoney)}") + "\n" +
+                                     F($"{from} ister: {_trade.Describe(offer.TakeSquares, offer.TakeMoney)}");
+            _tradeNotice.Show(age);
+        }
+
+        /// <summary>
+        /// "X kirayı ödeyecek parası yok" in the middle for everyone at the table (the owner's wish, Faz 23), with what is
+        /// owed and to whom. Only once it is gone does the player go bankrupt or the sale screen open.
+        /// </summary>
+        private void UpdateDebtPopup()
+        {
+            DebtIncurredEvent debt = _controller.ShownDebt;
+            float age = Time.time - _controller.ShownDebtTime;
+            if (debt == null || !CenterNotice.Showing(age))
+            {
+                _debtNotice.Hide();
+                return;
+            }
+
+            GameState state = _controller.Session.State;
+            _debtNotice.Title.text = EventDescriber.CannotPayText(state.FindPlayer(debt.PlayerId)?.Name, debt.Reason);
+            _debtNotice.Title.color = UiTheme.Warning;
+            _debtNotice.Body.text = F($"Ödenecek: {debt.Amount}") + "\n" + F($"Alacaklı: {EventDescriber.CreditorText(state, debt.CreditorId)}");
+            _debtNotice.Show(age);
         }
 
         /// <summary>A note under the banner when a double is rolled (the lawn shows the figures). It never takes the mouse.</summary>
@@ -675,6 +674,7 @@ namespace Lazpoly.Presentation.Game
             UpdateBanner(state);
             UpdateCardPopup();
             UpdateTradePopup();
+            UpdateDebtPopup();
             UpdateRollPopup();
             UpdateTip(state);
             UpdateTimer(state);
@@ -874,9 +874,8 @@ namespace Lazpoly.Presentation.Game
             _squareCard.Render(ui, _pinnedSquare, () => _pinnedSquare = NoSquare, square => _pinnedSquare = square);
 
         /// <summary>
-        /// The banner: a player who could not pay even by selling everything (the board shows their
-        /// bankruptcy meanwhile) takes it first, for everyone at the table; then a short "your turn"
-        /// whenever a new turn goes to someone at this screen.
+        /// The banner: the table's own line (who rolls first) takes it first, for everyone at the table;
+        /// then a short "your turn" whenever a new turn goes to someone at this screen.
         /// </summary>
         private void UpdateBanner(GameState state)
         {

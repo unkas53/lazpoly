@@ -465,35 +465,37 @@ namespace Lazpoly.Core.Engine
         }
 
         /// <summary>
-        /// The player leaves the game. Buildings go back to the bank for their sell-back value, then
-        /// all money and properties pass to the creditor; a bank creditor takes the properties back.
+        /// The player leaves the game. Everything they own is sold to the bank first (buildings at their
+        /// sell-back value, each property at its sale value) and the squares go back to the bank, free to
+        /// buy again; then all the money they have goes to the creditor, however short of the debt it is
+        /// (the owner's rule, Faz 23: the creditor no longer inherits the properties).
         /// </summary>
         private void GoBankrupt(PlayerState player, int creditorId)
         {
-            int proceeds = 0;
+            int buildings = 0;
+            int properties = 0;
             for (int square = 0; square < Board.Count; square++)
             {
+                if (State.GetOwner(square) != player.Id) continue;
                 int level = State.GetBuildingLevel(square);
-                if (State.GetOwner(square) != player.Id || level == 0) continue;
-                proceeds += level * Rules.SellbackValue(Board[square].BuildingCost);
-                Emit(new BuildingLevelChangedEvent(square, 0));
+                if (level > 0)
+                {
+                    buildings += level * Rules.SellbackValue(Board[square].BuildingCost);
+                    Emit(new BuildingLevelChangedEvent(square, 0));
+                }
+
+                properties += Board[square].SaleValue;
+                Emit(new PropertyOwnerChangedEvent(square, player.Id, GameState.NoOwner));
             }
 
-            if (proceeds > 0) Emit(new MoneyChangedEvent(player.Id, proceeds, MoneyReason.BuildingSale));
+            if (buildings > 0) Emit(new MoneyChangedEvent(player.Id, buildings, MoneyReason.BuildingSale));
+            if (properties > 0) Emit(new MoneyChangedEvent(player.Id, properties, MoneyReason.PropertySale));
 
             if (player.Money > 0)
             {
                 int remaining = player.Money;
                 Emit(new MoneyChangedEvent(player.Id, -remaining, MoneyReason.Bankruptcy));
                 Credit(creditorId, remaining, MoneyReason.Bankruptcy);
-            }
-
-            // Properties go to a player creditor; owed to the bank or the pot, they return to the bank.
-            int heir = GameState.IsPlayerId(creditorId) ? creditorId : GameState.NoOwner;
-            for (int square = 0; square < Board.Count; square++)
-            {
-                if (State.GetOwner(square) != player.Id) continue;
-                Emit(new PropertyOwnerChangedEvent(square, player.Id, heir));
             }
 
             if (State.Debt != null) Emit(new DebtClearedEvent(player.Id));
