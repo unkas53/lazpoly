@@ -104,6 +104,8 @@ namespace Lazpoly.Presentation.Game
         private GameObject _buildLayer;
         private UiView _jailWindow;
         private GameObject _jailLayer;
+        private UiView _offerWindow;
+        private GameObject _offerLayer;
         private int _buildCardDismissed;
         private PropertyCard _propertyCard;
         private DebtSaleView _debtSale;
@@ -295,6 +297,8 @@ namespace Lazpoly.Presentation.Game
             _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", UiLayout.PropertyCardWidth, out _buildLayer), RenderBuildCard);
             // A jailed turn's choice opens in the middle of the screen (the owner's wish, Faz 23).
             _jailWindow = new UiView(UiRoot.Modal(_canvas.transform, "Jail Card", UiLayout.WindowWidth, out _jailLayer), RenderJailCard);
+            // A trade offer's answer opens in the middle too, for whoever here sent or received it (Faz 23).
+            _offerWindow = new UiView(UiRoot.Modal(_canvas.transform, "Trade Offer", UiLayout.WindowWidth, out _offerLayer), RenderOffer);
             // The log and the properties open on request, over whatever card is up.
             _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
             _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
@@ -314,6 +318,7 @@ namespace Lazpoly.Presentation.Game
             _cityLayer.SetActive(false);
             _buildLayer.SetActive(false);
             _jailLayer.SetActive(false);
+            _offerLayer.SetActive(false);
         }
 
         /// <summary>The drawn "Sokak Haberi" card, shown in the middle for a few seconds. It never takes the mouse.</summary>
@@ -627,6 +632,7 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
             SetLayer(_cityLayer, _cityWindow, cityOpen, revision);
+            SetLayer(_offerLayer, _offerWindow, OffersAnswerHere(state), revision);
             bool jailOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingJailDecision);
             SetLayer(_jailLayer, _jailWindow, jailOpen, revision);
             bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
@@ -1083,18 +1089,19 @@ namespace Lazpoly.Presentation.Game
 
         private void RenderActions(UiBuilder ui, GameState state)
         {
-            if (state.Phase == GamePhase.GameOver)
+            // The end has its own window (the winner, standings, main menu); the bottom stays empty (the owner's wish, Faz 23).
+            if (state.Phase == GamePhase.GameOver || _controller.IsBusy) return;
+
+            // A trade answer comes from a player other than the one on turn. Whoever here sent or received the offer
+            // answers it on the card in the middle (OffersAnswerHere); anyone else only reads it here.
+            if (state.Phase == GamePhase.AwaitingTradeResponse)
             {
-                ui.Label(F($"Kazanan: {state.FindPlayer(state.WinnerId)?.Name}"), UiTextStyle.Heading, UiTheme.Accent);
-                ui.Button(L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
-                return;
+                if (!OffersAnswerHere(state)) _trade.RenderResponse(ui, state);
             }
-
-            if (_controller.IsBusy) return;
-
-            // A trade answer comes from a player other than the one on turn.
-            if (state.Phase == GamePhase.AwaitingTradeResponse) _trade.RenderResponse(ui, state);
-            else RenderTurnActions(ui, state);
+            else
+            {
+                RenderTurnActions(ui, state);
+            }
 
             if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);
         }
@@ -1505,7 +1512,7 @@ namespace Lazpoly.Presentation.Game
                 PauseOpen = _pauseLayer.activeSelf,
                 ClosableOpen = _squareLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
                                _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
-                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf,
+                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf || _offerLayer.activeSelf,
                 Acting = acting,
                 Phase = state?.Phase ?? GamePhase.GameOver,
                 CanBuild = acting && OffersExtras(state) && CanReopenBuildCard(state),
@@ -1577,6 +1584,24 @@ namespace Lazpoly.Presentation.Game
             else if (_tradeLayer.activeSelf) _trade.Close();
             else if (_buildLayer.activeSelf && state != null) _buildCardDismissed = BuildVisitKey(state);
             else if (_endLayer.activeSelf) _endDismissed = true;
+        }
+
+        /// <summary>True while a trade offer waits and a person here sent it or is asked: its card then opens in the middle.</summary>
+        private bool OffersAnswerHere(GameState state)
+        {
+            if (state == null || state.Phase != GamePhase.AwaitingTradeResponse || state.PendingTrade == null) return false;
+            if (_controller.IsBusy || _controller.EndReason.HasValue) return false;
+            IGameSession session = _controller.Session;
+            bool PersonHere(int id) => session.CanControl(id) && !session.IsAiPlaying(id);
+            return PersonHere(state.PendingTrade.ToPlayerId) || PersonHere(state.PendingTrade.FromPlayerId);
+        }
+
+        private void RenderOffer(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            if (!OffersAnswerHere(state)) return;
+            _trade.RenderResponse(ui, state);
+            if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);
         }
 
         private void RenderTrade(UiBuilder ui)
