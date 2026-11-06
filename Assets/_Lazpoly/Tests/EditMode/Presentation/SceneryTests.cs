@@ -54,7 +54,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ATownsTopAndNameLieOnAPatternedBandInItsGroupsColourOverALightStrip()
+        public void ATownsColourIsPrintedFlatIntoItsTileOnTopWithTheLightStripBelow()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
             var light = new Color(1f, 0.84f, 0.31f);
@@ -65,6 +65,11 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 BoardView view = BoardView.Create(holder.transform, data);
+                foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                {
+                    Assert.AreNotEqual("Name band", child.name, "the colour is no raised layer of its own");
+                }
+
                 for (int i = 0; i < data.Board.Count; i++)
                 {
                     SquareDefinition square = data.Board[i];
@@ -75,26 +80,36 @@ namespace Lazpoly.Presentation.Tests
                     }
 
                     Assert.IsNotNull(tile, $"square {i}");
-                    Transform band = tile.Find("Name band");
+                    Material material = tile.GetComponent<Renderer>().sharedMaterial;
                     bool town = square.Type == SquareType.Property && !square.IsResort;
-                    Assert.AreEqual(town, band != null, $"{square.Name}: only towns carry a name band");
-                    if (band == null) continue;
+                    if (!town)
+                    {
+                        Assert.AreSame(TileSkin.Paper(), material.mainTexture, $"{square.Name}: only towns have their colour printed in");
+                        continue;
+                    }
 
-                    Color bandColor = band.GetComponent<Renderer>().sharedMaterial.color;
-                    Color tileColor = tile.GetComponent<Renderer>().sharedMaterial.color;
-                    Assert.GreaterOrEqual(BoardView.Contrast(bandColor, BoardView.InkColor), BoardView.BandContrast - 0.01f, $"{square.Name}: the ink reads on its band");
-                    Assert.Greater(Mathf.Abs(bandColor.r - tileColor.r) + Mathf.Abs(bandColor.g - tileColor.g) + Mathf.Abs(bandColor.b - tileColor.b), 0.1f,
-                        $"{square.Name}: the band stands apart from the light strip");
-                    Assert.AreEqual(TileSkin.Pattern(), band.GetComponent<Renderer>().sharedMaterial.mainTexture, $"{square.Name}: the band carries the pattern");
+                    Assert.AreEqual(Color.white, material.color, $"{square.Name}: the colours are in the texture");
+                    var skin = (Texture2D)material.mainTexture;
+                    Vector3 size = tile.GetComponent<MeshFilter>().sharedMesh.bounds.size;
+                    Vector2 At(Vector3 world)
+                    {
+                        Vector3 local = tile.InverseTransformPoint(world);
+                        return new Vector2(local.x / size.x + 0.5f, local.z / size.z + 0.5f);
+                    }
 
-                    // Up the screen the band, with the name on it; down the screen the strip with the rent and the pawns.
+                    // Up the screen the colour, with the name on it; down the screen the strip with the rent and the pawns.
+                    Vector2 name = At(view.NameLabel(i).transform.position);
+                    Vector2 price = At(view.PriceLabel(i).transform.position);
+                    Color underName = skin.GetPixelBilinear(0.5f, name.y);
+                    Color underPrice = skin.GetPixelBilinear(0.5f, price.y);
+                    Assert.Greater(Mathf.Abs(underName.r - underPrice.r) + Mathf.Abs(underName.g - underPrice.g) + Mathf.Abs(underName.b - underPrice.b), 0.1f,
+                        $"{square.Name}: the colour stands apart from the light strip");
+                    Assert.That(underPrice.r, Is.GreaterThan(0.75f), $"{square.Name}: the strip is light");
                     Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(view.Layout.SquareCenter(i)));
-                    Vector3 name = view.NameLabel(i).transform.position;
-                    Vector3 price = view.PriceLabel(i).transform.position;
-                    Assert.Less(Vector3.Dot(band.position - name, down), 0f, $"{square.Name}: the band lies up the screen from the name");
-                    Bounds area = band.GetComponent<Renderer>().bounds;
-                    float bandBottom = Vector3.Dot(area.center - tile.position, down) + Vector3.Dot(area.extents, new Vector3(Mathf.Abs(down.x), 0f, Mathf.Abs(down.z)));
-                    Assert.Less(bandBottom, Vector3.Dot(price - tile.position, down), $"{square.Name}: the rent lies on the light strip, below the band");
+                    float topV = Vector3.Dot(tile.forward, down) > 0f ? 0.02f : 0.98f;
+                    Color atTop = skin.GetPixelBilinear(0.5f, topV);
+                    Assert.Greater(Mathf.Abs(atTop.r - underPrice.r) + Mathf.Abs(atTop.g - underPrice.g) + Mathf.Abs(atTop.b - underPrice.b), 0.1f,
+                        $"{square.Name}: the colour runs to the tile's top edge");
                 }
             }
             finally

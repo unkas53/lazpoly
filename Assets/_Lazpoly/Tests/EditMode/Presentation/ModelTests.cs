@@ -84,6 +84,32 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ATownsSkinHasItsColourOnOneEndAndTheFrameLineOverIt()
+        {
+            var band = new Color(0.9f, 0.4f, 0.3f);
+            var paving = new Color(0.91f, 0.90f, 0.91f);
+            Texture2D skin = TileSkin.Town(band, paving, 0f, 0.6f, 1.4f);
+            Assert.AreEqual(TileSkin.TownWidth, skin.width);
+            Assert.AreEqual(Mathf.RoundToInt(TileSkin.TownWidth * 1.4f), skin.height, "the pixels stay square on a deep tile");
+            Assert.AreSame(skin, TileSkin.Town(band, paving, 0f, 0.6f, 1.4f), "towns of one colour share a texture");
+
+            Color coloured = skin.GetPixelBilinear(0.5f, 0.3f);
+            Assert.Greater(coloured.r, coloured.b + 0.1f, "the colour is printed in from v 0 to the band's end");
+            Color strip = skin.GetPixelBilinear(0.5f, 0.85f);
+            Assert.That(strip.b, Is.GreaterThan(0.75f), "beyond it the light paving");
+
+            // The frame line crosses the colour: the patterned colour, darkened by the frame's shade.
+            int x = Mathf.RoundToInt(TileSkin.FrameInset * skin.width - 0.5f), y = Mathf.RoundToInt(0.3f * skin.height);
+            float u = (x + 0.5f) / skin.width, v = (y + 0.5f) / skin.height;
+            Assert.IsTrue(TileSkin.OnFrame(u, v));
+            float expected = band.r * TileSkin.PatternValue(u, v / 0.6f) * TileSkin.FrameShade;
+            Assert.That(skin.GetPixel(x, y).r, Is.EqualTo(expected).Within(0.01f), "the frame line runs over the colour");
+
+            Texture2D flipped = TileSkin.Town(band, paving, 0.4f, 1f, 1.4f);
+            Assert.Greater(flipped.GetPixelBilinear(0.5f, 0.7f).r, flipped.GetPixelBilinear(0.5f, 0.7f).b + 0.1f, "the colour can lie at the other end");
+        }
+
+        [Test]
         public void CornerScenesStandOnTheirSquareWithTheirBaseOnIt()
         {
             var root = new GameObject("Scenes");

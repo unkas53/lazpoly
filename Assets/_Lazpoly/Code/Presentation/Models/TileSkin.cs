@@ -5,7 +5,8 @@ namespace Lazpoly.Presentation.Models
     /// <summary>
     /// The printed look of a square: a soft paper grain and a thin frame line a little inside the
     /// edge, drawn once into a small texture that every tile shares. The tile's own colour tints it,
-    /// so one texture serves pastel properties and special squares alike.
+    /// so one texture serves pastel properties and special squares alike. A town's tile has its own
+    /// texture with its group's colour printed into it (<see cref="Town"/>).
     /// </summary>
     public static class TileSkin
     {
@@ -29,39 +30,12 @@ namespace Lazpoly.Presentation.Models
         public const float FrameShade = 0.80f;
 
         private static Texture2D _paper;
-        private static Texture2D _pattern;
 
-        /// <summary>The town band's pattern: soft patches a little darker and lighter, and fine specks, like worn stone or a lawn.</summary>
+        /// <summary>The pattern in a town's colour (<see cref="Town"/>): soft patches a little darker and lighter, and fine specks, like worn stone or a lawn.</summary>
         public const float PatchShade = 0.09f;
         public const float SpeckShade = 0.12f;
         public const int SpecksAcross = 36;
         public const float SpeckChance = 0.18f;
-
-        /// <summary>The shared pattern texture for the coloured part of a town's tile, made on first use; it repeats.</summary>
-        public static Texture2D Pattern()
-        {
-            if (_pattern != null) return _pattern;
-            const int size = Size;
-            _pattern = new Texture2D(size, size, TextureFormat.RGBA32, true)
-            {
-                name = "tile-pattern",
-                wrapMode = TextureWrapMode.Repeat,
-                filterMode = FilterMode.Trilinear,
-            };
-            var pixels = new Color32[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    byte value = (byte)Mathf.RoundToInt(255f * PatternValue((x + 0.5f) / size, (y + 0.5f) / size));
-                    pixels[y * size + x] = new Color32(value, value, value, 255);
-                }
-            }
-
-            _pattern.SetPixels32(pixels);
-            _pattern.Apply(true, false);
-            return _pattern;
-        }
 
         /// <summary>The pattern's brightness (0-1) at a point, u and v both 0-1: patches of noise under scattered specks.</summary>
         public static float PatternValue(float u, float v)
@@ -114,7 +88,10 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>The paper's brightness (0-1) at a point of the tile, u along and v across, both 0-1.</summary>
-        public static float Value(float u, float v)
+        public static float Value(float u, float v) => PaperGrain(u, v) * (OnFrame(u, v) ? FrameShade : 1f);
+
+        /// <summary>The paper without its frame line: soft clouds under a fine grain, and the print screen's dots.</summary>
+        private static float PaperGrain(float u, float v)
         {
             // Three scales of noise: soft clouds under a fine grain, so it reads as paper rather than wash.
             float paper = 1f - Grain * (0.35f * Noise(u * 9f, v * 9f) + 0.3f * Noise(u * 29f, v * 29f) + 0.35f * Noise(u * 67f, v * 67f));
@@ -123,9 +100,63 @@ namespace Lazpoly.Presentation.Models
             float dv = Mathf.Repeat(v * DotsAcross, 1f) - 0.5f;
             float dot = Mathf.Sqrt(du * du + dv * dv) / DotsAcross;
             paper *= 1f - DotShade * Mathf.Clamp01(1f - dot / DotRadius);
-            float edge = Mathf.Min(Mathf.Min(u, 1f - u), Mathf.Min(v, 1f - v));
-            if (Mathf.Abs(edge - FrameInset) <= FrameWidth) paper *= FrameShade;
             return paper;
+        }
+
+        /// <summary>Whether a point of the tile (u, v both 0-1) lies on the frame line.</summary>
+        public static bool OnFrame(float u, float v)
+        {
+            float edge = Mathf.Min(Mathf.Min(u, 1f - u), Mathf.Min(v, 1f - v));
+            return Mathf.Abs(edge - FrameInset) <= FrameWidth;
+        }
+
+        /// <summary>The width in pixels of a town tile's skin (<see cref="Town"/>); its height follows the tile's shape.</summary>
+        public const int TownWidth = 192;
+
+        private static readonly System.Collections.Generic.Dictionary<string, Texture2D> Towns = new System.Collections.Generic.Dictionary<string, Texture2D>();
+
+        /// <summary>
+        /// A town tile's whole skin, printed flat into the tile's own face: the group's colour with the pattern from
+        /// <paramref name="bandFrom"/> to <paramref name="bandTo"/> (v, 0-1, across the tile), the paper in
+        /// <paramref name="paving"/> elsewhere, and the frame line running round the tile over both. The tile is drawn
+        /// untinted (white), since the colours are in the texture. <paramref name="depthOverWidth"/> is the tile's depth
+        /// over its width, so the pixels stay square. Towns of one colour and shape share one texture.
+        /// </summary>
+        public static Texture2D Town(Color band, Color paving, float bandFrom, float bandTo, float depthOverWidth)
+        {
+            int width = TownWidth;
+            int height = Mathf.Max(1, Mathf.RoundToInt(width * depthOverWidth));
+            string key = $"{ColorUtility.ToHtmlStringRGB(band)}:{ColorUtility.ToHtmlStringRGB(paving)}:{bandFrom:F3}:{bandTo:F3}:{height}";
+            if (Towns.TryGetValue(key, out Texture2D cached) && cached != null) return cached;
+
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            {
+                name = $"tile-town-{key}",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Trilinear,
+            };
+            var pixels = new Color32[width * height];
+            float span = Mathf.Max(1e-4f, bandTo - bandFrom);
+            for (int y = 0; y < height; y++)
+            {
+                float v0 = (float)y / height, v1 = (float)(y + 1) / height, v = (y + 0.5f) / height;
+                // How much of this row the band covers, so its edge is smooth rather than stepped.
+                float cover = Mathf.Clamp01((Mathf.Min(v1, bandTo) - Mathf.Max(v0, bandFrom)) / (v1 - v0));
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    Color colour = Color.Lerp(paving * PaperGrain(u, v), band * PatternValue(u, Mathf.Clamp01((v - bandFrom) / span)), cover);
+                    // The frame line lies over the colour too: the tile reads as one printed piece.
+                    if (OnFrame(u, v)) colour *= FrameShade;
+                    colour.a = 1f;
+                    pixels[y * width + x] = colour;
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(true, false);
+            Towns[key] = texture;
+            return texture;
         }
 
         /// <summary>Smooth value noise in 0-1: a random value at every whole number, blended between.</summary>

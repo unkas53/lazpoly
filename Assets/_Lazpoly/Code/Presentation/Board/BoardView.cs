@@ -104,16 +104,14 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ResortOffset = -0.2f;
 
         /// <summary>
-        /// A town's tile: from its top edge down to the bottom of the name's line a band in the group's colour with a
-        /// pattern (<see cref="TileSkin.Pattern"/>), washed only as far as the dark ink needs to read on it
-        /// (<see cref="BandColor"/>); below it a light paved strip for the rent and the pawns.
+        /// A town's tile: from its top edge down to the bottom of the name's line the group's colour with a pattern,
+        /// washed only as far as the dark ink needs to read on it (<see cref="BandColor"/>); below it a light paved
+        /// strip for the rent and the pawns. Both are printed into the tile's own face (<see cref="TileSkin.Town"/>),
+        /// flat, with the frame line running round over the colour.
         /// </summary>
         public static readonly Color PavingColor = new Color(0.91f, 0.90f, 0.91f);
         public const float BandPastel = 0.2f;
         public const float BandContrast = 4.5f;
-
-        /// <summary>The band's inset from the tile's edges, so it lies on the flat of the tile and not over its rounded rim.</summary>
-        public const float BandInset = 0.03f;
 
         /// <summary>The sand of a resort's tile, and the sea and surf printed on it.</summary>
         public static readonly Color SandColor = new Color(0.97f, 0.86f, 0.58f);
@@ -205,8 +203,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Vector3[][] _buildingRest;
         private GameObject[] _tiles;
         private Color[] _tileColors;
-        private GameObject[] _bands;
-        private Color[] _bandColors;
+        private bool[] _printed;
         private TextMesh[] _names;
         private TextMesh[] _prices;
         private int?[] _rents;
@@ -323,18 +320,23 @@ namespace Lazpoly.Presentation.Tabletop
             _glowSquare = -1;
         }
 
-        /// <summary>Paints a square's tile and its name band with the current highlight, brightened by <paramref name="glow"/> towards the glow's colour.</summary>
+        /// <summary>Paints a square's tile with the current highlight, brightened by <paramref name="glow"/> towards the glow's colour.</summary>
         private void PaintSquare(int square, float glow = 0f)
         {
             PaintTile(_tiles[square], Color.Lerp(Shown(square, _tileColors[square]), _glowColor, glow));
-            if (_bands[square] != null) PaintTile(_bands[square], Color.Lerp(Shown(square, _bandColors[square]), _glowColor, glow));
         }
 
         /// <summary>A colour of a square with the current highlight: lit when chosen, dark when a choice leaves it out.</summary>
         private Color Shown(int square, Color color)
         {
             if (_highlighted == null) return color;
-            if (_highlighted.Contains(square)) return Color.Lerp(color, Color.white, _dimOthers ? 0.35f : 0.25f);
+            if (_highlighted.Contains(square))
+            {
+                float lift = _dimOthers ? 0.35f : 0.25f;
+                // A town's colours are in its texture and it is drawn white, so it is lit by drawing it brighter than white.
+                if (_printed[square]) return new Color(1f + lift, 1f + lift, 1f + lift, 1f);
+                return Color.Lerp(color, Color.white, lift);
+            }
             return _dimOthers ? Color.Lerp(color, Color.black, DimAmount) : color;
         }
 
@@ -659,8 +661,7 @@ namespace Lazpoly.Presentation.Tabletop
             _buildingRest = new Vector3[board.Count][];
             _tiles = new GameObject[board.Count];
             _tileColors = new Color[board.Count];
-            _bands = new GameObject[board.Count];
-            _bandColors = new Color[board.Count];
+            _printed = new bool[board.Count];
             _names = new TextMesh[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
@@ -677,18 +678,18 @@ namespace Lazpoly.Presentation.Tabletop
 
                 // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint; every name is in the one dark ink.
                 // A town is two parts, like the owner's reference: the top, with the buildings and the name, in the group's
-                // colour with a pattern (CreateBand), and a light paved strip below where the rent and the pawns are; a resort
-                // is sand with its sea; the other squares one colour.
+                // colour with a pattern, and a light paved strip below where the rent and the pawns are, both printed into
+                // the tile (TownSkin); a resort is sand with its sea; the other squares one colour.
                 bool town = square.Type == SquareType.Property && !square.IsResort;
-                Color body = town ? PavingColor : Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : Pastel);
+                Color body = town ? Color.white : Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
-                ModelParts.Skin(tileObject, paper);
+                ModelParts.Skin(tileObject, town ? TownSkin(outward, size, BandColor(TileColor(square, data))) : paper);
+                _printed[i] = town;
                 tileObject.transform.localPosition = center + Vector3.up * (TileHeight / 2f);
                 tileObject.transform.localRotation = facing;
                 _tiles[i] = tileObject;
                 if (square.IsResort) CreateShore(i, center, outward, size);
-                if (town) CreateBand(i, center, outward, size, BandColor(TileColor(square, data)));
                 _tileColors[i] = body;
                 _squareOfCollider[tileObject.AddComponent<BoxCollider>()] = i;
 
@@ -863,23 +864,17 @@ namespace Lazpoly.Presentation.Tabletop
         private static float Linear(float channel) => channel <= 0.04045f ? channel / 12.92f : Mathf.Pow((channel + 0.055f) / 1.055f, 2.4f);
 
         /// <summary>
-        /// Lays a town's coloured band on its tile: from the tile's top edge on the screen down to the bottom of the name's
-        /// line, across its whole width, flat on the tile under the print, with the pattern. It belongs to the tile, so it
-        /// swells with it.
+        /// A town tile's skin: the group's colour from the tile's top edge on the screen down to the bottom of the name's
+        /// line, across its whole width, and the light paving below. The tile's local Z runs outward and its texture's v
+        /// with it, so the colour lies at the low or the high end of v as the screen's down runs with or against outward.
         /// </summary>
-        private void CreateBand(int index, Vector3 center, Vector3 outward, Vector2 size, Color color)
+        private Texture2D TownSkin(Vector3 outward, Vector2 size, Color color)
         {
-            Vector3 down = ScreenDown(outward);
-            float top = -size.y / 2f + BandInset;
-            float bottom = _depth * (NameOffset + StripDepth / 2f);
-            GameObject band = ModelParts.Create("Name band", transform, MeshFactory.RoundedBox(new Vector3(size.x - 2f * BandInset, 0.004f, bottom - top), 0.0015f, 1), color, 0.05f);
-            ModelParts.Skin(band, TileSkin.Pattern());
-            band.transform.localPosition = center + down * ((top + bottom) / 2f) + Vector3.up * (TileHeight + 0.002f);
-            band.transform.localRotation = Quaternion.LookRotation(down);
-            Flat(band);
-            band.transform.SetParent(_tiles[index].transform, true);
-            _bands[index] = band;
-            _bandColors[index] = color;
+            float bottom = _depth * (NameOffset + StripDepth / 2f) / size.y + 0.5f;
+            bool withOutward = Vector3.Dot(ScreenDown(outward), outward) > 0f;
+            return withOutward
+                ? TileSkin.Town(color, PavingColor, 0f, bottom, size.y / size.x)
+                : TileSkin.Town(color, PavingColor, 1f - bottom, 1f, size.y / size.x);
         }
 
         /// <summary>
