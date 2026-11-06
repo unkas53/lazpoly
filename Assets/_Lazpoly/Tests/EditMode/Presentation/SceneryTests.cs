@@ -54,6 +54,30 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TownNamesLieOnTheTileWithoutAStripInADarkInk()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, data);
+                foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                    Assert.AreNotEqual("Group strip", child.name, "the raised strip under the names is gone");
+
+                for (int i = 0; i < data.Board.Count; i++)
+                {
+                    if (data.Board[i].Type != SquareType.Property) continue;
+                    Color ink = board.NameLabel(i).color;
+                    Assert.Less(ink.grayscale, 0.4f, $"square {i}: the name reads dark on its pastel tile");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void TownsArePrintedInCapitalsTheOtherSquaresAsWritten()
         {
             Texts.Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
@@ -132,10 +156,10 @@ namespace Lazpoly.Presentation.Tests
             // From the top of the screen down: buildings, the name on its strip, the price with the pawns on it.
             Assert.Less(BoardView.BuildingOffset, BoardView.NameOffset, "the buildings stand above the name");
             Assert.GreaterOrEqual(BoardView.BuildingOffset - buildingHalf, -0.5f, "the building stays on the tile");
-            Assert.LessOrEqual(BoardView.BuildingOffset + buildingHalf, BoardView.NameOffset - BoardView.StripDepth / 2f, "the building ends before the name's strip");
+            Assert.LessOrEqual(BoardView.BuildingOffset + buildingHalf, BoardView.NameOffset - BoardView.StripDepth / 2f, "the building ends before the name's line");
             Assert.Less(BuildingModels.Width * BoardView.BuildingScale, 0.65f, "the building stays inside its tile's width, with room either side");
-            Assert.LessOrEqual(BoardView.NameDepth, BoardView.StripDepth, "the name fits on its strip");
-            Assert.LessOrEqual(BoardView.NameOffset + BoardView.StripDepth / 2f, BoardView.PriceOffset - BoardView.PriceDepth / 2f, "the price sits under the name's strip");
+            Assert.LessOrEqual(BoardView.NameDepth, BoardView.StripDepth, "the name fits in its line");
+            Assert.LessOrEqual(BoardView.NameOffset + BoardView.StripDepth / 2f, BoardView.PriceOffset - BoardView.PriceDepth / 2f, "the price sits under the name's line");
             Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, 0.5f, "the price stays on the tile");
             Assert.AreEqual(BoardView.PriceOffset, BoardView.PawnOffset, "the pawns walk on the price line");
             Assert.LessOrEqual(BoardView.PawnOffset + pawnReach, 0.5f, "the pawns' bottom row stays on the tile");

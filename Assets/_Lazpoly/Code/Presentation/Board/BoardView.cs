@@ -83,7 +83,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Where pawns stand: on the price line.</summary>
         public const float PawnOffset = 0.31f;
 
-        /// <summary>The name's line and the group strip under it.</summary>
+        /// <summary>The name's line, and the room kept for it between the buildings and the price (it once held the group's strip).</summary>
         public const float NameOffset = 0.07f;
         public const float StripDepth = 0.17f;
 
@@ -630,7 +630,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // A tile's size: along the edge, and from its inner edge to its outer edge (its local Z, turned outward).
                 Vector2 size = Layout.SquareSize(i) - Vector2.one * Gap;
 
-                // The printed tile: its colour washed to a pastel over the paper grain, the group's full colour kept for the name's strip.
+                // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint and the name's ink.
                 Color body = Color.Lerp(TileColor(square, data), PaperColor, Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
@@ -647,20 +647,16 @@ namespace Lazpoly.Presentation.Tabletop
                 float top = TileHeight + PrintHeight;
                 if (property)
                 {
-                    // The name lies on a strip of the group's full colour across the tile, above the price.
-                    Color group = TileColor(square, data);
-                    GameObject strip = ModelParts.Create("Group strip", transform,
-                        MeshFactory.RoundedBox(new Vector3(size.x * 0.96f, 0.02f, _depth * StripDepth), 0.008f, 2), group);
-                    strip.transform.localPosition = center + down * (_depth * NameOffset) + Vector3.up * (TileHeight + 0.01f);
-                    strip.transform.localRotation = facing;
-                    top = TileHeight + 0.024f;
-                    // With colour-blind friendly colours on, the group's letter sits at the strip's left end and the name keeps clear of it.
+                    // The name is printed straight on the tile (the owner had the raised group strip under it taken
+                    // away, Faz 21). With colour-blind friendly colours on, the group's letter sits at the name line's
+                    // left end and the name keeps clear of it.
                     string mark = data.GroupMark(square.GroupId);
                     if (mark != null)
                     {
                         Vector3 along = Vector3.Cross(Vector3.up, outward);
                         if (Vector3.Dot(along, ScreenRight(BoardCameraRig.BaseYaw)) > 0f) along = -along;
-                        CreateBandMark(mark, strip.transform.localPosition + along * (size.x * 0.4f) + Vector3.up * 0.014f, outward, group);
+                        Vector3 line = center + down * (_depth * NameOffset) + Vector3.up * top;
+                        CreateBandMark(mark, line + along * (size.x * 0.4f), outward, NameInk(TileColor(square, data)));
                     }
                 }
                 else if (corner && CornerParts.Has(square.Type))
@@ -678,7 +674,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 namePlace = corner
                     ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
                     : center + down * (_depth * NameOffset);
-                Color ink = property ? ColorVision.TextOn(TileColor(square, data)) : InkColor;
+                Color ink = property ? NameInk(TileColor(square, data)) : InkColor;
                 _names[i] = CreateLabel("Name", PrintedName(square), namePlace + Vector3.up * top, outward,
                     _width * NameSize, NameRoom(i, size), ink);
                 string subtitle = Subtitle(square);
@@ -1002,6 +998,12 @@ namespace Lazpoly.Presentation.Tabletop
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
 
+        /// <summary>A town's name ink: the print's dark ink with a touch of the group's colour, dark enough to read on the pastel tile.</summary>
+        public static Color NameInk(Color group) => Color.Lerp(group, InkColor, NameInkDepth);
+
+        /// <summary>How far a town's name ink goes from its group's colour towards the dark ink.</summary>
+        public const float NameInkDepth = 0.7f;
+
         /// <summary>A square's name as printed on the board: a town's in capitals ("İSTANBUL", Turkish capitals in Turkish), the others as written.</summary>
         public static string PrintedName(SquareDefinition square) =>
             square.Type == SquareType.Property ? Upper(L(square.Name)) : L(square.Name);
@@ -1060,8 +1062,8 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.characterSize = FitCharacterSize(characterSize, extent, maxSize);
         }
 
-        /// <summary>The group's letter on its band, in a colour that reads on the band.</summary>
-        private void CreateBandMark(string mark, Vector3 localPosition, Vector3 outward, Color band)
+        /// <summary>The group's letter beside the town's name, in the name's ink.</summary>
+        private void CreateBandMark(string mark, Vector3 localPosition, Vector3 outward, Color ink)
         {
             var label = new GameObject("Group mark");
             label.transform.SetParent(transform, false);
@@ -1076,7 +1078,7 @@ namespace Lazpoly.Presentation.Tabletop
             mesh.fontSize = 128;
             mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = _width * 0.012f;
-            mesh.color = ColorVision.TextOn(band);
+            mesh.color = ink;
             mesh.font = UiTheme.BlackFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
         }
