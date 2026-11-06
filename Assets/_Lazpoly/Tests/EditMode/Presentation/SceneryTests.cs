@@ -175,6 +175,10 @@ namespace Lazpoly.Presentation.Tests
                         Assert.AreEqual("ŞANS", board.NameLabel(i).text, "Şans in capitals, larger (the owner's wish, Faz 24)");
                         Assert.IsNotNull(board.ChanceMark(i), "a question mark is printed on the Şans tile");
                         Assert.AreEqual("?", board.ChanceMark(i).text);
+                        Assert.Greater(board.ChanceMark(i).characterSize, board.NameLabel(i).characterSize * 2f, "the question mark is the tile's big print");
+                        Bounds mark = board.ChanceMark(i).GetComponent<MeshRenderer>().bounds;
+                        Bounds name = board.NameLabel(i).GetComponent<MeshRenderer>().bounds;
+                        Assert.IsFalse(mark.Intersects(name), $"square {i}: the question mark runs into ŞANS");
                         Assert.IsNull(board.transform.Find("Sign Card"), "no standing sign on a Şans square");
                     }
                     else

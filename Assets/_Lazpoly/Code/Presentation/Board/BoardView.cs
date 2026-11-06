@@ -172,12 +172,15 @@ namespace Lazpoly.Presentation.Tabletop
         public const float JailNameOffset = 0.26f;
 
         /// <summary>
-        /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, with a
-        /// big question mark printed flat on the tile's top part in <see cref="ChanceMarkColor"/>, in place of a standing sign.
+        /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, low on
+        /// the tile (where a price would sit), with a big question mark printed flat over the rest of the tile in
+        /// <see cref="ChanceMarkColor"/>, in place of a standing sign. Offsets and depth are in tile depths, towards the screen's bottom.
         /// </summary>
         public const float ChanceNameScale = 1.6f;
-        public const float ChanceMarkSize = 0.12f;
-        public const float ChanceMarkDepth = 0.44f;
+        public const float ChanceNameOffset = 0.3f;
+        public const float ChanceMarkOffset = -0.15f;
+        public const float ChanceMarkSize = 0.3f;
+        public const float ChanceMarkDepth = 0.62f;
         public static readonly Color ChanceMarkColor = new Color(0.36f, 0.27f, 0.62f);
 
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
@@ -738,7 +741,7 @@ namespace Lazpoly.Presentation.Tabletop
                 }
                 else if (IsChance(i))
                 {
-                    _chanceMarks[i] = CreateLabel("Chance mark", "?", BuildingRowCenter(center) + Vector3.up * PrintHeight, outward,
+                    _chanceMarks[i] = CreateLabel("Chance mark", "?", center + down * (_depth * ChanceMarkOffset) + Vector3.up * top, outward,
                         _width * ChanceMarkSize, new Vector2(size.x * NameFill, _depth * ChanceMarkDepth), ChanceMarkColor);
                 }
                 else
@@ -751,7 +754,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // clear of its scene and pawns.
                 Vector3 namePlace = corner
                     ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : CornerNameOffset))
-                    : center + down * (_depth * NameOffset);
+                    : center + down * (_depth * (IsChance(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkColor);
                 string subtitle = Subtitle(square);
