@@ -32,8 +32,8 @@ namespace Lazpoly.Presentation.Models
         private static Texture2D _paper;
 
         /// <summary>The pattern in a town's colour (<see cref="Town"/>): soft patches a little darker and lighter, and fine specks, like worn stone or a lawn.</summary>
-        public const float PatchShade = 0.09f;
-        public const float SpeckShade = 0.12f;
+        public const float PatchShade = 0.14f;
+        public const float SpeckShade = 0.16f;
         public const int SpecksAcross = 36;
         public const float SpeckChance = 0.18f;
 
@@ -54,7 +54,7 @@ namespace Lazpoly.Presentation.Models
                 value += (pick < SpeckChance * 0.6f ? -SpeckShade : SpeckShade * 0.5f) * dot;
             }
 
-            return Mathf.Clamp(value, 0.8f, 1f);
+            return Mathf.Clamp(value, 0.75f, 1f);
         }
 
         /// <summary>The shared paper texture, made on first use.</summary>
@@ -135,21 +135,24 @@ namespace Lazpoly.Presentation.Models
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Trilinear,
             };
-            var pixels = new Color32[width * height];
+            // The paper and the pattern are the same for every colour, so they are worked out once per shape and reused.
+            float[] paper = Grid($"paper:{width}:{height}", width, height, (u, v) => Value(u, v));
             float span = Mathf.Max(1e-4f, bandTo - bandFrom);
+            float[] pattern = Grid($"pattern:{width}:{height}:{bandFrom:F3}:{bandTo:F3}", width, height,
+                (u, v) => PatternValue(u, Mathf.Clamp01((v - bandFrom) / span)) * (OnFrame(u, v) ? FrameShade : 1f));
+            var pixels = new Color32[width * height];
             for (int y = 0; y < height; y++)
             {
-                float v0 = (float)y / height, v1 = (float)(y + 1) / height, v = (y + 0.5f) / height;
+                float v0 = (float)y / height, v1 = (float)(y + 1) / height;
                 // How much of this row the band covers, so its edge is smooth rather than stepped.
                 float cover = Mathf.Clamp01((Mathf.Min(v1, bandTo) - Mathf.Max(v0, bandFrom)) / (v1 - v0));
                 for (int x = 0; x < width; x++)
                 {
-                    float u = (x + 0.5f) / width;
-                    Color colour = Color.Lerp(paving * PaperGrain(u, v), band * PatternValue(u, Mathf.Clamp01((v - bandFrom) / span)), cover);
-                    // The frame line lies over the colour too: the tile reads as one printed piece.
-                    if (OnFrame(u, v)) colour *= FrameShade;
+                    // The frame line is in both grids, so it runs over the colour too: the tile reads as one printed piece.
+                    int i = y * width + x;
+                    Color colour = Color.Lerp(paving * paper[i], band * pattern[i], cover);
                     colour.a = 1f;
-                    pixels[y * width + x] = colour;
+                    pixels[i] = colour;
                 }
             }
 
@@ -157,6 +160,22 @@ namespace Lazpoly.Presentation.Models
             texture.Apply(true, false);
             Towns[key] = texture;
             return texture;
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<string, float[]> Grids = new System.Collections.Generic.Dictionary<string, float[]>();
+
+        /// <summary>A brightness at every pixel's centre of a width x height texture, worked out once per key.</summary>
+        private static float[] Grid(string key, int width, int height, System.Func<float, float, float> value)
+        {
+            if (Grids.TryGetValue(key, out float[] grid)) return grid;
+            grid = new float[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++) grid[y * width + x] = value((x + 0.5f) / width, (y + 0.5f) / height);
+            }
+
+            Grids[key] = grid;
+            return grid;
         }
 
         /// <summary>Smooth value noise in 0-1: a random value at every whole number, blended between.</summary>
