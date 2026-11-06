@@ -17,7 +17,7 @@ namespace Lazpoly.Presentation.Game
     /// picture of each level (bare land, one to four houses, the hotel) and a check on the ones the
     /// choice includes, the rent the chosen level earns, and one big button with the whole price.
     /// When buying, the land is picked and the player may add the houses the first visit allows;
-    /// on an owned city the tiles above its level are offered. A level the rules keep for later or
+    /// on an owned city the tiles above its level are offered. A holiday resort has one tile with its beach. A level the rules keep for later or
     /// the money does not reach is greyed, with the reason stamped across its picture. The host
     /// still validates every command the card sends.
     /// </summary>
@@ -76,7 +76,8 @@ namespace Lazpoly.Presentation.Game
             Band(ui, L(square.Name), groupColor, _controller.GroupMarkOf(squareIndex), dismiss);
             ui.Label((buying ? L("Satılık şehir") : L("Senin şehrin")) + " · " + _controller.GroupNameOf(squareIndex), UiTextStyle.Small, UiTheme.Muted,
                 TextAnchor.MiddleCenter);
-            RenderTiles(ui, choice, Color.Lerp(groupColor, BoardView.PaperColor, BoardView.Pastel));
+            Color paper = choice.Resort ? Color.Lerp(BoardView.SandColor, BoardView.PaperColor, BoardView.SandPastel) : Color.Lerp(groupColor, BoardView.PaperColor, BoardView.Pastel);
+            RenderTiles(ui, choice, paper, _controller.ColorOf(player.Id));
 
             Text rent = ui.Label(F($"Kira: {choice.RentAt(picked)}"), UiTextStyle.Body, UiTheme.Accent, TextAnchor.MiddleCenter);
             rent.font = UiTheme.BoldFont;
@@ -116,15 +117,15 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>One tile per level, side by side and centred; only the land for a square that takes no buildings.</summary>
-        private void RenderTiles(UiBuilder ui, PropertyChoice choice, Color paper)
+        private void RenderTiles(UiBuilder ui, PropertyChoice choice, Color paper, Color owner)
         {
             UiBuilder row = ui.Row(8f, expand: false);
             row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperCenter;
             int levels = choice.Developable ? BuildingPreview.Levels : 1;
-            for (int level = 0; level < levels; level++) RenderTile(row, choice, level, paper);
+            for (int level = 0; level < levels; level++) RenderTile(row, choice, level, paper, owner);
         }
 
-        private void RenderTile(UiBuilder row, PropertyChoice choice, int level, Color paper)
+        private void RenderTile(UiBuilder row, PropertyChoice choice, int level, Color paper, Color owner)
         {
             bool pickable = choice.CanPick(level);
             string locked = choice.Locked(level);
@@ -136,7 +137,8 @@ namespace Lazpoly.Presentation.Game
 
             RectTransform box = UiRoot.Rect(tile.Container, "Picture", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             UiBuilder.Fix(box.gameObject, PictureSize, PictureSize);
-            Texture picture = _preview?.Picture(level, paper);
+            // A resort shows the beach its stage would have, in the player's colour; a town the level's building.
+            Texture picture = choice.Resort ? _preview?.BeachPicture(choice.ResortStage, paper, owner) : _preview?.Picture(level, paper);
             if (picture != null)
             {
                 var image = box.gameObject.AddComponent<RawImage>();

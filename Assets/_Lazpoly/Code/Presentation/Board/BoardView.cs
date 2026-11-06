@@ -18,8 +18,18 @@ namespace Lazpoly.Presentation.Tabletop
     /// </summary>
     public sealed class BoardView : MonoBehaviour
     {
-        /// <summary>Distance from the board's centre to the line the square centres lie on.</summary>
-        private const float HalfSize = 5.7f;
+        /// <summary>
+        /// An edge square's width along the edge: the width the 24-square board had. A board with more squares grows
+        /// instead of narrowing its squares (the owner's wish, Faz 22), and the camera frames whatever size it comes to.
+        /// </summary>
+        public const float SquareWidth = 5.7f * 2f / (5f + DepthRatio);
+
+        /// <summary>Distance from the board's centre to the line the square centres lie on, for squares <see cref="SquareWidth"/> wide.</summary>
+        public static float HalfSizeFor(int squareCount)
+        {
+            if (squareCount % 4 != 0) return SquareWidth * squareCount / 8f;
+            return SquareWidth * (squareCount / 4 - 1 + DepthRatio) / 2f;
+        }
 
         /// <summary>How much deeper than wide an edge square is; the corners are squares of that depth.</summary>
         public const float DepthRatio = 1.4f;
@@ -79,6 +89,26 @@ namespace Lazpoly.Presentation.Tabletop
         // top part. The camera looks down at 35 degrees, so a piece's height rises up the screen, away from the writing.
         /// <summary>The building row's centre, towards the screen's top edge of the square (negative: up the screen).</summary>
         public const float BuildingOffset = -0.27f;
+
+        /// <summary>
+        /// A holiday resort's tile: sand with a strip of sea along its top edge and white surf where the sea meets the
+        /// sand, so it reads as a beach and not a town. The sea's middle and depth in tile depths, the surf's scallop
+        /// radius in tile widths and how many scallops run along the edge, and where the owner's beach stands (a little
+        /// further down the tile than a town's buildings, clear of the sea).
+        /// </summary>
+        public const float SeaOffset = -0.415f;
+        public const float SeaDepth = 0.09f;
+        public const float SurfRadius = 0.05f;
+        public const int SurfScallops = 7;
+        public const float ResortOffset = -0.2f;
+
+        /// <summary>The sand of a resort's tile, and the sea and surf printed on it.</summary>
+        public static readonly Color SandColor = new Color(0.97f, 0.86f, 0.58f);
+        public static readonly Color SeaColor = new Color(0.30f, 0.70f, 0.84f);
+        public static readonly Color SurfColor = new Color(0.98f, 0.98f, 0.96f);
+
+        /// <summary>How far a resort's sand is washed towards the paper: less than a town's, so the beach stands out.</summary>
+        public const float SandPastel = 0.25f;
 
         /// <summary>Where pawns stand: on the price line.</summary>
         public const float PawnOffset = 0.31f;
@@ -584,7 +614,7 @@ namespace Lazpoly.Presentation.Tabletop
         private void Build(BoardData data)
         {
             BoardDefinition board = data.Board;
-            Layout = new BoardLayout(board.Count, HalfSize, DepthRatio);
+            Layout = new BoardLayout(board.Count, HalfSizeFor(board.Count), DepthRatio);
             _width = Layout.Width - Gap;
             _depth = Layout.Depth - Gap;
 
@@ -594,7 +624,7 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.RoundedBox(new Vector3(width, PlateThickness, width), 0.2f), PlateColor, 0.25f);
             plate.transform.localPosition = new Vector3(0f, -PlateThickness / 2f, 0f);
 
-            _inner = 2f * HalfSize - Layout.Depth * 1.05f;
+            _inner = 2f * Layout.HalfSize - Layout.Depth * 1.05f;
             // The middle of the board is a lawn that carries the dice score, the pot and the title.
             CreateLawn(_inner);
             CreateTitle(_inner);
@@ -623,13 +653,14 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector2 size = Layout.SquareSize(i) - Vector2.one * Gap;
 
                 // The printed tile: its colour washed to a pastel over the paper grain; the group shows in that tint; every name is in the one dark ink.
-                Color body = Color.Lerp(TileColor(square, data), PaperColor, Pastel);
+                Color body = Color.Lerp(TileColor(square, data), PaperColor, square.IsResort ? SandPastel : Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
                 ModelParts.Skin(tileObject, paper);
                 tileObject.transform.localPosition = center + Vector3.up * (TileHeight / 2f);
                 tileObject.transform.localRotation = facing;
                 _tiles[i] = tileObject;
+                if (square.IsResort) CreateShore(i, center, outward, size);
                 _tileColors[i] = body;
                 _squareOfCollider[tileObject.AddComponent<BoxCollider>()] = i;
 
@@ -681,8 +712,9 @@ namespace Lazpoly.Presentation.Tabletop
                 if (property)
                 {
                     // Owner marker: the owner's plot (or the flag) on the tile's top part, where the buildings will stand.
-                    OwnerMarker marker = OwnerMarker.Create("Owner marker", transform, i * 0.9f);
-                    marker.Place(outward, BuildingRowCenter(center), _yaw);
+                    // On a resort it is the owner's beach, which grows with the resorts they hold (SetResortStage).
+                    OwnerMarker marker = square.IsResort ? OwnerMarker.CreateResort("Owner marker", transform) : OwnerMarker.Create("Owner marker", transform, i * 0.9f);
+                    marker.Place(outward, square.IsResort ? ResortSpot(center) : BuildingRowCenter(center), _yaw);
                     _flagScale[i] = marker.RestScale(_width);
                     marker.transform.localScale = _flagScale[i];
                     marker.gameObject.SetActive(false);
@@ -772,6 +804,54 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Middle of the building row on a square: along its inner edge, on the tile's top.</summary>
         private Vector3 BuildingRowCenter(Vector3 center) => center + ScreenDown(Outward(center)) * (_depth * BuildingOffset) + Vector3.up * TileHeight;
+
+        /// <summary>Where a resort's beach stands: on the sand between the sea and the name.</summary>
+        private Vector3 ResortSpot(Vector3 center) => center + ScreenDown(Outward(center)) * (_depth * ResortOffset) + Vector3.up * TileHeight;
+
+        /// <summary>
+        /// Prints the sea along a resort tile's top edge (towards the top of the screen) with a row of white scallops of
+        /// surf where it meets the sand: the discs lie just under the sea, so only their lower halves show on the sand.
+        /// </summary>
+        private void CreateShore(int index, Vector3 center, Vector3 outward, Vector2 size)
+        {
+            var shore = new GameObject("Shore");
+            shore.transform.SetParent(transform, false);
+            Vector3 down = ScreenDown(outward);
+            Vector3 along = Vector3.Cross(Vector3.up, down);
+            float length = size.x - 0.06f;
+            float depth = _depth * SeaDepth;
+            // The sea lies 2-6 mm over the tile, the surf 1-4 mm: the surf shows on the sand and hides under the sea.
+            Vector3 sea = center + down * (_depth * SeaOffset) + Vector3.up * (TileHeight + 0.004f);
+            GameObject water = ModelParts.Create("Sea", shore.transform, MeshFactory.RoundedBox(new Vector3(length, 0.004f, depth), 0.0015f, 1), SeaColor, 0.6f);
+            water.transform.localPosition = sea;
+            water.transform.localRotation = Quaternion.LookRotation(down);
+
+            float radius = _width * SurfRadius;
+            Vector3 edge = center + down * (_depth * SeaOffset + depth / 2f) + Vector3.up * (TileHeight + 0.001f);
+            for (int i = 0; i < SurfScallops; i++)
+            {
+                float t = SurfScallops == 1 ? 0.5f : i / (SurfScallops - 1f);
+                GameObject surf = ModelParts.Create("Surf", shore.transform, MeshFactory.Disc(0.003f, 20), SurfColor, 0.3f);
+                surf.transform.localPosition = edge + along * ((t - 0.5f) * (length - 2f * radius));
+                surf.transform.localScale = new Vector3(radius, 1f, radius);
+            }
+
+            // The shore is part of the tile: it swells with it when the tile is pointed out.
+            shore.transform.SetParent(_tiles[index].transform, true);
+        }
+
+        /// <summary>
+        /// Shows on a resort the beach for an owner who holds <paramref name="held"/> resorts; it pops up from the sand
+        /// when it grows or shrinks while in view and <paramref name="animate"/> is set. Nothing happens on a square that is not a resort.
+        /// </summary>
+        public void SetResortStage(int squareIndex, int held, bool animate = false)
+        {
+            OwnerMarker marker = _ownerMarkers[squareIndex];
+            if (marker == null || !marker.IsResort) return;
+            int before = marker.Stage;
+            marker.ShowStage(held);
+            if (animate && marker.Stage != before && marker.gameObject.activeInHierarchy) StartCoroutine(Raise(marker.transform, _flagScale[squareIndex]));
+        }
 
         /// <summary>A square's price line: big at the bottom of a town or tax square, small under a corner's name.</summary>
         private float PriceCharacterSize(int index) => _width * (Layout.IsCorner(index) ? CornerPriceSize : PriceSize);
@@ -1079,7 +1159,7 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 case SquareType.Start: return StartColor;
                 case SquareType.Tax: return TaxColor;
-                case SquareType.Property: return data.GroupColor(square.GroupId);
+                case SquareType.Property: return square.IsResort ? SandColor : data.GroupColor(square.GroupId);
                 case SquareType.Card: return CardColor;
                 case SquareType.Pot: return PotColor;
                 case SquareType.Travel: return TravelColor;
