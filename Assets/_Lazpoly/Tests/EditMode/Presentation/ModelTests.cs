@@ -81,6 +81,13 @@ namespace Lazpoly.Presentation.Tests
             Assert.Less(TileSkin.Value(TileSkin.FrameInset, 0.5f), middle * (TileSkin.FrameShade + 0.02f), "the frame line is darker than the paper");
             Assert.Less(TileSkin.Value(0.5f, 1f - TileSkin.FrameInset), middle * (TileSkin.FrameShade + 0.02f), "the frame runs round all four sides");
             Assert.AreSame(TileSkin.Paper(), TileSkin.Paper(), "every tile shares one texture");
+
+            // The frame's corners are rounded: the sharp corner is off the line, the arc through it on it.
+            Assert.IsFalse(TileSkin.OnFrame(TileSkin.FrameInset, TileSkin.FrameInset), "no sharp corner");
+            float centre = TileSkin.FrameInset + TileSkin.FrameCorner;
+            float arc = centre - TileSkin.FrameCorner * Mathf.Sqrt(0.5f);
+            Assert.IsTrue(TileSkin.OnFrame(arc, arc), "the frame turns the corner on an arc");
+            Assert.IsTrue(TileSkin.OnFrame(1f - arc, arc) && TileSkin.OnFrame(arc, 1f - arc) && TileSkin.OnFrame(1f - arc, 1f - arc), "at all four corners");
         }
 
         [Test]

@@ -104,10 +104,21 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>Whether a point of the tile (u, v both 0-1) lies on the frame line.</summary>
-        public static bool OnFrame(float u, float v)
+        public static bool OnFrame(float u, float v) => Mathf.Abs(FrameDistance(u, v)) <= FrameWidth;
+
+        /// <summary>The frame's corners are rounded this much (of the tile's size), so they are soft rather than sharp.</summary>
+        public const float FrameCorner = 0.04f;
+
+        /// <summary>
+        /// How far a point of the tile lies outside the frame's rounded rectangle (negative inside it), in the tile's
+        /// size: zero on the frame line's middle.
+        /// </summary>
+        public static float FrameDistance(float u, float v)
         {
-            float edge = Mathf.Min(Mathf.Min(u, 1f - u), Mathf.Min(v, 1f - v));
-            return Mathf.Abs(edge - FrameInset) <= FrameWidth;
+            float reach = 0.5f - FrameInset - FrameCorner;
+            float qx = Mathf.Abs(u - 0.5f) - reach, qy = Mathf.Abs(v - 0.5f) - reach;
+            float outside = new Vector2(Mathf.Max(qx, 0f), Mathf.Max(qy, 0f)).magnitude;
+            return outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - FrameCorner;
         }
 
         /// <summary>
@@ -165,7 +176,7 @@ namespace Lazpoly.Presentation.Models
                     float u = (x + 0.5f) / width;
                     // The frame and the line between the parts are in the paper's own frame tone, as on every other
                     // square; they lie over the colour's edges, so those need no smoothing.
-                    bool coloured = u > FrameInset && u < 1f - FrameInset && v > low && v < high;
+                    bool coloured = FrameDistance(u, v) < 0f && v > low && v < high;
                     Color colour = coloured ? band * pattern[i] : paving * paper[i];
                     if (OnFrame(u, v) || OnDivider(u, v, split)) colour = paving * paper[i] * FrameShade;
                     colour.a = 1f;
