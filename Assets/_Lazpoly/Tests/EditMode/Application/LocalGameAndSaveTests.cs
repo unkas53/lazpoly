@@ -192,13 +192,20 @@ namespace Lazpoly.App.Tests
                 w.WriteInt(ai.Value.LastProposalTurn);
             }
 
-            w.WriteInt(save.Table.StartingMoney);
-            w.WriteBool(true); // auctions on
-            w.WriteInt(save.Table.RoundLimit);
-            if (version >= 6)
+            if (version >= 7)
             {
-                w.WriteInt(45);
-                w.WriteByte(1); // bankrupt players' squares auctioned
+                MessageCodec.WriteTable(w, save.Table); // Format 7 (Faz 13b) wrote today's table.
+            }
+            else
+            {
+                w.WriteInt(save.Table.StartingMoney);
+                w.WriteBool(true); // auctions on
+                w.WriteInt(save.Table.RoundLimit);
+                if (version >= 6)
+                {
+                    w.WriteInt(45);
+                    w.WriteByte(1); // bankrupt players' squares auctioned
+                }
             }
 
             GameStateSnapshot s = save.Snapshot;
@@ -233,8 +240,11 @@ namespace Lazpoly.App.Tests
                 w.WriteInt(s.BuildingLevels[i]);
             }
 
-            w.WriteBool(false); // no auction running
-            if (version >= 6) w.WriteInt(0); // no bank auctions queued
+            if (version < 7)
+            {
+                w.WriteBool(false); // no auction running
+                if (version >= 6) w.WriteInt(0); // no bank auctions queued
+            }
 
             w.WriteBool(s.PendingTrade != null);
             if (s.PendingTrade != null)
@@ -260,6 +270,26 @@ namespace Lazpoly.App.Tests
             }
 
             return w.ToArray();
+        }
+
+        [Test]
+        public void ASaveKeepsEveryonesCharacterAndOneFromBeforeCharactersStillOpens()
+        {
+            var seats = new[] { new PlayerSeat(1, "P1", "mob"), new PlayerSeat(2, "P2", "cane") };
+            var ai = new Dictionary<int, AiDifficulty> { [1] = AiDifficulty.Normal, [2] = AiDifficulty.Hard };
+            LocalGame game = LocalGame.Create(Board, Rules, seats, ai, 21UL);
+            Steps(game, 10);
+            SavedGame read = SavedGameCodec.Decode(SavedGameCodec.Encode(game.Save(Checksum)));
+            Assert.AreEqual("mob", read.Snapshot.Players.Find(p => p.Id == 1).Figure);
+            Assert.AreEqual("cane", LocalGame.Resume(Board, Rules, Checksum, read).Session.State.FindPlayer(2).Figure);
+
+            LocalGame plain = AllAi(3, 13UL);
+            Steps(plain, 20);
+            SavedGame original = plain.Save(Checksum);
+            SavedGame old = SavedGameCodec.Decode(AuctionEraSave(original, 7));
+            Assert.AreEqual(original.Snapshot.Restore().ComputeHash(), old.Snapshot.Restore().ComputeHash());
+            foreach (GameStateSnapshot.PlayerEntry player in old.Snapshot.Players) Assert.AreEqual("", player.Figure, "no characters were picked then");
+            Steps(LocalGame.Resume(Board, Rules, Checksum, old), 5);
         }
 
         [Test]

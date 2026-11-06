@@ -18,6 +18,7 @@ namespace Lazpoly.Platform.Steam
         private const string TableKey = "lazpoly_table";
         private const string ReadyKey = "lazpoly_ready";
         private const string ProtocolKey = "lazpoly_proto";
+        private const string FigureKey = "lazpoly_figure";
         private const uint ChatEnterSuccess = (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess;
         private const uint ChatEnterFull = (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseFull;
         private const uint MemberGone = (uint)(EChatMemberStateChange.k_EChatMemberStateChangeLeft |
@@ -181,6 +182,11 @@ namespace Lazpoly.Platform.Steam
             if (InLobby) SteamMatchmaking.SetLobbyMemberData(_lobby, ReadyKey, ready ? "1" : "0");
         }
 
+        public void SetFigure(string figure)
+        {
+            if (InLobby) SteamMatchmaking.SetLobbyMemberData(_lobby, FigureKey, figure ?? "");
+        }
+
         /// <summary>"money,rounds,turnSeconds" as lobby data; anything unreadable means the default rules.</summary>
         public static string FormatTable(TableRules table) => $"{table.StartingMoney},{table.RoundLimit},{table.TurnSeconds}";
 
@@ -280,7 +286,8 @@ namespace Lazpoly.Platform.Steam
                 if (!_memberIds.Add(member.m_SteamID)) continue;
                 bool ready = member == SteamMatchmaking.GetLobbyOwner(_lobby) || SteamMatchmaking.GetLobbyMemberData(_lobby, member, ReadyKey) == "1";
                 int.TryParse(SteamMatchmaking.GetLobbyMemberData(_lobby, member, ProtocolKey), out int protocol);
-                _members.Add(new LobbyMember(member.m_SteamID, SteamFriends.GetFriendPersonaName(member), ready, protocol));
+                string figure = SteamMatchmaking.GetLobbyMemberData(_lobby, member, FigureKey);
+                _members.Add(new LobbyMember(member.m_SteamID, SteamFriends.GetFriendPersonaName(member), ready, protocol, figure));
             }
         }
 

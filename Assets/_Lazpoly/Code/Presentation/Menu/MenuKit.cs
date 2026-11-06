@@ -40,7 +40,6 @@ namespace Lazpoly.Presentation.Menu
             "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
             "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
             "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound", "Icon_Home", "Icon_Check", "Icon_Hotel",
-            "Portrait_Woman01", "Portrait_Woman02", "Portrait_Man01", "Portrait_Man02",
         };
 
         /// <summary>The 9-slice borders of the stretchable skins, in picture pixels (see <see cref="KitArt.Borders"/>).</summary>

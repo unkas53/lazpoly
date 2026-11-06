@@ -6,6 +6,7 @@ using Lazpoly.App.Save;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
+using Lazpoly.Presentation.Setup;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Perf
@@ -151,7 +152,7 @@ namespace Lazpoly.Presentation.Perf
         public static IReadOnlyList<PlayerSeat> Seats()
         {
             var seats = new PlayerSeat[PlayerCount];
-            for (int i = 0; i < PlayerCount; i++) seats[i] = new PlayerSeat(i + 1, $"Bilgisayar {i + 1}");
+            for (int i = 0; i < PlayerCount; i++) seats[i] = new PlayerSeat(i + 1, $"Bilgisayar {i + 1}", CharacterChoice.ForSeat(i).Id);
             return seats;
         }
 

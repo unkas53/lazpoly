@@ -9,27 +9,19 @@ namespace Lazpoly.Presentation.Game
 {
     /// <summary>
     /// The face on each player's card. A real person whose platform account is known (<see cref="SeatAccounts"/>)
-    /// shows their Steam profile picture once Steam has it; until then, and for everyone else, a character
-    /// portrait from the player card kit stands in: the person who set the game up gets the character they picked
-    /// in the menu, the other seats take the remaining portraits in turn. <see cref="Version"/> goes up when a
+    /// shows their Steam profile picture once Steam has it; until then, and for everyone else, the face of the
+    /// character they play (Setup.CharacterOption.Face) stands in. <see cref="Version"/> goes up when a
     /// picture arrives, so the cards redraw.
     /// </summary>
     public sealed class PlayerFaces : IDisposable
     {
-        /// <summary>The player card kit's four portraits, in the order the seats take them.</summary>
-        public static readonly string[] Portraits =
-        {
-            "Portrait_Woman_01_Bordo", "Portrait_Man_02_Lacivert", "Portrait_Woman_02_Turkuaz", "Portrait_Man_01_Mor",
-        };
-
         /// <summary>How often a picture still on its way is asked for again, and for how long before giving up.</summary>
         public const float PollSeconds = 0.5f;
         public const float GiveUpSeconds = 60f;
 
         private readonly IPlayerAvatars _avatars;
         private readonly IReadOnlyDictionary<int, ulong> _accounts;
-        private readonly int _chooser;
-        private readonly string _chooserFace;
+        private readonly IReadOnlyDictionary<int, string> _portraits;
         private readonly Dictionary<int, Sprite> _photos = new Dictionary<int, Sprite>();
         private readonly HashSet<int> _waiting = new HashSet<int>();
         private float _nextPoll;
@@ -37,14 +29,12 @@ namespace Lazpoly.Presentation.Game
 
         /// <param name="avatars">The platform's profile pictures; null when there is no platform (a picture is never shown).</param>
         /// <param name="accounts">The account behind each person's seat.</param>
-        /// <param name="chooser">The player who plays the character picked in the menu, or GameState.NoOwner.</param>
-        /// <param name="chooserFace">That character's portrait.</param>
-        public PlayerFaces(IPlayerAvatars avatars, IReadOnlyDictionary<int, ulong> accounts, int chooser, string chooserFace)
+        /// <param name="portraits">The picture of each player's character (a KitArt name), by player id.</param>
+        public PlayerFaces(IPlayerAvatars avatars, IReadOnlyDictionary<int, ulong> accounts, IReadOnlyDictionary<int, string> portraits)
         {
             _avatars = avatars;
             _accounts = accounts ?? new Dictionary<int, ulong>();
-            _chooser = chooser;
-            _chooserFace = chooserFace;
+            _portraits = portraits ?? new Dictionary<int, string>();
             if (_avatars != null)
             {
                 foreach (int playerId in _accounts.Keys) _waiting.Add(playerId);
@@ -57,22 +47,10 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether the player's card shows their own profile picture now.</summary>
         public bool HasPhoto(int playerId) => _photos.ContainsKey(playerId);
 
-        /// <summary>The player's face: their profile picture, else their portrait; null only when the kit is missing.</summary>
-        public Sprite For(int playerId, int seat) =>
-            _photos.TryGetValue(playerId, out Sprite photo) ? photo : KitArt.Get(PortraitFor(playerId, seat, _chooser, _chooserFace));
-
-        /// <summary>
-        /// The portrait for a seat (0-based lobby seat): the chooser's own character, else the portraits the chooser
-        /// did not take, in turn, so two cards side by side rarely share a face.
-        /// </summary>
-        public static string PortraitFor(int playerId, int seat, int chooser, string chooserFace)
-        {
-            bool known = Array.IndexOf(Portraits, chooserFace) >= 0;
-            if (playerId == chooser && known) return chooserFace;
-            var rest = new List<string>(Portraits);
-            if (known) rest.Remove(chooserFace);
-            return rest[((seat % rest.Count) + rest.Count) % rest.Count];
-        }
+        /// <summary>The player's face: their profile picture, else their character's; null when neither is there.</summary>
+        public Sprite For(int playerId) =>
+            _photos.TryGetValue(playerId, out Sprite photo) ? photo
+            : _portraits.TryGetValue(playerId, out string portrait) ? KitArt.Get(portrait) : null;
 
         /// <summary>Asks for the pictures still on their way, every <see cref="PollSeconds"/>; true when one arrived.</summary>
         public bool Update(float now)

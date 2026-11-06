@@ -3,15 +3,19 @@ namespace Lazpoly.Core.State
     /// <summary>One player's part of the game state. Changed only by <see cref="GameStateReducer"/>.</summary>
     public sealed class PlayerState
     {
-        internal PlayerState(int id, string name, int money)
+        internal PlayerState(int id, string name, int money, string figure = null)
         {
             Id = id;
             Name = name;
             Money = money;
+            Figure = figure ?? string.Empty;
         }
 
         public int Id { get; }
         public string Name { get; }
+
+        /// <summary>The character picked in the lobby (see <see cref="PlayerSeat.Figure"/>); empty when none was picked.</summary>
+        public string Figure { get; }
         public int Money { get; internal set; }
 
         /// <summary>Index of the board square the player stands on.</summary>

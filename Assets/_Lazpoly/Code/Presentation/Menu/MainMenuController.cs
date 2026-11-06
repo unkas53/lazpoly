@@ -46,6 +46,12 @@ namespace Lazpoly.Presentation.Menu
 
         private readonly List<string> _names = new List<string>();
         private readonly List<int> _seatKinds = new List<int>();
+
+        /// <summary>Each local seat's character (all eight seats, so a seat keeps its pick when the count goes down and up).</summary>
+        private readonly List<string> _seatFigures = new List<string>();
+
+        /// <summary>The local seat whose character the strip under the seats changes.</summary>
+        private int _figureSeat;
         private readonly List<RectTransform> _frames = new List<RectTransform>();
         private int _playerCount = 2;
         private Mode _mode = Mode.Home;
@@ -101,13 +107,16 @@ namespace Lazpoly.Presentation.Menu
             _boardData = BoardDataLoader.LoadFromResources();
             _boardMoney = _boardData.Rules.StartingMoney;
             _choice = new CharacterChoice(new PlayerPrefsStorage());
+            var wanted = new string[RulesConfig.AbsoluteMaxPlayers];
+            wanted[0] = _choice.Selected.Id; // The one setting up sits first, as their own character.
+            _seatFigures.AddRange(FigurePicks.Resolve(wanted, CharacterChoice.Ids));
 
             ITransport transport = null;
             GameServices.Registry?.TryGet(out _lobby);
             GameServices.Registry?.TryGet(out transport);
             GameServices.Registry?.TryGet(out _presence);
             GameServices.Registry?.TryGet(out _avatars);
-            _lobbyPanel = new LobbyPanel(_lobby, transport, () => SceneFader.Load("Game"), OpenTableRules, _boardMoney);
+            _lobbyPanel = new LobbyPanel(_lobby, transport, () => SceneFader.Load("Game"), OpenTableRules, _boardMoney, _choice);
             if (_lobby != null) _lobby.Failed += OnLobbyFailed;
             _settings = new SettingsPanel();
         }
@@ -209,10 +218,7 @@ namespace Lazpoly.Presentation.Menu
             _sheetLayer.SetActive(false);
 
             RectTransform characterFrame = Frame(DimLayer(_canvas, "Characters Layer", out GameObject characterLayer), "Characters Frame");
-            _characters = new CharacterWindow(characterFrame, characterLayer, option =>
-            {
-                _choice.Select(option.Id);
-            });
+            _characters = new CharacterWindow(characterFrame, characterLayer, option => PickOwnCharacter(option.Id));
 
             _settingsView = new UiView(UiRoot.Modal(_canvas, "Settings", 520f, out _settingsLayer), RenderSettings);
             _settingsLayer.SetActive(false);
@@ -321,7 +327,7 @@ namespace Lazpoly.Presentation.Menu
             if (sheet)
             {
                 PlaceSheet(_mode == Mode.Online && _lobbyPanel.InRoom ? MenuLayout.Sheet : MenuLayout.SetupSheet);
-                int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty);
+                int modeKey = _mode == Mode.Online ? _lobbyPanel.ViewKey : HashCode.Combine(_playerCount, _opponents, _difficulty, FiguresKey());
                 _sheetView.Refresh(HashCode.Combine(_mode, modeKey, TableKey()));
                 _footerView.Refresh(HashCode.Combine(_lobbyPanel.InRoom, _lobbyPanel.InRoom ? _lobbyPanel.ViewKey : 0));
             }
@@ -359,11 +365,11 @@ namespace Lazpoly.Presentation.Menu
             if (_profileFace == null)
             {
                 if (_avatars == null || _lobby == null || !_lobby.IsAvailable || _lobby.LocalId == 0) return;
-                _profileFace = new Game.PlayerFaces(_avatars, Game.SeatAccounts.Local(ProfileSeat, _lobby.LocalId), ProfileSeat, null);
+                _profileFace = new Game.PlayerFaces(_avatars, Game.SeatAccounts.Local(ProfileSeat, _lobby.LocalId), null);
             }
 
             _profileFace.Update(Time.unscaledTime);
-            if (_profileFace.HasPhoto(ProfileSeat) && !_home.ShowsPhoto) _home.SetPhoto(_profileFace.For(ProfileSeat, 0));
+            if (_profileFace.HasPhoto(ProfileSeat) && !_home.ShowsPhoto) _home.SetPhoto(_profileFace.For(ProfileSeat));
         }
 
         /// <summary>
@@ -526,9 +532,39 @@ namespace Lazpoly.Presentation.Menu
                     style: _difficulty == difficulty ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
+            ui.Eyebrow(L("Karakterin"), UiTheme.Muted);
+            CharacterPicker.Render(ui, _choice.Selected.Id, null, PickOwnCharacter);
+            ui.Label(L("Bilgisayarlar kalan karakterleri alır."), UiTextStyle.Small, UiTheme.Muted);
+
             ui.Space(6f);
             RenderTableLine(ui);
             ui.Button(L("Oyunu Başlat"), StartSingleGame, style: UiButtonStyle.Primary, height: 56f);
+        }
+
+        /// <summary>The person's own character, picked on the one-player sheet: it is also their first pick from now on.</summary>
+        private void PickOwnCharacter(string id)
+        {
+            _choice.Select(id);
+            Swap(0, id); // The one setting up sits first at the local table too.
+        }
+
+        /// <summary>
+        /// Gives a local seat a character. A seat hidden by a smaller player count may hold it; the two swap, so the
+        /// eight seats never share a character, whatever the count.
+        /// </summary>
+        private void Swap(int seat, string id)
+        {
+            int held = _seatFigures.IndexOf(id);
+            if (held >= 0 && held != seat) _seatFigures[held] = _seatFigures[seat];
+            _seatFigures[seat] = id;
+        }
+
+        /// <summary>Changes whenever a character pick on the sheets changes, so they redraw.</summary>
+        private int FiguresKey()
+        {
+            int key = HashCode.Combine(_choice.Selected.Id, _figureSeat);
+            foreach (string figure in _seatFigures) key = HashCode.Combine(key, figure);
+            return key;
         }
 
         private void RenderOnline(UiBuilder ui)
@@ -546,17 +582,25 @@ namespace Lazpoly.Presentation.Menu
             UiBuilder.Fix(count.Button("-", () => _playerCount--, _playerCount > RulesConfig.AbsoluteMinPlayers), width: 52f);
             UiBuilder.Fix(count.Button("+", () => _playerCount++, _playerCount < RulesConfig.AbsoluteMaxPlayers), width: 52f);
 
+            if (_figureSeat >= _playerCount) _figureSeat = 0;
             for (int i = 0; i < _playerCount; i++)
             {
                 int seat = i;
                 UiBuilder row = ui.Row();
                 row.Swatch(PlayerPalette.ForSeat(seat), 22f);
+                UiBuilder face = row.Tile(() => _figureSeat = seat, seat == _figureSeat ? UiTheme.Fill(UiButtonStyle.Selected) : (Color?)null, 2);
+                face.Container.name = $"Seat {seat + 1} Character";
+                UiBuilder.Fix(face.Container.gameObject, width: 48f);
+                CharacterPicker.Face(face, CharacterChoice.Find(_seatFigures[seat]), 40f);
                 row.Input(_names[seat], text => _names[seat] = text, 24);
                 UiBuilder.Fix(row.Button(L(SeatKinds[_seatKinds[seat]]), () => _seatKinds[seat] = (_seatKinds[seat] + 1) % SeatKinds.Length,
                     style: _seatKinds[seat] == 0 ? UiButtonStyle.Secondary : UiButtonStyle.Selected, height: UiTheme.FieldHeight), width: 130f);
             }
 
             ui.Label(L("Koltuktaki düğmeye basarak insan ya da bilgisayar (Kolay, Orta, Zor) seçersin."), UiTextStyle.Small, UiTheme.Muted);
+            ui.Eyebrow(F($"{_figureSeat + 1}. koltuğun karakteri"), UiTheme.Muted);
+            CharacterPicker.Render(ui, _seatFigures[_figureSeat], LocalHolder, id => Swap(_figureSeat, id));
+            ui.Label(L("Bir koltuğun yüzüne basıp karakterini aşağıdan seçersin; başka koltuktaki karakter seçilemez."), UiTextStyle.Small, UiTheme.Muted);
             ui.Space(6f);
             RenderTableLine(ui);
             ui.Button(L("Oyunu Başlat"), StartLocalGame, style: UiButtonStyle.Primary, height: 56f);
@@ -654,14 +698,26 @@ namespace Lazpoly.Presentation.Menu
             return when.Length > 0 ? $"{line} · {when}" : line;
         }
 
+        /// <summary>The name of the other seat at the table that holds a character; null when none does.</summary>
+        private string LocalHolder(string id)
+        {
+            for (int i = 0; i < _playerCount; i++)
+            {
+                if (i != _figureSeat && _seatFigures[i] == id) return string.IsNullOrWhiteSpace(_names[i]) ? F($"Oyuncu {i + 1}") : _names[i].Trim();
+            }
+
+            return null;
+        }
+
         private void StartLocalGame()
         {
             var seats = new PlayerSeat[_playerCount];
             var ai = new Dictionary<int, AiDifficulty>();
+            IReadOnlyList<string> figures = FigurePicks.Resolve(_seatFigures.GetRange(0, _playerCount), CharacterChoice.Ids);
             for (int i = 0; i < _playerCount; i++)
             {
                 string name = string.IsNullOrWhiteSpace(_names[i]) ? $"Oyuncu {i + 1}" : _names[i].Trim();
-                seats[i] = new PlayerSeat(i + 1, name);
+                seats[i] = new PlayerSeat(i + 1, name, figures[i]);
                 if (_seatKinds[i] != 0) ai.Add(i + 1, (AiDifficulty)_seatKinds[i]);
             }
 
@@ -674,10 +730,13 @@ namespace Lazpoly.Presentation.Menu
         {
             var seats = new PlayerSeat[_opponents + 1];
             var ai = new Dictionary<int, AiDifficulty>();
-            seats[0] = new PlayerSeat(1, string.IsNullOrWhiteSpace(_names[0]) ? L("Oyuncu 1") : _names[0].Trim());
+            var wanted = new string[seats.Length];
+            wanted[0] = _choice.Selected.Id;
+            IReadOnlyList<string> figures = FigurePicks.Resolve(wanted, CharacterChoice.Ids); // The computers take the rest.
+            seats[0] = new PlayerSeat(1, string.IsNullOrWhiteSpace(_names[0]) ? L("Oyuncu 1") : _names[0].Trim(), figures[0]);
             for (int i = 1; i <= _opponents; i++)
             {
-                seats[i] = new PlayerSeat(i + 1, F($"Bilgisayar {i}"));
+                seats[i] = new PlayerSeat(i + 1, F($"Bilgisayar {i}"), figures[i]);
                 ai.Add(i + 1, _difficulty);
             }
 

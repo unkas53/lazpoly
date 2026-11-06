@@ -59,11 +59,19 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>Gap between the lobby's columns on the sheet.</summary>
         public const float CardGap = 24f;
 
-        /// <summary>The character window and its parts.</summary>
-        public static readonly Rect CharacterPanel = new Rect(410f, 180f, 1100f, 710f);
+        /// <summary>The character window and its parts: eight cards in two rows of four.</summary>
+        public static readonly Rect CharacterPanel = new Rect(410f, 150f, 1100f, 770f);
+        public const int CharacterCardsPerRow = 4;
         public const float CharacterCardWidth = 230f;
-        public const float CharacterCardHeight = 425f;
+        public const float CharacterCardHeight = 268f;
         public const float CharacterCardGap = 20f;
+        public const float CharacterRowGap = 16f;
+        public const float CharacterCardsTop = 140f;
+
+        /// <summary>Where the card of the character at <paramref name="index"/> sits in the window.</summary>
+        public static Vector2 CharacterCard(int index) => new Vector2(
+            40f + index % CharacterCardsPerRow * (CharacterCardWidth + CharacterCardGap),
+            CharacterCardsTop + index / CharacterCardsPerRow * (CharacterCardHeight + CharacterRowGap));
 
         /// <summary>The design frame's scale on a canvas of this size: the whole design shows, centred, never cropped.</summary>
         public static float FrameScale(Vector2 canvas) => Mathf.Min(canvas.x / Design.x, canvas.y / Design.y);

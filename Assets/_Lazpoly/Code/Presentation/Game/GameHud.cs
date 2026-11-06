@@ -986,7 +986,7 @@ namespace Lazpoly.Presentation.Game
                 Number = PlayerCardView.NumberOf(seat),
                 Color = _controller.ColorOf(player.Id),
                 State = player.IsBankrupt ? PlayerCardState.Bankrupt : current ? PlayerCardState.Active : PlayerCardState.Normal,
-                Face = _controller.Faces?.For(player.Id, seat),
+                Face = _controller.Faces?.For(player.Id),
                 Initial = Initial(player.Name),
                 Pips = player.IsBankrupt ? Array.Empty<PlayerCardPip>() : PlayerCardView.GroupsOf(state, player.Id, _controller.GroupOf, _controller.GroupColorOf),
             };

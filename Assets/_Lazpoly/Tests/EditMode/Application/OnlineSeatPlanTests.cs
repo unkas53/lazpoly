@@ -29,6 +29,38 @@ namespace Lazpoly.App.Tests
             Assert.IsFalse(plan.RemotePlayers.ContainsKey(3));
         }
 
+        private static readonly string[] Catalog = { "hip", "purple", "teal", "navy" };
+
+        [Test]
+        public void EachSeatGetsItsOwnCharacter()
+        {
+            var members = new[]
+            {
+                new LobbyMember(7, "Ayşe", figure: "teal"),
+                new LobbyMember(3, "Host", figure: "teal"),
+                new LobbyMember(9, "Can"),
+                new LobbyMember(5, "Ece", figure: "nobody"),
+            };
+
+            OnlineSeatPlan plan = OnlineSeatPlan.Create(3, members, Catalog);
+
+            Assert.AreEqual("teal", plan.Seats[0].Figure, "the host sits first, so keeps a character two asked for");
+            Assert.AreEqual("hip", plan.Seats[1].Figure, "the later seat gets the first free one");
+            Assert.AreEqual("purple", plan.Seats[2].Figure, "no pick: the next free one");
+            Assert.AreEqual("navy", plan.Seats[3].Figure, "an unknown character is no pick");
+            Assert.AreEqual("", OnlineSeatPlan.Create(3, members).Seats[0].Figure, "no catalogue, no characters");
+        }
+
+        [Test]
+        public void PicksAreSettledTheSameWayEverywhere()
+        {
+            CollectionAssert.AreEqual(new[] { "navy", "hip", "purple" }, FigurePicks.Resolve(new[] { "navy", null, "" }, Catalog));
+            CollectionAssert.AreEqual(new[] { "hip", "purple", "teal", "navy", "hip" }, FigurePicks.Resolve(new string[5], Catalog), "a fifth seat repeats only when all are taken");
+            Assert.IsTrue(FigurePicks.IsFree(new[] { "hip", "teal" }, 0, "hip"), "a seat's own character is free for it");
+            Assert.IsFalse(FigurePicks.IsFree(new[] { "hip", "teal" }, 0, "teal"));
+            Assert.Throws<ArgumentNullException>(() => FigurePicks.Resolve(null, Catalog));
+        }
+
         [Test]
         public void EmptyNamesGetAPlaceholderAndDuplicatesAreIgnored()
         {

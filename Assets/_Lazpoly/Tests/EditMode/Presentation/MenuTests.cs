@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Lazpoly.Core.Board;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Data;
@@ -14,6 +15,7 @@ using Lazpoly.Presentation.Texts;
 using Lazpoly.Presentation.UI;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Lazpoly.Presentation.Tests
 {
@@ -116,8 +118,11 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsTrue(MenuLayout.Profile.Contains(MenuLayout.ProfileDisc.center) && MenuLayout.Profile.Contains(MenuLayout.ProfileName.center));
             Assert.That(MenuLayout.Play.height, Is.GreaterThan(MenuLayout.Host.height), "playing at once is the big button");
             Assert.IsTrue(design.Contains(MenuLayout.Sheet.min) && design.Contains(MenuLayout.Sheet.max));
-            float cards = 4f * MenuLayout.CharacterCardWidth + 3f * MenuLayout.CharacterCardGap;
-            Assert.That(cards + 80f, Is.LessThanOrEqualTo(MenuLayout.CharacterPanel.width), "the four portraits fit their window");
+            float cards = MenuLayout.CharacterCardsPerRow * MenuLayout.CharacterCardWidth + (MenuLayout.CharacterCardsPerRow - 1) * MenuLayout.CharacterCardGap;
+            Assert.That(cards + 80f, Is.LessThanOrEqualTo(MenuLayout.CharacterPanel.width), "four portraits fit a row of their window");
+            Vector2 last = MenuLayout.CharacterCard(CharacterChoice.All.Count - 1);
+            Assert.That(last.y + MenuLayout.CharacterCardHeight, Is.LessThan(MenuLayout.CharacterPanel.height - 60f), "both rows fit above the line naming the pick");
+            Assert.IsTrue(design.Contains(MenuLayout.CharacterPanel.min) && design.Contains(MenuLayout.CharacterPanel.max));
         }
 
         [Test]
@@ -196,43 +201,51 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ThePickedCharacterIsKeptAndDecidesTheFigure()
+        public void ThePickedCharacterIsKeptAndCarriesOverFromTheOldMenu()
         {
             var storage = new MemoryStorage();
             var choice = new CharacterChoice(storage);
             Assert.AreEqual("Ece", choice.Selected.Name, "the first character until one is picked");
-            Assert.AreEqual(4, CharacterChoice.All.Count);
+            Assert.AreEqual(8, CharacterChoice.All.Count);
 
-            choice.Select("Man02");
-            Assert.AreEqual("Deniz", new CharacterChoice(storage).Selected.Name, "the pick is kept");
-            Assert.AreEqual(CharacterKind.Man, choice.Selected.Figure);
+            choice.Select("boss");
+            Assert.AreEqual("Baron", new CharacterChoice(storage).Selected.Name, "the pick is kept");
+            Assert.AreEqual("boss", choice.Selected.Id);
             Assert.AreEqual(1, storage.Saves);
             Assert.Throws<System.ArgumentException>(() => choice.Select("Nobody"));
 
             storage.SetString(CharacterChoice.StorageKey, "an old id");
             Assert.AreEqual("Ece", choice.Selected.Name, "an unknown stored id falls back");
-            foreach (CharacterOption option in CharacterChoice.All)
-            {
-                Assert.AreEqual(option.Id.StartsWith("Woman") ? CharacterKind.Woman : CharacterKind.Man, option.Figure, option.Name);
-                Assert.IsNotNull(MenuKit.Get(option.Portrait), $"{option.Name}'s portrait");
-            }
+            storage.SetString(CharacterChoice.StorageKey, "Man02");
+            Assert.AreEqual("navy", choice.Selected.Id, "Deniz picked in the old menu is the navy-suit figure");
+            Assert.AreEqual("Deniz", choice.Selected.Name);
+            Assert.AreEqual("teal", CharacterChoice.Find("Woman02").Id);
         }
 
         [Test]
-        public void ThePickedFigureReplacesTheSeatsOwn()
+        public void ThePickerMarksTheSeatsOwnTheOthersAndTheFreeOnes()
         {
-            var holder = new GameObject("Figure Test");
+            Assert.AreEqual(CharacterPicker.Mark.Picked, CharacterPicker.MarkOf("teal", "teal", null));
+            Assert.AreEqual(CharacterPicker.Mark.Taken, CharacterPicker.MarkOf("boss", "teal", "Ali"));
+            Assert.AreEqual(CharacterPicker.Mark.Free, CharacterPicker.MarkOf("mob", "teal", null));
+
+            var root = new GameObject("Picker Test", typeof(RectTransform));
             try
             {
-                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
-                var crowd = new PawnCrowd(2);
-                // Seat 0 plays the man unless the player picked a woman.
-                Assert.AreEqual(CharacterKind.Man, PawnView.Create(holder.transform, board, 0, Color.red, crowd, 1).Kind);
-                Assert.AreEqual(CharacterKind.Woman, PawnView.Create(holder.transform, board, 0, Color.red, crowd, 2, CharacterKind.Woman).Kind);
+                var ui = new UiBuilder((RectTransform)root.transform);
+                string picked = null;
+                CharacterPicker.Render(ui, "teal", id => id == "boss" ? "Ali" : null, id => picked = id);
+                Button[] tiles = root.GetComponentsInChildren<Button>(true);
+                Assert.AreEqual(CharacterChoice.All.Count, tiles.Length, "one tile per character");
+                Button boss = tiles.Single(tile => tile.name == "Character boss");
+                Assert.IsFalse(boss.interactable, "another player's character cannot be picked");
+                tiles.Single(tile => tile.name == "Character mob").onClick.Invoke();
+                Assert.AreEqual("mob", picked);
+                Assert.IsTrue(root.GetComponentsInChildren<Text>(true).Any(text => text.text == "Ali"), "the holder is named under their character");
             }
             finally
             {
-                Object.DestroyImmediate(holder);
+                Object.DestroyImmediate(root);
             }
         }
 

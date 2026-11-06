@@ -8,10 +8,9 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Pawns
 {
     /// <summary>
-    /// A player's piece: the business man or the business woman from <see cref="CharacterParts"/> (seats
-    /// alternate) with the jacket in the player's colour, standing on the square and facing the camera; or,
-    /// when no character model is in the build, one of the town's shapes from <see cref="PawnShapes"/> painted
-    /// whole. The model is a child of the pawn so the hop's squash and stretch scale the pawn, not the model's
+    /// A player's piece: the character they picked, a textured figure from <see cref="FigureModels"/> in its own
+    /// clothes, standing on the square and facing the camera; or, when no figure is in the build, one of the
+    /// town's shapes from <see cref="PawnShapes"/> painted in the player's colour. The model is a child of the pawn so the hop's squash and stretch scale the pawn, not the model's
     /// size; the character's own body language (breathing, leaning into a walk, cheering, sulking) is
     /// <see cref="CharacterMotion"/> on that child.
     /// </summary>
@@ -56,8 +55,8 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>True when the pawn is the character; false when it is one of the shapes.</summary>
         public bool IsCharacter { get; private set; }
 
-        /// <summary>Which figure the pawn is, when <see cref="IsCharacter"/>.</summary>
-        public CharacterKind Kind { get; private set; }
+        /// <summary>Which figure the pawn is (<see cref="FigureModels.Ids"/>), when <see cref="IsCharacter"/>.</summary>
+        public string Figure { get; private set; }
 
         /// <summary>Animation speed multiplier from the settings (1 = normal).</summary>
         public float Speed
@@ -81,14 +80,13 @@ namespace Lazpoly.Presentation.Pawns
 
         /// <param name="crowd">Shared by every pawn on the board, so two never take the same slot of a square.</param>
         /// <param name="playerId">The pawn's key in <paramref name="crowd"/>.</param>
-        /// <param name="figure">The figure the player picked (see CharacterChoice); seats alternate between the two when none is given.</param>
-        public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId, CharacterKind? figure = null)
+        /// <param name="figure">The character the player plays as (a figure id); another figure stands in when its files are missing.</param>
+        public static PawnView Create(Transform parent, BoardView board, int seatIndex, Color color, PawnCrowd crowd, int playerId, string figure)
         {
             if (crowd == null) throw new ArgumentNullException(nameof(crowd));
-            CharacterKind kind = figure ?? CharacterParts.KindFor(seatIndex);
-            GameObject model = CharacterParts.Character(kind, ModelName, null);
+            GameObject model = FigureModels.CreateOrStandIn(figure, ModelName, null);
             bool character = model != null;
-            var root = new GameObject($"Pawn {seatIndex + 1} {(character ? CharacterParts.NameOf(kind) : PawnShapes.NameOf(seatIndex))}");
+            var root = new GameObject($"Pawn {seatIndex + 1} {(character ? figure : PawnShapes.NameOf(seatIndex))}");
             root.transform.SetParent(parent, false);
             CharacterMotion motion = null;
             if (character)
@@ -96,7 +94,6 @@ namespace Lazpoly.Presentation.Pawns
                 model.transform.SetParent(root.transform, false);
                 model.transform.localScale = Vector3.one * CharacterHeight;
                 model.transform.localRotation = Facing(BoardCameraRig.BaseYaw);
-                CharacterParts.Paint(model, color);
                 motion = CharacterMotion.Attach(model.transform, Vector3.one * CharacterHeight, seatIndex * 0.37f);
             }
             else
@@ -107,7 +104,7 @@ namespace Lazpoly.Presentation.Pawns
             var pawn = root.AddComponent<PawnView>();
             pawn._model = model.transform;
             pawn.IsCharacter = character;
-            pawn.Kind = kind;
+            pawn.Figure = character ? figure : null;
             pawn._motion = motion;
             pawn._board = board;
             pawn._crowd = crowd;

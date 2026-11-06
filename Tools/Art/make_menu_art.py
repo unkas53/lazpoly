@@ -4,10 +4,12 @@
 The kit's pictures are found by their kit names in the folder given (for example the unzipped
 Assets/LazpolyMainMenu/Art and Sprites folders copied into one place) and written as TextAssets under
     Assets/_Lazpoly/UI/Resources/Lazpoly/Art/Menu/<name>.bytes
-which the game decodes with KitArt (Texture2D.LoadImage), like the logo. The city background and the four
-character portraits have no see-through parts, so they are stored as JPEG (a tenth of the PNG's size);
+which the game decodes with KitArt (Texture2D.LoadImage), like the logo. The city background has no
+see-through parts, so it is stored as JPEG (a tenth of the PNG's size);
 the buttons, panels, icons and the wide logo stay PNG for their transparency. The 9-slice borders of the
 buttons and panels are not in the pictures: KitArt.Borders holds them (from the kit's SpriteManifest.json).
+The kits' character portraits are no longer used: since Faz 21 the characters are the 3D figures, and
+Tools/Art/make_figure_portraits.py draws their pictures from the figures themselves.
 Run from the repository root: python3 Tools/Art/make_menu_art.py <kit folder>
 """
 import os
@@ -16,17 +18,16 @@ import sys
 from PIL import Image
 
 TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "Menu")
-PHOTOS = ["Higgsfield_City_Background", "Portrait_Woman01", "Portrait_Woman02", "Portrait_Man01", "Portrait_Man02"]
+PHOTOS = ["Higgsfield_City_Background"]
 CUTOUTS = [
     "Lazpoly_Logo", "Panel", "Chip", "Circle",
     "Primary_Normal", "Primary_Hover", "Primary_Pressed", "Primary_Disabled",
     "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
     "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
     "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound", "Icon_Home", "Icon_Check", "Icon_Hotel",
-    # The player card kit (V2): the card in its three states, its parts and the four character faces.
+    # The player card kit (V2): the card in its three states and its parts.
     "Card_Normal", "Card_Active", "Card_Bankrupt", "Avatar_Disc", "Avatar_Frame", "Player_Stripe", "Currency_L",
     "Lazpoly_Mark", "Property_Pip", "Turn_Pill", "Timer_Line", "Number_Tab",
-    "Portrait_Woman_01_Bordo", "Portrait_Woman_02_Turkuaz", "Portrait_Man_01_Mor", "Portrait_Man_02_Lacivert",
 ]
 JPEG_QUALITY = 90
 META = """fileFormatVersion: 2

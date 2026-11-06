@@ -560,7 +560,6 @@
   "İSTANBUL'DAN DÜNYAYA": "FROM ISTANBUL TO THE WORLD",
   "Karakter: {0}": "Character: {0}",
   "Karakterini seç": "Choose your character",
-  "Masadaki yerini kendi tarzınla al.": "Take your seat at the table in your own style.",
   "SEÇ": "CHOOSE",
   "SEÇİLİ": "CHOSEN",
   "Seçili karakter: {0}": "Chosen character: {0}",
@@ -570,5 +569,11 @@
   "Sıra sende": "Your turn",
   "düşünüyor": "thinking",
   "oynuyor": "playing",
-  "Bilgisayar oynuyor": "Computer playing"
+  "Bilgisayar oynuyor": "Computer playing",
+  "Alındı": "Taken",
+  "Karakterin": "Your character",
+  "Lobide ilk seçimin bu olur; başka bir oyuncu aldıysa lobide değiştirirsin.": "This is your first pick in every lobby; if another player has it, you change it there.",
+  "Bilgisayarlar kalan karakterleri alır.": "The computers take the remaining characters.",
+  "{0}. koltuğun karakteri": "Seat {0}'s character",
+  "Bir koltuğun yüzüne basıp karakterini aşağıdan seçersin; başka koltuktaki karakter seçilemez.": "Press a seat's face, then pick its character below; a character another seat has cannot be picked."
 }
