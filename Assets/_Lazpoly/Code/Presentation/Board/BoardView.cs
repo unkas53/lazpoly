@@ -874,6 +874,7 @@ namespace Lazpoly.Presentation.Tabletop
             ModelParts.Skin(band, TileSkin.Paper());
             band.transform.localPosition = center + down * ((top + bottom) / 2f) + Vector3.up * (TileHeight + 0.002f);
             band.transform.localRotation = Quaternion.LookRotation(down);
+            Flat(band);
             band.transform.SetParent(_tiles[index].transform, true);
             _bands[index] = band;
             _bandColors[index] = color;
@@ -881,14 +882,13 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Prints the sea along a resort tile's top edge (towards the top of the screen) with a row of white scallops of
-        /// surf where it meets the sand: the discs lie just under the sea, so only their lower halves show on the sand.
+        /// surf where it meets the sand: the scallops lie just under the sea, so only their lower halves show on the sand.
         /// </summary>
         private void CreateShore(int index, Vector3 center, Vector3 outward, Vector2 size)
         {
             var shore = new GameObject("Shore");
             shore.transform.SetParent(transform, false);
             Vector3 down = ScreenDown(outward);
-            Vector3 along = Vector3.Cross(Vector3.up, down);
             float length = size.x - 0.06f;
             float depth = _depth * SeaDepth;
             // The sea lies 2-6 mm over the tile, the surf 1-4 mm: the surf shows on the sand and hides under the sea.
@@ -896,20 +896,30 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject water = ModelParts.Create("Sea", shore.transform, MeshFactory.RoundedBox(new Vector3(length, 0.004f, depth), 0.0015f, 1), SeaColor, 0.6f);
             water.transform.localPosition = sea;
             water.transform.localRotation = Quaternion.LookRotation(down);
+            Flat(water);
 
+            // The scallops are one mesh, laid out along the sea's local x (the edge) at its sand-side edge.
             float radius = _width * SurfRadius;
-            Vector3 edge = center + down * (_depth * SeaOffset + depth / 2f) + Vector3.up * (TileHeight + 0.001f);
+            var scallops = new List<KeyValuePair<Mesh, Matrix4x4>>();
             for (int i = 0; i < SurfScallops; i++)
             {
                 float t = SurfScallops == 1 ? 0.5f : i / (SurfScallops - 1f);
-                GameObject surf = ModelParts.Create("Surf", shore.transform, MeshFactory.Disc(0.003f, 20), SurfColor, 0.3f);
-                surf.transform.localPosition = edge + along * ((t - 0.5f) * (length - 2f * radius));
-                surf.transform.localScale = new Vector3(radius, 1f, radius);
+                var at = new Vector3((t - 0.5f) * (length - 2f * radius), 0f, 0f);
+                scallops.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Disc(0.003f, 20), Matrix4x4.TRS(at, Quaternion.identity, new Vector3(radius, 1f, radius))));
             }
+
+            GameObject surf = ModelParts.Create("Surf", shore.transform,
+                MeshFactory.Combine($"surf:{SurfScallops}:{length:F3}:{radius:F3}", scallops), SurfColor, 0.3f);
+            surf.transform.localPosition = center + down * (_depth * SeaOffset + depth / 2f) + Vector3.up * (TileHeight + 0.001f);
+            surf.transform.localRotation = Quaternion.LookRotation(down);
+            Flat(surf);
 
             // The shore is part of the tile: it swells with it when the tile is pointed out.
             shore.transform.SetParent(_tiles[index].transform, true);
         }
+
+        /// <summary>Something printed flat on a tile casts no shadow: it has no height to cast one with.</summary>
+        private static void Flat(GameObject part) => part.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
         /// <summary>
         /// Shows on a resort the beach for an owner who holds <paramref name="held"/> resorts; it pops up from the sand

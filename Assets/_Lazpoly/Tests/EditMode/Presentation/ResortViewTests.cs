@@ -48,14 +48,22 @@ namespace Lazpoly.Presentation.Tests
                 int previous = 0;
                 for (int stage = 1; stage <= ResortParts.Stages; stage++)
                 {
-                    GameObject beach = ResortParts.Stage(stage, $"Beach {stage}", holder.transform);
+                    GameObject beach = ResortParts.Layout(stage, $"Beach {stage}", holder.transform);
                     Assert.AreEqual(loungers[stage - 1], Count(beach, "Lounger"), $"stage {stage} loungers");
                     Assert.AreEqual(parasols[stage - 1], Count(beach, "Parasol"), $"stage {stage} parasols");
                     Renderer[] parts = beach.GetComponentsInChildren<Renderer>(true);
                     Assert.Greater(parts.Length, previous, $"stage {stage} has more on it than the one before");
                     previous = parts.Length;
 
+                    // The board's copy is the same beach merged into a mesh per colour: far fewer draws, the same extent.
+                    GameObject merged = ResortParts.Stage(stage, $"Merged {stage}", holder.transform);
+                    Renderer[] draws = merged.GetComponentsInChildren<Renderer>(true);
+                    Assert.LessOrEqual(draws.Length, 9, $"stage {stage} draws in a handful of calls");
+                    Assert.AreEqual(1, Count(merged, ResortParts.OwnerPart), $"stage {stage}: one mesh carries the owner's colour");
+                    Bounds mergedBounds = Extent(draws);
+
                     Bounds bounds = Extent(parts);
+                    Assert.That(Vector3.Distance(bounds.min, mergedBounds.min) + Vector3.Distance(bounds.max, mergedBounds.max), Is.LessThan(1e-3f), $"stage {stage} merges in place");
                     Assert.LessOrEqual(bounds.extents.x, ResortParts.Width / 2f, $"stage {stage} stays within its width");
                     Assert.LessOrEqual(bounds.extents.z * 2f, ResortParts.Depth + 1e-3f, $"stage {stage} stays within its depth");
                     Assert.LessOrEqual(Mathf.Abs(bounds.center.z) + bounds.extents.z, ResortParts.Depth / 2f + 1e-3f, $"stage {stage} is centred on its spot");
@@ -122,7 +130,7 @@ namespace Lazpoly.Presentation.Tests
                     }
                 }
 
-                Assert.GreaterOrEqual(owned, 5, "two loungers' cushions, the parasol, the towel and the ball");
+                Assert.AreEqual(1, owned, "the cushions, the parasol, the towel and the ball are one mesh");
                 ResortParts.PaintOwner(beach, null);
                 foreach (Renderer part in beach.GetComponentsInChildren<Renderer>(true))
                 {
@@ -163,7 +171,9 @@ namespace Lazpoly.Presentation.Tests
                 {
                     StringAssert.Contains("Square", shore.parent.name, "the shore belongs to its tile");
                     Assert.IsNotNull(shore.Find("Sea"));
-                    Assert.AreEqual(BoardView.SurfScallops, Count(shore.gameObject, "Surf"));
+                    Transform surf = shore.Find("Surf");
+                    Assert.IsNotNull(surf, "the surf's scallops are one mesh");
+                    Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, surf.GetComponent<Renderer>().shadowCastingMode, "print on the tile casts no shadow");
                 }
 
                 var beaches = new List<OwnerMarker>();

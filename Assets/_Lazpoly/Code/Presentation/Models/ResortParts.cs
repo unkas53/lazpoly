@@ -38,8 +38,50 @@ namespace Lazpoly.Presentation.Models
         public static readonly Color Frond = new Color(0.28f, 0.60f, 0.30f);
         public static readonly Color Bark = new Color(0.62f, 0.46f, 0.30f);
 
-        /// <summary>The stage for an owner holding <paramref name="held"/> resorts (1 to <see cref="Stages"/>; outside that it is clamped).</summary>
+        /// <summary>
+        /// The stage for an owner holding <paramref name="held"/> resorts (1 to <see cref="Stages"/>; outside that it is clamped),
+        /// ready for the board: the pieces of <see cref="Layout"/> merged into one mesh per colour, the owner's parts into one
+        /// named <see cref="OwnerPart"/>, so a full beach draws in a handful of calls instead of about ninety.
+        /// </summary>
         public static GameObject Stage(int held, string name, Transform parent)
+        {
+            int stage = Mathf.Clamp(held, 1, Stages);
+            GameObject loose = Layout(stage, name, null);
+            GameObject root = Root(name, parent);
+            var order = new List<KeyValuePair<bool, Color>>();
+            var groups = new Dictionary<KeyValuePair<bool, Color>, List<KeyValuePair<Mesh, Matrix4x4>>>();
+            Matrix4x4 toRoot = loose.transform.worldToLocalMatrix;
+            foreach (MeshRenderer part in loose.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                bool owner = part.name == OwnerPart;
+                Color color = part.sharedMaterial != null ? part.sharedMaterial.color : Color.white;
+                var key = new KeyValuePair<bool, Color>(owner, owner ? Unowned : color);
+                if (!groups.TryGetValue(key, out List<KeyValuePair<Mesh, Matrix4x4>> meshes))
+                {
+                    meshes = new List<KeyValuePair<Mesh, Matrix4x4>>();
+                    groups[key] = meshes;
+                    order.Add(key);
+                }
+
+                meshes.Add(new KeyValuePair<Mesh, Matrix4x4>(part.GetComponent<MeshFilter>().sharedMesh, toRoot * part.transform.localToWorldMatrix));
+            }
+
+            foreach (KeyValuePair<bool, Color> key in order)
+            {
+                string id = key.Key ? "owner" : ColorUtility.ToHtmlStringRGB(key.Value);
+                Mesh merged = MeshFactory.Combine($"resort:{stage}:{id}", groups[key]);
+                ModelParts.Create(key.Key ? OwnerPart : "Beach", root.transform, merged, key.Value, key.Key ? 0.35f : 0.2f);
+            }
+
+            Object.DestroyImmediate(loose);
+            return root;
+        }
+
+        /// <summary>
+        /// The stage's pieces one by one (loungers, parasols, palms...), each its own object under the root: what
+        /// <see cref="Stage"/> merges, and what the tests count.
+        /// </summary>
+        public static GameObject Layout(int held, string name, Transform parent)
         {
             int stage = Mathf.Clamp(held, 1, Stages);
             GameObject root = Root(name, parent);
