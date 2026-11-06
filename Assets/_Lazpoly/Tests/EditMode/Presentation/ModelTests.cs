@@ -114,6 +114,13 @@ namespace Lazpoly.Presentation.Tests
                 "the dividing line is one line in the colour's frame tone, on the paving's side too");
             Assert.IsFalse(TileSkin.OnDivider(0.02f, 0.6f, 0.6f), "it stops at the frame line");
 
+            // Round the strip the frame keeps the colour's tone: one tile in two parts, not two boxes.
+            int fx = Mathf.RoundToInt(TileSkin.FrameInset * skin.width - 0.5f), fy = Mathf.RoundToInt(0.8f * skin.height);
+            float fu = (fx + 0.5f) / skin.width, fv = (fy + 0.5f) / skin.height;
+            Assert.IsTrue(TileSkin.OnFrame(fu, fv));
+            Assert.That(skin.GetPixel(fx, fy).b, Is.EqualTo(band.b * TileSkin.PatternValue(fu, 1f) * TileSkin.FrameShade).Within(0.01f),
+                "the strip's frame is in the colour's tone");
+
             Texture2D flipped = TileSkin.Town(band, paving, 0.4f, 1f, 1.4f);
             Assert.Greater(flipped.GetPixelBilinear(0.5f, 0.7f).r, flipped.GetPixelBilinear(0.5f, 0.7f).b + 0.1f, "the colour can lie at the other end");
         }
