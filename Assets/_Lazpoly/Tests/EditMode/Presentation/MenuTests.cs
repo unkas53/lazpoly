@@ -242,11 +242,24 @@ namespace Lazpoly.Presentation.Tests
                 tiles.Single(tile => tile.name == "Character mob").onClick.Invoke();
                 Assert.AreEqual("mob", picked);
                 Assert.IsTrue(root.GetComponentsInChildren<Text>(true).Any(text => text.text == "Ali"), "the holder is named under their character");
+                int[] lines = tiles.Select(tile => tile.GetComponentsInChildren<Text>(true).Length).Distinct().ToArray();
+                Assert.AreEqual(1, lines.Length, "every tile has as many lines, so the row stays level");
+                Assert.IsTrue(tiles.All(tile => tile.GetComponent<LayoutElement>().preferredWidth >= CharacterPicker.TileWidth), "room for the longest name");
             }
             finally
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        [Test]
+        public void ALongHoldersNameIsCutToFitUnderItsTile()
+        {
+            Assert.AreEqual("Oyuncu 2", CharacterPicker.Short("Oyuncu 2"));
+            Assert.AreEqual("Bilgisayar", CharacterPicker.Short("Bilgisayar"));
+            Assert.AreEqual("Ali", CharacterPicker.Short("Ali"));
+            Assert.IsNull(CharacterPicker.Short(null));
+            Assert.AreEqual("Mehmet Ca…", CharacterPicker.Short("Mehmet Can Yılmazoğlu"));
         }
 
         [Test]

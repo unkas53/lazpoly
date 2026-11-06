@@ -586,13 +586,15 @@ namespace Lazpoly.Presentation.Menu
             for (int i = 0; i < _playerCount; i++)
             {
                 int seat = i;
-                UiBuilder row = ui.Row();
+                // Only the name field takes the spare width, so the face stays a round 48 px button.
+                UiBuilder row = ui.Row(expand: false);
                 row.Swatch(PlayerPalette.ForSeat(seat), 22f);
-                UiBuilder face = row.Tile(() => _figureSeat = seat, seat == _figureSeat ? UiTheme.Fill(UiButtonStyle.Selected) : (Color?)null, 2);
+                UiBuilder face = row.Tile(() => _figureSeat = seat, seat == _figureSeat ? UiTheme.Fill(UiButtonStyle.Selected) : (Color?)null, 4);
                 face.Container.name = $"Seat {seat + 1} Character";
-                UiBuilder.Fix(face.Container.gameObject, width: 48f);
-                CharacterPicker.Face(face, CharacterChoice.Find(_seatFigures[seat]), 40f);
-                row.Input(_names[seat], text => _names[seat] = text, 24);
+                face.Container.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.MiddleCenter;
+                UiBuilder.Fix(face.Container.gameObject, width: 48f, height: 48f);
+                CharacterPicker.Face(CharacterPicker.Centred(face), CharacterChoice.Find(_seatFigures[seat]), 40f);
+                UiBuilder.Fix(row.Input(_names[seat], text => _names[seat] = text, 24)).flexibleWidth = 1f;
                 UiBuilder.Fix(row.Button(L(SeatKinds[_seatKinds[seat]]), () => _seatKinds[seat] = (_seatKinds[seat] + 1) % SeatKinds.Length,
                     style: _seatKinds[seat] == 0 ? UiButtonStyle.Secondary : UiButtonStyle.Selected, height: UiTheme.FieldHeight), width: 130f);
             }

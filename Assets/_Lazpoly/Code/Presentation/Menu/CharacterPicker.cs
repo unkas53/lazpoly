@@ -17,6 +17,9 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>A face's size in the strip.</summary>
         public const float FaceSize = 58f;
 
+        /// <summary>A tile's width: wide enough for the longest name ("Necdet Bey") in the small bold letters.</summary>
+        public const float TileWidth = 100f;
+
         /// <summary>How see-through a character another player holds is drawn.</summary>
         public const float TakenAlpha = 0.35f;
 
@@ -32,10 +35,20 @@ namespace Lazpoly.Presentation.Menu
         {
             if (ui == null) throw new ArgumentNullException(nameof(ui));
             UiBuilder row = ui.Row(6f, expand: false);
-            row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
-            foreach (CharacterOption option in CharacterChoice.All)
+            row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.UpperLeft;
+            var holders = new string[CharacterChoice.All.Count];
+            bool anyTaken = false;
+            for (int i = 0; i < holders.Length; i++)
             {
-                string holder = option.Id == picked ? null : takenBy?.Invoke(option.Id);
+                string id = CharacterChoice.All[i].Id;
+                holders[i] = id == picked ? null : takenBy?.Invoke(id);
+                anyTaken |= holders[i] != null;
+            }
+
+            for (int i = 0; i < holders.Length; i++)
+            {
+                CharacterOption option = CharacterChoice.All[i];
+                string holder = holders[i];
                 Mark mark = MarkOf(option.Id, picked, holder);
                 UiBuilder tile = row.Tile(mark == Mark.Free ? () => pick?.Invoke(option.Id) : (Action)null,
                     mark == Mark.Picked ? UiTheme.Fill(UiButtonStyle.Selected) : (Color?)null, 4);
@@ -46,11 +59,26 @@ namespace Lazpoly.Presentation.Menu
                 Face(Centred(tile), option, size, mark == Mark.Taken ? TakenAlpha : 1f);
                 Text name = tile.Label(option.Name, UiTextStyle.Small, mark == Mark.Picked ? Color.white : UiTheme.Text, TextAnchor.MiddleCenter);
                 name.font = UiTheme.BoldFont;
+                name.fontSize = NameSize;
                 name.horizontalOverflow = HorizontalWrapMode.Overflow;
-                UiBuilder.Fix(tile.Container.gameObject, width: size + 22f);
-                if (mark == Mark.Taken) tile.Label(string.IsNullOrEmpty(holder) ? L("Alındı") : holder, UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
+                UiBuilder.Fix(tile.Container.gameObject, width: Mathf.Max(TileWidth, size + 22f));
+                // While someone holds a character, every tile keeps a line for the holder's name, so the row stays level.
+                if (!anyTaken) continue;
+                Text line = tile.Label(mark == Mark.Taken ? Short(string.IsNullOrEmpty(holder) ? L("Alındı") : holder) : " ", UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
+                line.fontSize = NameSize;
+                line.horizontalOverflow = HorizontalWrapMode.Overflow;
             }
         }
+
+        /// <summary>The characters' names under their faces, a little under the small text so "Necdet Bey" fits.</summary>
+        public const int NameSize = 15;
+
+        /// <summary>The longest holder's name a tile shows in full.</summary>
+        public const int HolderLetters = 10;
+
+        /// <summary>A holder's name cut to fit under a tile: "Oyuncu 2" stays, a long Steam name ends in "…".</summary>
+        public static string Short(string name) =>
+            name == null || name.Length <= HolderLetters ? name : name.Substring(0, HolderLetters - 1).TrimEnd() + "…";
 
         /// <summary>How a character shows for a seat that holds <paramref name="picked"/> while <paramref name="holder"/> (if anyone) holds it.</summary>
         public static Mark MarkOf(string id, string picked, string holder) =>
@@ -77,7 +105,8 @@ namespace Lazpoly.Presentation.Menu
             return image;
         }
 
-        private static UiBuilder Centred(UiBuilder ui)
+        /// <summary>A row inside <paramref name="ui"/> that keeps what is put in it at its own size, in the middle.</summary>
+        public static UiBuilder Centred(UiBuilder ui)
         {
             UiBuilder row = ui.Row(0f, expand: false);
             row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleCenter;
