@@ -54,6 +54,30 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TownsArePrintedInCapitalsTheOtherSquaresAsWritten()
+        {
+            Texts.Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, data);
+                for (int i = 0; i < data.Board.Count; i++)
+                {
+                    SquareDefinition square = data.Board[i];
+                    string expected = square.Type == SquareType.Property ? Texts.Lang.Upper(square.Name) : square.Name;
+                    Assert.AreEqual(expected, board.NameLabel(i).text, $"square {i}");
+                    if (square.Name == "İstanbul") Assert.AreEqual("İSTANBUL", board.NameLabel(i).text);
+                    if (square.Name == "Rio de Janeiro") Assert.AreEqual("RİO DE JANEİRO", board.NameLabel(i).text, "a Turkish capital i keeps its dot");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void ATownShowsItsPriceUnderItsNameAndItsRentOnceOwned()
         {
             var holder = new GameObject("Board Test");

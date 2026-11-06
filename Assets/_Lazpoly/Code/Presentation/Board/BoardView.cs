@@ -679,7 +679,7 @@ namespace Lazpoly.Presentation.Tabletop
                     ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
                     : center + down * (_depth * NameOffset);
                 Color ink = property ? ColorVision.TextOn(TileColor(square, data)) : InkColor;
-                _names[i] = CreateLabel("Name", L(square.Name), namePlace + Vector3.up * top, outward,
+                _names[i] = CreateLabel("Name", PrintedName(square), namePlace + Vector3.up * top, outward,
                     _width * NameSize, NameRoom(i, size), ink);
                 string subtitle = Subtitle(square);
                 if (subtitle != null)
@@ -1002,6 +1002,10 @@ namespace Lazpoly.Presentation.Tabletop
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
 
+        /// <summary>A square's name as printed on the board: a town's in capitals ("İSTANBUL", Turkish capitals in Turkish), the others as written.</summary>
+        public static string PrintedName(SquareDefinition square) =>
+            square.Type == SquareType.Property ? Upper(L(square.Name)) : L(square.Name);
+
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>
         public void Relabel()
         {
@@ -1013,7 +1017,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 outward = Outward(Layout.SquareCenter(i));
                 if (_names[i] != null)
                 {
-                    _names[i].text = L(square.Name);
+                    _names[i].text = PrintedName(square);
                     FitLabel(_names[i], _width * NameSize, NameRoom(i, size), outward);
                 }
 
