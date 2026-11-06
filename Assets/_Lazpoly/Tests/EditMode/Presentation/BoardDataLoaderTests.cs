@@ -235,7 +235,7 @@ namespace Lazpoly.Presentation.Tests
         {
             const string json = @"{ ""startingMoney"": 500, ""passStartBonus"": 50, ""diceSides"": 6,
                 ""maxConsecutiveDoubles"": 3, ""fullGroupRentMultiplier"": 2,
-                ""squares"": [ { ""type"": ""start"", ""name"": ""S"" }, { ""type"": ""jail"", ""name"": ""J"" } ] }";
+                ""squares"": [ { ""type"": ""start"", ""name"": ""S"" }, { ""type"": ""prison"", ""name"": ""J"" } ] }";
 
             Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json));
         }
