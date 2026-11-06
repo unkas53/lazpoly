@@ -175,6 +175,11 @@ namespace Lazpoly.Presentation.Tests
             // On a corner the scene stands towards the board's corner and the pawns step the other way; neither reaches the other.
             Assert.LessOrEqual(BoardView.SceneOffset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner along the edge");
             Assert.LessOrEqual(BoardView.SceneInset + BoardView.SceneSize / 2f, 0.5f, "the scene stays on its corner across it");
+            Assert.LessOrEqual(Mathf.Abs(BoardView.StationOffset) + BoardView.StationSize / 2f, 0.5f, "the bus station stays on its corner along the edge");
+            Assert.LessOrEqual(BoardView.StationInset + BoardView.StationSize * BoardView.StationDepth / 2f, 0.5f, "the bus station stays on its corner across it");
+            Assert.Less(BoardView.StationPawnOffset, BoardView.StationInset - BoardView.StationSize * BoardView.StationDepth / 2f, "pawns at the bus station stand in front of the bus");
+            Assert.Less(-BoardView.StationPawnOffset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "and short of the corner's name");
+            Assert.AreEqual(2f, BoardView.StationSize / BoardView.SceneSize, 1e-4f, "twice the drawn stop");
             Assert.Less(-BoardView.CornerPawnShift + pawnReach, BoardView.SceneOffset - BoardView.SceneSize / 2f, "the pawns stay clear of the scene");
             Assert.LessOrEqual(BoardView.SceneSize / 2f - BoardView.SceneInset, BoardView.CornerNameOffset - BoardView.CornerNameDepth / 2f, "the scene ends before the corner's name");
             Assert.LessOrEqual(BoardView.CornerPawnOffset + pawnReach, 0.5f, "on a far corner the pawns' outer row stays on the tile");

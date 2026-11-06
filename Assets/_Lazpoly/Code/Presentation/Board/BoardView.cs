@@ -136,6 +136,21 @@ namespace Lazpoly.Presentation.Tabletop
         public const float SceneInset = 0.22f;
         public const float SceneSize = 0.40f;
 
+        /// <summary>
+        /// The bus station diorama (the owner's model, twice the drawn stop's size at the owner's wish): it fills the
+        /// corner's back part, from one side nearly to the other, and the pawns that come to it stand in front of the
+        /// bus (<see cref="StationPawnOffset"/>, back from the centre: a small negative step comes forward), clear of the
+        /// name. <see cref="StationDepth"/> is the model's depth for its width (Tools/Art/make_corner_models.py).
+        /// </summary>
+        public const float StationSize = 0.80f;
+        public const float StationOffset = 0.09f;
+        public const float StationInset = 0.24f;
+        public const float StationDepth = 0.63f;
+        public const float StationPawnOffset = -0.06f;
+
+        // The corner that holds the bus station diorama; -1 when the drawn stop stands there.
+        private int _stationCorner = -1;
+
         private OwnerMarker[] _ownerMarkers;
         private Vector3[] _flagScale;
         private int[] _levels;
@@ -193,7 +208,8 @@ namespace Lazpoly.Presentation.Tabletop
             if (Layout.IsCorner(index))
             {
                 bool far = FacesAway(outward);
-                spot = center + outward * (_depth * CornerPawnOffset * (far ? 1f : -1f)) - SceneSide(index, far) * (_depth * CornerPawnShift);
+                float back = index == _stationCorner ? StationPawnOffset : CornerPawnOffset;
+                spot = center + outward * (_depth * back * (far ? 1f : -1f)) - SceneSide(index, far) * (_depth * CornerPawnShift);
             }
 
             return transform.TransformPoint(spot) + Vector3.up * SurfaceY;
@@ -694,7 +710,11 @@ namespace Lazpoly.Presentation.Tabletop
                 return;
             }
 
-            // A model's front (the bus) turns to the camera like a building's, so it never shows its back.
+            // The diorama: twice the drawn stop, over the corner's back part; its front (the bus) turns to the camera
+            // like a building's, so it never shows its back.
+            _stationCorner = index;
+            scene.transform.localPosition = center + SceneSide(index, far) * (side * StationOffset) + outward * (side * StationInset * (far ? 1f : -1f)) + Vector3.up * TileHeight;
+            scene.transform.localScale = Vector3.one * (side * StationSize);
             scene.transform.localRotation = Quaternion.LookRotation(BuildingFront(outward, _yaw));
             _frontScenes.Add(new KeyValuePair<Transform, Vector3>(scene.transform, outward));
         }
