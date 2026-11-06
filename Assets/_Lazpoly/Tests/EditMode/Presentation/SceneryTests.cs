@@ -109,7 +109,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.Less(BoardView.BuildingOffset, BoardView.NameOffset, "the buildings stand above the name");
             Assert.GreaterOrEqual(BoardView.BuildingOffset - buildingHalf, -0.5f, "the building stays on the tile");
             Assert.LessOrEqual(BoardView.BuildingOffset + buildingHalf, BoardView.NameOffset - BoardView.StripDepth / 2f, "the building ends before the name's strip");
-            Assert.Less(BuildingModels.Width * BoardView.BuildingScale, 0.5f, "the building leaves most of the tile's width free");
+            Assert.Less(BuildingModels.Width * BoardView.BuildingScale, 0.65f, "the building stays inside its tile's width, with room either side");
             Assert.LessOrEqual(BoardView.NameDepth, BoardView.StripDepth, "the name fits on its strip");
             Assert.LessOrEqual(BoardView.NameOffset + BoardView.StripDepth / 2f, BoardView.PriceOffset - BoardView.PriceDepth / 2f, "the price sits under the name's strip");
             Assert.LessOrEqual(BoardView.PriceOffset + BoardView.PriceDepth / 2f, 0.5f, "the price stays on the tile");

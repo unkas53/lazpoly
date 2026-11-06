@@ -799,13 +799,13 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A building model's size: one model unit is this many tile widths, so its footprint
-        /// (<see cref="BuildingModels.Width"/> along the edge) takes about two fifths of the tile's width and the hotel
-        /// stands about seven tenths of a tile width tall.
+        /// (<see cref="BuildingModels.Width"/> along the edge) takes about three fifths of the tile's width and the hotel
+        /// stands about a tile width tall. Faz 21: the owner asked for half as big again (0.44 to 0.66).
         /// </summary>
-        public const float BuildingScale = 0.44f;
+        public const float BuildingScale = 0.66f;
 
-        /// <summary>The drawn house that stands in when the models are missing, in tile widths.</summary>
-        public const float FallbackHouseSize = 0.26f;
+        /// <summary>The drawn house that stands in when the models are missing, in tile widths (grown with the models).</summary>
+        public const float FallbackHouseSize = 0.39f;
 
         // One building per level on the tile's inner part, all hidden until built: the models (their door
         // towards the camera, see BuildingFront), or drawn houses and the mansion when the models are not in the build.
@@ -830,7 +830,7 @@ namespace Lazpoly.Presentation.Tabletop
                 {
                     GameObject mansion = BuildingParts.Mansion(Level(level), transform);
                     ChimneySmoke.Attach(mansion, BuildingParts.ChimneyTop);
-                    pieces[i] = CreatePiece(mansion, spot, new Vector3(_width * 0.46f, _width * 0.30f, _width * 0.26f), -outward);
+                    pieces[i] = CreatePiece(mansion, spot, new Vector3(_width * 0.69f, _width * 0.45f, _width * 0.39f), -outward);
                 }
             }
 
