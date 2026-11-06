@@ -824,6 +824,13 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Kartlar kitin tasarımından biraz büyük çizilir (köşe genişliği 300'den 360'a, 1080p'de 360x126). Ana menünün sol üstündeki profil kartında da harf yerine Steam profil resmi görünür (diskin pirinç çerçevesi içinde); Steam yoksa ya da resim yoksa harf kalır.
 - Testler: `PlayerCardTests` (kit resimleri yapıda, Steam resminin satırları çevrilir, portre dağıtımı, koltuk-hesap eşlemesi, resmin gelince portrenin yerini alması, renk grubu evleri, normal/sıradaki/iflas kartları, kart boyu, menü profilindeki resim).
 
+## Faz 20: altı yeni karakter
+
+- Proje sahibinin Meshy AI ile yaptığı altı dokulu karakter piyon oldu: takım elbiseli iş adamı (`CharacterKind.Suit`), bastonlu beyefendi (`Gentleman`), turkuaz takımlı iş kadını (`TealSuit`), bordo ceketli, eli belinde iş kadını (`HandOnHip`), lacivert takımlı iş adamı (`NavySuit`) ve mor ceketli iş adamı (`PurpleBlazer`). Koltuklar sekiz karakteri sırayla alır: iş adamı, iş kadını, takım elbiseli, turkuaz takımlı, lacivert takımlı, eli belinde, bastonlu beyefendi, mor ceketli; 8 oyuncuda herkesin karakteri farklıdır. Menüde seçilen karakter eskisi gibi oyunu kuranın piyonudur.
+- `Tools/Art/make_figures.py` GLB'yi okur, oyunun eksenine çevirir, bir birim boya ölçekler ve meshoptimizer ile iki ayrıntı düzeyine indirir: Yüksek ayarda 120.000, Orta ve Düşük'te 24.000 üçgen (kaynaklar 300 ile 600 bin üçgen arası); renk dokusu 2048 piksel JPEG. Oyunda `FigurePack` okur, `FigureModels` doku ekran kartında sıkıştırılarak yükler ve ayar değişince modeli yerinde değiştirir.
+- Dokulu karakterler kendi kıyafetlerini giyer ve doğrudan zemine basar (ayak altındaki renkli disk proje sahibinin isteğiyle kaldırıldı). Bekleyen oyuncunun piyonu dokusuyla birlikte saydamlaşır. Dosyaları eksikse yerine iş adamı durur.
+- Testler: `CharacterPartsTests` (koltuk sırası, dokulu karakterlerin boyu ve iki düzeyi, diskin olmaması, ayara göre model, dosya biçimi).
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,

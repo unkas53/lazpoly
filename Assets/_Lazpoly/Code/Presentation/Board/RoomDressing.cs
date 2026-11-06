@@ -41,6 +41,7 @@ namespace Lazpoly.Presentation.Tabletop
         public static void ApplyQuality(GraphicsQuality quality)
         {
             BuildingModels.SetFullDetail(FullBuildingsFor(quality));
+            FigureModels.SetFullDetail(FullBuildingsFor(quality));
             Camera camera = Camera.main;
             if (camera != null && camera.GetComponent<Volume>() != null) DressCamera(camera, quality);
             GameObject sun = GameObject.Find("Sun");
@@ -129,6 +130,7 @@ namespace Lazpoly.Presentation.Tabletop
         public static void DressCamera(Camera camera, GraphicsQuality quality)
         {
             BuildingModels.SetFullDetail(FullBuildingsFor(quality));
+            FigureModels.SetFullDetail(FullBuildingsFor(quality));
             bool postProcessing = PostProcessingOn(quality);
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = SkyDay;
