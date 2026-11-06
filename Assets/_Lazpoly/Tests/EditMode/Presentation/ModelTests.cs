@@ -263,6 +263,33 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheTaxDocumentIsAFlatPrintOfPaperAndInk()
+        {
+            foreach (Mesh print in new[] { FloorPrint.DocumentPaper(), FloorPrint.DocumentInk() })
+            {
+                Assert.Greater(print.triangles.Length, 0);
+                Assert.That(print.bounds.min.y, Is.InRange(-0.001f, 0.005f), "it lies on the tile, the ink on the paper");
+                Assert.Less(print.bounds.size.y, 0.01f, "printed flat, no relief");
+                Assert.LessOrEqual(print.bounds.size.x, FloorPrint.DocumentSize.x + 0.01f);
+                Assert.LessOrEqual(print.bounds.size.z, FloorPrint.DocumentSize.y + 0.01f);
+            }
+
+            var root = new GameObject("Holder");
+            try
+            {
+                GameObject document = FloorPrint.Document("Doc", root.transform, 0.5f, Color.black);
+                foreach (MeshRenderer renderer in document.GetComponentsInChildren<MeshRenderer>())
+                {
+                    Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, renderer.shadowCastingMode, "a print casts no shadow");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void SpheresAndSignsFaceOutwardAndStandOnTheTable()
         {
             Mesh sphere = MeshFactory.Sphere();

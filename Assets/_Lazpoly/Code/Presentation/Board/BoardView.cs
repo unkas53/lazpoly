@@ -178,8 +178,13 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public const float ChanceNameScale = 1.6f;
 
-        /// <summary>A tax square's name, in capitals and larger too ("VERGİ", the owner's wish, Faz 24), with its rate or amount under it.</summary>
+        /// <summary>
+        /// A tax square's name, in capitals and larger too ("VERGİ", the owner's wish, Faz 24). A tax taken as a share prints
+        /// no figure: its name sits low like Şans, under a document printed flat on the tile (<see cref="FloorPrint.Document"/>);
+        /// a fixed tax keeps its amount on the price line.
+        /// </summary>
         public const float TaxNameScale = 1.6f;
+        public const float DocumentDepth = 0.56f;
         public const float ChanceNameOffset = 0.3f;
         public const float ChanceMarkOffset = -0.15f;
         public const float ChanceMarkSize = 0.3f;
@@ -229,6 +234,7 @@ namespace Lazpoly.Presentation.Tabletop
         private bool[] _printed;
         private TextMesh[] _names;
         private TextMesh[] _chanceMarks;
+        private Transform[] _documents;
         private TextMesh[] _prices;
         private int?[] _rents;
         private readonly List<KeyValuePair<Transform, Vector3>> _marks = new List<KeyValuePair<Transform, Vector3>>();
@@ -401,6 +407,7 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_names[i] != null) _names[i].transform.localRotation = rotation;
                 if (_prices[i] != null) _prices[i].transform.localRotation = rotation;
                 if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
+                if (_documents[i] != null) _documents[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
             }
 
             foreach (KeyValuePair<Transform, Vector3> mark in _marks) mark.Key.localRotation = LabelRotation(mark.Value, yaw);
@@ -689,6 +696,7 @@ namespace Lazpoly.Presentation.Tabletop
             _printed = new bool[board.Count];
             _names = new TextMesh[board.Count];
             _chanceMarks = new TextMesh[board.Count];
+            _documents = new Transform[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
             _data = data;
@@ -742,6 +750,14 @@ namespace Lazpoly.Presentation.Tabletop
                 {
                     CreateScene(square.Type, i, center, outward, size.y);
                 }
+                else if (DocumentUnderName(i))
+                {
+                    float fit = Mathf.Min(size.x * NameFill / FloorPrint.DocumentSize.x, _depth * DocumentDepth / FloorPrint.DocumentSize.y);
+                    GameObject document = FloorPrint.Document("Tax document", transform, fit, InkColor);
+                    document.transform.localPosition = center + down * (_depth * ChanceMarkOffset) + Vector3.up * (TileHeight + 0.001f);
+                    document.transform.localRotation = PrintRotation(outward, _yaw);
+                    _documents[i] = document.transform;
+                }
                 else if (IsChance(i))
                 {
                     _chanceMarks[i] = CreateLabel("Chance mark", "?", center + down * (_depth * ChanceMarkOffset) + Vector3.up * top, outward,
@@ -757,7 +773,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // clear of its scene and pawns.
                 Vector3 namePlace = corner
                     ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : CornerNameOffset))
-                    : center + down * (_depth * (IsChance(i) ? ChanceNameOffset : NameOffset));
+                    : center + down * (_depth * (IsChance(i) || DocumentUnderName(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkColor);
                 string subtitle = Subtitle(square);
@@ -929,6 +945,15 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>A Şans square: a card square along an edge (the card corner is Sokak Haberi, with its kiosk).</summary>
         private bool IsChance(int index) => _data.Board[index].Type == SquareType.Card && !Layout.IsCorner(index);
+
+        /// <summary>A tax taken as a share of property value: it shows no figure but a document, its name low on the tile.</summary>
+        private bool DocumentUnderName(int index) => _data.Board[index].Type == SquareType.Tax && Subtitle(_data.Board[index]) == null;
+
+        /// <summary>The document printed on a tax square, or null on any other square.</summary>
+        public Transform Document(int index) => _documents != null ? _documents[index] : null;
+
+        /// <summary>A flat print's turn: its +z (the picture's up) along the tops of the letters of a label at the same place.</summary>
+        private static Quaternion PrintRotation(Vector3 outward, float yaw) => Quaternion.LookRotation(LabelRotation(outward, yaw) * Vector3.up, Vector3.up);
 
         /// <summary>The flat "?" printed on a Şans square, or null on any other square.</summary>
         public TextMesh ChanceMark(int index) => _chanceMarks != null ? _chanceMarks[index] : null;
@@ -1114,7 +1139,7 @@ namespace Lazpoly.Presentation.Tabletop
             switch (square.Type)
             {
                 case SquareType.Property: return null; // For sale a town shows no figure; owned, its rent (the owner's wish, Faz 22).
-                case SquareType.Tax: return square.TaxPercent > 0 ? F($"%{square.TaxPercent}") : F($"-{square.TaxAmount}");
+                case SquareType.Tax: return square.TaxPercent > 0 ? null : F($"-{square.TaxAmount}"); // A share prints a document instead (Faz 24).
                 case SquareType.Travel: return F($"bilet {square.Fee}");
                 default: return null;
             }

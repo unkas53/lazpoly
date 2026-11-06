@@ -170,7 +170,17 @@ namespace Lazpoly.Presentation.Tests
                     if (square.Name == "İstanbul") Assert.AreEqual("İSTANBUL", board.NameLabel(i).text);
                     if (square.Type == SquareType.Jail) Assert.AreEqual("HAPİS", board.NameLabel(i).text, "the jail too, larger (the owner's wish)");
                     if (square.Name == "Rio de Janeiro") Assert.AreEqual("RİO DE JANEİRO", board.NameLabel(i).text, "a Turkish capital i keeps its dot");
-                    if (square.Type == SquareType.Tax) Assert.AreEqual("VERGİ", board.NameLabel(i).text, "the tax in capitals, larger (the owner's wish, Faz 24)");
+                    if (square.Type == SquareType.Tax)
+                    {
+                        Assert.AreEqual("VERGİ", board.NameLabel(i).text, "the tax in capitals, larger (the owner's wish, Faz 24)");
+                        Assert.IsNull(BoardView.Subtitle(square), "no %10 printed on the tax");
+                        Assert.IsNotNull(board.Document(i), "a document is printed on the tax square");
+                    }
+                    else
+                    {
+                        Assert.IsNull(board.Document(i), $"square {i} has no document");
+                    }
+
                     if (chance)
                     {
                         Assert.AreEqual("ŞANS", board.NameLabel(i).text, "Şans in capitals, larger (the owner's wish, Faz 24)");
