@@ -6,7 +6,7 @@ namespace Lazpoly.Presentation.Models
 {
     /// <summary>
     /// Small signs that stand on the special squares so they read from across the table: a tea glass
-    /// on the pot square, a bus at the bus station, binoculars on the lookout terrace and a folded
+    /// on the pot square, a barred window at the jail, a bus at the bus station, binoculars on the lookout terrace and a folded
     /// newspaper on the card square. Each is one mesh about a unit wide with its base at y = 0.
     /// </summary>
     public static class SquareIcons
@@ -17,6 +17,7 @@ namespace Lazpoly.Presentation.Models
             switch (type)
             {
                 case SquareType.Pot: return PawnShapes.TeaGlass();
+                case SquareType.Jail: return Bars();
                 case SquareType.Travel: return Bus();
                 case SquareType.Lookout: return Binoculars();
                 case SquareType.Card: return Newspaper();
@@ -30,6 +31,7 @@ namespace Lazpoly.Presentation.Models
             switch (type)
             {
                 case SquareType.Pot: return new Color(0.72f, 0.30f, 0.16f);
+                case SquareType.Jail: return new Color(0.22f, 0.24f, 0.28f);
                 case SquareType.Travel: return new Color(0.93f, 0.55f, 0.18f);
                 case SquareType.Lookout: return new Color(0.22f, 0.24f, 0.30f);
                 default: return new Color(0.97f, 0.96f, 0.92f);
@@ -51,6 +53,22 @@ namespace Lazpoly.Presentation.Models
             }
 
             return MeshFactory.Combine("icon:bus", parts);
+        }
+
+        /// <summary>A barred window standing upright: a frame with five bars, facing +Z.</summary>
+        public static Mesh Bars()
+        {
+            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>
+            {
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(0.8f, 0.08f, 0.12f), 0.02f, 2), Matrix4x4.TRS(new Vector3(0f, 0.04f, 0f), Quaternion.identity, Vector3.one)),
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(0.8f, 0.08f, 0.12f), 0.02f, 2), Matrix4x4.TRS(new Vector3(0f, 0.76f, 0f), Quaternion.identity, Vector3.one)),
+            };
+            for (int i = -2; i <= 2; i++)
+            {
+                parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Cylinder(10), Matrix4x4.TRS(new Vector3(i * 0.17f, 0.08f, 0f), Quaternion.identity, new Vector3(0.035f, 0.64f, 0.035f))));
+            }
+
+            return MeshFactory.Combine("icon:bars", parts);
         }
 
         /// <summary>Binoculars lying on the terrace: two barrels joined by a bridge, looking along +Z.</summary>

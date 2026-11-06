@@ -19,6 +19,9 @@ namespace Lazpoly.Core.State
             public bool HasLookout;
             public int Laps;
 
+            /// <summary>Turns still to wait in jail; 0 when free.</summary>
+            public int JailTurns;
+
             /// <summary>The character the player plays as; empty when none was picked (older games).</summary>
             public string Figure = string.Empty;
         }
@@ -33,6 +36,9 @@ namespace Lazpoly.Core.State
         public int Round = 1;
         public int Pot;
         public int BuiltThisVisit = GameState.NotArrived;
+
+        /// <summary>The player on turn left jail with a double this turn, which earns no second roll.</summary>
+        public bool RolledOutOfJail;
 
         /// <summary>Null unless a lookout's two rolls wait for a choice.</summary>
         public int[] DiceOptions;
@@ -59,6 +65,7 @@ namespace Lazpoly.Core.State
                 Round = state.Round,
                 Pot = state.Pot,
                 BuiltThisVisit = state.BuiltThisVisit,
+                RolledOutOfJail = state.RolledOutOfJail,
                 DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],
@@ -78,6 +85,7 @@ namespace Lazpoly.Core.State
                     IsBankrupt = player.IsBankrupt,
                     HasLookout = player.HasLookout,
                     Laps = player.Laps,
+                    JailTurns = player.JailTurns,
                     Figure = player.Figure,
                 });
             }

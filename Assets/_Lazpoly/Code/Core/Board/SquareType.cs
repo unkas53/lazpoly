@@ -25,5 +25,11 @@ namespace Lazpoly.Core.Board
 
         /// <summary>Landing lets the player roll twice next time and pick one of the two rolls ("Seyir Terası").</summary>
         Lookout = 7,
+
+        /// <summary>
+        /// Landing (or three doubles in a row) locks the player in for <see cref="Rules.RulesConfig.JailTurns"/> of their
+        /// turns; on each of them they may pay the square's fee to leave at once ("Hapis").
+        /// </summary>
+        Jail = 8,
     }
 }

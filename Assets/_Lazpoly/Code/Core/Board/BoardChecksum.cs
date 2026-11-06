@@ -42,6 +42,7 @@ namespace Lazpoly.Core.Board
             Mix(rules.MaxConsecutiveDoubles);
             Mix(rules.FullGroupRentMultiplier);
             Mix(rules.BuildingSellbackPercent);
+            Mix(rules.JailTurns);
 
             Mix(board.Count);
             for (int i = 0; i < board.Count; i++)

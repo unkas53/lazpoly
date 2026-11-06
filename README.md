@@ -304,7 +304,7 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   mülkünü bankaya satar (`SellPropertyCommand`): banka fiyatın yarısını (`SquareDefinition.SaleValue`) ve
   üstündeki binaların geri satış değerini tek ödemede verir (`GameRules.PropertySaleProceeds`); binalar iner,
   şehir yeniden sahipsiz kalır ve üstüne gelen alabilir. Olay sırası: bina seviyesi 0 → sahip bankaya → para
-  (`MoneyReason.PropertySale`). İflasta artık ipotek temizliği yok, mülkler alacaklıya olduğu gibi geçer.
+  (`MoneyReason.PropertySale`). İflasta artık ipotek temizliği yok, mülkler alacaklıya olduğu gibi geçer (Faz 23'ten beri geçmez, bankaya satılır).
 - **Arayüz:** "Mülklerin" listesinde **Sat +tutar** düğmesi; kare kartında "İpotek değeri" yerine
   "Satış değeri"; borç kartı, ipuçları ve "Nasıl Oynanır" satış kuralına göre; takas listesinde ve tahtada
   ipotek karartması yok. Satış sesi bina satışıyla aynı.
@@ -860,6 +860,23 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Tahtanın ortası düz çimen: ağaçlar, çalılar, bayraklı ipler, patika ve açık yeşil lekeler kalktı (`LawnDressing` silindi). Logo, zar sonucu, çay kumbarası yazısı ve kavanozu yerinde.
 - Ekran turu (`-shots`) masaya iki plaj kademesi koyar (bir bilgisayarda 3, birinde 1 tatil yeri) ve bir tatil yerinin kartının resmini çeker (`tatil-yeri-karti`); `-perf -built` bütün tatil yerlerini ilk oyuncuya verir, tam plaj görünür.
 - Testler: `ResortTests` (kira tablosu, başkasının tatil yeri, üzerine gelince ödeme, satın alma ve bina yasağı, sağlama değeri), `BoardDataLoaderTests` (her kenarda bir tatil yeri, binalı tatil yerinin reddi), `PropertyChoiceTests`, `SquareInfoTests`, `ResortViewTests` (kare genişliği, kademelerin parçaları ve sınırları, oyuncu rengi, kumsal kare, plajın büyümesi, kart resmi), `PerfTests` (turun ve `-built` masasının tatil yerleri).
+
+## Faz 23: hapis
+
+- Çay Molası kalktı, yerine Hapis geldi (`"type": "jail"`, köşe 7, çıkış ücreti 50; `board.json` içinde `"jailTurns": 3`). Kumbara da kalktı: vergiler ve kart cezaları bankaya gider, tahtanın ortasındaki kumbara yazısı ve kavanozu görünmez. Çay Molası'na götüren kart artık hapse götürür (`"kind": "goToJail"`, `CardKind.GoToJail`): oyuncu Başlangıç'tan geçmeden, para almadan uçarak hapse girer.
+- Hapse gelen oyuncunun sırası hemen biter (çift atmış olsa bile). Sonraki üç sırasında önce seçim yapar (`GamePhase.AwaitingJailDecision`): "Öde ve çık" ile 50 öder ve hemen zar atar (`PayJailFeeCommand`) ya da bedava zar atar (`RollInJailCommand`): çift gelirse çıkar ve o zarla ilerler, o çift için bir daha atmaz (`GameState.RolledOutOfJail`); gelmezse sıra geçer. Üç denemede çift gelmezse sonraki sırasında serbesttir. Hapisteyken kira almak ve takas sürer.
+- Üst üste üç çift atan doğrudan hapse sıçrar (Başlangıç'tan geçmiş sayılmaz) ve aynı şekilde kilitlenir. Hapsi olmayan tahtalarda eski kural geçerli: hamle yanar.
+- Durum: her oyuncunun kalan hapis turu (`PlayerState.JailTurns`, `JailChangedEvent`) ve sıradakinin çiftle çıkıp çıkmadığı, anlık görüntüde, kayıtta ve ağda taşınır. Protokol 13, anlık görüntü düzeni 9, kayıt biçimi 9; biçim 8 kayıtları herkes serbest olarak açılır. Hapis turu tahtanın sağlama değerine girer, bu yüzden önceki tahtayla kaydedilmiş oyunlar açılmaz.
+- Bilgisayar oyuncusu ücreti yedek parasını bozmadan ödeyebiliyorsa öder, yoksa çift için zar atar; süre dolarsa oyun onun yerine zar atar.
+- Ekran: köşede taş bir hücre, önü ve yanları demir parmaklıklı, pirinç kilitli (`CornerParts.Cell`); karede büyük harflerle, öteki köşe adlarından büyük "HAPİS" (`BoardView.JailNameScale`), altında ücret yazmaz. Sırası gelen insan oyuncuya kart: kaç tur kaldığı, "Öde ve çık (50)" (para yetmezse kapalı) ve "Zar at (çift gelirse çık)". Oyuncu kartında "Hapiste (n)", olay günlüğünde giriş, bekleme ve çıkış satırları, konuşma balonları ("Hapse düştüm!", "Bekliyorum...", "Özgürüm!"), bilgi kartı, Nasıl Oynanır bölümü ve bir ipucu.
+- Ekran turu (`-shots`) bir bilgisayarı hapse koyar (2 tur kaldı).
+- Hapisteki insan oyuncunun seçim kartı ekranın ortasında açılır (`GameHud.RenderJailCard`); ilk düğme "Zar at (çift gelirse çık)", ikincisi "Öde ve çık (50)". Tahtanın ortasındaki "ZAR AT" düğmesi kırmızı ve beyaz yazılı (`GameHud.RollPromptRed`), biraz daha yukarıda (`UiLayout.RollPromptDrop` 170'ten 135'e).
+- Takas teklifinin cevap kartı da ekranın ortasında açılır, teklifi gönderen ya da alan bu ekrandaysa (`GameHud.OffersAnswerHere`, `RenderOffer`); Oyun bitince alttaki "Kazanan / Ana Menü" kartı kalktı: oyun sonu penceresi ("Ana Menü", "Yeniden Oyna", "Tahtaya Bak") ve menü düğmesi yeter.
+- Başka iki oyuncu takas yaparken altta kart açılmaz: ikisinin başında "Takas yapıyoruz..." balonu çıkar. Takas bitince ekranın ortasında bir sonuç kartı görünür ve kendiliğinden kapanır (`GameHud.UpdateTradePopup`, `GameSceneController.ShownTrade`): başlıkta "TAKAS KABUL EDİLDİ / REDDEDİLDİ / GERİ ÇEKİLDİ", altında kim kime, ne verir, ne ister.
+- Ortadaki bilgi kartları (`CenterNotice`) 5 saniye açık kalır, son yarım saniyede solar; masa da 5 saniye bekler, oyun kart kaybolmadan devam etmez.
+- Parası yetmeyen oyuncu: önce herkese ortada 5 saniye "X kirayı ödeyecek parası yok" kartı çıkar (vergi, ceza ya da borç için de; altında ödenecek tutar ve alacaklı; `GameSceneController.ShownDebt`). Kart kapanınca, satarak ödeyebiliyorsa satış ekranı açılır, ödeyemiyorsa iflas eder (devrilme ve "Battım..."). Üstteki iflas şeridi kalktı.
+- İflas kuralı: iflas edenin şehirleri artık alacaklıya geçmez. Bütün binaları geri satış değerinden, şehirleri satış değerinden (fiyatın yarısı) bankaya satılır, şehirler sahipsiz kalır ve yeniden alınabilir; elde kalan para ne kadarsa alacaklıya o kadar ödenir (`GameEngine.GoBankrupt`).
+- Testler: `CenterNoticeTests`, `EconomyTests` ve `GameEngineTests` (iflasta satış, alacaklıya yalnız para), `JailTests` (girişte sıranın bitmesi, seçim aşaması, ödeyip çıkma, parasızken ödeyememe, üç denemeden sonra serbestlik, çiftle çıkıp ikinci atış olmadan ilerleme, hapis kartıyla uçuş, üç çiftte hapis, anlık görüntü ve özet, tahtanın doğrulanması), `AiPlayerTests`, `NetworkSessionTests` (süre dolunca bekleme), `MessageCodecTests`, `LocalGameAndSaveTests` (biçim 8 kaydı), `BoardDataLoaderTests`, `TipsTests`, `ModelTests` (hücre sahnesi, parmaklık işareti), `PerfTests`.
 
 ## Kurallar
 

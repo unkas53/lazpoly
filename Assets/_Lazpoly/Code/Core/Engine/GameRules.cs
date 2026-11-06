@@ -98,6 +98,16 @@ namespace Lazpoly.Core.Engine
                 case DeclineTravelCommand _:
                     return OnTurn(state, player, GamePhase.AwaitingTravelDecision);
 
+                case PayJailFeeCommand _:
+                {
+                    RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingJailDecision);
+                    if (turn != RejectionReason.None) return turn;
+                    return player.Money >= JailFee(board) ? RejectionReason.None : RejectionReason.InsufficientFunds;
+                }
+
+                case RollInJailCommand _:
+                    return OnTurn(state, player, GamePhase.AwaitingJailDecision);
+
                 case ChooseDiceCommand c:
                 {
                     RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingDiceChoice);
@@ -216,6 +226,9 @@ namespace Lazpoly.Core.Engine
 
             return best;
         }
+
+        /// <summary>What leaving the board's jail early costs; 0 when the board has no jail.</summary>
+        public static int JailFee(BoardDefinition board) => board.HasJail ? board[board.JailIndex].Fee : 0;
 
         /// <summary>Where taxes and card fines go: the pot when the board has one, otherwise the bank.</summary>
         public static int FineCollector(BoardDefinition board) => board.HasPot ? GameState.PotId : GameState.NoOwner;

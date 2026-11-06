@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Lazpoly.Core.Board;
 using Lazpoly.Presentation.Data;
 using NUnit.Framework;
@@ -47,14 +48,18 @@ namespace Lazpoly.Presentation.Tests
         public void ShippedBoardHasTheSpecialSquaresAndADeck()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
-            foreach (SquareType type in new[] { SquareType.Card, SquareType.Pot, SquareType.Travel, SquareType.Lookout })
+            foreach (SquareType type in new[] { SquareType.Card, SquareType.Jail, SquareType.Travel, SquareType.Lookout })
             {
                 bool found = false;
                 for (int i = 0; i < data.Board.Count; i++) found |= data.Board[i].Type == type;
                 Assert.IsTrue(found, $"The board has no {type} square.");
             }
 
-            Assert.IsTrue(data.Board.HasPot);
+            Assert.IsFalse(data.Board.HasPot, "the tea break gave way to the jail; taxes and fines go to the bank");
+            Assert.AreEqual(7, data.Board.JailIndex, "the jail stands on the first corner after the start");
+            Assert.AreEqual(50, data.Board[data.Board.JailIndex].Fee);
+            Assert.AreEqual(3, data.Rules.JailTurns);
+            Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == CardKind.GoToJail), "the card that led to the tea break now leads to jail");
             Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
             foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
         }
@@ -89,6 +94,17 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""to"": ""Otogar""", @"""to"": ""Yok""")));
             Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json.Replace(@"""kind"": ""collect""", @"""kind"": ""magic""")));
+
+            BoardData jailed = BoardDataLoader.Parse(json.Replace(@"""type"": ""pot"", ""name"": ""Kumbara""", @"""type"": ""jail"", ""name"": ""Hapis"", ""fee"": 30")
+                .Replace(@"""diceSides"": 6,", @"""diceSides"": 6, ""jailTurns"": 2,")
+                .Replace(@"""kind"": ""repairs"", ""amount"": 5, ""hotel"": 20, ""text"": ""Tamir""", @"""kind"": ""goToJail"", ""text"": ""Hapse"""));
+            Assert.AreEqual(CardKind.GoToJail, jailed.Board.Cards[2].Kind);
+            Assert.Throws<ArgumentException>(() => BoardDataLoader.Parse(json.Replace(@"""kind"": ""repairs"", ""amount"": 5, ""hotel"": 20, ""text"": ""Tamir""", @"""kind"": ""goToJail"", ""text"": ""Hapse""")),
+                "a jail card on a board without a jail");
+            Assert.AreEqual(SquareType.Jail, jailed.Board[2].Type);
+            Assert.AreEqual(2, jailed.Board.JailIndex);
+            Assert.AreEqual(30, jailed.Board[2].Fee);
+            Assert.AreEqual(2, jailed.Rules.JailTurns);
         }
 
         [Test]
@@ -225,7 +241,7 @@ namespace Lazpoly.Presentation.Tests
         {
             const string json = @"{ ""startingMoney"": 500, ""passStartBonus"": 50, ""diceSides"": 6,
                 ""maxConsecutiveDoubles"": 3, ""fullGroupRentMultiplier"": 2,
-                ""squares"": [ { ""type"": ""start"", ""name"": ""S"" }, { ""type"": ""jail"", ""name"": ""J"" } ] }";
+                ""squares"": [ { ""type"": ""start"", ""name"": ""S"" }, { ""type"": ""prison"", ""name"": ""J"" } ] }";
 
             Assert.Throws<FormatException>(() => BoardDataLoader.Parse(json));
         }

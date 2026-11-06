@@ -130,6 +130,14 @@ namespace Lazpoly.Core.Engine
                     int[] chosen = GameRules.DiceOption(State, c.Option);
                     MoveWithDice(player, chosen[0], chosen[1]);
                     break;
+                case PayJailFeeCommand _:
+                    Transfer(player.Id, GameRules.FineCollector(Board), Board[Board.JailIndex].Fee, MoneyReason.Jail);
+                    Emit(new JailChangedEvent(player.Id, 0));
+                    Emit(new PhaseChangedEvent(GamePhase.WaitingForRoll));
+                    break;
+                case RollInJailCommand _:
+                    RollInJail(player);
+                    break;
                 default:
                     throw new InvalidOperationException($"Validated command {command.GetType().Name} has no handler.");
             }
@@ -176,8 +184,16 @@ namespace Lazpoly.Core.Engine
 
             if (State.LastRollWasDouble && State.ConsecutiveDoubles >= Rules.MaxConsecutiveDoubles)
             {
-                // Too many doubles in a row: the move is forfeited and the turn ends.
-                Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                // Too many doubles in a row: straight to jail, or on a board without one the move is forfeited; the turn ends.
+                if (Board.HasJail)
+                {
+                    SendToJail(player);
+                }
+                else
+                {
+                    Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                }
+
                 return;
             }
 
@@ -252,12 +268,51 @@ namespace Lazpoly.Core.Engine
                     if (!player.HasLookout) Emit(new LookoutChangedEvent(player.Id, true));
                     return false;
 
+                case SquareType.Jail:
+                    LockUp(player);
+                    return true;
+
                 case SquareType.Card:
                     return drawCards && DrawCard(player);
 
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// A free roll in jail: a double sets the player free to move by it, and that double earns no second roll
+        /// (<see cref="GameState.RolledOutOfJail"/>); any other roll uses up one of the jailed turns and ends the turn.
+        /// </summary>
+        private void RollInJail(PlayerState player)
+        {
+            int die1 = RollDie();
+            int die2 = RollDie();
+            Emit(new DiceRolledEvent(player.Id, die1, die2));
+            if (die1 != die2)
+            {
+                Emit(new JailChangedEvent(player.Id, player.JailTurns - 1));
+                Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
+                return;
+            }
+
+            Emit(new JailChangedEvent(player.Id, 0, rolledOut: true));
+            MovePlayer(player, die1 + die2);
+            if (!ResolveLanding(player, drawCards: true)) FinishMove();
+        }
+
+        /// <summary>Flies the player straight to the jail (never a lap: no start bonus) and locks them in.</summary>
+        private void SendToJail(PlayerState player)
+        {
+            Emit(new PlayerMovedEvent(player.Id, player.Position, Board.JailIndex, false, MoveKind.Jump));
+            LockUp(player);
+        }
+
+        /// <summary>Locks the player in jail for the rules' number of turns; their turn ends at once, even after a double.</summary>
+        private void LockUp(PlayerState player)
+        {
+            if (Rules.JailTurns > 0) Emit(new JailChangedEvent(player.Id, Rules.JailTurns));
+            Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
         }
 
         private bool DrawCard(PlayerState player)
@@ -299,6 +354,10 @@ namespace Lazpoly.Core.Engine
                     if (!player.HasLookout) Emit(new LookoutChangedEvent(player.Id, true));
                     return false;
 
+                case CardKind.GoToJail:
+                    SendToJail(player);
+                    return true;
+
                 default:
                     throw new InvalidOperationException($"Card kind {card.Kind} has no handler.");
             }
@@ -324,10 +383,11 @@ namespace Lazpoly.Core.Engine
             FinishMove();
         }
 
-        /// <summary>After landing is resolved: a double earns another roll, otherwise the turn can end.</summary>
+        /// <summary>After landing is resolved: a double earns another roll (not the one that got the player out of jail), otherwise the turn can end.</summary>
         private void FinishMove()
         {
-            Emit(new PhaseChangedEvent(State.LastRollWasDouble ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
+            bool again = State.LastRollWasDouble && !State.RolledOutOfJail;
+            Emit(new PhaseChangedEvent(again ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
         }
 
         /// <summary>
@@ -405,35 +465,37 @@ namespace Lazpoly.Core.Engine
         }
 
         /// <summary>
-        /// The player leaves the game. Buildings go back to the bank for their sell-back value, then
-        /// all money and properties pass to the creditor; a bank creditor takes the properties back.
+        /// The player leaves the game. Everything they own is sold to the bank first (buildings at their
+        /// sell-back value, each property at its sale value) and the squares go back to the bank, free to
+        /// buy again; then all the money they have goes to the creditor, however short of the debt it is
+        /// (the owner's rule, Faz 23: the creditor no longer inherits the properties).
         /// </summary>
         private void GoBankrupt(PlayerState player, int creditorId)
         {
-            int proceeds = 0;
+            int buildings = 0;
+            int properties = 0;
             for (int square = 0; square < Board.Count; square++)
             {
+                if (State.GetOwner(square) != player.Id) continue;
                 int level = State.GetBuildingLevel(square);
-                if (State.GetOwner(square) != player.Id || level == 0) continue;
-                proceeds += level * Rules.SellbackValue(Board[square].BuildingCost);
-                Emit(new BuildingLevelChangedEvent(square, 0));
+                if (level > 0)
+                {
+                    buildings += level * Rules.SellbackValue(Board[square].BuildingCost);
+                    Emit(new BuildingLevelChangedEvent(square, 0));
+                }
+
+                properties += Board[square].SaleValue;
+                Emit(new PropertyOwnerChangedEvent(square, player.Id, GameState.NoOwner));
             }
 
-            if (proceeds > 0) Emit(new MoneyChangedEvent(player.Id, proceeds, MoneyReason.BuildingSale));
+            if (buildings > 0) Emit(new MoneyChangedEvent(player.Id, buildings, MoneyReason.BuildingSale));
+            if (properties > 0) Emit(new MoneyChangedEvent(player.Id, properties, MoneyReason.PropertySale));
 
             if (player.Money > 0)
             {
                 int remaining = player.Money;
                 Emit(new MoneyChangedEvent(player.Id, -remaining, MoneyReason.Bankruptcy));
                 Credit(creditorId, remaining, MoneyReason.Bankruptcy);
-            }
-
-            // Properties go to a player creditor; owed to the bank or the pot, they return to the bank.
-            int heir = GameState.IsPlayerId(creditorId) ? creditorId : GameState.NoOwner;
-            for (int square = 0; square < Board.Count; square++)
-            {
-                if (State.GetOwner(square) != player.Id) continue;
-                Emit(new PropertyOwnerChangedEvent(square, player.Id, heir));
             }
 
             if (State.Debt != null) Emit(new DebtClearedEvent(player.Id));
@@ -472,8 +534,9 @@ namespace Lazpoly.Core.Engine
                         return;
                     }
 
+                    // A jailed player first chooses between paying to leave and waiting.
                     Emit(new TurnStartedEvent(next.Id));
-                    Emit(new PhaseChangedEvent(GamePhase.WaitingForRoll));
+                    Emit(new PhaseChangedEvent(next.InJail ? GamePhase.AwaitingJailDecision : GamePhase.WaitingForRoll));
                     return;
                 }
             }

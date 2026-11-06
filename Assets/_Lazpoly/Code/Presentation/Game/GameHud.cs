@@ -5,6 +5,7 @@ using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
+using Lazpoly.Core.Events;
 using Lazpoly.Core.State;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Audio;
@@ -75,6 +76,8 @@ namespace Lazpoly.Presentation.Game
         private float _bannerUntil;
         private int _lastTurnPlayer = -1;
         private int _lastTurnNumber = -1;
+        private CenterNotice _tradeNotice;
+        private CenterNotice _debtNotice;
         private Text _cardTitle;
         private Text _cardText;
         private CanvasGroup _cardGroup;
@@ -102,6 +105,10 @@ namespace Lazpoly.Presentation.Game
         private GameObject _cityLayer;
         private UiView _buildWindow;
         private GameObject _buildLayer;
+        private UiView _jailWindow;
+        private GameObject _jailLayer;
+        private UiView _offerWindow;
+        private GameObject _offerLayer;
         private int _buildCardDismissed;
         private PropertyCard _propertyCard;
         private DebtSaleView _debtSale;
@@ -267,6 +274,8 @@ namespace Lazpoly.Presentation.Game
             _banner.fontSize = 34;
 
             BuildCardPopup();
+            _tradeNotice = new CenterNotice(_canvas.transform, "Trade Popup");
+            _debtNotice = new CenterNotice(_canvas.transform, "Debt Popup");
             BuildRollPopup();
             BuildRollPrompt();
 
@@ -291,6 +300,10 @@ namespace Lazpoly.Presentation.Game
                 ui => HowToPlayPanel.Render(ui, _controller.Session.Board, _controller.Session.Rules, () => _howToLayer.SetActive(false)));
             _cityWindow = new UiView(UiRoot.Modal(_canvas.transform, "City Card", UiLayout.PropertyCardWidth, out _cityLayer), RenderCityCard);
             _buildWindow = new UiView(UiRoot.Modal(_canvas.transform, "Build Card", UiLayout.PropertyCardWidth, out _buildLayer), RenderBuildCard);
+            // A jailed turn's choice opens in the middle of the screen (the owner's wish, Faz 23).
+            _jailWindow = new UiView(UiRoot.Modal(_canvas.transform, "Jail Card", UiLayout.WindowWidth, out _jailLayer), RenderJailCard);
+            // A trade offer's answer opens in the middle too, for whoever here sent or received it (Faz 23).
+            _offerWindow = new UiView(UiRoot.Modal(_canvas.transform, "Trade Offer", UiLayout.WindowWidth, out _offerLayer), RenderOffer);
             // The log and the properties open on request, over whatever card is up.
             _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
             _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
@@ -309,6 +322,8 @@ namespace Lazpoly.Presentation.Game
             _endLayer.SetActive(false);
             _cityLayer.SetActive(false);
             _buildLayer.SetActive(false);
+            _jailLayer.SetActive(false);
+            _offerLayer.SetActive(false);
         }
 
         /// <summary>The drawn "Sokak Haberi" card, shown in the middle for a few seconds. It never takes the mouse.</summary>
@@ -327,6 +342,50 @@ namespace Lazpoly.Presentation.Game
             _cardTitle = builder.Label(L("SOKAK HABERİ"), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
             _cardText = builder.Label("", UiTextStyle.Body, UiTheme.Text, TextAnchor.MiddleCenter);
             _cardText.fontSize = 22;
+        }
+
+        /// <summary>A trade's result in the middle (the owner's wish, Faz 23): who offered what to whom, and whether it was taken.</summary>
+        private void UpdateTradePopup()
+        {
+            TradeOffer offer = _controller.ShownTrade;
+            float age = Time.time - _controller.ShownTradeTime;
+            if (offer == null || !CenterNotice.Showing(age))
+            {
+                _tradeNotice.Hide();
+                return;
+            }
+
+            GameState state = _controller.Session.State;
+            string from = state.FindPlayer(offer.FromPlayerId)?.Name;
+            string to = state.FindPlayer(offer.ToPlayerId)?.Name;
+            TradeOutcome outcome = _controller.ShownTradeOutcome;
+            _tradeNotice.Title.text = outcome == TradeOutcome.Accepted ? L("TAKAS KABUL EDİLDİ")
+                : outcome == TradeOutcome.Rejected ? L("TAKAS REDDEDİLDİ") : L("TAKAS GERİ ÇEKİLDİ");
+            _tradeNotice.Title.color = outcome == TradeOutcome.Accepted ? UiTheme.Gain : UiTheme.Warning;
+            _tradeNotice.Body.text = $"{from} → {to}\n" + F($"{from} verir: {_trade.Describe(offer.GiveSquares, offer.GiveMoney)}") + "\n" +
+                                     F($"{from} ister: {_trade.Describe(offer.TakeSquares, offer.TakeMoney)}");
+            _tradeNotice.Show(age);
+        }
+
+        /// <summary>
+        /// "X kirayı ödeyecek parası yok" in the middle for everyone at the table (the owner's wish, Faz 23), with what is
+        /// owed and to whom. Only once it is gone does the player go bankrupt or the sale screen open.
+        /// </summary>
+        private void UpdateDebtPopup()
+        {
+            DebtIncurredEvent debt = _controller.ShownDebt;
+            float age = Time.time - _controller.ShownDebtTime;
+            if (debt == null || !CenterNotice.Showing(age))
+            {
+                _debtNotice.Hide();
+                return;
+            }
+
+            GameState state = _controller.Session.State;
+            _debtNotice.Title.text = EventDescriber.CannotPayText(state.FindPlayer(debt.PlayerId)?.Name, debt.Reason);
+            _debtNotice.Title.color = UiTheme.Warning;
+            _debtNotice.Body.text = F($"Ödenecek: {debt.Amount}") + "\n" + F($"Alacaklı: {EventDescriber.CreditorText(state, debt.CreditorId)}");
+            _debtNotice.Show(age);
         }
 
         /// <summary>A note under the banner when a double is rolled (the lawn shows the figures). It never takes the mouse.</summary>
@@ -368,6 +427,9 @@ namespace Lazpoly.Presentation.Game
             _rollRect.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.25f)));
         }
 
+        /// <summary>The roll button's red: it tints the kit's cream skin to a brick red.</summary>
+        public static readonly Color RollPromptRed = new Color(0.88f, 0.25f, 0.21f);
+
         /// <summary>
         /// The big "roll" button over the lawn: it pops up when the roll is this person's and goes the
         /// moment it is pressed. Space and Enter roll too.
@@ -379,8 +441,11 @@ namespace Lazpoly.Presentation.Game
             prompt.anchoredPosition = new Vector2(0f, -UiLayout.RollPromptDrop);
             prompt.sizeDelta = new Vector2(UiLayout.RollPromptWidth, UiLayout.RollPromptHeight);
             UiBuilder.AddColumnLayout(prompt.gameObject, 0, 0f);
-            Button button = new UiBuilder(prompt).Button(L("Zar At").ToUpperInvariant(), PressRollPrompt, true, UiButtonStyle.Primary, UiLayout.RollPromptHeight);
+            // Red with white words (the owner's wish, Faz 23): the kit's cream skin tinted, so hover and press still show.
+            Button button = new UiBuilder(prompt).Button(L("Zar At").ToUpperInvariant(), PressRollPrompt, true, UiButtonStyle.Secondary, UiLayout.RollPromptHeight);
+            button.GetComponent<Image>().color = RollPromptRed;
             Text label = button.GetComponentInChildren<Text>();
+            label.color = Color.white;
             label.fontSize = 34;
             label.resizeTextMaxSize = 34;
             _rollPrompt = prompt;
@@ -608,6 +673,8 @@ namespace Lazpoly.Presentation.Game
             _debtSale.Update(state, selling ? BoardChoices(state) : null, selling && !_controller.IsBusy && !_controller.EndReason.HasValue);
             UpdateBanner(state);
             UpdateCardPopup();
+            UpdateTradePopup();
+            UpdateDebtPopup();
             UpdateRollPopup();
             UpdateTip(state);
             UpdateTimer(state);
@@ -616,6 +683,9 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
             SetLayer(_cityLayer, _cityWindow, cityOpen, revision);
+            SetLayer(_offerLayer, _offerWindow, OffersAnswerHere(state), revision);
+            bool jailOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingJailDecision);
+            SetLayer(_jailLayer, _jailWindow, jailOpen, revision);
             bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
             SetLayer(_buildLayer, _buildWindow, buildOpen, revision);
             SetLayer(_pauseLayer, _pauseWindow, _pauseLayer.activeSelf, HashCode.Combine(revision, _controller.EndReason, _controller.ReportNote));
@@ -804,9 +874,8 @@ namespace Lazpoly.Presentation.Game
             _squareCard.Render(ui, _pinnedSquare, () => _pinnedSquare = NoSquare, square => _pinnedSquare = square);
 
         /// <summary>
-        /// The banner: a player who could not pay even by selling everything (the board shows their
-        /// bankruptcy meanwhile) takes it first, for everyone at the table; then a short "your turn"
-        /// whenever a new turn goes to someone at this screen.
+        /// The banner: the table's own line (who rolls first) takes it first, for everyone at the table;
+        /// then a short "your turn" whenever a new turn goes to someone at this screen.
         /// </summary>
         private void UpdateBanner(GameState state)
         {
@@ -1025,6 +1094,15 @@ namespace Lazpoly.Presentation.Game
         /// </summary>
         private void DescribeSeat(PlayerCardModel model, PlayerState player)
         {
+            DescribeConnection(model, player);
+            if (!player.InJail) return;
+            // A jailed player's resting card says so, with the turns still to wait, before who plays the seat.
+            string jail = F($"Hapiste ({player.JailTurns})");
+            model.Status = string.IsNullOrEmpty(model.Status) ? jail : $"{jail} · {model.Status}";
+        }
+
+        private void DescribeConnection(PlayerCardModel model, PlayerState player)
+        {
             IGameSession session = _controller.Session;
             bool ai = session.IsAiPlaying(player.Id);
             bool connected = session.IsConnected(player.Id);
@@ -1061,18 +1139,13 @@ namespace Lazpoly.Presentation.Game
 
         private void RenderActions(UiBuilder ui, GameState state)
         {
-            if (state.Phase == GamePhase.GameOver)
-            {
-                ui.Label(F($"Kazanan: {state.FindPlayer(state.WinnerId)?.Name}"), UiTextStyle.Heading, UiTheme.Accent);
-                ui.Button(L("Ana Menü"), _controller.LeaveToMainMenu, style: UiButtonStyle.Primary);
-                return;
-            }
+            // The end has its own window (the winner, standings, main menu); the bottom stays empty (the owner's wish, Faz 23).
+            if (state.Phase == GamePhase.GameOver || _controller.IsBusy) return;
 
-            if (_controller.IsBusy) return;
-
-            // A trade answer comes from a player other than the one on turn.
-            if (state.Phase == GamePhase.AwaitingTradeResponse) _trade.RenderResponse(ui, state);
-            else RenderTurnActions(ui, state);
+            // A trade answer comes from a player other than the one on turn. Whoever here sent or received the offer
+            // answers it on the card in the middle (OffersAnswerHere); a trade between others shows as their speech
+            // bubbles and a result card, not down here (the owner's wish, Faz 23).
+            if (state.Phase != GamePhase.AwaitingTradeResponse) RenderTurnActions(ui, state);
 
             if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);
         }
@@ -1229,6 +1302,34 @@ namespace Lazpoly.Presentation.Game
             }
 
             ui.Button(L("Burada kal"), () => _controller.Submit(new DeclineTravelCommand(player.Id)));
+        }
+
+        /// <summary>
+        /// A turn in jail, on a card in the middle of the screen: roll for a double, which lets the player out for free
+        /// (the first button), or pay the exit fee and roll now. Any other roll waits the turn out; after the last one the
+        /// player is free. When the clock runs out the dice are rolled.
+        /// </summary>
+        private void RenderJailCard(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            if (state == null || state.Phase != GamePhase.AwaitingJailDecision) return;
+            PlayerState player = state.CurrentPlayer;
+            BoardDefinition board = _controller.Session.Board;
+            int fee = GameRules.JailFee(board);
+            ui.Title(UiIcon.Door, Lang.Upper(L(board[board.JailIndex].Name)));
+            ui.Label(F($"{player.JailTurns} tur daha beklemen gerekiyor."), UiTextStyle.Body);
+            ui.Label(player.JailTurns > 1
+                ? F($"{fee} ödersen hemen çıkıp zar atarsın. Zar atarsan çift gelince bedava çıkıp ilerlersin; gelmezse sıra geçer.")
+                : F($"{fee} ödersen hemen çıkıp zar atarsın. Zar atarsan çift gelince bedava çıkıp ilerlersin; gelmezse bu son bekleyişin, sonraki turda serbestsin."),
+                UiTextStyle.Small, UiTheme.Muted);
+
+            // Rolling comes first: it is free (the owner's wish); paying is the second choice.
+            ui.Button(L("Zar at (çift gelirse çık)"), () => _controller.Submit(new RollInJailCommand(player.Id)), true,
+                UiButtonStyle.Primary, CardButton);
+            var pay = new PayJailFeeCommand(player.Id);
+            bool canPay = _controller.IsAllowed(pay);
+            ui.Button(canPay ? F($"Öde ve çık ({fee})") : F($"Paran yetmiyor ({fee})"), () => _controller.Submit(pay), canPay,
+                UiButtonStyle.Secondary, CardButton);
         }
 
         /// <summary>The lookout's two rolls, each with where it would take the player.</summary>
@@ -1455,7 +1556,7 @@ namespace Lazpoly.Presentation.Game
                 PauseOpen = _pauseLayer.activeSelf,
                 ClosableOpen = _squareLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
                                _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
-                BlockingOpen = _cityLayer.activeSelf,
+                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf || _offerLayer.activeSelf,
                 Acting = acting,
                 Phase = state?.Phase ?? GamePhase.GameOver,
                 CanBuild = acting && OffersExtras(state) && CanReopenBuildCard(state),
@@ -1527,6 +1628,24 @@ namespace Lazpoly.Presentation.Game
             else if (_tradeLayer.activeSelf) _trade.Close();
             else if (_buildLayer.activeSelf && state != null) _buildCardDismissed = BuildVisitKey(state);
             else if (_endLayer.activeSelf) _endDismissed = true;
+        }
+
+        /// <summary>True while a trade offer waits and a person here sent it or is asked: its card then opens in the middle.</summary>
+        private bool OffersAnswerHere(GameState state)
+        {
+            if (state == null || state.Phase != GamePhase.AwaitingTradeResponse || state.PendingTrade == null) return false;
+            if (_controller.IsBusy || _controller.EndReason.HasValue) return false;
+            IGameSession session = _controller.Session;
+            bool PersonHere(int id) => session.CanControl(id) && !session.IsAiPlaying(id);
+            return PersonHere(state.PendingTrade.ToPlayerId) || PersonHere(state.PendingTrade.FromPlayerId);
+        }
+
+        private void RenderOffer(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            if (!OffersAnswerHere(state)) return;
+            _trade.RenderResponse(ui, state);
+            if (_controller.LastRejection != null) ui.Notice(_controller.LastRejection);
         }
 
         private void RenderTrade(UiBuilder ui)

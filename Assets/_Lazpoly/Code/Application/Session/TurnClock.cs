@@ -8,7 +8,7 @@ namespace Lazpoly.App.Session
     /// <summary>
     /// How long the game waits on a person's decision. The table picks the decision time
     /// (<see cref="TableRules.TurnSeconds"/>; 0 means no clock at all): rolling, buying, building,
-    /// riding and picking a lookout roll get that long; selling to pay a debt and answering a trade
+    /// riding, picking a lookout roll and a turn in jail get that long; selling to pay a debt and answering a trade
     /// get <see cref="LongDecisionFactor"/> times as long. The time source is injected so tests need no waiting.
     /// </summary>
     public sealed class TurnClock

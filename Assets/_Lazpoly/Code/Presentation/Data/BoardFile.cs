@@ -12,6 +12,7 @@ namespace Lazpoly.Presentation.Data
         public int passStartBonus;
         public int diceSides;
         public int maxConsecutiveDoubles;
+        public int jailTurns;
         public int fullGroupRentMultiplier;
         public int buildingSellbackPercent;
         public GroupEntry[] groups;

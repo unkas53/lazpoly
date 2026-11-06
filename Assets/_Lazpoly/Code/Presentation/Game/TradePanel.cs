@@ -195,7 +195,8 @@ namespace Lazpoly.Presentation.Game
             return new TradeOffer(_fromId, _toId, give, take, new List<int>(_give), new List<int>(_take));
         }
 
-        private string Describe(IReadOnlyList<int> squares, int money)
+        /// <summary>One side of an offer in words: its towns and money, or "hiçbir şey".</summary>
+        public string Describe(IReadOnlyList<int> squares, int money)
         {
             var text = new StringBuilder();
             foreach (int square in squares)

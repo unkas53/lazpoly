@@ -64,6 +64,7 @@ namespace Lazpoly.Presentation.Texts
                 case CardDrawnEvent e: return e.PlayerId;
                 case PlayerTimedOutEvent e: return e.PlayerId;
                 case LookoutChangedEvent e: return e.PlayerId;
+                case JailChangedEvent e: return e.PlayerId;
                 case TradeProposedEvent e: return e.Offer.FromPlayerId;
                 case DebtIncurredEvent e: return e.PlayerId;
                 default: return GameState.NoOwner;
@@ -111,6 +112,11 @@ namespace Lazpoly.Presentation.Texts
                     return F($"{NameOf(state, e.PlayerId)}, Sokak Haberi: {L(CardText(board, e.CardIndex))}");
                 case LookoutChangedEvent e:
                     return e.HasLookout ? F($"{NameOf(state, e.PlayerId)} sonraki zarında iki atıştan birini seçecek") : null;
+                case JailChangedEvent e:
+                    if (e.RolledOut) return F($"{NameOf(state, e.PlayerId)} çift attı, hapisten çıktı");
+                    return e.Turns > 0
+                        ? F($"{NameOf(state, e.PlayerId)} hapiste: {e.Turns} tur bekleyecek")
+                        : F($"{NameOf(state, e.PlayerId)} hapisten çıktı");
                 case DiceOptionsEvent e:
                     return F($"{NameOf(state, e.PlayerId)} iki kez attı: {e.FirstDie1} + {e.FirstDie2} ya da {e.SecondDie1} + {e.SecondDie2}");
                 case PotChangedEvent _:
@@ -140,6 +146,7 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Card: return L("Sokak Haberi");
                 case MoneyReason.Pot: return L("çay kumbarası");
                 case MoneyReason.Travel: return L("otogar bileti");
+                case MoneyReason.Jail: return L("hapisten çıkış");
                 default: return reason.ToString();
             }
         }

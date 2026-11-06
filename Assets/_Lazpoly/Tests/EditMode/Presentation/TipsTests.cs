@@ -90,6 +90,32 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void JailHintAndRulesNameTheTurnsAndTheFee()
+        {
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Başlangıç"), SquareDefinition.Property("Sur Yolu", 60, 4, 1, 50, Rents),
+                SquareDefinition.Jail("Hapis", 50), SquareDefinition.Property("Kuru Yolu", 60, 4, 1, 50, Rents),
+            });
+            var rules = new RulesConfig(1000, 200, 6, 3, 2, 50, jailTurns: 3);
+            GameState state = GameState.CreateInitial(board, rules, new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
+            GameStateReducer.Apply(state, new PlayerMovedEvent(1, 0, 2, false));
+            GameStateReducer.Apply(state, new JailChangedEvent(1, 2));
+            GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.AwaitingJailDecision));
+            Tip tip = Tips.Next(board, rules, state, 1, _ => false).Value;
+            Assert.AreEqual(TipId.Jail, tip.Id);
+            StringAssert.Contains("2 tur", tip.Text);
+            StringAssert.Contains("50", tip.Text);
+
+            IReadOnlyList<KeyValuePair<string, string>> sections = HowToPlay.Sections(board, rules);
+            StringAssert.Contains("hapse düşersin", sections.Single(s => s.Key == "Sıra").Value);
+            string jail = sections.Single(s => s.Key == "Hapis").Value;
+            StringAssert.Contains("3 kez", jail);
+            StringAssert.Contains("50 ödeyip", jail);
+            StringAssert.Contains("hamlen yanar", HowToPlay.Sections(Board, Rules).Single(s => s.Key == "Sıra").Value, "without a jail three doubles only end the move");
+        }
+
+        [Test]
         public void ArrivingOnYourOwnTownSuggestsBuilding()
         {
             GameState state = State();

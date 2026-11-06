@@ -238,7 +238,7 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void BankruptcyInALargerGameTransfersPropertiesAndContinues()
+        public void BankruptcyInALargerGameSellsThePropertiesAndContinues()
         {
             var board = new BoardDefinition(new[]
             {
@@ -266,8 +266,8 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new RollDiceCommand(Bob));        // 1+3 -> Pricey, rent 500: 60 and Cheap (20) cannot cover it
 
             Assert.IsTrue(P(engine, Bob).IsBankrupt);
-            Assert.AreEqual(50 + 60, P(engine, Alice).Money);
-            Assert.AreEqual(Alice, engine.State.GetOwner(4), "Bob's property goes to his creditor.");
+            Assert.AreEqual(50 + 60 + 20, P(engine, Alice).Money, "Bob's 60 and the 20 the bank paid for Cheap, short of the rent.");
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(4), "Bob's property is sold to the bank, not handed to his creditor.");
             Assert.AreEqual(Cem, engine.State.CurrentPlayer.Id, "Play continues with the next solvent player.");
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
             Assert.AreEqual(2, engine.State.ActivePlayerCount());

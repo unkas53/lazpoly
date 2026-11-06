@@ -22,6 +22,9 @@ namespace Lazpoly.Core.Board
 
         /// <summary>The player's next roll is a choice of two, as on a lookout square.</summary>
         Lookout = 5,
+
+        /// <summary>The player flies straight to the board's jail, without passing start, and is locked in.</summary>
+        GoToJail = 6,
     }
 
     /// <summary>One card of the board's deck. Immutable; loaded from data like the squares.</summary>
@@ -54,5 +57,6 @@ namespace Lazpoly.Core.Board
         public static CardDefinition Repairs(string text, int perHouse, int perHotel) =>
             new CardDefinition(text, CardKind.PayPerBuilding, perHouse, hotelAmount: perHotel);
         public static CardDefinition Lookout(string text) => new CardDefinition(text, CardKind.Lookout);
+        public static CardDefinition GoToJail(string text) => new CardDefinition(text, CardKind.GoToJail);
     }
 }

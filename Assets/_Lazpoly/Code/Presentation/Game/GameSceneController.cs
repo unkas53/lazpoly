@@ -50,7 +50,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Pause after the dice settle, so the result is read before the pawn moves.</summary>
         public const float RollReadSeconds = 0.55f;
 
-        /// <summary>How long "X kirayı ödeyecek parası yok" stays up; the next turn waits most of it.</summary>
+        /// <summary>How long the line over the table (who rolls first) stays up.</summary>
         public const float AnnouncementSeconds = 3f;
 
         /// <summary>A payment of this much or more flies as several coins.</summary>
@@ -148,10 +148,7 @@ namespace Lazpoly.Presentation.Game
 
         private readonly DecisionClock _decisionClock = new DecisionClock();
 
-        /// <summary>The last reason each player fell into debt, for the line shown when they go bankrupt.</summary>
-        private readonly Dictionary<int, MoneyReason> _debtReasons = new Dictionary<int, MoneyReason>();
-
-        /// <summary>The big line over the table ("Unkas kirayı ödeyecek parası yok"), whose it is and when it went up.</summary>
+        /// <summary>The big line over the table (who rolls first), whose it is and when it went up.</summary>
         public string Announcement { get; private set; }
         public int AnnouncementPlayer { get; private set; } = GameState.NoOwner;
         public float AnnouncementTime { get; private set; } = float.NegativeInfinity;
@@ -254,6 +251,15 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Real time the shown card was drawn, so the HUD can fade it.</summary>
         public float ShownCardTime { get; private set; }
+
+        /// <summary>The last trade that ended, how it ended and the game time it did, for the result card in the middle; null before any.</summary>
+        public TradeOffer ShownTrade { get; private set; }
+        public TradeOutcome ShownTradeOutcome { get; private set; }
+        public float ShownTradeTime { get; private set; }
+
+        /// <summary>The last payment someone could not make and the game time it came, for the "cannot pay" card in the middle; null before any.</summary>
+        public DebtIncurredEvent ShownDebt { get; private set; }
+        public float ShownDebtTime { get; private set; }
 
         /// <summary>The last roll shown on the table (0 before the first), and real time it settled, for the HUD's result popup.</summary>
         public int ShownDie1 { get; private set; }
@@ -1119,6 +1125,10 @@ namespace Lazpoly.Presentation.Game
                         _board.NudgePot(pot.Delta > 0);
                         Revision++;
                         break;
+                    case JailChangedEvent jail:
+                        Say(jail.PlayerId, L(jail.Turns == 0 ? "Özgürüm!" : jail.Turns >= _session.Rules.JailTurns ? "Hapse düştüm!" : "Bekliyorum..."));
+                        Revision++;
+                        break;
                     case CardDrawnEvent card:
                         ShownCard = card.CardIndex;
                         ShownCardPlayer = card.PlayerId;
@@ -1154,21 +1164,16 @@ namespace Lazpoly.Presentation.Game
                         }
                         break;
                     case DebtIncurredEvent debt:
-                        _debtReasons[debt.PlayerId] = debt.Reason;
+                        // Everyone reads "X kirayı ödeyecek parası yok" first; only once the card is gone does the player go
+                        // bankrupt or the sale screen open (the owner's wish, Faz 23).
+                        ShownDebt = debt;
+                        ShownDebtTime = Time.time;
+                        Revision++;
+                        yield return new WaitForSeconds(CenterNotice.Seconds);
                         break;
                     case PlayerBankruptedEvent bankrupt:
-                        if (_debtReasons.TryGetValue(bankrupt.PlayerId, out MoneyReason reason))
-                        {
-                            // Everyone at the table reads why the player is out; the next turn waits for most of it.
-                            Announcement = EventDescriber.CannotPayText(_session.State.FindPlayer(bankrupt.PlayerId)?.Name, reason);
-                            AnnouncementPlayer = bankrupt.PlayerId;
-                            AnnouncementTime = Time.unscaledTime;
-                            Revision++;
-                        }
-
                         Say(bankrupt.PlayerId, L("Battım..."));
                         yield return _pawns[bankrupt.PlayerId].Topple();
-                        if (Announcement != null && AnnouncementPlayer == bankrupt.PlayerId) yield return new WaitForSeconds(AnnouncementSeconds * 0.6f);
                         break;
                     case BuildingLevelChangedEvent building:
                         if (building.Level > _board.LevelOf(building.SquareIndex))
@@ -1189,12 +1194,25 @@ namespace Lazpoly.Presentation.Game
                         break;
                     case TradeProposedEvent proposed:
                         _shownOffer = proposed.Offer;
-                        Say(proposed.Offer.FromPlayerId, L("Takas edelim mi?"));
+                        // Both sides say they are trading, so a trade between others reads on the table (the owner's wish, Faz 23).
+                        Say(proposed.Offer.FromPlayerId, L("Takas yapıyoruz..."));
+                        Say(proposed.Offer.ToPlayerId, L("Takas yapıyoruz..."));
                         break;
                     case TradeResolvedEvent resolved:
                         if (_shownOffer != null && resolved.Outcome != TradeOutcome.Cancelled)
                         {
                             Say(_shownOffer.ToPlayerId, L(resolved.Outcome == TradeOutcome.Accepted ? "Anlaştık!" : "Olmaz."));
+                        }
+
+                        if (_shownOffer != null)
+                        {
+                            // The result card in the middle; the table waits a moment so it can be read.
+                            ShownTrade = _shownOffer;
+                            ShownTradeOutcome = resolved.Outcome;
+                            ShownTradeTime = Time.time;
+                            Revision++;
+                            _shownOffer = null;
+                            yield return new WaitForSeconds(CenterNotice.Seconds);
                         }
 
                         _shownOffer = null;

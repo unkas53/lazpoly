@@ -139,7 +139,7 @@ namespace Lazpoly.Presentation.Tests
             var root = new GameObject("Scenes");
             try
             {
-                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Start, Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel })
+                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Start, Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel })
                 {
                     Assert.IsTrue(CornerParts.Has(type));
                     GameObject scene = CornerParts.For(type, type.ToString(), root.transform);
@@ -269,7 +269,7 @@ namespace Lazpoly.Presentation.Tests
             AssertFacesOutward(sphere, Vector3.zero);
             Assert.That(sphere.bounds.extents.magnitude, Is.EqualTo(Mathf.Sqrt(3f)).Within(0.05f));
 
-            foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Lookout, Lazpoly.Core.Board.SquareType.Card })
+            foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Lookout, Lazpoly.Core.Board.SquareType.Card })
             {
                 Mesh sign = SquareIcons.For(type);
                 Assert.IsNotNull(sign, $"{type} has no sign.");

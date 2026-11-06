@@ -24,6 +24,7 @@ namespace Lazpoly.Core.State
                     state.TurnNumber++;
                     state.LastDie1 = 0;
                     state.LastDie2 = 0;
+                    state.RolledOutOfJail = false;
                     state.ConsecutiveDoubles = 0;
                     state.DiceOptions = null;
                     state.BuiltThisVisit = GameState.NotArrived;
@@ -44,6 +45,12 @@ namespace Lazpoly.Core.State
 
                 case LookoutChangedEvent e:
                     RequirePlayer(state, e.PlayerId).HasLookout = e.HasLookout;
+                    break;
+
+                case JailChangedEvent e:
+                    if (e.Turns < 0) throw new InvalidOperationException("Jail turns cannot be negative.");
+                    RequirePlayer(state, e.PlayerId).JailTurns = e.Turns;
+                    if (e.RolledOut) state.RolledOutOfJail = true;
                     break;
 
                 case PotChangedEvent e:
