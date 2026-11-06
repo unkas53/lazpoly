@@ -152,6 +152,28 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheStartCornerHasAnArrowPointingTheWayThePawnsGo()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, data);
+                Assert.IsNotNull(board.StartArrow, "an arrow is printed on the start (the owner's wish, Faz 24)");
+                Assert.IsNull(board.transform.Find("Scene Start"), "the pier and lighthouse are gone");
+                Vector3 way = board.Layout.SquareCenter(1) - board.Layout.SquareCenter(0);
+                way.y = 0f;
+                Vector3 forward = board.StartArrow.localRotation * Vector3.forward;
+                Assert.Greater(Vector3.Dot(forward, way.normalized), 0.99f, "it points at the next square");
+                Assert.Less(Mathf.Abs(forward.y), 0.01f, "it lies flat");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void TownsTheJailTaxAndChanceArePrintedInCapitalsTheOtherSquaresAsWritten()
         {
             Texts.Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);

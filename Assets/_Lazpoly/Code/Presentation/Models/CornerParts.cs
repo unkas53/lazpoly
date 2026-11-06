@@ -4,9 +4,9 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Models
 {
     /// <summary>
-    /// The little scenes that stand on the four corner squares and say what the corner is, in the
-    /// town's own words: a pier with its lighthouse at the start, a barred cell at the jail (a tea garden on
-    /// boards that still have a tea break), a newspaper kiosk for the street news and a minibus stop at the bus station. Each is a parent
+    /// The little scenes that stand on the corner squares and say what the corner is, in the town's own words: a barred
+    /// cell at the jail (a tea garden on boards that still have a tea break), a newspaper kiosk for the street news and a
+    /// minibus stop at the bus station. The start has none: an arrow is printed on it (Faz 24). Each is a parent
     /// object with its base at y = 0, one unit wide (x) and deep (z), built from the game's own meshes
     /// so the board can scale and place it. The board turns a scene's +Z outward; the far corners' scenes
     /// (kiosk, bus stop) keep their open side at -Z, towards the camera.
@@ -30,14 +30,13 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>Whether a corner of this type carries a scene.</summary>
         public static bool Has(SquareType type) =>
-            type == SquareType.Start || type == SquareType.Pot || type == SquareType.Jail || type == SquareType.Card || type == SquareType.Travel;
+            type == SquareType.Pot || type == SquareType.Jail || type == SquareType.Card || type == SquareType.Travel;
 
         /// <summary>The scene for a corner square's type, or null when the type has none.</summary>
         public static GameObject For(SquareType type, string name, Transform parent)
         {
             switch (type)
             {
-                case SquareType.Start: return Pier(name, parent);
                 case SquareType.Pot: return TeaGarden(name, parent);
                 case SquareType.Jail: return Cell(name, parent);
                 case SquareType.Card: return Kiosk(name, parent);
@@ -56,29 +55,6 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>Whether a corner scene is a textured model that should show its front to the camera, not face out over the edge.</summary>
         public static bool ShowsFront(GameObject scene) => scene != null && scene.transform.Find(FigureModels.BodyPart) != null;
-
-        /// <summary>A timber pier on posts with the lighthouse at its end and a rowing boat moored beside it.</summary>
-        public static GameObject Pier(string name, Transform parent)
-        {
-            GameObject root = Root(name, parent);
-            // The deck runs from the lighthouse towards the boat, which is moored at its end on the side the camera sees.
-            Part(root, "Deck", MeshFactory.RoundedBox(Vector3.one, 0.03f, 2), Timber, new Vector3(-0.15f, 0.15f, 0.12f), new Vector3(0.62f, 0.06f, 0.5f));
-            foreach (float x in new[] { -0.4f, 0.1f })
-            {
-                foreach (float z in new[] { -0.08f, 0.32f })
-                {
-                    Part(root, "Post", MeshFactory.Cylinder(8), DarkTimber, new Vector3(x, 0f, z), new Vector3(0.035f, 0.16f, 0.035f));
-                }
-            }
-
-            // The pawn-sized lighthouse is one mesh; its red band and the lamp room are laid over it.
-            Part(root, "Tower", PawnShapes.Lighthouse(), Whitewash, new Vector3(-0.2f, 0.18f, 0.12f), Vector3.one * 1.4f);
-            Part(root, "Band", MeshFactory.Cylinder(16), Red, new Vector3(-0.2f, 0.46f, 0.12f), new Vector3(0.17f, 0.11f, 0.17f));
-            Part(root, "Lamp", MeshFactory.Cylinder(12), Brass, new Vector3(-0.2f, 1f, 0.12f), new Vector3(0.1f, 0.1f, 0.1f));
-            Part(root, "Cap", MeshFactory.Cone(12), Red, new Vector3(-0.2f, 1.1f, 0.12f), new Vector3(0.13f, 0.12f, 0.13f));
-            Part(root, "Boat", PawnShapes.Boat(), Sea, new Vector3(0.27f, 0f, 0.1f), Vector3.one * 0.8f, Quaternion.Euler(0f, 20f, 0f));
-            return root;
-        }
 
         /// <summary>A round table under a red parasol with three stools, a samovar and a glass of tea on it.</summary>
         public static GameObject TeaGarden(string name, Transform parent)

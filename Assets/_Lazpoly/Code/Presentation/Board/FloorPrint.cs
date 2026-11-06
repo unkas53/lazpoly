@@ -6,14 +6,17 @@ using UnityEngine.Rendering;
 namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
-    /// Pictures printed flat on a tile (no relief, no shadow), like its name: the tax square's document (Faz 24), a sheet
-    /// with a folded corner and lines of writing. Built in a unit space: the sheet is <see cref="DocumentSize"/> across
-    /// (x) and up the page (z), its base at y = 0, a few thousandths thick.
+    /// Pictures printed flat on a tile (no relief, no shadow), like its name (Faz 24): the tax square's document, a sheet
+    /// with a folded corner and lines of writing, and the start square's arrow showing which way the pawns go. Built in a
+    /// unit space: the sheet is <see cref="DocumentSize"/> across (x) and up the page (z), the arrow <see cref="ArrowSize"/>
+    /// with its tip at +z, their base at y = 0, a few thousandths thick.
     /// </summary>
     public static class FloorPrint
     {
         public static readonly Vector2 DocumentSize = new Vector2(0.72f, 0.92f);
         public static readonly Color Paper = new Color(0.97f, 0.96f, 0.92f);
+        public static readonly Vector2 ArrowSize = new Vector2(0.52f, 1f);
+        public static readonly Color ArrowRed = new Color(0.86f, 0.22f, 0.18f);
 
         private const float Sheet = 0.003f;
         private const float Stroke = 0.06f;
@@ -35,6 +38,31 @@ namespace Lazpoly.Presentation.Tabletop
             Flat(ModelParts.Create("Paper", root.transform, DocumentPaper(), Paper, 0f));
             Flat(ModelParts.Create("Ink", root.transform, DocumentInk(), ink, 0f));
             return root;
+        }
+
+        /// <summary>The arrow as one object, its local +z the way it points and its size <see cref="ArrowSize"/> times <paramref name="scale"/>.</summary>
+        public static GameObject Arrow(string name, Transform parent, float scale, Color color)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            root.transform.localScale = Vector3.one * scale;
+            Flat(ModelParts.Create("Ink", root.transform, ArrowMesh(), color, 0f));
+            return root;
+        }
+
+        /// <summary>A bold arrow pointing +z: a shaft and a triangular head (a three-sided cylinder turned so a corner leads).</summary>
+        public static Mesh ArrowMesh()
+        {
+            const float head = 0.3f; // The head's circumradius: its tip 0.3 ahead of its middle, its back 0.15 behind it.
+            const float headMiddle = 0.5f - head;
+            const float shaftWidth = 0.2f;
+            float shaftEnd = headMiddle - head / 2f + 0.02f;
+            return MeshFactory.Combine("print:arrow", new[]
+            {
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Cylinder(3),
+                    Matrix4x4.TRS(new Vector3(0f, 0f, headMiddle), Quaternion.Euler(0f, -90f, 0f), new Vector3(head, Sheet, head))),
+                Bar(new Vector2(0f, (shaftEnd - 0.5f) / 2f), new Vector2(shaftWidth, shaftEnd + 0.5f), 0f, 0f),
+            });
         }
 
         /// <summary>The sheet's paper: the page less the corner folded down, with the flap (a square turned to a diamond whose edge is the fold).</summary>

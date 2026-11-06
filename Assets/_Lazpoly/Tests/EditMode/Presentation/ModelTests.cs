@@ -139,7 +139,7 @@ namespace Lazpoly.Presentation.Tests
             var root = new GameObject("Scenes");
             try
             {
-                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Start, Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel })
+                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel })
                 {
                     Assert.IsTrue(CornerParts.Has(type));
                     GameObject scene = CornerParts.For(type, type.ToString(), root.transform);
@@ -181,6 +181,8 @@ namespace Lazpoly.Presentation.Tests
 
                 Assert.Greater(CornerParts.BusStop("Drawn stop", root.transform).GetComponentsInChildren<MeshFilter>().Length, 3, "the drawn stop stands in without the diorama");
                 Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Lookout));
+                Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Start), "the start's pier and lighthouse are gone; an arrow is printed instead");
+                Assert.IsNull(CornerParts.For(Lazpoly.Core.Board.SquareType.Start, "none", root.transform));
                 Assert.IsNull(CornerParts.For(Lazpoly.Core.Board.SquareType.Tax, "none", root.transform));
             }
             finally
@@ -260,6 +262,19 @@ namespace Lazpoly.Presentation.Tests
             });
             AssertFacesOutward(cylinder, new Vector3(0f, 0.5f, 0f));
             AssertFacesOutward(MeshFactory.House(), new Vector3(0f, 0.4f, 0f));
+        }
+
+        [Test]
+        public void TheStartArrowIsAFlatPrintPointingAhead()
+        {
+            Mesh arrow = FloorPrint.ArrowMesh();
+            Assert.Greater(arrow.triangles.Length, 0);
+            Assert.Less(arrow.bounds.size.y, 0.01f, "printed flat, no relief");
+            Assert.That(arrow.bounds.min.y, Is.InRange(-0.001f, 0.005f));
+            Assert.That(arrow.bounds.max.z, Is.EqualTo(FloorPrint.ArrowSize.y / 2f).Within(0.01f), "the tip leads at +z");
+            Assert.That(arrow.bounds.min.z, Is.EqualTo(-FloorPrint.ArrowSize.y / 2f).Within(0.01f));
+            Assert.That(arrow.bounds.size.x, Is.EqualTo(FloorPrint.ArrowSize.x).Within(0.01f));
+            Assert.That(arrow.bounds.center.x, Is.EqualTo(0f).Within(0.005f), "straight, not lopsided");
         }
 
         [Test]

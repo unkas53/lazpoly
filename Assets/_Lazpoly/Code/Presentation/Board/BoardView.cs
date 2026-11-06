@@ -186,6 +186,11 @@ namespace Lazpoly.Presentation.Tabletop
         public const float TaxNameScale = 1.6f;
         public const float DocumentDepth = 0.46f;
         public const float DocumentOffset = -0.12f;
+
+        /// <summary>The start arrow's length across the corner (shorter when it runs towards the name) and how far from the middle it lies, away from the name, in corner sides.</summary>
+        public const float StartArrowLength = 0.72f;
+        public const float StartArrowShortLength = 0.5f;
+        public const float StartArrowOffset = 0.17f;
         public const float ChanceNameOffset = 0.3f;
         public const float ChanceMarkOffset = -0.15f;
         public const float ChanceMarkSize = 0.3f;
@@ -236,6 +241,7 @@ namespace Lazpoly.Presentation.Tabletop
         private TextMesh[] _names;
         private TextMesh[] _chanceMarks;
         private Transform[] _documents;
+        private Transform _startArrow;
         private TextMesh[] _prices;
         private int?[] _rents;
         private readonly List<KeyValuePair<Transform, Vector3>> _marks = new List<KeyValuePair<Transform, Vector3>>();
@@ -747,6 +753,10 @@ namespace Lazpoly.Presentation.Tabletop
                         CreateBandMark(mark, line + along * (size.x * 0.4f), outward, InkColor);
                     }
                 }
+                else if (corner && square.Type == SquareType.Start)
+                {
+                    _startArrow = CreateStartArrow(i, center, outward, size.y);
+                }
                 else if (corner && CornerParts.Has(square.Type))
                 {
                     CreateScene(square.Type, i, center, outward, size.y);
@@ -805,6 +815,28 @@ namespace Lazpoly.Presentation.Tabletop
                 }
             }
         }
+
+        /// <summary>
+        /// The start square's arrow (the owner had its pier and lighthouse taken away, Faz 24): printed flat in red over the
+        /// half of the corner away from its name, pointing the way the pawns go, towards the next square. It is shorter when
+        /// it runs towards the name, so it never reaches it.
+        /// </summary>
+        private Transform CreateStartArrow(int index, Vector3 center, Vector3 outward, float side)
+        {
+            Vector3 towardsName = outward * (FacesAway(outward) ? -1f : 1f);
+            Vector3 way = Layout.SquareCenter(index + 1) - Layout.SquareCenter(index);
+            way.y = 0f;
+            way.Normalize();
+            bool alongName = Mathf.Abs(Vector3.Dot(way, towardsName)) > 0.5f;
+            float scale = side * (alongName ? StartArrowShortLength : StartArrowLength) / FloorPrint.ArrowSize.y;
+            GameObject arrow = FloorPrint.Arrow("Start arrow", transform, scale, FloorPrint.ArrowRed);
+            arrow.transform.localPosition = center - towardsName * (side * StartArrowOffset) + Vector3.up * (TileHeight + 0.001f);
+            arrow.transform.localRotation = Quaternion.LookRotation(way, Vector3.up);
+            return arrow.transform;
+        }
+
+        /// <summary>The start square's arrow, pointing the way the pawns go; null on a board without corners.</summary>
+        public Transform StartArrow => _startArrow;
 
         /// <summary>A corner's scene stands on one side of the corner with the pawns on the other, both on the part away from the name.</summary>
         private void CreateScene(SquareType type, int index, Vector3 center, Vector3 outward, float side)
