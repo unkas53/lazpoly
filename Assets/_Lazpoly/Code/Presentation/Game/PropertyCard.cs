@@ -176,7 +176,7 @@ namespace Lazpoly.Presentation.Game
             if (included)
                 UiRoot.Background(UiRoot.Rect(check, "Mark", Vector2.zero, Vector2.one, new Vector2(5f, 5f), new Vector2(-5f, -5f)), UiTheme.Accent).raycastTarget = false;
 
-            Text name = tile.Label(LevelName(level), UiTextStyle.Small, locked != null ? UiTheme.Muted : UiTheme.Text, TextAnchor.MiddleCenter);
+            Text name = tile.Label(choice.Resort ? L("Tatil yeri") : LevelName(level), UiTextStyle.Small, locked != null ? UiTheme.Muted : UiTheme.Text, TextAnchor.MiddleCenter);
             name.font = UiTheme.BoldFont;
             tile.Label(F($"Kira {choice.RentAt(level)}"), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
         }

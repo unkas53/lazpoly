@@ -309,7 +309,7 @@ namespace Lazpoly.Presentation.Menu
             var towns = new List<SquareDefinition>();
             for (int i = 0; i < board.Count; i++)
             {
-                if (board[i].Type == SquareType.Property) towns.Add(board[i]);
+                if (board[i].Type == SquareType.Property && !board[i].IsResort) towns.Add(board[i]);
             }
 
             towns.Sort((a, b) => b.Price.CompareTo(a.Price));

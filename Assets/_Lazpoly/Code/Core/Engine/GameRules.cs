@@ -119,12 +119,26 @@ namespace Lazpoly.Core.Engine
             int ownerId = state.GetOwner(squareIndex);
             if (ownerId == GameState.NoOwner) return 0;
 
+            if (square.IsResort) return square.BaseRent * ResortsOwned(board, state, ownerId);
+
             int level = state.GetBuildingLevel(squareIndex);
             if (level > 0) return square.DevelopedRents[level - 1];
 
             return OwnsWholeGroup(board, state, ownerId, square.GroupId)
                 ? square.BaseRent * rules.FullGroupRentMultiplier
                 : square.BaseRent;
+        }
+
+        /// <summary>How many holiday resorts <paramref name="ownerId"/> holds; each one's rent is its base rent times this.</summary>
+        public static int ResortsOwned(BoardDefinition board, GameState state, int ownerId)
+        {
+            int owned = 0;
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].IsResort && state.GetOwner(i) == ownerId) owned++;
+            }
+
+            return owned;
         }
 
         public static bool OwnsWholeGroup(BoardDefinition board, GameState state, int ownerId, int groupId)

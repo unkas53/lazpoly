@@ -111,6 +111,7 @@ namespace Lazpoly.Presentation.Texts
         private static SquareInfo DescribeProperty(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex, string groupName)
         {
             SquareDefinition square = board[squareIndex];
+            if (square.IsResort) return DescribeResort(board, state, squareIndex);
             var info = new SquareInfo(L(square.Name), string.IsNullOrEmpty(groupName) ? L("Mülk") : F($"Mülk · {L(groupName)}"));
 
             int owner = state.GetOwner(squareIndex);
@@ -140,6 +141,40 @@ namespace Lazpoly.Presentation.Texts
             info.Notes.Add(GroupNote(board, state, square.GroupId));
             if (square.IsDevelopable) info.Notes.Add(L("Sahibi şehre yeniden gelince ev kurar: başlangıçtan geçene kadar bir, sonra dörde kadar; dört evden sonra otel."));
             return info;
+        }
+
+        /// <summary>A holiday resort: its price, the rent for one to all four held by the same owner, and who holds them.</summary>
+        private static SquareInfo DescribeResort(BoardDefinition board, GameState state, int squareIndex)
+        {
+            SquareDefinition square = board[squareIndex];
+            var info = new SquareInfo(L(square.Name), L("Tatil yeri"));
+            int owner = state.GetOwner(squareIndex);
+            int held = owner == GameState.NoOwner ? 0 : GameRules.ResortsOwned(board, state, owner);
+            int resorts = ResortCount(board);
+
+            info.Rows.Add(new SquareInfoRow(L("Fiyat"), square.Price.ToString()));
+            for (int count = 1; count <= resorts; count++)
+            {
+                info.Rows.Add(new SquareInfoRow(F($"{count} tatil yeri"), (square.BaseRent * count).ToString(), held == count, rent: true));
+            }
+
+            info.Rows.Add(new SquareInfoRow(L("Satış değeri"), square.SaleValue.ToString()));
+            string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
+            info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
+            info.Notes.Add(L("Tatil yerine bina kurulmaz. Kirası sahibinin elindeki tatil yeri sayısıyla artar: her biri için bir, iki, üç ya da dört kat."));
+            return info;
+        }
+
+        /// <summary>How many holiday resorts the board has.</summary>
+        public static int ResortCount(BoardDefinition board)
+        {
+            int count = 0;
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].IsResort) count++;
+            }
+
+            return count;
         }
 
         /// <summary>Who holds how much of the group, e.g. "Bu renk: 3 kare; Ayşe 2, sahipsiz 1."</summary>

@@ -153,7 +153,7 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void EverythingOnASquareHasItsOwnStripFromTheScreensTopToItsBottom()
         {
-            var layout = new BoardLayout(24, 6f, BoardView.DepthRatio);
+            var layout = new BoardLayout(28, 6f, BoardView.DepthRatio);
             float widthInDepths = layout.Width / layout.Depth;
             float pawnReach = PawnSlots.Pitch * widthInDepths; // Half the 3x3 slot grid, in tile depths.
             float buildingHalf = BuildingModels.Depth * BoardView.BuildingScale * widthInDepths / 2f;

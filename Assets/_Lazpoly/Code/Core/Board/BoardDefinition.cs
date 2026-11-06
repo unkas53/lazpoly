@@ -149,6 +149,7 @@ namespace Lazpoly.Core.Board
                     if (square.BaseRent < 0) throw new ArgumentException($"Square {index} '{square.Name}': rent cannot be negative.");
                     if (square.GroupId < 0) throw new ArgumentException($"Square {index} '{square.Name}': group id cannot be negative.");
                     ValidateDevelopment(square, index);
+                    if (square.IsResort && square.IsDevelopable) throw new ArgumentException($"Square {index} '{square.Name}': a resort takes no buildings.");
                     break;
                 case SquareType.Tax:
                     if (square.TaxAmount <= 0) throw new ArgumentException($"Square {index} '{square.Name}': tax must be positive.");

@@ -845,6 +845,14 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Menüdeki "Karakterler" penceresi sekiz kartı iki sıra halinde gösterir; buradaki seçim her lobide ilk seçimdir.
 - Testler: `FigureTests` (her figürün karakteri ve resimleri, yedek figür, figür boyları ve iki düzeyi, dosya biçimi), `OnlineSeatPlanTests` (koltuk başına ayrı karakter, çakışmanın çözümü), `OnlineSetupTests` (odaya favoriyle girme, çakışmada sonraki koltuğun değişmesi, ev sahibinin planı), `MenuTests` (eski seçimin taşınması, şeridin kilitleri), `PlayerCardTests` (kartın karakter yüzü), `MessageCodecTests` ve `LocalGameAndSaveTests` (karakterin ağda ve kayıtta taşınması, eski kayıt).
 
+## Faz 22: dört tatil yeri
+
+- Tahtanın her kenarının ortasına bir tatil yeri: Bodrum, Bali, Santorini, Maldivler (`"type": "resort"`, "Tatil Yerleri" grubu, turkuaz). Tahta 24 kareden 28 kareye çıktı; köşeler 0, 7, 14, 21.
+- Tatil yeri şehir gibi satın alınır (200), ama üzerine bina kurulmaz. Kirası sahibinin elindeki tatil yeri sayısıyla artar: biri varsa 50, ikisi varsa her biri 100, üçü varsa her biri 150, dördü varsa her biri 200 (`SquareDefinition.Resort`, `GameRules.ResortsOwned`). Başka oyuncunun tatil yerleri sayılmaz; renk grubunun iki kat kirası tatil yerine uygulanmaz.
+- Satın alma kartında tek kutu ("Tatil yeri") ve alınca kazanacağı kira; bilgi kartında 1 ile 4 tatil yeri arasındaki kiralar ve sahibinin şu an tuttuğu sayı işaretli.
+- Tahtanın sağlama değeri tatil yerini de sayar, bu yüzden önceki tahtayla kaydedilmiş oyunlar açılmaz.
+- Testler: `ResortTests` (kira tablosu, başkasının tatil yeri, üzerine gelince ödeme, satın alma ve bina yasağı, sağlama değeri), `BoardDataLoaderTests` (her kenarda bir tatil yeri, binalı tatil yerinin reddi), `PropertyChoiceTests`, `SquareInfoTests`.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
