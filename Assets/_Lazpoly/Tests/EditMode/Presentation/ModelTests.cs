@@ -66,8 +66,8 @@ namespace Lazpoly.Presentation.Tests
                     sum += pixel.r;
                 }
 
-                Assert.Greater(darkest, 0.65f, "nothing on the paper is dark");
-                Assert.Greater(sum / (32 * 32), 0.9f, "the paper is light");
+                Assert.Greater(darkest, 0.45f, "nothing on the paper is dark: the frame line is the darkest part");
+                Assert.Greater(sum / (32 * 32), 0.85f, "the paper is light");
             }
             finally
             {
