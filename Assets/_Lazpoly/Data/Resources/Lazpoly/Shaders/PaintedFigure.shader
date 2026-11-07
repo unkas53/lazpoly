@@ -4,7 +4,9 @@
 // only lie side by side on the atlas (the skin beside the jacket) bled into each other as grain and specks. Each
 // vertex therefore also carries its colour map averaged over the surface around it (Tools/Art/make_figures.py
 // paints it), which knows nothing of the atlas: where the map is read from its small mipmaps (and across a piece's
-// edge, where the mipmap level jumps) the vertex colour shows, and the map itself only where it is drawn large.
+// edge, where the mipmap level jumps) the vertex colour shows, and the map itself where it is drawn large enough. Up
+// to mipmap level 2.5 the map shows whole, so a figure the wheel brings near keeps its painted detail; the map is never
+// read below level 2 (one texel there spans few enough pieces), and from 2.5 to 3.5 the vertex colours take over.
 Shader "Lazpoly/PaintedFigure"
 {
     Properties
@@ -53,9 +55,11 @@ Shader "Lazpoly/PaintedFigure"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-            // The map shows whole up to this mipmap level and gives way to the vertex colours over the next ones.
-            #define DETAIL_UNTIL 1.5
-            #define DETAIL_FADE 1.5
+            // The map shows whole up to this mipmap level and gives way to the vertex colours over the next one; it is
+            // never read from a smaller mipmap than SHARPEST_LEVEL.
+            #define DETAIL_UNTIL 2.5
+            #define DETAIL_FADE 1.0
+            #define SHARPEST_LEVEL 2.0
 
             struct Attributes
             {
@@ -91,12 +95,12 @@ Shader "Lazpoly/PaintedFigure"
 
             half4 PaintedFragment(Varyings input) : SV_Target
             {
-                half3 mapped = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).rgb;
+                float level = CALCULATE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, input.uv);
+                half3 mapped = SAMPLE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, input.uv, min(level, SHARPEST_LEVEL)).rgb;
                 half3 painted = input.color.rgb;
                 #if !defined(UNITY_COLORSPACE_GAMMA)
                 painted = SRGBToLinear(painted);
                 #endif
-                float level = CALCULATE_TEXTURE2D_LOD(_BaseMap, sampler_BaseMap, input.uv);
                 half painting = saturate((level - DETAIL_UNTIL) / DETAIL_FADE);
 
                 SurfaceData surface = (SurfaceData)0;

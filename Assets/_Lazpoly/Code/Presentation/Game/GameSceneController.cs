@@ -893,6 +893,17 @@ namespace Lazpoly.Presentation.Game
 
             yield return ScreenTour.Until(() => !IsBusy && _session.State.CurrentPlayer.Id == person && _session.State.Phase == GamePhase.WaitingForRoll, 120f);
             yield return ScreenTour.Take("masa");
+            // The closest view, on the person's figure: how the Meshy models look when the wheel brings them near.
+            if (CameraRig != null && _pawns.TryGetValue(person, out PawnView near) && near != null)
+            {
+                CameraRig.Peek(near.transform.position);
+                CameraRig.SetView(BoardCameraRig.BaseYaw, BoardCameraRig.MinZoom);
+                yield return ScreenTour.Take("masa-yakin");
+                CameraRig.Peek(null);
+                CameraRig.ResetView();
+                yield return ScreenTour.Until(() => false, 1f);
+            }
+
             foreach ((HudWindow window, string name) in new[]
             {
                 (HudWindow.Properties, "mulkler"), (HudWindow.Trade, "takas"), (HudWindow.Log, "olaylar"),
