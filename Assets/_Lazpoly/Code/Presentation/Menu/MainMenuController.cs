@@ -92,6 +92,7 @@ namespace Lazpoly.Presentation.Menu
             {
                 Lang.Apply(_settingsService.Current.Language);
                 ColorVision.Apply(_settingsService.Current.ColorBlind);
+                RoomDressing.ApplyQuality(_settingsService.Current.Quality);
                 _settingsService.Changed += OnSettingsChanged;
             }
 

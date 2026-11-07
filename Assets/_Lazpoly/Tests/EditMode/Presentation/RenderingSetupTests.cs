@@ -29,6 +29,18 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheRendererHasItsPostProcessingResources()
+        {
+            // Made from a script (Faz 6c), the renderer never stored URP's post-processing resources; the editor fills
+            // them in while it runs, but a built game could go without them (no SMAA, bloom, grading or vignette).
+            // So the asset file itself must name them.
+            string path = System.IO.Path.Combine(Application.dataPath, "_Lazpoly", "Settings", "Lazpoly_URP_Renderer.asset");
+            string text = System.IO.File.ReadAllText(path);
+            StringAssert.Contains("postProcessData: {fileID: 11400000, guid: ", text, "the renderer asset names URP's PostProcessData");
+            StringAssert.DoesNotContain("postProcessData: {fileID: 0}", text);
+        }
+
+        [Test]
         public void EveryQualityKeepsSoftShadowsAndOnlyHighBlooms()
         {
             foreach (Lazpoly.Infra.Settings.GraphicsQuality quality in System.Enum.GetValues(typeof(Lazpoly.Infra.Settings.GraphicsQuality)))

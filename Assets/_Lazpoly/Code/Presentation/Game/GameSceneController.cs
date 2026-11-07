@@ -1503,6 +1503,9 @@ namespace Lazpoly.Presentation.Game
             GraphicsQuality quality = RoomDressing.CurrentQuality();
             RoomDressing.DressCamera(camera, quality);
             RoomDressing.LightScene(quality);
+            // The pipeline's share of the quality (edge smoothing, shadow map, render scale) was only set when the setting
+            // changed, so a table opened with the stored setting drew without MSAA: jagged model edges from afar.
+            RoomDressing.ApplyQuality(quality);
         }
     }
 }

@@ -81,10 +81,24 @@ namespace Lazpoly.Presentation.Perf
                 Quality = QualityName(),
                 Players = Players,
                 Version = Application.version,
-                Device = $"{SystemInfo.graphicsDeviceName} · {SystemInfo.processorType}",
+                Device = $"{SystemInfo.graphicsDeviceName} · {SystemInfo.processorType} · {PipelineSummary()}",
             };
             _run = null;
             _onRunDone?.Invoke(sample);
+        }
+
+        /// <summary>What the pipeline really draws with now: MSAA samples, shadow map and render scale.</summary>
+        public static string PipelineSummary() =>
+            UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset pipeline
+                ? $"MSAA {pipeline.msaaSampleCount}x, gölge {pipeline.mainLightShadowmapResolution}, ölçek {pipeline.renderScale:0.##}{CameraSummary()}"
+                : "URP yok";
+
+        private static string CameraSummary()
+        {
+            Camera camera = Camera.main;
+            if (camera == null) return "";
+            var data = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+            return data == null ? "" : $", kamera MSAA {(camera.allowMSAA ? "açık" : "kapalı")}, {data.antialiasing}, son işlem {(data.renderPostProcessing ? "açık" : "kapalı")}";
         }
 
         private static string QualityName()
