@@ -72,7 +72,24 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual((1, 0), MoneyFlight.Pieces(100));
             Assert.AreEqual((2, 3), MoneyFlight.Pieces(260));
             Assert.AreEqual((MoneyFlight.MaxNotes, 0), MoneyFlight.Pieces(5000));
-            Assert.AreEqual((MoneyFlight.MaxNotes, MoneyFlight.MaxCoins), MoneyFlight.Pieces(599));
+            Assert.AreEqual((MoneyFlight.MaxNotes, MoneyFlight.MaxCoins), MoneyFlight.Pieces(899));
+        }
+
+        [Test]
+        public void TheMoneyTravelsAsOneStack()
+        {
+            for (int i = 1; i < MoneyFlight.MaxNotes; i++)
+            {
+                Vector3 below = MoneyFlight.StackOffset(i - 1, MoneyFlight.MaxNotes, 0), above = MoneyFlight.StackOffset(i, MoneyFlight.MaxNotes, 0);
+                Assert.AreEqual(MoneyFlight.NoteLayer, above.y - below.y, 1e-5f, "each note lies on the one before (a deste)");
+                Assert.LessOrEqual(new Vector2(above.x - below.x, above.z - below.z).magnitude, 3f * MoneyFlight.Jitter, "squared up, not spread out");
+            }
+
+            Vector3 firstCoin = MoneyFlight.StackOffset(3, 3, 2), secondCoin = MoneyFlight.StackOffset(4, 3, 2);
+            Assert.AreEqual(MoneyFlight.CoinLayer, secondCoin.y - firstCoin.y, 1e-5f, "the coins pile up too");
+            Assert.AreEqual(firstCoin.x, secondCoin.x, 1e-5f);
+            Assert.Greater(firstCoin.x - MoneyFlight.StackOffset(0, 3, 2).x, MoneyFlight.NoteLength / 2f, "beside the notes' stack, not on it");
+            Assert.AreEqual(Vector3.zero, MoneyFlight.StackOffset(0, 0, 1), "a lone coin is the bundle's middle");
         }
 
         [Test]
@@ -80,25 +97,24 @@ namespace Lazpoly.Presentation.Tests
         {
             Vector3 from = new Vector3(-4f, 1f, 0f), middle = new Vector3(0f, 1.6f, 0f), to = new Vector3(4f, 1f, 2f);
             Assert.AreEqual(3f, MoneyFlight.Seconds, "the owner's three seconds");
-            for (int i = 0; i < MoneyFlight.MaxNotes + MoneyFlight.MaxCoins; i++)
-            {
-                Assert.LessOrEqual(MoneyFlight.ArriveAt(i) + MoneyFlight.SinkSeconds, MoneyFlight.Seconds + 1e-4f, $"piece {i} is gone in time");
-                Assert.AreEqual(from, MoneyFlight.PositionAt(0f, i, from, middle, to));
-                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.GatherAt, i, from, middle, to), middle), Is.LessThan(1e-4f), "it waits in the middle");
-                Assert.AreEqual(to, MoneyFlight.PositionAt(MoneyFlight.ArriveAt(i), i, from, middle, to));
-                Vector3 halfway = MoneyFlight.PositionAt((MoneyFlight.LeaveMiddleAt(i) + MoneyFlight.ArriveAt(i)) / 2f, i, from, middle, to);
-                Assert.That(Vector3.Distance(halfway, (middle + to) / 2f), Is.LessThan(1e-3f), "straight on, no arc (the owner's wish)");
-                Assert.AreEqual(0f, MoneyFlight.ScaleAt(MoneyFlight.DepartAt(i), i));
-                Assert.AreEqual(1f, MoneyFlight.ScaleAt(MoneyFlight.GatherAt + 0.1f, i));
-                Assert.AreEqual(0f, MoneyFlight.ScaleAt(MoneyFlight.Seconds, i), "it sinks into whoever gets it");
-            }
+            Assert.LessOrEqual(MoneyFlight.ArriveAt + MoneyFlight.SinkSeconds, MoneyFlight.Seconds + 1e-4f, "gone in time");
+            Assert.AreEqual(from, MoneyFlight.PositionAt(0f, from, middle, to));
+            Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.GatherAt, from, middle, to), middle), Is.LessThan(1e-4f), "it waits in the middle");
+            Assert.AreEqual(to, MoneyFlight.PositionAt(MoneyFlight.ArriveAt, from, middle, to));
+            Vector3 halfway = MoneyFlight.PositionAt((MoneyFlight.LeaveAt + MoneyFlight.ArriveAt) / 2f, from, middle, to);
+            Assert.That(Vector3.Distance(halfway, (middle + to) / 2f), Is.LessThan(1e-3f), "straight on, no arc (the owner's wish)");
+            Assert.AreEqual(0f, MoneyFlight.ScaleAt(0f));
+            Assert.AreEqual(1f, MoneyFlight.ScaleAt(MoneyFlight.GatherAt));
+            Assert.AreEqual(0f, MoneyFlight.ScaleAt(MoneyFlight.Seconds), 1e-4f, "it sinks into whoever gets it");
 
             var root = new GameObject("Table");
             try
             {
                 float seconds = MoneyFlight.Fly(root.transform, from, middle, to, 260, Quaternion.identity, 2f);
                 Assert.AreEqual(1.5f, seconds, 1e-4f, "the animation speed setting shortens it");
-                Assert.AreEqual(5, root.GetComponentsInChildren<MoneyFlight>().Length, "two notes and three coins");
+                MoneyFlight[] pieces = root.GetComponentsInChildren<MoneyFlight>();
+                Assert.AreEqual(5, pieces.Length, "two notes and three coins");
+                Assert.Less(Vector3.Distance(pieces[0].transform.position, pieces[1].transform.position), 0.2f, "the notes leave together, stacked");
             }
             finally
             {

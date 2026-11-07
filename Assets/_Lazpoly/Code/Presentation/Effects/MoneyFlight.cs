@@ -5,42 +5,47 @@ namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
     /// One piece of paid money (the owner's 1 L coin or 100 L note, <see cref="MoneyModels"/>) on its way, the owner's wish
-    /// (Faz 25): it comes out of the payer's figure, goes straight to the middle of the table, waits there with the rest of
-    /// the payment, then goes straight on to whoever gets it (a figure, or the bank's safe) and sinks into it. It lies flat
-    /// and never turns on the way (the owner's wish). The whole payment takes
-    /// <see cref="Seconds"/> at normal speed, and the game waits for it. The timeline is pure (<see cref="PositionAt"/>,
-    /// <see cref="ScaleAt"/>) so it can be checked without a scene.
+    /// (Faz 25): a payment travels as one bundle, the notes in a stack (a deste) with the coins piled beside it. It comes
+    /// out of the payer's figure, goes straight to the middle of the table, waits there a moment, then goes straight on to
+    /// whoever gets it (a figure, or the bank's safe) and sinks into it. It lies flat and never turns on the way. The whole payment takes
+    /// <see cref="Seconds"/> at normal speed, and the game waits for it. The timeline and the stack are pure
+    /// (<see cref="PositionAt"/>, <see cref="ScaleAt"/>, <see cref="StackOffset"/>) so they can be checked without a scene.
     /// </summary>
     public sealed class MoneyFlight : MonoBehaviour
     {
-        /// <summary>The whole payment, from the first piece leaving to the last one gone, at normal speed.</summary>
+        /// <summary>The whole payment, from the bundle leaving to it being gone, at normal speed (the owner's three seconds).</summary>
         public const float Seconds = 3f;
 
-        /// <summary>When the pieces reach the middle, and when the first leaves it again; each next piece starts and leaves <see cref="Stagger"/> later.</summary>
+        /// <summary>When the bundle reaches the middle and when it leaves it again, at normal speed.</summary>
         public const float GatherAt = 1.0f;
-        public const float LeaveAt = 1.4f;
-        public const float Stagger = 0.04f;
+        public const float LeaveAt = 1.5f;
 
         /// <summary>How long the way from the middle to whoever gets the money takes, and the shrink into them at the end.</summary>
-        public const float LegSeconds = 1.1f;
-        public const float SinkSeconds = 0.2f;
+        public const float LegSeconds = 1.2f;
+        public const float SinkSeconds = 0.3f;
 
-        /// <summary>How long a piece takes to grow to its size as it leaves the payer.</summary>
+        /// <summary>When the bundle reaches whoever gets it.</summary>
+        public const float ArriveAt = LeaveAt + LegSeconds;
+
+        /// <summary>How long the bundle takes to grow to its size as it leaves the payer.</summary>
         public const float PopSeconds = 0.15f;
 
-        /// <summary>Notes for the hundreds (at most <see cref="MaxNotes"/>), coins for the rest (one per <see cref="CoinValue"/>, at most <see cref="MaxCoins"/>).</summary>
+        /// <summary>Notes for the hundreds (at most <see cref="MaxNotes"/> in the stack), coins for the rest (one per <see cref="CoinValue"/>, at most <see cref="MaxCoins"/>).</summary>
         public const int NoteValue = 100;
         public const int CoinValue = 25;
-        public const int MaxNotes = 5;
-        public const int MaxCoins = 3;
+        public const int MaxNotes = 8;
+        public const int MaxCoins = 4;
 
         /// <summary>A piece's size on the table in board units: the coin across, the note along.</summary>
         public const float CoinWidth = 0.8f;
         public const float NoteLength = 1.8f;
 
-        /// <summary>How far apart the pieces wait in the middle, along the screen, and how much higher each next one lies.</summary>
-        public const float SpreadStep = 0.4f;
-        public const float LayerStep = 0.06f;
+        /// <summary>How much higher each next note and coin lies in its stack, a little over its own thickness.</summary>
+        public const float NoteLayer = 0.035f;
+        public const float CoinLayer = 0.1f;
+
+        /// <summary>The notes are squared up loosely: each lies up to this far off the stack's line, in board units.</summary>
+        public const float Jitter = 0.03f;
 
         private static readonly Color DrawnGold = new Color(0.93f, 0.72f, 0.26f);
 
@@ -48,7 +53,6 @@ namespace Lazpoly.Presentation.Effects
         private Vector3 _middle;
         private Vector3 _to;
         private Quaternion _rest;
-        private int _index;
         private float _speed;
         private float _age;
         private Vector3 _size;
@@ -64,29 +68,45 @@ namespace Lazpoly.Presentation.Effects
         }
 
         /// <summary>
+        /// Where the <paramref name="index"/>th piece lies in the bundle, in the bundle's own frame (x along the notes, y up):
+        /// the notes stacked on each other, each a little off the line, and the coins in a pile at the stack's right end; the
+        /// whole bundle centred on its middle.
+        /// </summary>
+        public static Vector3 StackOffset(int index, int notes, int coins)
+        {
+            float coinColumn = notes > 0 && coins > 0 ? NoteLength / 2f + CoinWidth * 0.6f : 0f;
+            float centre = coinColumn / 2f;
+            if (index < notes)
+            {
+                float x = ((index * 37) % 7 - 3) / 3f * Jitter;
+                float z = ((index * 53) % 5 - 2) / 2f * Jitter;
+                return new Vector3(x - centre, index * NoteLayer, z);
+            }
+
+            int coin = index - notes;
+            return new Vector3(coinColumn - centre, coin * CoinLayer, 0f);
+        }
+
+        /// <summary>
         /// Starts a payment of <paramref name="amount"/> from <paramref name="from"/> through <paramref name="middle"/> to
-        /// <paramref name="to"/>; the pieces lie turned by <paramref name="rest"/> while they wait (their lettering to the
-        /// camera). Returns how long it takes at <paramref name="speed"/>, for the game to wait on.
+        /// <paramref name="to"/> as one bundle, lying turned by <paramref name="rest"/> (its lettering to the camera).
+        /// Returns how long it takes at <paramref name="speed"/>, for the game to wait on.
         /// </summary>
         public static float Fly(Transform parent, Vector3 from, Vector3 middle, Vector3 to, int amount, Quaternion rest, float speed)
         {
             (int notes, int coins) = Pieces(amount);
-            int count = notes + coins;
-            Vector3 along = rest * Vector3.right;
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < notes + coins; i++)
             {
-                MoneyKind kind = i < notes ? MoneyKind.Note : MoneyKind.Coin;
-                Vector3 spread = along * ((i - (count - 1) / 2f) * SpreadStep) + Vector3.up * (i * LayerStep);
-                GameObject piece = Create(kind, parent);
+                GameObject piece = Create(i < notes ? MoneyKind.Note : MoneyKind.Coin, parent);
+                Vector3 offset = rest * StackOffset(i, notes, coins);
                 var flight = piece.AddComponent<MoneyFlight>();
-                flight._from = from;
-                flight._middle = middle + spread;
-                flight._to = to;
-                flight._rest = rest * Quaternion.Euler(0f, (i % 2 == 0 ? 1f : -1f) * 8f * i, 0f);
-                flight._index = i;
+                flight._from = from + offset;
+                flight._middle = middle + offset;
+                flight._to = to + offset;
+                flight._rest = rest * Quaternion.Euler(0f, i < notes ? ((i * 29) % 5 - 2) * 1.5f : 0f, 0f);
                 flight._speed = Mathf.Max(speed, 0.1f);
                 flight._size = piece.transform.localScale;
-                piece.transform.position = from;
+                piece.transform.position = flight._from;
                 piece.transform.rotation = flight._rest;
                 piece.transform.localScale = Vector3.zero;
             }
@@ -112,51 +132,36 @@ namespace Lazpoly.Presentation.Effects
             return coin;
         }
 
-        /// <summary>When the <paramref name="index"/>th piece leaves the payer, leaves the middle and reaches whoever gets it, at normal speed.</summary>
-        public static float DepartAt(int index) => index * Stagger;
-        public static float LeaveMiddleAt(int index) => LeaveAt + index * Stagger;
-        public static float ArriveAt(int index) => LeaveMiddleAt(index) + LegSeconds;
-
-        /// <summary>Where the <paramref name="index"/>th piece is <paramref name="t"/> seconds into the payment (normal speed).</summary>
-        public static Vector3 PositionAt(float t, int index, Vector3 from, Vector3 middle, Vector3 to)
+        /// <summary>Where a piece of the bundle is <paramref name="t"/> seconds into the payment (normal speed): straight lines, a stop in the middle.</summary>
+        public static Vector3 PositionAt(float t, Vector3 from, Vector3 middle, Vector3 to)
         {
-            float depart = DepartAt(index);
-            if (t <= depart) return from;
-            if (t < GatherAt)
-            {
-                float u = (t - depart) / (GatherAt - depart);
-                return Vector3.Lerp(from, middle, Ease.InOutCubic(u));
-            }
-
-            float leave = LeaveMiddleAt(index);
-            if (t < leave) return middle;
-            float arrive = ArriveAt(index);
-            if (t >= arrive) return to;
-            float v = (t - leave) / LegSeconds;
-            return Vector3.Lerp(middle, to, Ease.InOutCubic(v));
+            if (t <= 0f) return from;
+            if (t < GatherAt) return Vector3.Lerp(from, middle, Ease.InOutCubic(t / GatherAt));
+            if (t < LeaveAt) return middle;
+            if (t >= ArriveAt) return to;
+            return Vector3.Lerp(middle, to, Ease.InOutCubic((t - LeaveAt) / LegSeconds));
         }
 
-        /// <summary>The <paramref name="index"/>th piece's size as a share of its own: it pops up as it leaves and shrinks into whoever gets it.</summary>
-        public static float ScaleAt(float t, int index)
+        /// <summary>The bundle's size as a share of its own: it pops up as it leaves and shrinks into whoever gets it.</summary>
+        public static float ScaleAt(float t)
         {
-            float depart = DepartAt(index);
-            if (t <= depart) return 0f;
-            float grow = Mathf.Clamp01((t - depart) / PopSeconds);
-            float sink = 1f - Mathf.Clamp01((t - ArriveAt(index)) / SinkSeconds);
+            if (t <= 0f) return 0f;
+            float grow = Mathf.Clamp01(t / PopSeconds);
+            float sink = 1f - Mathf.Clamp01((t - ArriveAt) / SinkSeconds);
             return Mathf.Min(grow, sink);
         }
 
         private void Update()
         {
             _age += Time.deltaTime * _speed;
-            if (_age >= ArriveAt(_index) + SinkSeconds)
+            if (_age >= ArriveAt + SinkSeconds)
             {
                 Destroy(gameObject);
                 return;
             }
 
-            transform.position = PositionAt(_age, _index, _from, _middle, _to);
-            transform.localScale = _size * ScaleAt(_age, _index);
+            transform.position = PositionAt(_age, _from, _middle, _to);
+            transform.localScale = _size * ScaleAt(_age);
             transform.rotation = _rest;
         }
     }
