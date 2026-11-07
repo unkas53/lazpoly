@@ -4,8 +4,8 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
-    /// One bundle of paid money on its way, the owner's wish (Faz 25): a payment travels as thick bundles of the owner's
-    /// 100 L notes (<see cref="MoneyBundle"/>), two side by side and piled on each other. It comes out of the payer's
+    /// One bundle of paid money on its way, the owner's wish (Faz 25): a payment travels as the owner's thick dollar stacks
+    /// (<see cref="MoneyBundle"/>), two side by side and piled on each other. It comes out of the payer's
     /// figure, goes straight to the middle of the table, waits there a moment, then goes straight on to whoever gets it (a
     /// figure, or the bank's safe) and sinks into it. It lies flat and never turns on the way. The whole payment takes
     /// <see cref="Seconds"/> at normal speed, and the game waits for it. The timeline and the pile are pure
@@ -32,7 +32,7 @@ namespace Lazpoly.Presentation.Effects
 
         /// <summary>One bundle for every hundred started, at least one and at most <see cref="MaxBundles"/>.</summary>
         public const int BundleValue = 100;
-        public const int MaxBundles = 6;
+        public const int MaxBundles = 4;
 
         /// <summary>How many bundles lie side by side in a layer of the pile, and the gaps between them and between the layers.</summary>
         public const int PerLayer = 2;

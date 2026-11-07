@@ -12,57 +12,9 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Tests
 {
-    /// <summary>Faz 25: the owner's money set, the bank's safe on the lawn and the three-second payment flight.</summary>
+    /// <summary>Faz 25: the owner's dollar stack, the bank's safe on the lawn and the three-second payment flight.</summary>
     public class MoneyTests
     {
-        [Test]
-        public void TheMoneySetHoldsTheCoinAndTheNoteWithTheirLogos()
-        {
-            var asset = Resources.Load<TextAsset>(MoneyModels.Resource);
-            Assert.IsNotNull(asset, "run Tools/Art/make_money.py");
-            IReadOnlyList<MoneyPart> parts = MoneyPack.Parse(asset.bytes);
-            foreach (string model in new[] { "Coin", "Note" })
-            {
-                MoneyPart[] own = parts.Where(p => p.Model == model).ToArray();
-                Assert.Greater(own.Length, 2, $"{model}: its colours and its logo");
-                Assert.AreEqual(1, own.Count(p => p.Logo), $"{model}: one logo part");
-                Vector3[] all = own.SelectMany(p => p.Positions).ToArray();
-                Assert.That(all.Min(v => v.y), Is.EqualTo(0f).Within(1e-3f), $"{model} lies on y = 0");
-                float length = all.Max(v => v.x) - all.Min(v => v.x);
-                Assert.That(length, Is.EqualTo(MoneyModels.Length(model == "Coin" ? MoneyKind.Coin : MoneyKind.Note)).Within(0.01f));
-            }
-
-            MoneyPart logo = parts.First(p => p.Model == "Coin" && p.Logo);
-            Assert.Greater(Vector3.Dot(logo.Normals[0], Vector3.up), 0.99f, "the coin's logo faces up");
-            Assert.Throws<System.FormatException>(() => MoneyPack.Parse(new byte[] { 1, 2, 3, 4 }));
-        }
-
-        [Test]
-        public void APieceIsBuiltFromSharedPartsWithItsLogoCutOut()
-        {
-            var root = new GameObject("Money");
-            try
-            {
-                Assert.IsTrue(MoneyModels.IsAvailable);
-                GameObject coin = MoneyModels.Create(MoneyKind.Coin, "Coin", root.transform);
-                GameObject other = MoneyModels.Create(MoneyKind.Coin, "Coin", root.transform);
-                MeshRenderer[] renderers = coin.GetComponentsInChildren<MeshRenderer>();
-                Assert.Greater(renderers.Length, 2);
-                Assert.AreSame(renderers[0].sharedMaterial, other.GetComponentsInChildren<MeshRenderer>()[0].sharedMaterial, "shared, not copied per piece");
-                MeshRenderer logo = renderers.Single(r => r.sharedMaterial.mainTexture != null);
-                Assert.IsTrue(logo.sharedMaterial.IsKeywordEnabled("_ALPHATEST_ON"), "the logo's clear pixels are cut away");
-                Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, logo.shadowCastingMode);
-                var cutout = Resources.Load<Material>(MoneyModels.CutoutMaterialResource);
-                Assert.IsNotNull(cutout);
-                Assert.AreEqual(1f, cutout.GetFloat("_AlphaClip"));
-                Assert.AreEqual(Resources.Load<Material>(ModelParts.MaterialResource).shader, cutout.shader);
-            }
-            finally
-            {
-                Object.DestroyImmediate(root);
-            }
-        }
-
         [Test]
         public void APaymentIsShownInThickBundles()
         {
@@ -72,7 +24,6 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(3, MoneyFlight.Bundles(260));
             Assert.AreEqual(MoneyFlight.MaxBundles, MoneyFlight.Bundles(5000));
             Assert.GreaterOrEqual(MoneyBundle.Height, 0.25f * MoneyBundle.Width, "a thick tomar, not a single note");
-            Assert.Greater(MoneyBundle.Height, 8f * MoneyBundle.NoteThickness);
         }
 
         [Test]
@@ -91,35 +42,30 @@ namespace Lazpoly.Presentation.Tests
                 Assert.LessOrEqual(Mathf.Abs(MoneyFlight.StackOffset(i, MoneyFlight.MaxBundles).x), MoneyFlight.Jitter, "squared up");
             }
 
-            for (int i = 1; i < MoneyBundle.Sheets; i++)
-            {
-                Vector3 below = MoneyBundle.SheetOffset(i - 1), above = MoneyBundle.SheetOffset(i);
-                Assert.Greater(above.y, below.y, "the sheets lie on each other");
-                Assert.LessOrEqual(Mathf.Abs(above.x), MoneyBundle.SheetJitter);
-                Assert.LessOrEqual(Mathf.Abs(above.z), MoneyBundle.SheetJitter);
-            }
-
-            Assert.Less(MoneyBundle.SheetOffset(MoneyBundle.Sheets - 1).y, MoneyBundle.Height - MoneyBundle.NoteThickness, "under the top note");
         }
 
         [Test]
-        public void ABundleIsPaperWithANoteOnTopAndABand()
+        public void ABundleIsTheOwnersDollarStackSharingOneMaterial()
         {
             var root = new GameObject("Table");
             try
             {
+                Assert.IsTrue(MoneyBundle.HasModel, "run Tools/Art/make_corner_models.py dollars=...");
                 GameObject bundle = MoneyBundle.Create("Bundle", root.transform);
-                Assert.IsNotNull(bundle.transform.Find("Sheets"));
-                Assert.IsNotNull(bundle.transform.Find("Band"));
-                Assert.IsNotNull(bundle.transform.Find("Top Note"), "the owner's note lies on top");
+                Renderer body = bundle.GetComponentInChildren<Renderer>();
+                Assert.IsNotNull(body.sharedMaterial.mainTexture, "the model's colour map");
+                Bounds bounds = body.bounds;
+                Assert.That(bounds.size.x, Is.EqualTo(MoneyBundle.Length).Within(0.05f), "as long as a bundle");
+                Assert.That(bounds.size.y, Is.EqualTo(MoneyBundle.Height).Within(0.05f));
+                Assert.That(bounds.size.z, Is.EqualTo(MoneyBundle.Width).Within(0.05f));
+                Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), "it lies on y = 0");
                 foreach (Renderer part in bundle.GetComponentsInChildren<Renderer>())
                 {
                     Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, part.shadowCastingMode, part.name);
-                    Assert.IsNotNull(part.sharedMaterial, part.name);
                 }
 
-                Material shared = MoneyBundle.Create("Other", root.transform).transform.Find("Sheets").GetComponent<Renderer>().sharedMaterial;
-                Assert.AreSame(bundle.transform.Find("Sheets").GetComponent<Renderer>().sharedMaterial, shared, "bundles share their materials");
+                Material shared = MoneyBundle.Create("Other", root.transform).GetComponentInChildren<Renderer>().sharedMaterial;
+                Assert.AreSame(body.sharedMaterial, shared, "bundles share their material");
             }
             finally
             {
@@ -149,6 +95,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(1.5f, seconds, 1e-4f, "the animation speed setting shortens it");
                 MoneyFlight[] pieces = root.GetComponentsInChildren<MoneyFlight>();
                 Assert.AreEqual(3, pieces.Length, "three bundles for 260");
+                Assert.AreEqual(MoneyFlight.MaxBundles, MoneyFlight.Bundles(5000), "a big payment piles up to four bundles");
                 Assert.Less(Vector3.Distance(pieces[0].transform.position, pieces[2].transform.position), 1.5f, "the bundles leave together, piled");
             }
             finally

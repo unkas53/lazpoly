@@ -1,8 +1,0 @@
-{
-  "name": "lazpoly-currency-source",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "three": "0.187.0"
-  }
-}

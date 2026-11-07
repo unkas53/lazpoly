@@ -4,98 +4,95 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Models
 {
     /// <summary>
-    /// A thick bundle (tomar) of the owner's 100 L notes, the owner's wish (Faz 25): a block of paper as big as a note, its
-    /// sheets showing at the edges in the note's ivory and pale blue, the owner's note on top and a kraft paper band round
-    /// the middle. It lies flat with its lowest face at y = 0, its middle on the y axis, its length along x and the top
-    /// note's lettering reading to a camera that looks along +Z. The meshes and materials are made once and shared, and
-    /// none of it casts a shadow. Without the money set the block and the band still show, only the top note is missing.
+    /// One bundle of paid money: the owner's cartoon dollar stack (Meshy AI, Tools/Art/make_corner_models.py
+    /// "dollars", <see cref="FigureModels.DollarsId"/>), a thick banded stack of green notes. It lies flat with its lowest
+    /// face at y = 0, its middle on the y axis, its length along x and its print reading to a camera that looks along +Z.
+    /// Every bundle shares one material, and none of it casts a shadow. Without the model a plain green stack with a band
+    /// stands in.
     /// </summary>
     public static class MoneyBundle
     {
-        /// <summary>The bundle's size in board units: as long and as wide as a note on the table, and this thick.</summary>
-        public const float Length = 1.8f;
-        public const float Width = Length * 1.36f / 2.8f;
-        public const float Height = 0.3f;
+        /// <summary>The bundle's size in board units: this long, and as wide and thick as the model's own proportions.</summary>
+        public const float Length = 1.4f;
+        public const float Width = Length * 0.629f;
+        public const float Height = Length * 0.443f;
 
-        /// <summary>How many sheets show at the block's edges, and how far each one lies off the line at most.</summary>
-        public const int Sheets = 12;
-        public const float SheetJitter = 0.012f;
-
-        /// <summary>The band's width along the bundle and how far it stands off the paper.</summary>
-        public const float BandWidth = 0.24f;
+        /// <summary>The stand-in's band: its width along the bundle and how far it stands off the paper.</summary>
+        public const float BandWidth = 0.22f;
         public const float BandLift = 0.008f;
 
-        private static readonly Color Ivory = new Color(0.95f, 0.93f, 0.84f);
-        private static readonly Color PaleBlue = new Color(0.78f, 0.88f, 0.87f);
-        private static readonly Color Kraft = new Color(0.78f, 0.58f, 0.36f);
+        private static readonly Color Green = new Color(0.45f, 0.72f, 0.40f);
+        private static readonly Color Band = new Color(0.96f, 0.74f, 0.20f);
 
-        private static Mesh _light;
-        private static Mesh _dark;
+        private static Material _modelMaterial;
+        private static Mesh _block;
         private static Mesh _band;
-        private static Material _lightMaterial;
-        private static Material _darkMaterial;
+        private static Material _blockMaterial;
         private static Material _bandMaterial;
 
-        /// <summary>The note's thickness on the table (the set's note is 0.0396 of its 2.8 units).</summary>
-        public static float NoteThickness => 0.0396f * Length / 2.8f;
+        /// <summary>Whether the owner's dollar stack is in the build.</summary>
+        public static bool HasModel => FigureModels.IsAvailable(FigureModels.DollarsId);
+
+        /// <summary>Reads the model and makes its mesh ahead of the first payment, so it does not stall a frame.</summary>
+        public static void Preload() => FigureModels.IsAvailable(FigureModels.DollarsId);
 
         /// <summary>A bundle as a parent object with its parts; its scale is one.</summary>
         public static GameObject Create(string name, Transform parent)
         {
-            Build();
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
-            Part("Sheets", root.transform, _light, _lightMaterial);
-            Part("Sheets Between", root.transform, _dark, _darkMaterial);
-            Part("Band", root.transform, _band, _bandMaterial);
-
-            GameObject note = MoneyModels.Create(MoneyKind.Note, "Top Note", root.transform);
-            if (note != null)
+            GameObject model = FigureModels.Create(FigureModels.DollarsId, "Dollars", root.transform);
+            if (model != null)
             {
-                note.transform.localPosition = new Vector3(0f, Height - NoteThickness, 0f);
-                note.transform.localScale = Vector3.one * (Length / MoneyModels.Length(MoneyKind.Note));
+                // The model is one unit long; its print reads from -Z, so it turns round to read to the camera.
+                model.transform.localScale = Vector3.one * Length;
+                model.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                Share(model.GetComponentInChildren<Renderer>());
+            }
+            else
+            {
+                StandIn(root.transform);
             }
 
             foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>()) renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             return root;
         }
 
-        /// <summary>
-        /// Where the <paramref name="sheet"/>th sheet of the block lies: from the bottom up, each a little off the line so
-        /// the edges look like loose paper. Pure, so it can be checked without a scene.
-        /// </summary>
-        public static Vector3 SheetOffset(int sheet)
+        /// <summary>Every bundle draws with the first one's material; the copy each new model brings is thrown away.</summary>
+        private static void Share(Renderer renderer)
         {
-            float step = (Height - NoteThickness) / Sheets;
-            float x = ((sheet * 37) % 5 - 2) / 2f * SheetJitter;
-            float z = ((sheet * 53) % 3 - 1) * SheetJitter;
-            return new Vector3(x, (sheet + 0.5f) * step, z);
-        }
-
-        private static void Build()
-        {
-            if (_light != null && _dark != null && _band != null && _lightMaterial != null) return;
-
-            float step = (Height - NoteThickness) / Sheets;
-            Mesh sheet = MeshFactory.RoundedBox(new Vector3(Length - 2f * SheetJitter, step, Width - 2f * SheetJitter), step * 0.3f, 1);
-            var light = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            var dark = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            for (int i = 0; i < Sheets; i++)
+            if (renderer == null) return;
+            Material own = renderer.sharedMaterial;
+            if (_modelMaterial == null)
             {
-                (i % 2 == 0 ? light : dark).Add(new KeyValuePair<Mesh, Matrix4x4>(sheet, Matrix4x4.Translate(SheetOffset(i))));
+                _modelMaterial = own;
+                return;
             }
 
-            _light = MeshFactory.Combine("money-bundle-light", light);
-            _dark = MeshFactory.Combine("money-bundle-dark", dark);
+            if (own == _modelMaterial) return;
+            renderer.sharedMaterial = _modelMaterial;
+            if (own != null)
+            {
+                if (Application.isPlaying) Object.Destroy(own);
+                else Object.DestroyImmediate(own);
+            }
+        }
 
-            // The band: a strip round the block, over the top note and under the bottom sheet.
-            float bandHeight = Height + 2f * BandLift;
-            Mesh strip = MeshFactory.RoundedBox(new Vector3(BandWidth, bandHeight, Width + 2f * BandLift), BandLift, 2);
-            _band = MeshFactory.Combine("money-bundle-band", new[] { new KeyValuePair<Mesh, Matrix4x4>(strip, Matrix4x4.Translate(new Vector3(0f, Height / 2f, 0f))) });
+        /// <summary>A plain green stack with a band round its middle, for when the model is missing.</summary>
+        private static void StandIn(Transform parent)
+        {
+            if (_block == null || _band == null || _blockMaterial == null || _bandMaterial == null)
+            {
+                Mesh block = MeshFactory.RoundedBox(new Vector3(Length, Height, Width), 0.04f, 2);
+                _block = MeshFactory.Combine("money-bundle-block", new[] { new KeyValuePair<Mesh, Matrix4x4>(block, Matrix4x4.Translate(new Vector3(0f, Height / 2f, 0f))) });
+                Mesh strip = MeshFactory.RoundedBox(new Vector3(BandWidth, Height + 2f * BandLift, Width + 2f * BandLift), BandLift, 2);
+                _band = MeshFactory.Combine("money-bundle-band", new[] { new KeyValuePair<Mesh, Matrix4x4>(strip, Matrix4x4.Translate(new Vector3(0f, Height / 2f, 0f))) });
+                _blockMaterial = Shared("money-bundle-green", Green, 0.15f);
+                _bandMaterial = Shared("money-bundle-band", Band, 0.3f);
+            }
 
-            _lightMaterial = Shared("money-bundle-ivory", Ivory, 0.15f);
-            _darkMaterial = Shared("money-bundle-blue", PaleBlue, 0.15f);
-            _bandMaterial = Shared("money-bundle-band", Kraft, 0.2f);
+            Part("Stack", parent, _block, _blockMaterial);
+            Part("Band", parent, _band, _bandMaterial);
         }
 
         private static Material Shared(string name, Color color, float smoothness)
@@ -118,11 +115,10 @@ namespace Lazpoly.Presentation.Models
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            _light = null;
-            _dark = null;
+            _modelMaterial = null;
+            _block = null;
             _band = null;
-            _lightMaterial = null;
-            _darkMaterial = null;
+            _blockMaterial = null;
             _bandMaterial = null;
         }
     }

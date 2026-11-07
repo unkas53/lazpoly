@@ -9,6 +9,9 @@ the front at +Z). BoardView then sizes it to the corner's scene room.
 Writes Assets/_Lazpoly/Data/Resources/Lazpoly/Models/figure_<id>.bytes and figure_<id>_skin.bytes, which
 FigureModels loads like a character (the corner scenes are not in its character list).
 
+A job may end in @high,low,skin to set the two triangle budgets and the colour map's size for a small model that is
+shown many times (the paid money: dollars=Tools/Art/Models/Figures/CartoonDollarStack.glb@12000,3000,1024).
+
 Needs: pip install numpy pillow meshoptimizer. Run from the repository root:
     python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
 """
@@ -42,19 +45,23 @@ def main():
         sys.exit(__doc__)
     for job in jobs:
         model, source = job.split("=", 1)
+        high, low, skin_size = figures.HIGH, figures.LOW, figures.SKIN
+        if "@" in source:
+            source, budget = source.rsplit("@", 1)
+            high, low, skin_size = (int(value) for value in budget.split(","))
         positions, normals, uvs, indices, colour = figures.read_glb(source)
         positions, normals, uvs, indices = to_game(positions, normals, uvs, indices)
         size = positions.max(axis=0) - positions.min(axis=0)
         print(f"{model}: {size[0]:.2f} wide, {size[1]:.2f} tall, {size[2]:.2f} deep")
         pack = bytearray(b"LZF1") + struct.pack("<B", 2)
-        for level, triangles in (("High", figures.HIGH), ("Low", figures.LOW)):
+        for level, triangles in (("High", high), ("Low", low)):
             kept = figures.simplify(positions, indices, triangles)
             p, n, u, i = figures.compact(positions, normals, uvs, kept)
             pack += figures.pack_level(level, p, n, u, i)
             print(f"{model} {level}: {len(i)} triangles, {len(p)} vertices (from {len(indices)})")
         with open(os.path.join(figures.TARGET, f"figure_{model}.bytes"), "wb") as out:
             out.write(pack)
-        skin = colour.resize((figures.SKIN, figures.SKIN), Image.LANCZOS)
+        skin = colour.resize((skin_size, skin_size), Image.LANCZOS)
         buffer = io.BytesIO()
         skin.save(buffer, "JPEG", quality=figures.SKIN_QUALITY, optimize=True)
         with open(os.path.join(figures.TARGET, f"figure_{model}_skin.bytes"), "wb") as out:

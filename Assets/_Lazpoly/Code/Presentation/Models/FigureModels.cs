@@ -45,6 +45,12 @@ namespace Lazpoly.Presentation.Models
         /// </summary>
         public const string StadiumId = "stadium";
 
+        /// <summary>
+        /// Not a character: the owner's cartoon dollar stack (Meshy AI), the bundle paid money travels as, one unit long
+        /// (Tools/Art/make_corner_models.py with a small triangle budget; <see cref="MoneyBundle"/>).
+        /// </summary>
+        public const string DollarsId = "dollars";
+
         private const float Smoothness = 0.2f;
 
         private sealed class Figure
