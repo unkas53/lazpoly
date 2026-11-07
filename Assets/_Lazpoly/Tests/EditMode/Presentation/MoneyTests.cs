@@ -176,6 +176,13 @@ namespace Lazpoly.Presentation.Tests
             });
             CollectionAssert.AreEqual(new[] { second }, along, "houses bought together fly once; a later one flies on its own");
             Assert.IsEmpty(GameSceneController.PaidAlong(rent, new GameEvent[] { new MoneyChangedEvent(1, -120, MoneyReason.Rent) }));
+
+            var purchase = new MoneyChangedEvent(1, -200, MoneyReason.PropertyPurchase);
+            var houses = new MoneyChangedEvent(1, -150, MoneyReason.Building);
+            CollectionAssert.AreEqual(new[] { houses }, GameSceneController.PaidAlong(purchase, new GameEvent[]
+            {
+                new PropertyOwnerChangedEvent(3, GameState.NoOwner, 1), houses, new BuildingLevelChangedEvent(3, 3),
+            }), "a town bought and built on the same card is paid in one flight");
         }
 
         [Test]

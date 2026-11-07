@@ -108,7 +108,8 @@ namespace Lazpoly.Core.State
 
                 case BuildingLevelChangedEvent e:
                     RequireSquare(state, e.SquareIndex);
-                    if (e.Level > state.GetBuildingLevel(e.SquareIndex)) state.BuiltThisVisit = Math.Max(0, state.BuiltThisVisit) + 1;
+                    int built = e.Level - state.GetBuildingLevel(e.SquareIndex);
+                    if (built > 0) state.BuiltThisVisit = Math.Max(0, state.BuiltThisVisit) + built;
                     state.SetBuildingLevel(e.SquareIndex, e.Level);
                     break;
 

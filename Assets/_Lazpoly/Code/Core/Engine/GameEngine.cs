@@ -92,8 +92,9 @@ namespace Lazpoly.Core.Engine
                     StartNextTurn();
                     break;
                 case BuildCommand c:
-                    Emit(new MoneyChangedEvent(player.Id, -Board[c.SquareIndex].BuildingCost, MoneyReason.Building));
-                    Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) + 1));
+                    // The levels picked go up at once, paid in one payment.
+                    Emit(new MoneyChangedEvent(player.Id, -Board[c.SquareIndex].BuildingCost * c.Levels, MoneyReason.Building));
+                    Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) + c.Levels));
                     break;
                 case SellBuildingCommand c:
                     Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) - 1));

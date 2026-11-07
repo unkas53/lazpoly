@@ -46,7 +46,7 @@ namespace Lazpoly.Core.Engine
 
                 case BuildCommand c:
                     return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd)
-                        .Then(() => CanBuild(board, state, player, c.SquareIndex));
+                        .Then(() => CanBuild(board, state, player, c.SquareIndex, c.Levels));
 
                 case SellBuildingCommand c:
                     return OnTurn(state, player, GamePhase.WaitingForRoll, GamePhase.TurnEnd, GamePhase.AwaitingBuyDecision,
@@ -335,12 +335,12 @@ namespace Lazpoly.Core.Engine
         /// town, afterwards up to four; the hotel needs a later visit to a town that already has its
         /// four houses. Colour groups play no part.
         /// </summary>
-        private static RejectionReason CanBuild(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
+        private static RejectionReason CanBuild(BoardDefinition board, GameState state, PlayerState player, int squareIndex, int levels)
         {
             RejectionReason owned = RequireOwnProperty(board, state, player, squareIndex);
             if (owned != RejectionReason.None) return owned;
-            if (BuildableNow(board, state, player, squareIndex) == 0) return RejectionReason.CannotBuild;
-            return player.Money >= board[squareIndex].BuildingCost ? RejectionReason.None : RejectionReason.InsufficientFunds;
+            if (levels < 1 || levels > BuildableNow(board, state, player, squareIndex)) return RejectionReason.CannotBuild;
+            return player.Money >= (long)board[squareIndex].BuildingCost * levels ? RejectionReason.None : RejectionReason.InsufficientFunds;
         }
 
         /// <summary>

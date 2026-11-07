@@ -96,7 +96,8 @@ namespace Lazpoly.Presentation.Game
             Button confirm = actions.Button(buying ? F($"Satın Al ({cost})") : F($"Kur ({cost})"), () =>
             {
                 if (buying) _controller.Submit(new BuyPropertyCommand(playerId));
-                for (int i = 0; i < builds; i++) _controller.Submit(new BuildCommand(playerId, squareIndex));
+                // The picked level goes up at once, in one payment (the owner's wish).
+                if (builds > 0) _controller.Submit(new BuildCommand(playerId, squareIndex, builds));
                 done?.Invoke();
             }, enabled, UiButtonStyle.Primary, ConfirmHeight);
             Text label = confirm.GetComponentInChildren<Text>();

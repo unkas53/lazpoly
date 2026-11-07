@@ -54,6 +54,7 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new DeclinePurchaseCommand(3) };
             yield return new CommandMessage { Command = new EndTurnCommand(4) };
             yield return new CommandMessage { Command = new BuildCommand(1, 5) };
+            yield return new CommandMessage { Command = new BuildCommand(1, 5, 3) };
             yield return new CommandMessage { Command = new SellBuildingCommand(1, 5) };
             yield return new CommandMessage { Command = new SellPropertyCommand(2, 7) };
             yield return new CommandMessage { Command = new ProposeTradeCommand(new TradeOffer(1, 2, 30, 0, new[] { 1, 2 }, new[] { 4 })) };

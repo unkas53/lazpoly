@@ -191,14 +191,18 @@ namespace Lazpoly.App.AI
         }
 
         /// <summary>
-        /// Building only happens on the town the player stands on, so there is one candidate. A
-        /// player prone to mistakes sometimes leaves the chance unused and moves on.
+        /// Building only happens on the town the player stands on, so there is one candidate: as many levels as the visit
+        /// allows and the spare money pays for, put up at once in one payment like a person's pick on the card. A player
+        /// prone to mistakes sometimes leaves the chance unused and moves on.
         /// </summary>
         private GameCommand Build(View view, int spare)
         {
             int square = view.Me.Position;
-            var build = new BuildCommand(PlayerId, square);
-            if (!view.Legal(build) || spare - view.Board[square].BuildingCost < 0) return null;
+            int cost = view.Board[square].BuildingCost;
+            int levels = cost > 0 ? Math.Min(GameRules.BuildableNow(view.Board, view.State, view.Me, square), spare / cost) : 0;
+            if (levels < 1) return null;
+            var build = new BuildCommand(PlayerId, square, levels);
+            if (!view.Legal(build)) return null;
             return view.MakesMistake() ? null : build;
         }
 

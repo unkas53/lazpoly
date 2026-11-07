@@ -1370,13 +1370,14 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
-        /// The bank payments still waiting that fly with <paramref name="paid"/>: the same player's further building payments
-        /// before anyone moves or the turn passes (houses bought together), so they make one flight instead of one each.
+        /// The bank payments still waiting that fly with <paramref name="paid"/> (a purchase or a building payment): the same
+        /// player's building payments after it before anyone moves or the turn passes (a town bought and built on the same
+        /// card), so they make one flight instead of one each.
         /// </summary>
         public static List<MoneyChangedEvent> PaidAlong(MoneyChangedEvent paid, IEnumerable<GameEvent> next)
         {
             var along = new List<MoneyChangedEvent>();
-            if (paid == null || paid.Delta >= 0 || paid.Reason != MoneyReason.Building) return along;
+            if (paid == null || paid.Delta >= 0 || (paid.Reason != MoneyReason.Building && paid.Reason != MoneyReason.PropertyPurchase)) return along;
             foreach (GameEvent gameEvent in next)
             {
                 if (gameEvent is TurnStartedEvent || gameEvent is PlayerMovedEvent) break;
