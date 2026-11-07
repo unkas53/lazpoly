@@ -725,7 +725,7 @@ namespace Lazpoly.Presentation.Game
 
             GameState state = _session.State;
             _board = BoardView.Create(transform, _data);
-            Lazpoly.Presentation.Models.MoneyBundle.Preload(); // Read the money model now, not in the middle of the first payment.
+            StartCoroutine(Lazpoly.Presentation.Models.MoneyBundle.Preload()); // Read over the first frames, ready before the first payment.
             Markers = SquareMarkers.Create(_board);
             // The dice land on the lawn, below the middle of the screen so they stay clear of the score.
             _dice = DiceView.Create(transform, BoardView.ScreenUp(BoardCameraRig.BaseYaw) * -1.5f + Vector3.up * (BoardView.LawnHeight + 0.02f));

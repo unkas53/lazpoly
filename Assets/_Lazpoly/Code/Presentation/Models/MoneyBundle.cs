@@ -33,8 +33,11 @@ namespace Lazpoly.Presentation.Models
         /// <summary>Whether the owner's dollar stack is in the build.</summary>
         public static bool HasModel => FigureModels.IsAvailable(FigureModels.DollarsId);
 
-        /// <summary>Reads the model and makes its mesh ahead of the first payment, so it does not stall a frame.</summary>
-        public static void Preload() => FigureModels.IsAvailable(FigureModels.DollarsId);
+        /// <summary>
+        /// Reads the model (the owner's full-quality stack, big) over the first frames of the table, ahead of the first
+        /// payment, so neither the table's opening nor the payment waits for it all at once. Run it as a coroutine.
+        /// </summary>
+        public static System.Collections.IEnumerator Preload() => FigureModels.Warm(FigureModels.DollarsId);
 
         /// <summary>A bundle as a parent object with its parts; its scale is one.</summary>
         public static GameObject Create(string name, Transform parent)

@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -147,6 +149,39 @@ namespace Lazpoly.Presentation.Models
             return figure;
         }
 
+        /// <summary>
+        /// Reads a figure over several frames instead of at once, for a big model that is needed a little later (the paid
+        /// money): its pack is read in the background and parsed on a worker thread, then its meshes and its colour map
+        /// are made a frame apart, so no single frame carries the whole load. A figure asked for before it is ready is
+        /// read at once as usual and this stops.
+        /// </summary>
+        public static IEnumerator Warm(string id)
+        {
+            if (string.IsNullOrEmpty(id) || Figures.ContainsKey(id) || Missing.Contains(id)) yield break;
+            ResourceRequest packRequest = Resources.LoadAsync<TextAsset>(MeshResource(id));
+            yield return packRequest;
+            if (!(packRequest.asset is TextAsset pack) || Figures.ContainsKey(id) || Missing.Contains(id)) yield break;
+
+            byte[] bytes = pack.bytes;
+            Task<IReadOnlyList<FigureMesh>> parse = Task.Run(() => FigurePack.Parse(bytes));
+            while (!parse.IsCompleted) yield return null;
+            if (parse.IsFaulted || Figures.ContainsKey(id) || Missing.Contains(id)) yield break;
+
+            FigureMesh full = Find(parse.Result, FigurePack.HighLevel);
+            FigureMesh light = Find(parse.Result, FigurePack.LowLevel) ?? full;
+            if (full == null) yield break;
+            Mesh fullMesh = full.ToMesh($"figure-{id}");
+            yield return null;
+            Mesh lightMesh = light == full ? fullMesh : light.ToMesh($"figure-{id}-low");
+            yield return null;
+
+            ResourceRequest skinRequest = Resources.LoadAsync<TextAsset>(SkinResource(id));
+            yield return skinRequest;
+            if (Figures.ContainsKey(id)) yield break;
+            Texture2D skin = SkinFrom(id, skinRequest.asset as TextAsset);
+            Figures[id] = new Figure { Full = fullMesh, Light = lightMesh, Skin = skin };
+        }
+
         private static FigureMesh Find(IReadOnlyList<FigureMesh> levels, string name)
         {
             foreach (FigureMesh level in levels)
@@ -158,9 +193,10 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>The colour map, compressed on the graphics card once decoded; null (a white figure) when it is missing.</summary>
-        private static Texture2D LoadSkin(string id)
+        private static Texture2D LoadSkin(string id) => SkinFrom(id, Resources.Load<TextAsset>(SkinResource(id)));
+
+        private static Texture2D SkinFrom(string id, TextAsset asset)
         {
-            var asset = Resources.Load<TextAsset>(SkinResource(id));
             if (asset == null)
             {
                 Debug.LogWarning($"[Lazpoly] Figure colour map '{SkinResource(id)}' is missing; the figure shows white. Run Tools/Art/make_figures.py.");
