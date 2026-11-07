@@ -48,7 +48,7 @@ namespace Lazpoly.Presentation.Tests
             }
 
             Assert.AreEqual(0f, MoneyFlight.RowOffset(0, row).x + MoneyFlight.RowOffset(row.Length - 1, row).x
-                - (MoneyBundle.Length(row[row.Length - 1]) - MoneyBundle.Length(row[0])) / 2f, 1e-4f, "the row is centred");
+                + (MoneyBundle.Length(row[row.Length - 1]) - MoneyBundle.Length(row[0])) / 2f, 1e-4f, "the row is centred");
             Assert.AreEqual(0f, MoneyFlight.RowOffset(0, new[] { MoneyPiece.Gold }).x, 1e-5f, "a lone piece in the middle");
             Assert.LessOrEqual(MoneyFlight.RowLength(row) / 2f, 3.2f, "the longest row fits the lawn below the dice");
         }
