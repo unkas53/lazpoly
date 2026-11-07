@@ -46,6 +46,9 @@ namespace Lazpoly.Presentation.Models
         /// <summary>Whether the money set is in the build and readable.</summary>
         public static bool IsAvailable => Load() != null;
 
+        /// <summary>Reads the set and makes its meshes and materials ahead of the first payment, so it does not stall a frame.</summary>
+        public static void Preload() => Load();
+
         /// <summary>A piece as a parent object with its parts, or null when the set is missing.</summary>
         public static GameObject Create(MoneyKind kind, string name, Transform parent)
         {

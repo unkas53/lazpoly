@@ -27,8 +27,9 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>How long a piece takes to grow to its size as it leaves the payer.</summary>
         public const float PopSeconds = 0.2f;
 
-        /// <summary>How high each leg arcs over the straight line, in board units.</summary>
+        /// <summary>How high the way to the middle and the way on arc over the straight line, in board units (low on the way on, so it plainly heads for whoever gets it).</summary>
         public const float Arc = 1.1f;
+        public const float OnwardArc = 0.5f;
 
         /// <summary>Notes for the hundreds (at most <see cref="MaxNotes"/>), coins for the rest (one per <see cref="CoinValue"/>, at most <see cref="MaxCoins"/>).</summary>
         public const int NoteValue = 100;
@@ -37,12 +38,12 @@ namespace Lazpoly.Presentation.Effects
         public const int MaxCoins = 3;
 
         /// <summary>A piece's size on the table in board units: the coin across, the note along.</summary>
-        public const float CoinWidth = 0.45f;
-        public const float NoteLength = 1.0f;
+        public const float CoinWidth = 0.8f;
+        public const float NoteLength = 1.8f;
 
         /// <summary>How far apart the pieces wait in the middle, along the screen, and how much higher each next one lies.</summary>
-        public const float SpreadStep = 0.22f;
-        public const float LayerStep = 0.05f;
+        public const float SpreadStep = 0.4f;
+        public const float LayerStep = 0.06f;
 
         private static readonly Color DrawnGold = new Color(0.93f, 0.72f, 0.26f);
 
@@ -103,6 +104,8 @@ namespace Lazpoly.Presentation.Effects
             {
                 float size = (kind == MoneyKind.Coin ? CoinWidth : NoteLength) / MoneyModels.Length(kind);
                 piece.transform.localScale = Vector3.one * size;
+                // Flying money casts no shadow: a lighter frame while it is in the air.
+                foreach (Renderer part in piece.GetComponentsInChildren<Renderer>()) part.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 return piece;
             }
 
@@ -132,7 +135,7 @@ namespace Lazpoly.Presentation.Effects
             float arrive = ArriveAt(index);
             if (t >= arrive) return to;
             float v = (t - leave) / LegSeconds;
-            return Vector3.Lerp(middle, to, Ease.InOutCubic(v)) + Vector3.up * (Arc * Ease.Bump(v));
+            return Vector3.Lerp(middle, to, Ease.InOutCubic(v)) + Vector3.up * (OnwardArc * Ease.Bump(v));
         }
 
         /// <summary>The <paramref name="index"/>th piece's size as a share of its own: it pops up as it leaves and shrinks into whoever gets it.</summary>
