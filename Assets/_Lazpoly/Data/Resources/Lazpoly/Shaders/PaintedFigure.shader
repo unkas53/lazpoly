@@ -178,7 +178,8 @@ Shader "Lazpoly/PaintedFigure"
             #pragma target 3.5
             #pragma shader_feature_local_vertex _ADD_PRECOMPUTED_VELOCITY
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ObjectMotionVectors.hlsl"
+            // Its vertex and fragment programs are declared inside, so its pragmas must come with it.
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ObjectMotionVectors.hlsl"
             ENDHLSL
         }
 
