@@ -65,13 +65,21 @@ namespace Lazpoly.Presentation.Tabletop
         public const float SafeSize = 1.5f;
 
         /// <summary>
-        /// Where paid money gathers before it goes on to whoever gets it: low on the lawn to the right of and a little below
-        /// the dice (this many board units right of the lawn's middle and this many down the screen) and only this high over
-        /// the lawn, so even a two-layer pile of stacks and gold bars stays clear of the dice and of the score above them.
+        /// Where paid money gathers before it goes on to whoever gets it: in the middle of the table, below the dice (this
+        /// many board units down the screen from the lawn's middle, centred across) and only this high over the lawn, so the
+        /// row of stacks and gold bars stays clear of the dice and of the score above them.
         /// </summary>
-        public const float MoneySide = 2.6f;
-        public const float MoneyBack = 2.2f;
+        public const float MoneySide = 0f;
+        public const float MoneyBack = 3.4f;
         public const float MoneyHover = 0.3f;
+
+        /// <summary>
+        /// Each player's money lies just outside the board's edge that faces their corner card (seats 1-4 take a corner
+        /// each, 5-8 share them): this far out from the plate's edge, and when two share an edge, this far either side of
+        /// its middle along it.
+        /// </summary>
+        public const float MoneyPileOut = 1.5f;
+        public const float MoneyPileSpread = 2.4f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;
@@ -491,10 +499,65 @@ namespace Lazpoly.Presentation.Tabletop
                 _safe.localPosition = new Vector3(0f, LawnHeight, 0f) + ScreenRight(yaw) * (_inner * SafeSide);
                 _safe.localRotation = FacingCamera(yaw);
             }
+
+            PlaceMoneyPiles(yaw);
         }
 
         /// <summary>The bank's safe on the lawn.</summary>
         public Transform Safe => _safe;
+
+        private readonly List<MoneyPile> _moneyPiles = new List<MoneyPile>();
+
+        /// <summary>Lays a money tray at the table's edge for each seat, in the seat's colour, in seat order.</summary>
+        public void CreateMoneyPiles(IReadOnlyList<Color> seatColors)
+        {
+            foreach (MoneyPile pile in _moneyPiles)
+            {
+                if (Application.isPlaying) Destroy(pile.Root.gameObject);
+                else DestroyImmediate(pile.Root.gameObject);
+            }
+
+            _moneyPiles.Clear();
+            for (int seat = 0; seat < seatColors.Count; seat++) _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
+            PlaceMoneyPiles(_yaw);
+        }
+
+        /// <summary>The seats' money at the table's edge, in seat order.</summary>
+        public IReadOnlyList<MoneyPile> MoneyPiles => _moneyPiles;
+
+        /// <summary>Shows a seat's money on its tray.</summary>
+        public void ShowSeatMoney(int seat, int money)
+        {
+            if (seat >= 0 && seat < _moneyPiles.Count) _moneyPiles[seat].Show(money);
+        }
+
+        /// <summary>Where a seat's payments leave and arrive (world space); the table's middle when the seat has no tray.</summary>
+        public Vector3 SeatMoneySpot(int seat) => seat >= 0 && seat < _moneyPiles.Count ? _moneyPiles[seat].Top : MoneyMiddle;
+
+        /// <summary>
+        /// Where a seat's money lies, in the board's frame: outside the middle of the board's edge that faces the seat's
+        /// corner card (0 top left, 1 top right, 2 bottom left, 3 bottom right; seat 5 shares seat 1's edge and so on).
+        /// </summary>
+        public static Vector3 MoneyPileSpot(int seat, int seats, float halfExtent, float yaw)
+        {
+            int corner = seat % 4;
+            Vector3 up = ScreenUp(yaw), right = ScreenRight(yaw);
+            Vector3 outward = ((corner < 2 ? up : -up) + (corner % 2 == 0 ? -right : right)).normalized;
+            Vector3 along = Vector3.Cross(Vector3.up, outward).normalized;
+            bool shared = seats > corner + 4;
+            float offset = shared ? (seat < 4 ? -MoneyPileSpread : MoneyPileSpread) : 0f;
+            return outward * (halfExtent + MoneyPileOut) + along * offset;
+        }
+
+        private void PlaceMoneyPiles(float yaw)
+        {
+            for (int seat = 0; seat < _moneyPiles.Count; seat++)
+            {
+                Transform root = _moneyPiles[seat].Root;
+                root.localPosition = MoneyPileSpot(seat, _moneyPiles.Count, HalfExtent, yaw);
+                root.localRotation = Quaternion.LookRotation(ScreenUp(yaw));
+            }
+        }
 
         /// <summary>Where paid money gathers in the middle of the table, over the lawn (world space).</summary>
         public Vector3 MoneyMiddle => transform.TransformPoint(new Vector3(0f, LawnHeight + MoneyHover, 0f) - ScreenUp(_yaw) * MoneyBack + ScreenRight(_yaw) * MoneySide);

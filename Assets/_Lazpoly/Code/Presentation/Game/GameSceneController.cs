@@ -353,6 +353,7 @@ namespace Lazpoly.Presentation.Game
         {
             if (_session == null) return;
             _session.Tick();
+            ShowMoneyPiles();
             if (_client != null) RejoinRoomIfNeeded();
             if (_isOnline && Time.unscaledTime >= _nextPresenceRefresh)
             {
@@ -748,6 +749,10 @@ namespace Lazpoly.Presentation.Game
                 _pawns[player.Id] = pawn;
             }
 
+            // Each player's money at the table's edge facing their corner card, in the turn order the corners use.
+            var trayColors = new List<Color>();
+            foreach (PlayerState player in state.Players) trayColors.Add(_playerColors[player.Id]);
+            _board.CreateMoneyPiles(trayColors);
             SyncViewsToState();
             _drawToAnnounce = IsFirstRoll(state);
             if (_drawToAnnounce) AddLog(FirstRollText(state.CurrentPlayer.Name), LogTone.Neutral, state.CurrentPlayer.Id);
@@ -1333,12 +1338,12 @@ namespace Lazpoly.Presentation.Game
         private IEnumerator ShowPayment(MoneyChangedEvent money)
         {
             if (_flownAlong.Remove(money)) yield break;
-            PawnView payer = Pawn(money.PlayerId);
-            if (payer == null || !payer.gameObject.activeInHierarchy) yield break;
+            int payer = _session.State.IndexOfPlayer(money.PlayerId);
+            if (payer < 0 || _board == null) yield break;
 
             int amount = -money.Delta;
-            PawnView receiver = Pawn(PaymentReceiver(money, _pendingEvents));
-            bool toBank = receiver == null || !receiver.gameObject.activeInHierarchy;
+            int receiver = _session.State.IndexOfPlayer(PaymentReceiver(money, _pendingEvents));
+            bool toBank = receiver < 0;
             if (toBank)
             {
                 foreach (MoneyChangedEvent along in PaidAlong(money, _pendingEvents))
@@ -1348,9 +1353,10 @@ namespace Lazpoly.Presentation.Game
                 }
             }
 
-            Vector3 to = toBank ? _board.SafeSlot : FigureMiddle(receiver);
+            // From the payer's money at the table's edge to the middle, then on to the other player's money or the safe.
+            Vector3 to = toBank ? _board.SafeSlot : _board.SeatMoneySpot(receiver);
             Quaternion rest = Quaternion.LookRotation(BoardView.ScreenUp(_labelYaw));
-            float seconds = MoneyFlight.Fly(transform, FigureMiddle(payer), _board.MoneyMiddle, to, amount, rest, Speed);
+            float seconds = MoneyFlight.Fly(transform, _board.SeatMoneySpot(payer), _board.MoneyMiddle, to, amount, rest, Speed);
             float sink = MoneyFlight.SinkSeconds / Speed;
             yield return new WaitForSeconds(seconds - sink);
             if (toBank) _board.NudgeSafe();
@@ -1407,9 +1413,13 @@ namespace Lazpoly.Presentation.Game
             return along;
         }
 
-        /// <summary>Where money leaves or reaches a figure: about its waist.</summary>
-        private static Vector3 FigureMiddle(PawnView pawn) =>
-            pawn.transform.position + Vector3.up * (pawn.IsCharacter ? PawnView.CharacterHeight * MoneyHeight : 0.65f);
+        /// <summary>Each player's tray at the table's edge shows the money the table shows for them now.</summary>
+        private void ShowMoneyPiles()
+        {
+            if (_board == null || _session.State == null) return;
+            IReadOnlyList<PlayerState> players = _session.State.Players;
+            for (int i = 0; i < players.Count; i++) _board.ShowSeatMoney(i, players[i].IsBankrupt ? 0 : ShownMoneyOf(players[i].Id));
+        }
 
         /// <summary>A sum worth reacting to: from this much on a figure cheers at money coming in or sulks at money going out.</summary>
         public const int CheerFrom = 150;

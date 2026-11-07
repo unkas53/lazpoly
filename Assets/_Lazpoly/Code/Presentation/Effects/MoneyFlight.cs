@@ -5,13 +5,13 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
-    /// One bundle of paid money on its way, the owner's wish (Faz 25): a payment travels as the owner's banded money stacks and,
-    /// for the big sums, gold bars (<see cref="MoneyBundle"/>), two side by side and piled on each other, the gold on top
-    /// where the camera sees it. It comes out of the payer's
-    /// figure, goes straight to the middle of the table, waits there a moment, then goes straight on to whoever gets it (a
-    /// figure, or the bank's safe) and sinks into it. It lies flat and never turns on the way. The whole payment takes
-    /// <see cref="Seconds"/> at normal speed, and the game waits for it. The timeline and the pile are pure
-    /// (<see cref="PositionAt"/>, <see cref="ScaleAt"/>, <see cref="StackOffset"/>) so they can be checked without a scene.
+    /// One piece of paid money on its way, the owner's wish (Faz 25): a payment travels as the owner's banded money stacks
+    /// and, for the big sums, gold bars (<see cref="MoneyBundle"/>), all side by side in one neat row. It leaves the
+    /// payer's money at the table's edge (MoneyPile), goes straight to the middle of the table, waits
+    /// there a moment, then goes straight on to whoever gets it (their money at the edge, or the bank's safe) and sinks
+    /// into it. It lies flat and never turns on the way. The whole payment takes <see cref="Seconds"/> at normal speed,
+    /// and the game waits for it. The timeline and the row are pure (<see cref="PositionAt"/>, <see cref="ScaleAt"/>,
+    /// <see cref="RowOffset"/>) so they can be checked without a scene.
     /// </summary>
     public sealed class MoneyFlight : MonoBehaviour
     {
@@ -41,13 +41,8 @@ namespace Lazpoly.Presentation.Effects
         public const int BundleValue = 100;
         public const int MaxPieces = 4;
 
-        /// <summary>How many bundles lie side by side in a layer of the pile, and the gaps between them and between the layers.</summary>
-        public const int PerLayer = 2;
-        public const float SideGap = 0.06f;
-        public const float LayerGap = 0.01f;
-
-        /// <summary>The bundles are squared up loosely: each lies up to this far off the pile's line, in board units.</summary>
-        public const float Jitter = 0.04f;
+        /// <summary>The gap between neighbouring pieces in the row, in board units.</summary>
+        public const float RowGap = 0.08f;
 
         private Vector3 _from;
         private Vector3 _middle;
@@ -57,7 +52,7 @@ namespace Lazpoly.Presentation.Effects
         private float _age;
         private Vector3 _size;
 
-        /// <summary>The pieces that show a payment of <paramref name="amount"/>, the stacks first and the gold bars on top where they show: none for nothing.</summary>
+        /// <summary>The pieces that show a payment of <paramref name="amount"/>, the stacks first and then the gold bars: none for nothing.</summary>
         public static MoneyPiece[] Pieces(int amount)
         {
             if (amount <= 0) return new MoneyPiece[0];
@@ -71,35 +66,24 @@ namespace Lazpoly.Presentation.Effects
         }
 
         /// <summary>
-        /// Where the <paramref name="index"/>th of the <paramref name="pieces"/> lies in the pile, in the pile's own frame
-        /// (x along the pieces, y up, z across): two side by side in each layer, each layer on the tallest piece of the one
-        /// below, a lone piece in the middle of its layer, each a little off the line. The pile is centred across.
+        /// Where the <paramref name="index"/>th of the <paramref name="pieces"/> lies, in the row's own frame (x along the
+        /// pieces, y up, z across): all side by side in one straight row along x, squared up on one line with even gaps,
+        /// the row centred on its middle (the owner's wish: neatly in a row).
         /// </summary>
-        public static Vector3 StackOffset(int index, IReadOnlyList<MoneyPiece> pieces)
+        public static Vector3 RowOffset(int index, IReadOnlyList<MoneyPiece> pieces)
         {
-            int layer = index / PerLayer;
-            float y = 0f;
-            for (int below = 0; below < layer; below++) y += LayerHeight(pieces, below) + LayerGap;
-
-            int first = layer * PerLayer;
-            int inLayer = Mathf.Min(PerLayer, pieces.Count - first);
-            float z = 0f;
-            if (inLayer > 1)
-            {
-                float left = MoneyBundle.Width(pieces[first]), right = MoneyBundle.Width(pieces[first + 1]);
-                float span = left / 2f + SideGap + right / 2f;
-                z = index == first ? -span / 2f : span / 2f;
-            }
-
-            float x = ((index * 37) % 5 - 2) / 2f * Jitter;
-            return new Vector3(x, y, z);
+            float total = RowLength(pieces);
+            float x = -total / 2f;
+            for (int i = 0; i < index; i++) x += MoneyBundle.Length(pieces[i]) + RowGap;
+            return new Vector3(x + MoneyBundle.Length(pieces[index]) / 2f, 0f, 0f);
         }
 
-        private static float LayerHeight(IReadOnlyList<MoneyPiece> pieces, int layer)
+        /// <summary>The whole row's length: the pieces end to end with the gaps between them.</summary>
+        public static float RowLength(IReadOnlyList<MoneyPiece> pieces)
         {
-            float tallest = 0f;
-            for (int i = layer * PerLayer; i < Mathf.Min(pieces.Count, (layer + 1) * PerLayer); i++) tallest = Mathf.Max(tallest, MoneyBundle.Height(pieces[i]));
-            return tallest;
+            float total = 0f;
+            for (int i = 0; i < pieces.Count; i++) total += MoneyBundle.Length(pieces[i]) + (i > 0 ? RowGap : 0f);
+            return total;
         }
 
         /// <summary>
@@ -113,12 +97,12 @@ namespace Lazpoly.Presentation.Effects
             for (int i = 0; i < pieces.Length; i++)
             {
                 GameObject piece = MoneyBundle.Create(pieces[i], $"Money {pieces[i]}", parent);
-                Vector3 offset = rest * StackOffset(i, pieces);
+                Vector3 offset = rest * RowOffset(i, pieces);
                 var flight = piece.AddComponent<MoneyFlight>();
                 flight._from = from + offset;
                 flight._middle = middle + offset;
                 flight._to = to + offset;
-                flight._rest = rest * Quaternion.Euler(0f, ((i * 29) % 5 - 2) * 1.5f, 0f);
+                flight._rest = rest;
                 flight._speed = Mathf.Max(speed, 0.1f);
                 flight._size = piece.transform.localScale;
                 piece.transform.position = flight._from;

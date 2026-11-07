@@ -23,7 +23,7 @@ namespace Lazpoly.Presentation.Tests
             CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(100));
             CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(260));
             CollectionAssert.AreEqual(new[] { MoneyPiece.Gold }, MoneyFlight.Pieces(500), "a gold bar for every full 500");
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold }, MoneyFlight.Pieces(650), "the gold last, on top where it shows");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold }, MoneyFlight.Pieces(650), "the gold last, at the row's end");
             CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold, MoneyPiece.Gold }, MoneyFlight.Pieces(5000));
             Assert.LessOrEqual(MoneyFlight.Pieces(499).Length, MoneyFlight.MaxPieces);
             foreach (MoneyPiece piece in new[] { MoneyPiece.Stack, MoneyPiece.Gold })
@@ -33,27 +33,66 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ThePiecesLieSideBySideAndPileUp()
+        public void ThePiecesFlyInOneNeatRow()
         {
-            MoneyPiece[] three = { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Stack };
-            Vector3 first = MoneyFlight.StackOffset(0, three), second = MoneyFlight.StackOffset(1, three), third = MoneyFlight.StackOffset(2, three);
-            Assert.AreEqual(0f, first.y);
-            Assert.AreEqual(first.y, second.y, 1e-5f, "two side by side in a layer");
-            Assert.Greater(Mathf.Abs(second.z - first.z), MoneyBundle.Width(MoneyPiece.Stack), "beside each other, not overlapping");
-            Assert.AreEqual(0f, first.z + second.z, 1e-5f, "the layer is centred across");
-            Assert.AreEqual(MoneyBundle.Height(MoneyPiece.Stack) + MoneyFlight.LayerGap, third.y - first.y, 1e-5f, "the next layer lies on top");
-            Assert.AreEqual(0f, third.z, 1e-5f, "a lone piece in the middle of its layer");
-            Assert.AreEqual(0f, MoneyFlight.StackOffset(0, new[] { MoneyPiece.Gold }).z, 1e-5f);
-
-            MoneyPiece[] mixed = { MoneyPiece.Stack, MoneyPiece.Gold, MoneyPiece.Gold };
-            Vector3 stack = MoneyFlight.StackOffset(0, mixed), beside = MoneyFlight.StackOffset(1, mixed), top = MoneyFlight.StackOffset(2, mixed);
-            Assert.Greater(beside.z - stack.z, (MoneyBundle.Width(MoneyPiece.Gold) + MoneyBundle.Width(MoneyPiece.Stack)) / 2f, "gold and a stack side by side");
-            Assert.AreEqual(Mathf.Max(MoneyBundle.Height(MoneyPiece.Gold), MoneyBundle.Height(MoneyPiece.Stack)) + MoneyFlight.LayerGap, top.y, 1e-5f, "on the taller one below");
-
-            MoneyPiece[] most = MoneyFlight.Pieces(5000);
-            for (int i = 0; i < most.Length; i++)
+            MoneyPiece[] row = MoneyFlight.Pieces(5000);
+            float previousEnd = float.NegativeInfinity;
+            for (int i = 0; i < row.Length; i++)
             {
-                Assert.LessOrEqual(Mathf.Abs(MoneyFlight.StackOffset(i, most).x), MoneyFlight.Jitter, "squared up");
+                Vector3 at = MoneyFlight.RowOffset(i, row);
+                Assert.AreEqual(0f, at.y, 1e-5f, "all on one level, none piled");
+                Assert.AreEqual(0f, at.z, 1e-5f, "on one straight line");
+                float start = at.x - MoneyBundle.Length(row[i]) / 2f;
+                if (i > 0) Assert.AreEqual(MoneyFlight.RowGap, start - previousEnd, 1e-4f, "even gaps, side by side");
+                previousEnd = at.x + MoneyBundle.Length(row[i]) / 2f;
+            }
+
+            Assert.AreEqual(0f, MoneyFlight.RowOffset(0, row).x + MoneyFlight.RowOffset(row.Length - 1, row).x
+                - (MoneyBundle.Length(row[row.Length - 1]) - MoneyBundle.Length(row[0])) / 2f, 1e-4f, "the row is centred");
+            Assert.AreEqual(0f, MoneyFlight.RowOffset(0, new[] { MoneyPiece.Gold }).x, 1e-5f, "a lone piece in the middle");
+            Assert.LessOrEqual(MoneyFlight.RowLength(row) / 2f, 3.2f, "the longest row fits the lawn below the dice");
+        }
+
+        [Test]
+        public void EachPlayersMoneyLiesAtTheTablesEdgeFacingTheirCorner()
+        {
+            CollectionAssert.IsEmpty(MoneyPile.Pieces(0));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyPile.Pieces(50));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyPile.Pieces(1500));
+            Assert.AreEqual(MoneyPile.MaxPieces, MoneyPile.Pieces(100000).Length);
+            Assert.AreEqual(0f, MoneyPile.GridOffset(0, 1).x, 1e-5f, "a lone piece in the middle");
+            Assert.Greater(MoneyPile.GridOffset(1, 4).x - MoneyPile.GridOffset(0, 4).x, MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale, "two to a row, side by side");
+            Assert.Greater(MoneyPile.GridOffset(0, 4).z, MoneyPile.GridOffset(2, 4).z, "the first row at the back");
+
+            float yaw = BoardCameraRig.BaseYaw, half = 8f;
+            Vector3 up = BoardView.ScreenUp(yaw), right = BoardView.ScreenRight(yaw);
+            for (int seat = 0; seat < 4; seat++)
+            {
+                Vector3 spot = BoardView.MoneyPileSpot(seat, 4, half, yaw);
+                Assert.AreEqual(seat < 2 ? 1f : -1f, Mathf.Sign(Vector3.Dot(spot, up)), $"seat {seat + 1}: towards its card's edge of the screen");
+                Assert.AreEqual(seat % 2 == 0 ? -1f : 1f, Mathf.Sign(Vector3.Dot(spot, right)), $"seat {seat + 1}: towards its card's side");
+                Assert.Greater(Mathf.Max(Mathf.Abs(spot.x), Mathf.Abs(spot.z)), half, $"seat {seat + 1}: outside the board's edge");
+            }
+
+            Vector3 first = BoardView.MoneyPileSpot(0, 8, half, yaw), fifth = BoardView.MoneyPileSpot(4, 8, half, yaw);
+            Assert.Greater(Vector3.Distance(first, fifth), 2f * BoardView.MoneyPileSpread - 0.01f, "two players on one edge lie apart");
+            Assert.Less(Vector3.Distance(BoardView.MoneyPileSpot(0, 4, half, yaw), BoardView.MoneyPileSpot(0, 4, half, yaw)), 1e-4f);
+
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                board.CreateMoneyPiles(new[] { Color.red, Color.blue, Color.green });
+                Assert.AreEqual(3, board.MoneyPiles.Count);
+                board.ShowSeatMoney(1, 1500);
+                CollectionAssert.AreEqual(MoneyPile.Pieces(1500), board.MoneyPiles[1].Shown);
+                Assert.Greater(board.SeatMoneySpot(1).y, 0f, "money leaves from over the tray");
+                board.ShowSeatMoney(1, 0);
+                CollectionAssert.IsEmpty(board.MoneyPiles[1].Shown, "a player with nothing has an empty tray");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
             }
         }
 
@@ -111,7 +150,9 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(1.5f, seconds, 1e-4f, "the animation speed setting shortens it");
                 MoneyFlight[] pieces = root.GetComponentsInChildren<MoneyFlight>();
                 Assert.AreEqual(3, pieces.Length, "three stacks for 260");
-                Assert.Less(Vector3.Distance(pieces[0].transform.position, pieces[2].transform.position), 1.5f, "the bundles leave together, piled");
+                Assert.AreEqual(pieces[0].transform.position.y, pieces[2].transform.position.y, 1e-4f, "the bundles leave side by side, none piled");
+                Assert.AreEqual(2f * (MoneyBundle.Length(MoneyPiece.Stack) + MoneyFlight.RowGap),
+                    Vector3.Distance(pieces[0].transform.position, pieces[2].transform.position), 1e-3f, "in one neat row with even gaps");
             }
             finally
             {
@@ -170,9 +211,9 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Greater(board.SafeSlot.y, board.Safe.position.y + BoardView.SafeSize * 0.9f, "money goes in at the top");
                 Assert.Greater(board.MoneyMiddle.y, BoardView.LawnHeight + 0.2f, "money gathers in the air over the lawn");
                 Vector3 middle = new Vector3(board.MoneyMiddle.x, 0f, board.MoneyMiddle.z);
-                Assert.That(Vector3.Dot(middle, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(-BoardView.MoneyBack).Within(0.01f), "a little below the dice");
-                Assert.Less(-BoardView.MoneyBack, -1.5f, "below the dice's line, away from the score");
-                Assert.Greater(Vector3.Dot(middle, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), 1f + MoneyBundle.Length(MoneyPiece.Stack) / 2f, "beside the dice on the right (their outer edge is about 1 unit out), clear of them");
+                Assert.That(Vector3.Dot(middle, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(-BoardView.MoneyBack).Within(0.01f), "below the dice");
+                Assert.Greater(BoardView.MoneyBack, 1.5f + 0.35f + MoneyBundle.Width(MoneyPiece.Stack), "clear of the dice, which lie 1.5 units down");
+                Assert.That(Vector3.Dot(middle, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), Is.EqualTo(0f).Within(0.01f), "in the middle of the table");
                 Assert.Greater(board.Safe.GetComponentsInChildren<MeshRenderer>().Length, 8, "feet, body, door, dial, handle, hinges and slot");
             }
             finally
