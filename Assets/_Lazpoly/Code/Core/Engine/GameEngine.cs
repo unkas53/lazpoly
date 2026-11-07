@@ -82,8 +82,8 @@ namespace Lazpoly.Core.Engine
                 case RollDiceCommand _:
                     RollAndMove(player);
                     break;
-                case BuyPropertyCommand _:
-                    BuyCurrentSquare(player);
+                case BuyPropertyCommand c:
+                    BuyCurrentSquare(player, c.Levels);
                     break;
                 case DeclinePurchaseCommand _:
                     FinishMove();
@@ -92,8 +92,9 @@ namespace Lazpoly.Core.Engine
                     StartNextTurn();
                     break;
                 case BuildCommand c:
-                    Emit(new MoneyChangedEvent(player.Id, -Board[c.SquareIndex].BuildingCost, MoneyReason.Building));
-                    Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) + 1));
+                    // The levels picked go up at once, paid in one payment.
+                    Emit(new MoneyChangedEvent(player.Id, -Board[c.SquareIndex].BuildingCost * c.Levels, MoneyReason.Building));
+                    Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) + c.Levels));
                     break;
                 case SellBuildingCommand c:
                     Emit(new BuildingLevelChangedEvent(c.SquareIndex, State.GetBuildingLevel(c.SquareIndex) - 1));
@@ -395,11 +396,13 @@ namespace Lazpoly.Core.Engine
             if (!ResolveLanding(player, drawCards: true)) FinishMove();
         }
 
-        private void BuyCurrentSquare(PlayerState player)
+        /// <summary>Buys the square, with the levels picked on the card built at once: one payment for all of it.</summary>
+        private void BuyCurrentSquare(PlayerState player, int levels)
         {
-            SquareDefinition square = Board[player.Position];
-            Emit(new MoneyChangedEvent(player.Id, -square.Price, MoneyReason.PropertyPurchase));
-            Emit(new PropertyOwnerChangedEvent(player.Position, GameState.NoOwner, player.Id));
+            int square = player.Position;
+            Emit(new MoneyChangedEvent(player.Id, -(int)GameRules.PurchaseCost(Board, square, levels), MoneyReason.PropertyPurchase));
+            Emit(new PropertyOwnerChangedEvent(square, GameState.NoOwner, player.Id));
+            if (levels > 0) Emit(new BuildingLevelChangedEvent(square, levels));
             FinishMove();
         }
 

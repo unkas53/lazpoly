@@ -19,9 +19,20 @@ namespace Lazpoly.Core.Commands
         public RollDiceCommand(int playerId) : base(playerId) { }
     }
 
+    /// <summary>
+    /// Buys the square the player stands on, and with <see cref="Levels"/> above zero puts that many building levels up on
+    /// it in the same step: the level picked on the city card is built at once, the plot never shows on its own, and the
+    /// price and the buildings are paid in one payment (the owner's wish).
+    /// </summary>
     public sealed class BuyPropertyCommand : GameCommand
     {
-        public BuyPropertyCommand(int playerId) : base(playerId) { }
+        public BuyPropertyCommand(int playerId, int levels = 0) : base(playerId)
+        {
+            Levels = levels;
+        }
+
+        /// <summary>How many building levels go up with the purchase; the rules allow 0 up to the first-lap or full limit.</summary>
+        public int Levels { get; }
     }
 
     public sealed class DeclinePurchaseCommand : GameCommand
@@ -45,10 +56,19 @@ namespace Lazpoly.Core.Commands
         public int SquareIndex { get; }
     }
 
-    /// <summary>Adds one building level (house, then hotel) to a property.</summary>
+    /// <summary>
+    /// Adds building levels (houses, then the hotel) to a property in one go: the level picked on the property card is
+    /// built at once and paid in one payment (the owner's wish).
+    /// </summary>
     public sealed class BuildCommand : SquareCommand
     {
-        public BuildCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+        public BuildCommand(int playerId, int squareIndex, int levels = 1) : base(playerId, squareIndex)
+        {
+            Levels = levels;
+        }
+
+        /// <summary>How many levels go up at once; the rules allow 1 up to what the visit allows.</summary>
+        public int Levels { get; }
     }
 
     /// <summary>Sells one building level back to the bank.</summary>

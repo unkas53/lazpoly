@@ -87,7 +87,15 @@ namespace Lazpoly.App.AI
 
             // A square that completes a group is worth dipping into the reserve for.
             int reserve = view.CompletesGroup(square, PlayerId) ? view.Reserve / 3 : view.Reserve;
-            return view.Me.Money - price >= reserve ? buy : (GameCommand)new DeclinePurchaseCommand(PlayerId);
+            if (view.Me.Money - price < reserve) return new DeclinePurchaseCommand(PlayerId);
+
+            // The houses it would put up afterwards go up with the purchase, in one step and one payment, like a person's
+            // pick on the city card.
+            int cost = view.Board[square].BuildingCost;
+            int spare = view.Me.Money - price - view.Reserve * Profile.BuildReserveMultiplier;
+            int levels = cost > 0 && spare > 0 ? Math.Min(GameRules.BuildableAfterPurchase(view.Board, view.Me, square), spare / cost) : 0;
+            var withHouses = new BuyPropertyCommand(PlayerId, levels);
+            return levels > 0 && view.Legal(withHouses) ? withHouses : buy;
         }
 
         /// <summary>Takes a ride to a free property it can afford (one completing a group first) or to a rich pot.</summary>
@@ -191,14 +199,18 @@ namespace Lazpoly.App.AI
         }
 
         /// <summary>
-        /// Building only happens on the town the player stands on, so there is one candidate. A
-        /// player prone to mistakes sometimes leaves the chance unused and moves on.
+        /// Building only happens on the town the player stands on, so there is one candidate: as many levels as the visit
+        /// allows and the spare money pays for, put up at once in one payment like a person's pick on the card. A player
+        /// prone to mistakes sometimes leaves the chance unused and moves on.
         /// </summary>
         private GameCommand Build(View view, int spare)
         {
             int square = view.Me.Position;
-            var build = new BuildCommand(PlayerId, square);
-            if (!view.Legal(build) || spare - view.Board[square].BuildingCost < 0) return null;
+            int cost = view.Board[square].BuildingCost;
+            int levels = cost > 0 ? Math.Min(GameRules.BuildableNow(view.Board, view.State, view.Me, square), spare / cost) : 0;
+            if (levels < 1) return null;
+            var build = new BuildCommand(PlayerId, square, levels);
+            if (!view.Legal(build)) return null;
             return view.MakesMistake() ? null : build;
         }
 

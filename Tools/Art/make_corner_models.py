@@ -9,6 +9,12 @@ the front at +Z). BoardView then sizes it to the corner's scene room.
 Writes Assets/_Lazpoly/Data/Resources/Lazpoly/Models/figure_<id>.bytes and figure_<id>_skin.bytes, which
 FigureModels loads like a character (the corner scenes are not in its character list).
 
+A job may end in @high,low,skin to set the two triangle budgets and the colour map's size; a skin of 0 keeps the
+model's own colour map as it is, byte for byte, as figure_<id>_skin.jpg (or .png): Unity imports it as a texture and
+compresses it when the game is built, so the game never decodes it while playing (the paid money, at the owner's
+original quality: dollars=Tools/Art/Models/Figures/CartoonDollarStack.glb@1000000,24000,0). Its .meta must keep the
+full size (maxTextureSize 4096) and mipmaps.
+
 Needs: pip install numpy pillow meshoptimizer. Run from the repository root:
     python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
 """
@@ -22,6 +28,22 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import make_figures as figures  # noqa: E402
+
+
+def original_colour(path):
+    """The GLB's base colour image exactly as it is stored (JPEG or PNG bytes)."""
+    import json
+    data = open(path, "rb").read()
+    json_length, = struct.unpack("<I", data[12:16])
+    doc = json.loads(data[20:20 + json_length])
+    offset = 20 + json_length
+    bin_length, = struct.unpack("<I", data[offset:offset + 4])
+    blob = data[offset + 8:offset + 8 + bin_length]
+    material = doc["materials"][doc["meshes"][0]["primitives"][0]["material"]]
+    texture = doc["textures"][material["pbrMetallicRoughness"]["baseColorTexture"]["index"]]
+    view = doc["bufferViews"][doc["images"][texture["source"]]["bufferView"]]
+    start = view.get("byteOffset", 0)
+    return blob[start:start + view["byteLength"]]
 
 
 def to_game(positions, normals, uvs, indices):
@@ -42,20 +64,31 @@ def main():
         sys.exit(__doc__)
     for job in jobs:
         model, source = job.split("=", 1)
+        high, low, skin_size = figures.HIGH, figures.LOW, figures.SKIN
+        if "@" in source:
+            source, budget = source.rsplit("@", 1)
+            high, low, skin_size = (int(value) for value in budget.split(","))
         positions, normals, uvs, indices, colour = figures.read_glb(source)
         positions, normals, uvs, indices = to_game(positions, normals, uvs, indices)
         size = positions.max(axis=0) - positions.min(axis=0)
         print(f"{model}: {size[0]:.2f} wide, {size[1]:.2f} tall, {size[2]:.2f} deep")
         pack = bytearray(b"LZF1") + struct.pack("<B", 2)
-        for level, triangles in (("High", figures.HIGH), ("Low", figures.LOW)):
+        for level, triangles in (("High", high), ("Low", low)):
             kept = figures.simplify(positions, indices, triangles)
             p, n, u, i = figures.compact(positions, normals, uvs, kept)
             pack += figures.pack_level(level, p, n, u, i)
             print(f"{model} {level}: {len(i)} triangles, {len(p)} vertices (from {len(indices)})")
         with open(os.path.join(figures.TARGET, f"figure_{model}.bytes"), "wb") as out:
             out.write(pack)
-        skin = colour.resize((figures.SKIN, figures.SKIN), Image.LANCZOS)
+        if skin_size == 0:
+            original = original_colour(source)
+            extension = "png" if original[:4] == b"\x89PNG" else "jpg"
+            with open(os.path.join(figures.TARGET, f"figure_{model}_skin.{extension}"), "wb") as out:
+                out.write(original)
+            print(f"{model}: {len(pack) / 1e6:.1f} MB of meshes, {len(original) / 1e6:.1f} MB colour map (as it is, .{extension})")
+            continue
         buffer = io.BytesIO()
+        skin = colour.resize((skin_size, skin_size), Image.LANCZOS)
         skin.save(buffer, "JPEG", quality=figures.SKIN_QUALITY, optimize=True)
         with open(os.path.join(figures.TARGET, f"figure_{model}_skin.bytes"), "wb") as out:
             out.write(buffer.getvalue())

@@ -125,6 +125,78 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
+        public void ThePickedLevelGoesUpAtOnceInOnePayment()
+        {
+            var engine = NewGame(money: 5000);
+            Give(engine, A1, Alice);
+            Stand(engine, Alice, A1, passedStart: true);
+            int cost = engine.Board[A1].BuildingCost;
+            int before = Money(engine, Alice);
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1, 0)));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1, 5)), "No more than the visit allows.");
+
+            CommandResult result = Accept(engine, new BuildCommand(Alice, A1, 3));
+            Assert.AreEqual(1, result.Events.OfType<BuildingLevelChangedEvent>().Count(), "one building step, not one per house");
+            Assert.AreEqual(3, result.Events.OfType<BuildingLevelChangedEvent>().Single().Level);
+            Assert.AreEqual(-3 * cost, result.Events.OfType<MoneyChangedEvent>().Single().Delta, "one payment for all three");
+            Assert.AreEqual(before - 3 * cost, Money(engine, Alice));
+            Assert.AreEqual(3, engine.State.GetBuildingLevel(A1));
+            Assert.AreEqual(3, engine.State.BuiltThisVisit);
+            Assert.AreEqual(1, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1), "the fourth house is still allowed");
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuildCommand(Alice, A1, 2)));
+        }
+
+        [Test]
+        public void BuyingWithHousesIsOneStepAndOnePayment()
+        {
+            var engine = NewGame(money: 5000);
+            Stand(engine, Alice, A1);
+            GameStateReducer.Apply(engine.State, new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuyPropertyCommand(Alice, 2)), "One house before passing start.");
+
+            Stand(engine, Alice, A1, passedStart: true);
+            GameStateReducer.Apply(engine.State, new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuyPropertyCommand(Alice, 5)), "No hotel with the purchase.");
+            Assert.AreEqual(RejectionReason.CannotBuild, Reason(engine, new BuyPropertyCommand(Alice, -1)));
+            int price = engine.Board[A1].Price, cost = engine.Board[A1].BuildingCost;
+            int before = Money(engine, Alice);
+
+            CommandResult result = Accept(engine, new BuyPropertyCommand(Alice, 4));
+            Assert.AreEqual(-(price + 4 * cost), result.Events.OfType<MoneyChangedEvent>().Single().Delta, "the land and the four houses in one payment");
+            Assert.AreEqual(4, result.Events.OfType<BuildingLevelChangedEvent>().Single().Level, "straight to the fourth house, no plot step");
+            Assert.AreEqual(before - price - 4 * cost, Money(engine, Alice));
+            Assert.AreEqual(Alice, engine.State.GetOwner(A1));
+            Assert.AreEqual(4, engine.State.GetBuildingLevel(A1));
+            Assert.AreEqual(0, GameRules.BuildableNow(engine.Board, engine.State, engine.State.FindPlayer(Alice), A1), "the hotel waits for a later visit");
+        }
+
+        [Test]
+        public void BuyingWithHousesNeedsTheMoneyForAllOfIt()
+        {
+            var engine = NewGame(money: 5000);
+            Stand(engine, Alice, A1, passedStart: true);
+            GameStateReducer.Apply(engine.State, new PhaseChangedEvent(GamePhase.AwaitingBuyDecision));
+            int price = engine.Board[A1].Price, cost = engine.Board[A1].BuildingCost;
+            GameStateReducer.Apply(engine.State, new MoneyChangedEvent(Alice, price + 2 * cost - Money(engine, Alice), MoneyReason.Building));
+            Assert.AreEqual(RejectionReason.InsufficientFunds, Reason(engine, new BuyPropertyCommand(Alice, 3)));
+            CommandResult bare = Accept(engine, new BuyPropertyCommand(Alice, 2));
+            Assert.AreEqual(0, Money(engine, Alice));
+            Assert.AreEqual(2, bare.Events.OfType<BuildingLevelChangedEvent>().Single().Level);
+        }
+
+        [Test]
+        public void ManyLevelsAtOnceNeedTheMoneyForAllOfThem()
+        {
+            var engine = NewGame(money: 5000);
+            Give(engine, A1, Alice);
+            Stand(engine, Alice, A1, passedStart: true);
+            int cost = engine.Board[A1].BuildingCost;
+            GameStateReducer.Apply(engine.State, new MoneyChangedEvent(Alice, 2 * cost + 1 - Money(engine, Alice), MoneyReason.Building));
+            Assert.AreEqual(RejectionReason.InsufficientFunds, Reason(engine, new BuildCommand(Alice, A1, 3)));
+            Accept(engine, new BuildCommand(Alice, A1, 2));
+        }
+
+        [Test]
         public void TheHotelNeedsAReturnVisitToAFourHouseTown()
         {
             var engine = NewGame(money: 5000);

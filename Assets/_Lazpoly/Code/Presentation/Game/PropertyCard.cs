@@ -92,11 +92,12 @@ namespace Lazpoly.Presentation.Game
             UiBuilder.Fix(actions.Button(buying ? L("Devam Et") : L("Şimdi Değil"), dismiss, height: ConfirmHeight), width: DismissWidth);
             int playerId = player.Id;
             int builds = picked - choice.Level;
-            bool enabled = buying ? choice.AffordsLand && _controller.IsAllowed(new BuyPropertyCommand(playerId)) : builds > 0;
+            bool enabled = buying ? choice.AffordsLand && _controller.IsAllowed(new BuyPropertyCommand(playerId, Math.Max(0, builds))) : builds > 0;
             Button confirm = actions.Button(buying ? F($"Satın Al ({cost})") : F($"Kur ({cost})"), () =>
             {
-                if (buying) _controller.Submit(new BuyPropertyCommand(playerId));
-                for (int i = 0; i < builds; i++) _controller.Submit(new BuildCommand(playerId, squareIndex));
+                // The picked level goes up at once with the purchase, in one payment (the owner's wish): the plot never shows on its own.
+                if (buying) _controller.Submit(new BuyPropertyCommand(playerId, Math.Max(0, builds)));
+                else if (builds > 0) _controller.Submit(new BuildCommand(playerId, squareIndex, builds));
                 done?.Invoke();
             }, enabled, UiButtonStyle.Primary, ConfirmHeight);
             Text label = confirm.GetComponentInChildren<Text>();
