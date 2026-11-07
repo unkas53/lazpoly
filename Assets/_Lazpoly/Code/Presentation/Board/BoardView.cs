@@ -173,6 +173,16 @@ namespace Lazpoly.Presentation.Tabletop
         public const float JailNameOffset = 0.26f;
 
         /// <summary>
+        /// The cup's long name is printed on two lines ("ŞAMPİYONLAR" over "KUPASI") as large as the jail's would allow,
+        /// its room that much deeper, so it reads as large as the other special squares' names.
+        /// </summary>
+        public const float CupNameScale = 1.6f;
+        public const float CupNameLines = 1.5f;
+
+        /// <summary>The cup's scene is a little smaller than the other corners' so its top stays clear of the banner over the far corner.</summary>
+        public const float CupSceneSize = 0.36f;
+
+        /// <summary>
         /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, low on
         /// the tile (where a price would sit), with a big question mark printed flat over the rest of the tile in
         /// <see cref="ChanceMarkColor"/>, in place of a standing sign. Offsets and depth are in tile depths, towards the screen's bottom.
@@ -905,7 +915,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (scene == null) return;
             bool far = FacesAway(outward);
             scene.transform.localPosition = center + SceneSide(index, far) * (side * SceneOffset) + outward * (side * SceneInset * (far ? 1f : -1f)) + Vector3.up * TileHeight;
-            scene.transform.localScale = Vector3.one * (side * SceneSize);
+            scene.transform.localScale = Vector3.one * (side * (type == SquareType.Cup ? CupSceneSize : SceneSize));
             if (!CornerParts.ShowsFront(scene))
             {
                 scene.transform.localRotation = Quaternion.LookRotation(outward);
@@ -1034,7 +1044,8 @@ namespace Lazpoly.Presentation.Tabletop
         private float NameScale(int index) =>
             _data.Board[index].Type == SquareType.Jail ? JailNameScale
             : IsChance(index) ? ChanceNameScale
-            : _data.Board[index].Type == SquareType.Tax ? TaxNameScale : 1f;
+            : _data.Board[index].Type == SquareType.Tax ? TaxNameScale
+            : _data.Board[index].Type == SquareType.Cup ? CupNameScale : 1f;
 
         /// <summary>A Şans square: a card square along an edge (a card corner has its kiosk instead).</summary>
         private bool IsChance(int index) => _data.Board[index].Type == SquareType.Card && !Layout.IsCorner(index);
@@ -1055,7 +1066,12 @@ namespace Lazpoly.Presentation.Tabletop
 
         private Vector2 NameRoom(int index, Vector2 size)
         {
-            if (Layout.IsCorner(index)) return new Vector2(size.x * NameFill, _depth * CornerNameDepth * NameScale(index));
+            if (Layout.IsCorner(index))
+            {
+                float lines = _data.Board[index].Type == SquareType.Cup ? CupNameLines : 1f;
+                return new Vector2(size.x * NameFill, _depth * CornerNameDepth * NameScale(index) * lines);
+            }
+
             SquareDefinition square = _data.Board[index];
             bool marked = square.Type == SquareType.Property && _data.GroupMark(square.GroupId) != null;
             return new Vector2(size.x * (marked ? MarkedNameFill : NameFill), _depth * NameDepth * NameScale(index));
@@ -1270,13 +1286,22 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A square's name as printed on the board: a town's, the jail's, a tax's, the cup's and a Şans square's (a card square
-        /// off the corners) in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞAMPİYONLAR KUPASI", "ŞANS", Turkish capitals in Turkish),
-        /// the others as written.
+        /// off the corners) in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", Turkish capitals in Turkish), the others as written.
+        /// The cup's goes on two lines, broken at its first space ("ŞAMPİYONLAR" over "KUPASI").
         /// </summary>
-        public static string PrintedName(SquareDefinition square, bool corner) =>
-            square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup
-            || (square.Type == SquareType.Card && !corner)
+        public static string PrintedName(SquareDefinition square, bool corner)
+        {
+            if (square.Type == SquareType.Cup) return TwoLines(Upper(L(square.Name)));
+            return square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || (square.Type == SquareType.Card && !corner)
                 ? Upper(L(square.Name)) : L(square.Name);
+        }
+
+        /// <summary>A name broken onto two lines at its first space; a one-word name stays on one.</summary>
+        public static string TwoLines(string name)
+        {
+            int space = name.IndexOf(' ');
+            return space < 0 ? name : name.Substring(0, space) + "\n" + name.Substring(space + 1);
+        }
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>
         public void Relabel()

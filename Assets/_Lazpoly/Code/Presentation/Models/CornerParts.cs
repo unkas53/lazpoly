@@ -131,8 +131,8 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>
-        /// The champions' cup: a gold cup with two handles (along x) on a two-step dark plinth, base at y = 0, about one unit tall
-        /// and 0.8 wide across its handles. It stands on the cup corner, and small beside the buildings of the town that holds it.
+        /// The champions' cup: a gold cup with two handles (along x) on a two-step dark plinth, base at y = 0, 0.8 unit tall
+        /// and 0.76 wide across its handles (kept low, so the far corner's cup stays clear of the banner). It stands on the cup corner, and small beside the buildings of the town that holds it.
         /// </summary>
         public static GameObject Trophy(string name, Transform parent)
         {
@@ -140,10 +140,10 @@ namespace Lazpoly.Presentation.Models
             Part(root, "Plinth", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), DarkTimber, new Vector3(0f, 0.08f, 0f), new Vector3(0.5f, 0.16f, 0.5f));
             Part(root, "Step", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), DarkTimber, new Vector3(0f, 0.2f, 0f), new Vector3(0.38f, 0.08f, 0.38f));
             Part(root, "Plate", MeshFactory.RoundedBox(Vector3.one, 0.005f, 2), Gold, new Vector3(0f, 0.08f, -0.252f), new Vector3(0.3f, 0.07f, 0.01f), smoothness: 0.6f);
-            Part(root, "Cup", Cup(), Gold, new Vector3(0f, 0.24f, 0f), Vector3.one, smoothness: 0.6f);
+            Part(root, "Cup", Cup(), Gold, new Vector3(0f, 0.24f, 0f), new Vector3(1f, 0.78f, 1f), smoothness: 0.6f);
             foreach (float side in new[] { -1f, 1f })
             {
-                Part(root, "Handle", MeshFactory.Ring(0.7f, 1f, 24), Gold, new Vector3(side * 0.27f, 0.78f, 0.02f), new Vector3(0.13f, 0.04f, 0.13f),
+                Part(root, "Handle", MeshFactory.Ring(0.7f, 1f, 24), Gold, new Vector3(side * 0.27f, 0.66f, 0.02f), new Vector3(0.11f, 0.04f, 0.11f),
                     Quaternion.Euler(90f, 0f, 0f), 0.6f);
             }
 
