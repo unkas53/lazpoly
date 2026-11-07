@@ -173,11 +173,17 @@ namespace Lazpoly.Presentation.Tabletop
         public const float JailNameOffset = 0.26f;
 
         /// <summary>
-        /// The cup's long name is printed on two lines ("ŞAMPİYONLAR" over "KUPASI") as large as the jail's would allow,
-        /// its room that much deeper, so it reads as large as the other special squares' names.
+        /// The cup's long name runs across its corner on one line, along the tile's diagonal that lies left to right on the
+        /// screen (the owner's wish, Faz 24; <see cref="DiagonalRotation"/>): it starts as large as the jail's and shrinks to
+        /// its room, which is this long and deep in corner sides, its line this far below the corner's middle on the screen.
         /// </summary>
         public const float CupNameScale = 1.6f;
-        public const float CupNameLines = 1.5f;
+        public const float CupNameLength = 0.9f;
+        public const float CupNameDepth = 0.14f;
+        public const float CupNameShift = 0.15f;
+
+        /// <summary>The owner's cup model on the corner: its height in corner sides (it is one unit tall, three quarters wide).</summary>
+        public const float CupModelSize = 0.32f;
 
         /// <summary>
         /// The cup's scene is a little smaller than the other corners' and stands nearer the corner's middle (less inset
@@ -186,8 +192,6 @@ namespace Lazpoly.Presentation.Tabletop
         public const float CupSceneSize = 0.30f;
         public const float CupSceneInset = 0.10f;
 
-        /// <summary>The cup's two-line name sits a little further from the corner's middle than a one-line name, clear of the cup's plinth.</summary>
-        public const float CupNameOffset = 0.22f;
 
         /// <summary>
         /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, low on
@@ -263,6 +267,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         // The small cup beside the buildings of the town that holds it (SetCup), its size, and that town; -1 while none does.
         private Transform _cupTrophy;
+        private Transform _cupScene;
         private Vector3 _cupScale;
         private int _cupSquare = -1;
         private TextMesh[] _prices;
@@ -434,7 +439,7 @@ namespace Lazpoly.Presentation.Tabletop
             for (int i = 0; _names != null && i < _names.Length; i++)
             {
                 Quaternion rotation = LabelRotation(Outward(Layout.SquareCenter(i)), yaw);
-                if (_names[i] != null) _names[i].transform.localRotation = rotation;
+                if (_names[i] != null) _names[i].transform.localRotation = DiagonalName(i) ? DiagonalRotation(yaw) : rotation;
                 if (_prices[i] != null) _prices[i].transform.localRotation = rotation;
                 if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
                 if (_documents[i] != null) _documents[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
@@ -806,10 +811,12 @@ namespace Lazpoly.Presentation.Tabletop
                 // A corner has no price: its name lies on the outer part, or the inner edge when the corner faces away,
                 // clear of its scene and pawns.
                 Vector3 namePlace = corner
-                    ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : square.Type == SquareType.Cup ? CupNameOffset : CornerNameOffset))
+                    ? DiagonalName(i) ? center - DiagonalTops(BoardCameraRig.BaseYaw) * (_depth * CupNameShift)
+                    : center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : CornerNameOffset))
                     : center + down * (_depth * (IsChance(i) || DocumentUnderName(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkColor);
+                if (DiagonalName(i)) _names[i].transform.localRotation = DiagonalRotation(_yaw);
                 string subtitle = Subtitle(square);
                 if (subtitle != null || property)
                 {
@@ -891,7 +898,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (squareIndex == _cupSquare) return;
             if (_cupTrophy == null)
             {
-                _cupTrophy = CornerParts.Trophy("Cup on town", transform).transform;
+                _cupTrophy = (CornerParts.ChampionsCup("Cup on town", transform) ?? CornerParts.Trophy("Cup on town", transform)).transform;
                 _cupScale = Vector3.one * (_width * CupSize);
             }
 
@@ -912,8 +919,14 @@ namespace Lazpoly.Presentation.Tabletop
             if (Vector3.Dot(along, ScreenRight(_yaw)) < 0f) along = -along;
             float width = Layout.SquareSize(_cupSquare).x - Gap;
             _cupTrophy.localPosition = BuildingRowCenter(center) + along * (width * CupSide) + ScreenDown(outward) * (_depth * CupForward);
-            _cupTrophy.localRotation = Quaternion.LookRotation(BuildingFront(outward, _yaw));
+            _cupTrophy.localRotation = FacingCamera(_yaw);
         }
+
+        /// <summary>A model's turn that shows its front (+Z) straight to a camera at <paramref name="yaw"/>.</summary>
+        public static Quaternion FacingCamera(float yaw) => Quaternion.LookRotation(-ScreenUp(yaw));
+
+        /// <summary>The cup on its corner; null on a board without one.</summary>
+        public Transform CupScene => _cupScene;
 
         /// <summary>A corner's scene stands on one side of the corner with the pawns on the other, both on the part away from the name.</summary>
         private void CreateScene(SquareType type, int index, Vector3 center, Vector3 outward, float side)
@@ -928,6 +941,15 @@ namespace Lazpoly.Presentation.Tabletop
             if (!CornerParts.ShowsFront(scene))
             {
                 scene.transform.localRotation = Quaternion.LookRotation(outward);
+                return;
+            }
+
+            if (cup)
+            {
+                // The owner's cup: its lettering turns straight to the camera, whichever way the table is turned.
+                scene.transform.localScale = Vector3.one * (side * CupModelSize);
+                _cupScene = scene.transform;
+                _cupScene.localRotation = FacingCamera(_yaw);
                 return;
             }
 
@@ -1056,6 +1078,29 @@ namespace Lazpoly.Presentation.Tabletop
             : _data.Board[index].Type == SquareType.Tax ? TaxNameScale
             : _data.Board[index].Type == SquareType.Cup ? CupNameScale : 1f;
 
+        /// <summary>The cup's corner: its name runs across the corner, along the diagonal (<see cref="DiagonalRotation"/>).</summary>
+        private bool DiagonalName(int index) => _data.Board[index].Type == SquareType.Cup && Layout.IsCorner(index);
+
+        /// <summary>Of a square tile's two diagonals, the one that lies most nearly left to right on the screen for a camera at <paramref name="yaw"/>, pointing right.</summary>
+        public static Vector3 DiagonalLine(float yaw)
+        {
+            Vector3 right = ScreenRight(yaw);
+            Vector3 first = new Vector3(1f, 0f, 1f).normalized;
+            Vector3 second = new Vector3(1f, 0f, -1f).normalized;
+            Vector3 line = Mathf.Abs(Vector3.Dot(first, right)) >= Mathf.Abs(Vector3.Dot(second, right)) ? first : second;
+            return Vector3.Dot(line, right) < 0f ? -line : line;
+        }
+
+        /// <summary>Which way the tops of the letters of a diagonal name point: across its line, up the screen.</summary>
+        public static Vector3 DiagonalTops(float yaw)
+        {
+            Vector3 line = DiagonalLine(yaw);
+            return new Vector3(-line.z, 0f, line.x);
+        }
+
+        /// <summary>Text lying on the board along <see cref="DiagonalLine"/>, reading left to right.</summary>
+        public static Quaternion DiagonalRotation(float yaw) => Quaternion.LookRotation(Vector3.down, DiagonalTops(yaw));
+
         /// <summary>A Şans square: a card square along an edge (a card corner has its kiosk instead).</summary>
         private bool IsChance(int index) => _data.Board[index].Type == SquareType.Card && !Layout.IsCorner(index);
 
@@ -1075,12 +1120,8 @@ namespace Lazpoly.Presentation.Tabletop
 
         private Vector2 NameRoom(int index, Vector2 size)
         {
-            if (Layout.IsCorner(index))
-            {
-                float lines = _data.Board[index].Type == SquareType.Cup ? CupNameLines : 1f;
-                return new Vector2(size.x * NameFill, _depth * CornerNameDepth * NameScale(index) * lines);
-            }
-
+            if (DiagonalName(index)) return new Vector2(_depth * CupNameLength, _depth * CupNameDepth);
+            if (Layout.IsCorner(index)) return new Vector2(size.x * NameFill, _depth * CornerNameDepth * NameScale(index));
             SquareDefinition square = _data.Board[index];
             bool marked = square.Type == SquareType.Property && _data.GroupMark(square.GroupId) != null;
             return new Vector2(size.x * (marked ? MarkedNameFill : NameFill), _depth * NameDepth * NameScale(index));
@@ -1216,6 +1257,7 @@ namespace Lazpoly.Presentation.Tabletop
         private void TurnBuildings(float yaw)
         {
             PlaceCup();
+            if (_cupScene != null) _cupScene.localRotation = FacingCamera(yaw);
             foreach (KeyValuePair<Transform, Vector3> scene in _frontScenes)
             {
                 if (scene.Key != null) scene.Key.localRotation = Quaternion.LookRotation(BuildingFront(scene.Value, yaw));
@@ -1295,22 +1337,13 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A square's name as printed on the board: a town's, the jail's, a tax's, the cup's and a Şans square's (a card square
-        /// off the corners) in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", Turkish capitals in Turkish), the others as written.
-        /// The cup's goes on two lines, broken at its first space ("ŞAMPİYONLAR" over "KUPASI").
+        /// off the corners) and the cup's in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", "ŞAMPİYONLAR KUPASI", Turkish capitals
+        /// in Turkish), the others as written.
         /// </summary>
-        public static string PrintedName(SquareDefinition square, bool corner)
-        {
-            if (square.Type == SquareType.Cup) return TwoLines(Upper(L(square.Name)));
-            return square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || (square.Type == SquareType.Card && !corner)
+        public static string PrintedName(SquareDefinition square, bool corner) =>
+            square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup
+            || (square.Type == SquareType.Card && !corner)
                 ? Upper(L(square.Name)) : L(square.Name);
-        }
-
-        /// <summary>A name broken onto two lines at its first space; a one-word name stays on one.</summary>
-        public static string TwoLines(string name)
-        {
-            int space = name.IndexOf(' ');
-            return space < 0 ? name : name.Substring(0, space) + "\n" + name.Substring(space + 1);
-        }
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>
         public void Relabel()
@@ -1324,7 +1357,10 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_names[i] != null)
                 {
                     _names[i].text = PrintedName(square, Layout.IsCorner(i));
+                    // A diagonal name is measured lying square to its edge, then turned back across the corner.
+                    if (DiagonalName(i)) _names[i].transform.localRotation = LabelRotation(outward, _yaw);
                     FitLabel(_names[i], NameCharacterSize(i), NameRoom(i, size), outward);
+                    if (DiagonalName(i)) _names[i].transform.localRotation = DiagonalRotation(_yaw);
                 }
 
                 if (_prices[i] != null)

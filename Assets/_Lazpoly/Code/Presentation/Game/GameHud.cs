@@ -254,13 +254,14 @@ namespace Lazpoly.Presentation.Game
 
             // Frame rate and memory behind F3, in the strip above the turn banner.
             RectTransform perf = UiRoot.Rect(_canvas.transform, "Perf Overlay", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(-200f, -44f), new Vector2(200f, -14f));
+                new Vector2(-200f, -28f), new Vector2(200f, -4f));
             _perfLabel = new UiBuilder(perf).Label("", UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
             perf.gameObject.SetActive(false);
             _perfRect = perf;
 
+            // The banner sits high, clear of the board's far corner and its cup (the owner's wish, Faz 24).
             RectTransform banner = UiRoot.Rect(_canvas.transform, "Turn Banner", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(-320f, -150f), new Vector2(320f, -60f));
+                new Vector2(-320f, -120f), new Vector2(320f, -30f));
             _bannerFill = UiRoot.Banner(banner, 90f, dark: false); // The cream skin, tinted in the player's colour when it shows.
             _bannerGroup = banner.gameObject.AddComponent<CanvasGroup>();
             _bannerGroup.blocksRaycasts = false;

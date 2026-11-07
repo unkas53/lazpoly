@@ -4,6 +4,7 @@ using Lazpoly.Core.Events;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Data;
+using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.Texts;
 using NUnit.Framework;
@@ -56,11 +57,22 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 BoardView board = BoardView.Create(holder.transform, _data);
-                Assert.IsNotNull(board.transform.Find("Scene Cup"), "a gold cup on its plinth stands on the corner");
+                Assert.IsNotNull(board.transform.Find("Scene Cup"), "the cup stands on the corner");
+                Assert.AreSame(board.transform.Find("Scene Cup"), board.CupScene);
+                Assert.IsNotNull(board.CupScene.Find(FigureModels.BodyPart), "the owner's cup model, not the drawn one");
+                Vector3 front = board.CupScene.localRotation * Vector3.forward;
+                Assert.Greater(Vector3.Dot(front, -BoardView.ScreenUp(BoardCameraRig.BaseYaw)), 0.99f, "its lettering faces the camera");
                 Assert.IsNull(board.transform.Find("Scene Card"), "the kiosk is gone");
-                Assert.AreEqual("ŞAMPİYONLAR\nKUPASI", board.NameLabel(CupCorner).text, "in capitals like the jail, the tax and Şans, on two lines to print large");
-                Assert.AreEqual("ONE", BoardView.TwoLines("ONE"));
-                Assert.AreEqual("CHAMPIONS'\nCUP", BoardView.TwoLines("CHAMPIONS' CUP"));
+
+                TextMesh name = board.NameLabel(CupCorner);
+                Assert.AreEqual("ŞAMPİYONLAR KUPASI", name.text, "in capitals like the jail, the tax and Şans, on one line");
+                Vector3 line = name.transform.localRotation * Vector3.right;
+                Assert.Greater(Vector3.Dot(line, BoardView.DiagonalLine(BoardCameraRig.BaseYaw)), 0.99f, "it runs across the corner (the owner's wish)");
+                Assert.That(Mathf.Abs(Vector3.Dot(line, board.Layout.Outward(CupCorner))), Is.EqualTo(Mathf.Sqrt(0.5f)).Within(0.01f), "at 45 degrees to the edges");
+                Assert.Greater(Vector3.Dot(line, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), 0f, "reading left to right");
+                board.FaceCamera(BoardCameraRig.BaseYaw + 90f);
+                Assert.Greater(Vector3.Dot(name.transform.localRotation * Vector3.right, BoardView.ScreenRight(BoardCameraRig.BaseYaw + 90f)), 0.7f, "still left to right with the table turned");
+                board.FaceCamera(BoardCameraRig.BaseYaw);
 
                 board.SetCup(GameState.NoCup);
                 Assert.IsTrue(board.CupTrophy == null || !board.CupTrophy.gameObject.activeSelf, "no town has it yet");

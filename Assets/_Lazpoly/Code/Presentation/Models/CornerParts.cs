@@ -43,7 +43,7 @@ namespace Lazpoly.Presentation.Models
                 case SquareType.Pot: return TeaGarden(name, parent);
                 case SquareType.Jail: return Cell(name, parent);
                 case SquareType.Card: return Kiosk(name, parent);
-                case SquareType.Cup: return Trophy(name, parent);
+                case SquareType.Cup: return ChampionsCup(name, parent) ?? Trophy(name, parent);
                 case SquareType.Travel: return Station(name, parent) ?? BusStop(name, parent);
                 default: return null;
             }
@@ -56,6 +56,14 @@ namespace Lazpoly.Presentation.Models
         /// </summary>
         public static GameObject Station(string name, Transform parent) =>
             FigureModels.IsAvailable(FigureModels.StationId) ? FigureModels.Create(FigureModels.StationId, name, parent) : null;
+
+        /// <summary>
+        /// The owner's champions' cup (made with Meshy AI; <see cref="FigureModels.TrophyId"/>): one unit tall, about 0.75 wide
+        /// across its handles, its base at y = 0 and its lettering at +Z. Null when its files are not in the build, and the
+        /// drawn <see cref="Trophy"/> stands in.
+        /// </summary>
+        public static GameObject ChampionsCup(string name, Transform parent) =>
+            FigureModels.IsAvailable(FigureModels.TrophyId) ? FigureModels.Create(FigureModels.TrophyId, name, parent) : null;
 
         /// <summary>Whether a corner scene is a textured model that should show its front to the camera, not face out over the edge.</summary>
         public static bool ShowsFront(GameObject scene) => scene != null && scene.transform.Find(FigureModels.BodyPart) != null;
@@ -131,7 +139,7 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>
-        /// The champions' cup: a gold cup with two handles (along x) on a two-step dark plinth, base at y = 0, 0.8 unit tall
+        /// The drawn champions' cup, standing in when the owner's model is not in the build: a gold cup with two handles (along x) on a two-step dark plinth, base at y = 0, 0.8 unit tall
         /// and 0.76 wide across its handles (kept low, so the far corner's cup stays clear of the banner). It stands on the cup corner, and small beside the buildings of the town that holds it.
         /// </summary>
         public static GameObject Trophy(string name, Transform parent)

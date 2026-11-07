@@ -145,9 +145,9 @@ namespace Lazpoly.Presentation.Tests
                     GameObject scene = CornerParts.For(type, type.ToString(), root.transform);
                     Assert.IsNotNull(scene, $"{type} has no scene.");
                     MeshFilter[] parts = scene.GetComponentsInChildren<MeshFilter>();
-                    if (type == Lazpoly.Core.Board.SquareType.Travel)
+                    if (type == Lazpoly.Core.Board.SquareType.Travel || type == Lazpoly.Core.Board.SquareType.Cup)
                     {
-                        Assert.IsTrue(CornerParts.ShowsFront(scene), "the bus station is the owner's textured diorama");
+                        Assert.IsTrue(CornerParts.ShowsFront(scene), $"{type}: the owner's textured model");
                         Assert.AreEqual(1, parts.Length);
                         Assert.Greater(parts[0].sharedMesh.triangles.Length / 3, 20000, "in full detail");
                     }
@@ -180,6 +180,7 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 Assert.Greater(CornerParts.BusStop("Drawn stop", root.transform).GetComponentsInChildren<MeshFilter>().Length, 3, "the drawn stop stands in without the diorama");
+                Assert.Greater(CornerParts.Trophy("Drawn cup", root.transform).GetComponentsInChildren<MeshFilter>().Length, 3, "the drawn cup stands in without the owner's model");
                 Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Lookout));
                 Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Start), "the start's pier and lighthouse are gone; an arrow is printed instead");
                 Assert.IsNull(CornerParts.For(Lazpoly.Core.Board.SquareType.Start, "none", root.transform));

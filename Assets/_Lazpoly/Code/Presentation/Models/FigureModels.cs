@@ -33,6 +33,12 @@ namespace Lazpoly.Presentation.Models
         /// </summary>
         public const string StationId = "station";
 
+        /// <summary>
+        /// Not a character either: the owner's champions' cup (Meshy AI; "LazPoly CHAMPIONS" on its front at +Z), one unit
+        /// tall like a figure (Tools/Art/make_figures.py; <see cref="CornerParts.ChampionsCup"/>).
+        /// </summary>
+        public const string TrophyId = "trophy";
+
         private const float Smoothness = 0.2f;
 
         private sealed class Figure
