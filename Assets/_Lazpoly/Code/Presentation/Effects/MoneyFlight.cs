@@ -6,8 +6,8 @@ namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
     /// One bundle of paid money on its way, the owner's wish (Faz 25): a payment travels as the owner's banded money stacks and,
-    /// for the big sums, gold bars (<see cref="MoneyBundle"/>), two side by side and piled on each other, the gold at the
-    /// bottom. It comes out of the payer's
+    /// for the big sums, gold bars (<see cref="MoneyBundle"/>), two side by side and piled on each other, the gold on top
+    /// where the camera sees it. It comes out of the payer's
     /// figure, goes straight to the middle of the table, waits there a moment, then goes straight on to whoever gets it (a
     /// figure, or the bank's safe) and sinks into it. It lies flat and never turns on the way. The whole payment takes
     /// <see cref="Seconds"/> at normal speed, and the game waits for it. The timeline and the pile are pure
@@ -57,7 +57,7 @@ namespace Lazpoly.Presentation.Effects
         private float _age;
         private Vector3 _size;
 
-        /// <summary>The pieces that show a payment of <paramref name="amount"/>, the gold bars first: none for nothing.</summary>
+        /// <summary>The pieces that show a payment of <paramref name="amount"/>, the stacks first and the gold bars on top where they show: none for nothing.</summary>
         public static MoneyPiece[] Pieces(int amount)
         {
             if (amount <= 0) return new MoneyPiece[0];
@@ -66,7 +66,7 @@ namespace Lazpoly.Presentation.Effects
             int stacks = Mathf.Min((rest + BundleValue - 1) / BundleValue, MaxPieces - gold);
             if (gold + stacks == 0) stacks = 1;
             var pieces = new MoneyPiece[gold + stacks];
-            for (int i = 0; i < pieces.Length; i++) pieces[i] = i < gold ? MoneyPiece.Gold : MoneyPiece.Stack;
+            for (int i = 0; i < pieces.Length; i++) pieces[i] = i < stacks ? MoneyPiece.Stack : MoneyPiece.Gold;
             return pieces;
         }
 

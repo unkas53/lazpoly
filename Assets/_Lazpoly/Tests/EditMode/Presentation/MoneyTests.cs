@@ -23,8 +23,8 @@ namespace Lazpoly.Presentation.Tests
             CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(100));
             CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(260));
             CollectionAssert.AreEqual(new[] { MoneyPiece.Gold }, MoneyFlight.Pieces(500), "a gold bar for every full 500");
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(650), "the gold first, at the bottom");
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(5000));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold }, MoneyFlight.Pieces(650), "the gold last, on top where it shows");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold, MoneyPiece.Gold }, MoneyFlight.Pieces(5000));
             Assert.LessOrEqual(MoneyFlight.Pieces(499).Length, MoneyFlight.MaxPieces);
             foreach (MoneyPiece piece in new[] { MoneyPiece.Stack, MoneyPiece.Gold })
             {
@@ -45,9 +45,9 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(0f, third.z, 1e-5f, "a lone piece in the middle of its layer");
             Assert.AreEqual(0f, MoneyFlight.StackOffset(0, new[] { MoneyPiece.Gold }).z, 1e-5f);
 
-            MoneyPiece[] mixed = MoneyFlight.Pieces(650);
-            Vector3 gold = MoneyFlight.StackOffset(0, mixed), beside = MoneyFlight.StackOffset(1, mixed), top = MoneyFlight.StackOffset(2, mixed);
-            Assert.Greater(beside.z - gold.z, (MoneyBundle.Width(MoneyPiece.Gold) + MoneyBundle.Width(MoneyPiece.Stack)) / 2f, "gold and a stack side by side");
+            MoneyPiece[] mixed = { MoneyPiece.Stack, MoneyPiece.Gold, MoneyPiece.Gold };
+            Vector3 stack = MoneyFlight.StackOffset(0, mixed), beside = MoneyFlight.StackOffset(1, mixed), top = MoneyFlight.StackOffset(2, mixed);
+            Assert.Greater(beside.z - stack.z, (MoneyBundle.Width(MoneyPiece.Gold) + MoneyBundle.Width(MoneyPiece.Stack)) / 2f, "gold and a stack side by side");
             Assert.AreEqual(Mathf.Max(MoneyBundle.Height(MoneyPiece.Gold), MoneyBundle.Height(MoneyPiece.Stack)) + MoneyFlight.LayerGap, top.y, 1e-5f, "on the taller one below");
 
             MoneyPiece[] most = MoneyFlight.Pieces(5000);
