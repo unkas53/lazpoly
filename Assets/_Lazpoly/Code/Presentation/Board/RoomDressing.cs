@@ -38,14 +38,16 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ShadowDistance = 40f;
 
         /// <summary>
-        /// Temporal anti-aliasing on High (the owner's wish): it blends each frame with the last ones at jittered sample
-        /// positions, so thin lines, far edges and fine texture detail stop crawling. URP's TAA cannot run with MSAA, so
-        /// High draws without it; Medium keeps 2x MSAA with FXAA, Low has none.
+        /// Temporal anti-aliasing (the owner asked for it) stays off: the project draws in gamma colour space, and URP's TAA
+        /// there brightens every colour once more (the measured sky went from A2D7F7 to CFEBFB, the grass from 467249 to
+        /// 8EB18F), which washed the table out. Only a switch to linear colour space would let it run, and that changes the
+        /// look the owner approved. So High keeps 4x MSAA with SMAA, Medium 2x MSAA with FXAA, Low none.
         /// </summary>
-        public static bool UsesTemporalAntiAliasing(GraphicsQuality quality) => quality == GraphicsQuality.High;
+        public static bool UsesTemporalAntiAliasing(GraphicsQuality quality) => false;
 
-        /// <summary>MSAA samples per quality: none with TAA (High) or on Low, two on Medium.</summary>
-        public static int MsaaFor(GraphicsQuality quality) => quality == GraphicsQuality.Medium ? 2 : 1;
+        /// <summary>MSAA samples per quality: four on High, two on Medium, none on Low.</summary>
+        public static int MsaaFor(GraphicsQuality quality) =>
+            quality == GraphicsQuality.High ? 4 : quality == GraphicsQuality.Medium ? 2 : 1;
 
         /// <summary>
         /// Anisotropic filtering per quality: forced on every texture on High and Medium (the tiles lie at a slant to the
@@ -53,9 +55,6 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public static AnisotropicFiltering AnisotropicFor(GraphicsQuality quality) =>
             quality == GraphicsQuality.Low ? AnisotropicFiltering.Enable : AnisotropicFiltering.ForceEnable;
-
-        /// <summary>How hard TAA sharpens what its blending softens (URP's contrast adaptive sharpening, 0-1).</summary>
-        public const float TaaSharpening = 0.4f;
 
         /// <summary>Re-applies a quality level to the scene that is up now: the main camera, the sun and the pipeline.</summary>
         public static void ApplyQuality(GraphicsQuality quality)
@@ -96,14 +95,14 @@ namespace Lazpoly.Presentation.Tabletop
         /// Whether the colour effects (grading, tonemapping, vignette, bloom) draw. Built games never had them (the URP
         /// renderer lacked its post-processing resources until Faz 25), so the bright, pastel look the owner approved is the
         /// look without them; switched on, the table turned darker and greyer. Post-processing itself stays on for the
-        /// anti-aliasing (TAA on High, FXAA on Medium).
+        /// anti-aliasing (SMAA on High, FXAA on Medium).
         /// </summary>
         public static readonly bool LookEffectsOn = false;
 
         /// <summary>Whether the camera runs URP's post-processing (the edge smoothing needs it).</summary>
         public static bool RunsPostProcessing(Camera camera) => camera.GetUniversalAdditionalCameraData().renderPostProcessing;
 
-        /// <summary>Whether the camera smooths edges after drawing (TAA or FXAA).</summary>
+        /// <summary>Whether the camera smooths edges after drawing (SMAA or FXAA).</summary>
         public static bool SmoothsEdges(Camera camera) => camera.GetUniversalAdditionalCameraData().antialiasing != AntialiasingMode.None;
 
         /// <summary>Whether the camera smooths edges over time (TAA).</summary>
@@ -182,13 +181,9 @@ namespace Lazpoly.Presentation.Tabletop
             UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
             data.renderPostProcessing = postProcessing;
             data.antialiasing = UsesTemporalAntiAliasing(quality) ? AntialiasingMode.TemporalAntiAliasing
+                : quality == GraphicsQuality.High ? AntialiasingMode.SubpixelMorphologicalAntiAliasing
                 : quality == GraphicsQuality.Medium ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.None;
-            if (UsesTemporalAntiAliasing(quality))
-            {
-                data.antialiasingQuality = AntialiasingQuality.High;
-                data.taaSettings.quality = TemporalAAQuality.High;
-                data.taaSettings.contrastAdaptiveSharpening = TaaSharpening;
-            }
+            if (quality == GraphicsQuality.High) data.antialiasingQuality = AntialiasingQuality.High;
 
             Volume volume = camera.GetComponent<Volume>();
             if (volume == null)

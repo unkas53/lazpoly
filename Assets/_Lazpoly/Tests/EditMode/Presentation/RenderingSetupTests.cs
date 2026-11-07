@@ -63,10 +63,10 @@ namespace Lazpoly.Presentation.Tests
                 RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.High);
                 Assert.IsTrue(RoomDressing.RunsPostProcessing(camera), "post-processing runs for the edge smoothing");
                 Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "edges smoothed on High");
-                Assert.IsTrue(RoomDressing.SmoothsOverTime(camera), "TAA on High");
+                Assert.IsFalse(RoomDressing.SmoothsOverTime(camera), "no TAA: in gamma colour space it washes the colours out");
                 RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.Medium);
                 Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "FXAA on Medium");
-                Assert.IsFalse(RoomDressing.SmoothsOverTime(camera), "Medium keeps MSAA, so no TAA");
+                Assert.IsFalse(RoomDressing.SmoothsOverTime(camera));
                 RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.High);
                 Assert.IsFalse(RoomDressing.ShowsLookEffects(camera), "but the colour effects stay off");
             }
@@ -77,16 +77,15 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TemporalSmoothingOnHighDrawsWithoutMsaaAndTexturesFilterAtASlant()
+        public void EdgesAreSmoothedWithMsaaAndTexturesFilterAtASlant()
         {
-            // URP's TAA cannot run with MSAA, so High draws single-sampled; Medium keeps 2x MSAA, Low none.
-            Assert.IsTrue(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.High));
-            Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
-            Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.Low));
-            Assert.AreEqual(1, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            // The project draws in gamma colour space, where URP's TAA brightens every colour once more; MSAA does the work.
+            Assert.AreEqual(ColorSpace.Gamma, QualitySettings.activeColorSpace, "in linear colour space TAA could be tried again");
+            foreach (Lazpoly.Infra.Settings.GraphicsQuality quality in System.Enum.GetValues(typeof(Lazpoly.Infra.Settings.GraphicsQuality)))
+                Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(quality), $"{quality} would wash the colours out");
+            Assert.AreEqual(4, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
             Assert.AreEqual(2, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
             Assert.AreEqual(1, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.Low));
-            Assert.That(RoomDressing.TaaSharpening, Is.InRange(0f, 1f));
             Assert.AreEqual(AnisotropicFiltering.ForceEnable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
             Assert.AreEqual(AnisotropicFiltering.ForceEnable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
             Assert.AreEqual(AnisotropicFiltering.Enable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.Low));
