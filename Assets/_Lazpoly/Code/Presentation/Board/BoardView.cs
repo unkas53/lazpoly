@@ -1269,11 +1269,13 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// A square's name as printed on the board: a town's, the jail's, a tax's and a Şans square's (a card square off the
-        /// corners) in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", Turkish capitals in Turkish), the others as written.
+        /// A square's name as printed on the board: a town's, the jail's, a tax's, the cup's and a Şans square's (a card square
+        /// off the corners) in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞAMPİYONLAR KUPASI", "ŞANS", Turkish capitals in Turkish),
+        /// the others as written.
         /// </summary>
         public static string PrintedName(SquareDefinition square, bool corner) =>
-            square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || (square.Type == SquareType.Card && !corner)
+            square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup
+            || (square.Type == SquareType.Card && !corner)
                 ? Upper(L(square.Name)) : L(square.Name);
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>

@@ -58,7 +58,7 @@ namespace Lazpoly.Presentation.Tests
                 BoardView board = BoardView.Create(holder.transform, _data);
                 Assert.IsNotNull(board.transform.Find("Scene Cup"), "a gold cup on its plinth stands on the corner");
                 Assert.IsNull(board.transform.Find("Scene Card"), "the kiosk is gone");
-                Assert.AreEqual("Şampiyonlar Kupası", board.NameLabel(CupCorner).text);
+                Assert.AreEqual("ŞAMPİYONLAR KUPASI", board.NameLabel(CupCorner).text, "in capitals like the jail, the tax and Şans");
 
                 board.SetCup(GameState.NoCup);
                 Assert.IsTrue(board.CupTrophy == null || !board.CupTrophy.gameObject.activeSelf, "no town has it yet");

@@ -186,7 +186,7 @@ namespace Lazpoly.Presentation.Tests
                 {
                     SquareDefinition square = data.Board[i];
                     bool chance = square.Type == SquareType.Card && !board.Layout.IsCorner(i);
-                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || chance;
+                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup || chance;
                     string expected = capitals ? Texts.Lang.Upper(square.Name) : square.Name;
                     Assert.AreEqual(expected, board.NameLabel(i).text, $"square {i}");
                     if (square.Name == "İstanbul") Assert.AreEqual("İSTANBUL", board.NameLabel(i).text);
