@@ -5,31 +5,28 @@ namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
     /// One piece of paid money (the owner's 1 L coin or 100 L note, <see cref="MoneyModels"/>) on its way, the owner's wish
-    /// (Faz 25): it rises out of the payer's figure, arcs to the middle of the table, waits there with the rest of the
-    /// payment, then arcs on to whoever gets it (a figure, or the bank's safe) and sinks into it. The whole payment takes
+    /// (Faz 25): it comes out of the payer's figure, goes straight to the middle of the table, waits there with the rest of
+    /// the payment, then goes straight on to whoever gets it (a figure, or the bank's safe) and sinks into it. It lies flat
+    /// and never turns on the way (the owner's wish). The whole payment takes
     /// <see cref="Seconds"/> at normal speed, and the game waits for it. The timeline is pure (<see cref="PositionAt"/>,
     /// <see cref="ScaleAt"/>) so it can be checked without a scene.
     /// </summary>
     public sealed class MoneyFlight : MonoBehaviour
     {
         /// <summary>The whole payment, from the first piece leaving to the last one gone, at normal speed.</summary>
-        public const float Seconds = 5f;
+        public const float Seconds = 3f;
 
         /// <summary>When the pieces reach the middle, and when the first leaves it again; each next piece starts and leaves <see cref="Stagger"/> later.</summary>
-        public const float GatherAt = 1.8f;
-        public const float LeaveAt = 2.6f;
-        public const float Stagger = 0.05f;
+        public const float GatherAt = 1.0f;
+        public const float LeaveAt = 1.4f;
+        public const float Stagger = 0.04f;
 
         /// <summary>How long the way from the middle to whoever gets the money takes, and the shrink into them at the end.</summary>
-        public const float LegSeconds = 1.7f;
-        public const float SinkSeconds = 0.3f;
+        public const float LegSeconds = 1.1f;
+        public const float SinkSeconds = 0.2f;
 
         /// <summary>How long a piece takes to grow to its size as it leaves the payer.</summary>
-        public const float PopSeconds = 0.2f;
-
-        /// <summary>How high the way to the middle and the way on arc over the straight line, in board units (low on the way on, so it plainly heads for whoever gets it).</summary>
-        public const float Arc = 1.1f;
-        public const float OnwardArc = 0.5f;
+        public const float PopSeconds = 0.15f;
 
         /// <summary>Notes for the hundreds (at most <see cref="MaxNotes"/>), coins for the rest (one per <see cref="CoinValue"/>, at most <see cref="MaxCoins"/>).</summary>
         public const int NoteValue = 100;
@@ -90,6 +87,7 @@ namespace Lazpoly.Presentation.Effects
                 flight._speed = Mathf.Max(speed, 0.1f);
                 flight._size = piece.transform.localScale;
                 piece.transform.position = from;
+                piece.transform.rotation = flight._rest;
                 piece.transform.localScale = Vector3.zero;
             }
 
@@ -127,15 +125,15 @@ namespace Lazpoly.Presentation.Effects
             if (t < GatherAt)
             {
                 float u = (t - depart) / (GatherAt - depart);
-                return Vector3.Lerp(from, middle, Ease.InOutCubic(u)) + Vector3.up * (Arc * Ease.Bump(u));
+                return Vector3.Lerp(from, middle, Ease.InOutCubic(u));
             }
 
             float leave = LeaveMiddleAt(index);
-            if (t < leave) return middle + Vector3.up * (0.06f * Mathf.Sin((t - GatherAt) * 6f + index));
+            if (t < leave) return middle;
             float arrive = ArriveAt(index);
             if (t >= arrive) return to;
             float v = (t - leave) / LegSeconds;
-            return Vector3.Lerp(middle, to, Ease.InOutCubic(v)) + Vector3.up * (OnwardArc * Ease.Bump(v));
+            return Vector3.Lerp(middle, to, Ease.InOutCubic(v));
         }
 
         /// <summary>The <paramref name="index"/>th piece's size as a share of its own: it pops up as it leaves and shrinks into whoever gets it.</summary>
@@ -159,18 +157,7 @@ namespace Lazpoly.Presentation.Effects
 
             transform.position = PositionAt(_age, _index, _from, _middle, _to);
             transform.localScale = _size * ScaleAt(_age, _index);
-            transform.rotation = RotationAt(_age);
-        }
-
-        /// <summary>Tumbling on the way, lying still with a slow sway while it waits in the middle.</summary>
-        private Quaternion RotationAt(float t)
-        {
-            float leave = LeaveMiddleAt(_index);
-            if (t >= GatherAt && t < leave) return _rest * Quaternion.Euler(0f, 10f * Mathf.Sin((t - GatherAt) * 3f + _index), 0f);
-            float u = t < GatherAt ? (t - DepartAt(_index)) / (GatherAt - DepartAt(_index)) : (t - leave) / LegSeconds;
-            u = Mathf.Clamp01(u);
-            // One full turn over the leg, so the piece lands flat and the wait starts from its resting turn.
-            return _rest * Quaternion.Euler(360f * Ease.InOutCubic(u), 0f, 25f * Ease.Bump(u));
+            transform.rotation = _rest;
         }
     }
 }

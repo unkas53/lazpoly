@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Tests
 {
-    /// <summary>Faz 25: the owner's money set, the bank's safe on the lawn and the five-second payment flight.</summary>
+    /// <summary>Faz 25: the owner's money set, the bank's safe on the lawn and the three-second payment flight.</summary>
     public class MoneyTests
     {
         [Test]
@@ -76,17 +76,18 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ThePaymentGoesThroughTheMiddleAndEndsInFiveSeconds()
+        public void ThePaymentGoesStraightThroughTheMiddleAndEndsInThreeSeconds()
         {
             Vector3 from = new Vector3(-4f, 1f, 0f), middle = new Vector3(0f, 1.6f, 0f), to = new Vector3(4f, 1f, 2f);
-            Assert.AreEqual(5f, MoneyFlight.Seconds, "the owner's five seconds");
+            Assert.AreEqual(3f, MoneyFlight.Seconds, "the owner's three seconds");
             for (int i = 0; i < MoneyFlight.MaxNotes + MoneyFlight.MaxCoins; i++)
             {
                 Assert.LessOrEqual(MoneyFlight.ArriveAt(i) + MoneyFlight.SinkSeconds, MoneyFlight.Seconds + 1e-4f, $"piece {i} is gone in time");
                 Assert.AreEqual(from, MoneyFlight.PositionAt(0f, i, from, middle, to));
-                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.GatherAt, i, from, middle, to), middle), Is.LessThan(0.07f), "it waits in the middle");
+                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.GatherAt, i, from, middle, to), middle), Is.LessThan(1e-4f), "it waits in the middle");
                 Assert.AreEqual(to, MoneyFlight.PositionAt(MoneyFlight.ArriveAt(i), i, from, middle, to));
-                Assert.Greater(MoneyFlight.PositionAt((MoneyFlight.LeaveMiddleAt(i) + MoneyFlight.ArriveAt(i)) / 2f, i, from, middle, to).y, 1.3f, "it arcs");
+                Vector3 halfway = MoneyFlight.PositionAt((MoneyFlight.LeaveMiddleAt(i) + MoneyFlight.ArriveAt(i)) / 2f, i, from, middle, to);
+                Assert.That(Vector3.Distance(halfway, (middle + to) / 2f), Is.LessThan(1e-3f), "straight on, no arc (the owner's wish)");
                 Assert.AreEqual(0f, MoneyFlight.ScaleAt(MoneyFlight.DepartAt(i), i));
                 Assert.AreEqual(1f, MoneyFlight.ScaleAt(MoneyFlight.GatherAt + 0.1f, i));
                 Assert.AreEqual(0f, MoneyFlight.ScaleAt(MoneyFlight.Seconds, i), "it sinks into whoever gets it");
@@ -96,7 +97,7 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 float seconds = MoneyFlight.Fly(root.transform, from, middle, to, 260, Quaternion.identity, 2f);
-                Assert.AreEqual(2.5f, seconds, 1e-4f, "the animation speed setting shortens it");
+                Assert.AreEqual(1.5f, seconds, 1e-4f, "the animation speed setting shortens it");
                 Assert.AreEqual(5, root.GetComponentsInChildren<MoneyFlight>().Length, "two notes and three coins");
             }
             finally
