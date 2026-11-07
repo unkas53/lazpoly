@@ -10,8 +10,10 @@ Writes Assets/_Lazpoly/Data/Resources/Lazpoly/Models/figure_<id>.bytes and figur
 FigureModels loads like a character (the corner scenes are not in its character list).
 
 A job may end in @high,low,skin to set the two triangle budgets and the colour map's size; a skin of 0 keeps the
-model's own colour map as it is, byte for byte (the paid money, at the owner's original quality:
-dollars=Tools/Art/Models/Figures/CartoonDollarStack.glb@1000000,24000,0).
+model's own colour map as it is, byte for byte, as figure_<id>_skin.jpg (or .png): Unity imports it as a texture and
+compresses it when the game is built, so the game never decodes it while playing (the paid money, at the owner's
+original quality: dollars=Tools/Art/Models/Figures/CartoonDollarStack.glb@1000000,24000,0). Its .meta must keep the
+full size (maxTextureSize 4096) and mipmaps.
 
 Needs: pip install numpy pillow meshoptimizer. Run from the repository root:
     python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
@@ -78,12 +80,16 @@ def main():
             print(f"{model} {level}: {len(i)} triangles, {len(p)} vertices (from {len(indices)})")
         with open(os.path.join(figures.TARGET, f"figure_{model}.bytes"), "wb") as out:
             out.write(pack)
-        buffer = io.BytesIO()
         if skin_size == 0:
-            buffer.write(original_colour(source))
-        else:
-            skin = colour.resize((skin_size, skin_size), Image.LANCZOS)
-            skin.save(buffer, "JPEG", quality=figures.SKIN_QUALITY, optimize=True)
+            original = original_colour(source)
+            extension = "png" if original[:4] == b"\x89PNG" else "jpg"
+            with open(os.path.join(figures.TARGET, f"figure_{model}_skin.{extension}"), "wb") as out:
+                out.write(original)
+            print(f"{model}: {len(pack) / 1e6:.1f} MB of meshes, {len(original) / 1e6:.1f} MB colour map (as it is, .{extension})")
+            continue
+        buffer = io.BytesIO()
+        skin = colour.resize((skin_size, skin_size), Image.LANCZOS)
+        skin.save(buffer, "JPEG", quality=figures.SKIN_QUALITY, optimize=True)
         with open(os.path.join(figures.TARGET, f"figure_{model}_skin.bytes"), "wb") as out:
             out.write(buffer.getvalue())
         print(f"{model}: {len(pack) / 1e6:.1f} MB of meshes, {len(buffer.getvalue()) / 1e6:.1f} MB colour map")

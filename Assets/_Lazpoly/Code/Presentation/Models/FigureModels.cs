@@ -175,10 +175,19 @@ namespace Lazpoly.Presentation.Models
             Mesh lightMesh = light == full ? fullMesh : light.ToMesh($"figure-{id}-low");
             yield return null;
 
-            ResourceRequest skinRequest = Resources.LoadAsync<TextAsset>(SkinResource(id));
-            yield return skinRequest;
+            // A colour map imported as a texture (compressed when the game is built) loads in the background as it is.
+            ResourceRequest imported = Resources.LoadAsync<Texture2D>(SkinResource(id));
+            yield return imported;
+            Texture2D skin = imported.asset as Texture2D;
+            if (skin == null)
+            {
+                ResourceRequest skinRequest = Resources.LoadAsync<TextAsset>(SkinResource(id));
+                yield return skinRequest;
+                if (Figures.ContainsKey(id)) yield break;
+                skin = SkinFrom(id, skinRequest.asset as TextAsset);
+            }
+
             if (Figures.ContainsKey(id)) yield break;
-            Texture2D skin = SkinFrom(id, skinRequest.asset as TextAsset);
             Figures[id] = new Figure { Full = fullMesh, Light = lightMesh, Skin = skin };
         }
 
@@ -193,7 +202,12 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>The colour map, compressed on the graphics card once decoded; null (a white figure) when it is missing.</summary>
-        private static Texture2D LoadSkin(string id) => SkinFrom(id, Resources.Load<TextAsset>(SkinResource(id)));
+        /// <summary>
+        /// The colour map: an imported texture when there is one (figure_&lt;id&gt;_skin.jpg, which Unity compresses when the
+        /// game is built, so nothing is decoded while playing), otherwise the .bytes JPEG decoded here.
+        /// </summary>
+        private static Texture2D LoadSkin(string id) =>
+            Resources.Load<Texture2D>(SkinResource(id)) ?? SkinFrom(id, Resources.Load<TextAsset>(SkinResource(id)));
 
         private static Texture2D SkinFrom(string id, TextAsset asset)
         {
