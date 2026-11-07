@@ -35,7 +35,7 @@ Steam yapay zekâ beyanına girer (Steam/README.md).
 
 ## Şampiyonlar Kupası
 
-Şampiyonlar Kupası köşesindeki ve kupanın şehrindeki kupa da proje sahibinin Meshy AI ile ürettiği bir modeldir: `Meshy_AI_LazPolyChampionsTroph_1107091403_image-to-3d-texture.glb` (30 MB, 268.984 üçgen; önünde "LazPoly CHAMPIONS" yazılı gümüş kupa, 2026-11-07). Bu klasöre `ChampionsTrophy.glb` adıyla koyup çalıştır:
+Şampiyonlar Kupası köşesindeki ve kupanın şehrindeki kupa da proje sahibinin Meshy AI ile ürettiği bir modeldir: `Meshy_AI_MatteGoldLazPolyTroph_1107100206_texture.glb` (24 MB, 339.543 üçgen; önünde siyah "LazPoly CHAMPIONS" yazılı mat altın kupa, 2026-11-07; aynı günün ilk gümüş kupasının yerine geldi). Bu klasöre `ChampionsTrophy.glb` adıyla koyup çalıştır:
 
     python3 Tools/Art/make_figures.py trophy=Tools/Art/Models/Figures/ChampionsTrophy.glb
 
