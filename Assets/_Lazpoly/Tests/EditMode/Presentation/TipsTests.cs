@@ -180,5 +180,17 @@ namespace Lazpoly.Presentation.Tests
             var plain = new BoardDefinition(new[] { SquareDefinition.Start("Başlangıç"), SquareDefinition.Property("Sur Yolu", 60, 4, 1), SquareDefinition.Rest("Park") });
             Assert.IsFalse(HowToPlay.Sections(plain, Rules).Any(s => s.Key == "Otogar" || s.Key == "Çay Molası"));
         }
+
+        [Test]
+        public void HowToPlayNamesBothKindsOfCardSquareOnce()
+        {
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Başlangıç"), SquareDefinition.Card("Şans"), SquareDefinition.Card("Sokak Haberi"), SquareDefinition.Card("Şans"),
+            }, new[] { CardDefinition.Collect("Piyango", 50) });
+            List<string> titles = HowToPlay.Sections(board, Rules).Select(s => s.Key).ToList();
+            CollectionAssert.Contains(titles, "Şans ve Sokak Haberi");
+            Assert.IsFalse(titles.Contains("Sokak Haberi"), "the squares share one section");
+        }
     }
 }

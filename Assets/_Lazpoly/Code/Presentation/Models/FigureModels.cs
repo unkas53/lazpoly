@@ -33,6 +33,18 @@ namespace Lazpoly.Presentation.Models
         /// </summary>
         public const string StationId = "station";
 
+        /// <summary>
+        /// Not a character either: the owner's champions' cup (Meshy AI; "LazPoly CHAMPIONS" on its front at +Z), one unit
+        /// tall like a figure (Tools/Art/make_figures.py; <see cref="CornerParts.ChampionsCup"/>).
+        /// </summary>
+        public const string TrophyId = "trophy";
+
+        /// <summary>
+        /// The Şampiyonlar Kupası corner's diorama (the owner's cartoon stadium, Meshy AI), one unit wide like the bus
+        /// station's, its stand at +Z (Tools/Art/make_corner_models.py; <see cref="CornerParts.Stadium"/>).
+        /// </summary>
+        public const string StadiumId = "stadium";
+
         private const float Smoothness = 0.2f;
 
         private sealed class Figure

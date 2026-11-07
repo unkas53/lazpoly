@@ -152,7 +152,29 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TownsAndTheJailArePrintedInCapitalsTheOtherSquaresAsWritten()
+        public void TheStartCornerHasAnArrowPointingTheWayThePawnsGo()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, data);
+                Assert.IsNotNull(board.StartArrow, "an arrow is printed on the start (the owner's wish, Faz 24)");
+                Assert.IsNull(board.transform.Find("Scene Start"), "the pier and lighthouse are gone");
+                Vector3 way = board.Layout.SquareCenter(1) - board.Layout.SquareCenter(0);
+                way.y = 0f;
+                Vector3 forward = board.StartArrow.localRotation * Vector3.forward;
+                Assert.Greater(Vector3.Dot(forward, way.normalized), 0.99f, "it points at the next square");
+                Assert.Less(Mathf.Abs(forward.y), 0.01f, "it lies flat");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void TownsTheJailTaxAndChanceArePrintedInCapitalsTheOtherSquaresAsWritten()
         {
             Texts.Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
             BoardData data = BoardDataLoader.LoadFromResources();
@@ -163,12 +185,40 @@ namespace Lazpoly.Presentation.Tests
                 for (int i = 0; i < data.Board.Count; i++)
                 {
                     SquareDefinition square = data.Board[i];
-                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Jail;
-                    string expected = capitals ? Texts.Lang.Upper(square.Name) : square.Name;
+                    bool chance = square.Type == SquareType.Card && !board.Layout.IsCorner(i);
+                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup || chance;
+                    string expected = square.Type == SquareType.Cup ? BoardView.TwoLines(Texts.Lang.Upper(square.Name))
+                        : capitals ? Texts.Lang.Upper(square.Name) : square.Name;
                     Assert.AreEqual(expected, board.NameLabel(i).text, $"square {i}");
                     if (square.Name == "İstanbul") Assert.AreEqual("İSTANBUL", board.NameLabel(i).text);
                     if (square.Type == SquareType.Jail) Assert.AreEqual("HAPİS", board.NameLabel(i).text, "the jail too, larger (the owner's wish)");
                     if (square.Name == "Rio de Janeiro") Assert.AreEqual("RİO DE JANEİRO", board.NameLabel(i).text, "a Turkish capital i keeps its dot");
+                    if (square.Type == SquareType.Tax)
+                    {
+                        Assert.AreEqual("VERGİ", board.NameLabel(i).text, "the tax in capitals, larger (the owner's wish, Faz 24)");
+                        Assert.IsNull(BoardView.Subtitle(square), "no %10 printed on the tax");
+                        Assert.IsNotNull(board.Document(i), "a document is printed on the tax square");
+                    }
+                    else
+                    {
+                        Assert.IsNull(board.Document(i), $"square {i} has no document");
+                    }
+
+                    if (chance)
+                    {
+                        Assert.AreEqual("ŞANS", board.NameLabel(i).text, "Şans in capitals, larger (the owner's wish, Faz 24)");
+                        Assert.IsNotNull(board.ChanceMark(i), "a question mark is printed on the Şans tile");
+                        Assert.AreEqual("?", board.ChanceMark(i).text);
+                        Assert.Greater(board.ChanceMark(i).characterSize, board.NameLabel(i).characterSize * 2f, "the question mark is the tile's big print");
+                        Bounds mark = board.ChanceMark(i).GetComponent<MeshRenderer>().bounds;
+                        Bounds name = board.NameLabel(i).GetComponent<MeshRenderer>().bounds;
+                        Assert.IsFalse(mark.Intersects(name), $"square {i}: the question mark runs into ŞANS");
+                        Assert.IsNull(board.transform.Find("Sign Card"), "no standing sign on a Şans square");
+                    }
+                    else
+                    {
+                        Assert.IsNull(board.ChanceMark(i), $"square {i} has no question mark");
+                    }
                 }
             }
             finally
@@ -377,6 +427,33 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreNotSame(Lazpoly.Presentation.UI.UiTheme.BoldFont, black);
             Assert.IsTrue(PrintMaterial.IsPrinting(black), "the print shader is missing from Resources");
             Assert.AreSame(black.material.mainTexture, PrintMaterial.For(black).mainTexture, "the print uses the heavy cut's own atlas");
+        }
+
+        [Test]
+        public void ASpeechBubbleDropsBelowTheTurnBanner()
+        {
+            var holder = new GameObject("Camera");
+            var target = new RenderTexture(800, 600, 16);
+            try
+            {
+                Camera camera = holder.AddComponent<Camera>();
+                camera.targetTexture = target;
+                camera.fieldOfView = 40f;
+                holder.transform.position = new Vector3(0f, 0f, -10f);
+                Vector3 high = camera.ScreenToWorldPoint(new Vector3(400f, 590f, 10f));
+                Assert.AreEqual(Vector3.zero, SpeechBubble.DropBelow(camera, high, 0.1f, 0f), "nothing kept clear, nothing moves");
+                Vector3 drop = SpeechBubble.DropBelow(camera, high, 0.1f, 100f);
+                Assert.Less(drop.y, 0f, "a bubble under the band drops");
+                Vector3 top = camera.WorldToScreenPoint(high + drop + Vector3.up * 0.1f);
+                Assert.That(top.y, Is.EqualTo(camera.pixelHeight - 100f).Within(0.5f), "its top meets the band's lower edge");
+                Vector3 low = camera.ScreenToWorldPoint(new Vector3(400f, 200f, 10f));
+                Assert.AreEqual(Vector3.zero, SpeechBubble.DropBelow(camera, low, 0.1f, 100f), "a low bubble stays put");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(holder);
+                UnityEngine.Object.DestroyImmediate(target);
+            }
         }
 
         [Test]

@@ -94,6 +94,55 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(0, engine.State.Pot);
         }
 
+        // 0 Start, 1 A (100, houses 50), 2 B (100, houses 50), 3 a tax of 10% of property value, 4 Rest.
+        private static BoardDefinition PercentTaxBoard() => new BoardDefinition(new[]
+        {
+            SquareDefinition.Start("Start"),
+            SquareDefinition.Property("A", 100, 10, 1, 50, new[] { 50, 150, 400, 550, 700 }),
+            SquareDefinition.Property("B", 100, 10, 1, 50, new[] { 50, 150, 400, 550, 700 }),
+            SquareDefinition.PercentTax("Vergi", 10),
+            SquareDefinition.Rest("Rest"),
+        });
+
+        [Test]
+        public void APercentTaxTakesItsShareOfThePropertyValueNotTheCash()
+        {
+            BoardDefinition board = PercentTaxBoard();
+            GameEngine engine = NewGame(board, 1, 2);
+            GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(1, GameState.NoOwner, Alice));
+            GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(2, GameState.NoOwner, Alice));
+            GameStateReducer.Apply(engine.State, new BuildingLevelChangedEvent(1, 2));
+            Assert.AreEqual(100 + 100 + 2 * 50, GameRules.PropertyValue(board, engine.State, Alice));
+
+            CommandResult result = Accept(engine, new RollDiceCommand(Alice));
+
+            // 10% of 300 (two towns at their price, two houses at their cost); her 1000 in cash does not count.
+            MoneyChangedEvent tax = result.Events.OfType<MoneyChangedEvent>().Single(e => e.Reason == MoneyReason.Tax);
+            Assert.AreEqual(-30, tax.Delta);
+            Assert.AreEqual(1000 - 30, Player(engine, Alice).Money);
+            Assert.AreEqual(30, GameRules.TaxDue(board, engine.State, 3, Alice));
+            Assert.AreEqual(0, GameRules.TaxDue(board, engine.State, 4, Alice), "a square that is no tax takes nothing");
+        }
+
+        [Test]
+        public void APercentTaxTakesNothingFromAPlayerWithoutProperty()
+        {
+            GameEngine engine = NewGame(PercentTaxBoard(), 1, 2);
+            CommandResult result = Accept(engine, new RollDiceCommand(Alice));
+            Assert.IsFalse(result.Events.OfType<MoneyChangedEvent>().Any(e => e.Reason == MoneyReason.Tax));
+            Assert.AreEqual(1000, Player(engine, Alice).Money);
+        }
+
+        [Test]
+        public void ATaxNeedsAnAmountOrAPercentUpToAHundred()
+        {
+            BoardDefinition board = PercentTaxBoard();
+            Assert.AreEqual(10, board[3].TaxPercent);
+            Assert.AreEqual(0, board[3].TaxAmount);
+            Assert.Throws<System.ArgumentException>(() => new BoardDefinition(new[] { SquareDefinition.Start("S"), SquareDefinition.PercentTax("T", 0) }));
+            Assert.Throws<System.ArgumentException>(() => new BoardDefinition(new[] { SquareDefinition.Start("S"), SquareDefinition.PercentTax("T", 101) }));
+        }
+
         // ---- Cards ----
 
         [Test]

@@ -38,6 +38,12 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>The paper's width and height, text and padding included.</summary>
         public Vector2 PaperSize { get; private set; }
 
+        /// <summary>
+        /// Screen pixels at the top that the bubble keeps clear of (the turn banner while it shows): a bubble
+        /// over a far square drops down in front of its figure instead of hiding behind the band.
+        /// </summary>
+        public float TopClearPixels { get; set; }
+
         public static SpeechBubble Say(Transform parent, Transform follow, string text, Color accent)
         {
             var root = new GameObject($"Bubble {text}");
@@ -104,7 +110,24 @@ namespace Lazpoly.Presentation.Effects
         {
             if (_follow != null) transform.position = _follow.position + Vector3.up * (Lift + PaperSize.y / 2f + TailHeight);
             Camera camera = Camera.main;
-            if (camera != null) transform.rotation = camera.transform.rotation;
+            if (camera == null) return;
+            transform.rotation = camera.transform.rotation;
+            transform.position += DropBelow(camera, transform.position, PaperSize.y / 2f, TopClearPixels);
+        }
+
+        /// <summary>
+        /// How far to move a bubble centred at <paramref name="center"/> so its top edge (half its height up
+        /// the screen) stays <paramref name="topClear"/> pixels under the top of the camera's view; nothing
+        /// when it is already lower, when nothing is kept clear, or when it is behind the camera.
+        /// </summary>
+        public static Vector3 DropBelow(Camera camera, Vector3 center, float halfHeight, float topClear)
+        {
+            if (topClear <= 0f) return Vector3.zero;
+            Vector3 top = center + camera.transform.up * halfHeight;
+            Vector3 screen = camera.WorldToScreenPoint(top);
+            float ceiling = camera.pixelHeight - topClear;
+            if (screen.z <= 0f || screen.y <= ceiling) return Vector3.zero;
+            return camera.ScreenToWorldPoint(new Vector3(screen.x, ceiling, screen.z)) - top;
         }
     }
 }

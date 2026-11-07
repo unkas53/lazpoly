@@ -134,6 +134,13 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Screen pixels kept clear of the board at each side edge (see <see cref="UiLayout.ReservedSidePixels"/>).</summary>
         public float ReservedSidePixels => UiLayout.ReservedSidePixels(_canvas != null ? _canvas.scaleFactor : 1f);
 
+        /// <summary>The turn banner's lower edge, in canvas units under the top of the screen.</summary>
+        public const float BannerBottom = 112f;
+
+        /// <summary>Screen pixels the turn banner covers at the top while it shows, a little gap included; nothing while it is gone.</summary>
+        public float ReservedTopPixels =>
+            _bannerGroup != null && _bannerGroup.alpha > 0f ? (BannerBottom + 8f) * (_canvas != null ? _canvas.scaleFactor : 1f) : 0f;
+
         /// <summary>Whether the decision panel at the bottom has something to show.</summary>
         public bool TurnPanelShown => _turnPanel != null && _turnPanel.gameObject.activeSelf;
 
@@ -252,15 +259,16 @@ namespace Lazpoly.Presentation.Game
             // A debt's sale screen: its card in the middle and a tag over each of the player's towns.
             _debtSale = new DebtSaleView(_canvas.transform, _controller);
 
-            // Frame rate and memory behind F3, in the strip above the turn banner.
+            // Frame rate and memory behind F3, in the strip under the turn banner.
             RectTransform perf = UiRoot.Rect(_canvas.transform, "Perf Overlay", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(-200f, -44f), new Vector2(200f, -14f));
+                new Vector2(-200f, -144f), new Vector2(200f, -116f));
             _perfLabel = new UiBuilder(perf).Label("", UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
             perf.gameObject.SetActive(false);
             _perfRect = perf;
 
+            // The banner sits high, clear of the board's far corner and its cup (the owner's wish, Faz 24).
             RectTransform banner = UiRoot.Rect(_canvas.transform, "Turn Banner", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(-320f, -150f), new Vector2(320f, -60f));
+                new Vector2(-320f, -BannerBottom), new Vector2(320f, -22f));
             _bannerFill = UiRoot.Banner(banner, 90f, dark: false); // The cream skin, tinted in the player's colour when it shows.
             _bannerGroup = banner.gameObject.AddComponent<CanvasGroup>();
             _bannerGroup.blocksRaycasts = false;
@@ -326,7 +334,7 @@ namespace Lazpoly.Presentation.Game
             _offerLayer.SetActive(false);
         }
 
-        /// <summary>The drawn "Sokak Haberi" card, shown in the middle for a few seconds. It never takes the mouse.</summary>
+        /// <summary>The drawn card, titled after the square it came from ("SOKAK HABERİ" or "ŞANS"), shown in the middle for a few seconds. It never takes the mouse.</summary>
         private void BuildCardPopup()
         {
             RectTransform card = UiRoot.Rect(_canvas.transform, "Card Popup", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
@@ -640,7 +648,10 @@ namespace Lazpoly.Presentation.Game
             }
 
             string player = _controller.Session.State.FindPlayer(_controller.ShownCardPlayer)?.Name;
-            _cardTitle.text = player == null ? L("SOKAK HABERİ") : F($"SOKAK HABERİ · {player}");
+            BoardDefinition board = _controller.Session.Board;
+            int square = _controller.ShownCardSquare;
+            string deck = square >= 0 && square < board.Count && board[square].Type == SquareType.Card ? Lang.Upper(L(board[square].Name)) : L("SOKAK HABERİ");
+            _cardTitle.text = player == null ? deck : $"{deck} · {player}";
             _cardText.text = L(EventDescriber.CardText(_controller.Session.Board, card));
             _cardGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
             _cardRect.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.3f)));
@@ -764,8 +775,8 @@ namespace Lazpoly.Presentation.Game
             bool overInterface = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             _hoveredSquare = !overInterface && board.TryGetSquare(camera.ScreenPointToRay(Input.mousePosition), out int square) ? square : NoSquare;
             if (!overInterface && Input.GetMouseButtonDown(0)) ClickSquare(state, _hoveredSquare);
-            // While a ride's destination is being chosen the view leans a little towards the chosen square.
-            bool choosing = ChoosingRide(state);
+            // While a ride's destination (or the cup's town) is being chosen the view leans a little towards the chosen square.
+            bool choosing = ChoosingRide(state) || ChoosingCup(state);
             _controller.CameraRig?.Peek(choosing && _pinnedSquare != NoSquare ? board.SquarePosition(_pinnedSquare) : (Vector3?)null);
         }
 
@@ -779,7 +790,7 @@ namespace Lazpoly.Presentation.Game
                 return;
             }
 
-            if (ChoosingRide(state))
+            if (ChoosingRide(state) || ChoosingCup(state))
             {
                 if (square == NoSquare || BoardChoices(state).Contains(square)) _pinnedSquare = square;
                 return;
@@ -791,6 +802,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>True while the person here picks where to ride: a click then chooses the square instead of opening its card.</summary>
         private bool ChoosingRide(GameState state) => WaitsOnPersonHere(state, GamePhase.AwaitingTravelDecision);
 
+        /// <summary>True while the person here picks the town to bring the champions' cup to: a click then chooses one of their towns.</summary>
+        private bool ChoosingCup(GameState state) => WaitsOnPersonHere(state, GamePhase.AwaitingCupChoice);
+
         /// <summary>True while the person here covers a debt: their towns are ringed on the board and a click sells one.</summary>
         public bool SellingOnBoard(GameState state) =>
             WaitsOnPersonHere(state, GamePhase.AwaitingDebtPayment) && state.Debt != null && state.Debt.PlayerId == state.CurrentPlayer.Id;
@@ -800,22 +814,23 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>
         /// The squares the person here may click on the board now: where a ride may go
-        /// (<see cref="GameRules.IsRideDestination"/>), or their own towns while a debt is sold. Null when
+        /// (<see cref="GameRules.IsRideDestination"/>), their towns that may take the cup, or their own towns while a debt is sold. Null when
         /// the board is not a choice. The list is reused; read it, don't keep it.
         /// </summary>
         public List<int> BoardChoices(GameState state)
         {
             bool ride = ChoosingRide(state);
-            bool sale = !ride && SellingOnBoard(state);
-            if (!ride && !sale) return null;
+            bool cup = !ride && ChoosingCup(state);
+            bool sale = !ride && !cup && SellingOnBoard(state);
+            if (!ride && !cup && !sale) return null;
 
             _choices.Clear();
             BoardDefinition board = _controller.Session.Board;
             PlayerState player = state.CurrentPlayer;
             for (int i = 0; i < board.Count; i++)
             {
-                bool choice = ride
-                    ? GameRules.IsRideDestination(board, state, player, i)
+                bool choice = ride ? GameRules.IsRideDestination(board, state, player, i)
+                    : cup ? GameRules.CanHoldCup(board, i) && state.GetOwner(i) == player.Id
                     : board[i].Type == SquareType.Property && state.GetOwner(i) == player.Id;
                 if (choice) _choices.Add(i);
             }
@@ -839,7 +854,8 @@ namespace Lazpoly.Presentation.Game
 
             if (key == _choicesKey) return;
             _choicesKey = key;
-            bool ride = choices != null && ChoosingRide(state);
+            // A ride and the cup light their squares and darken the rest; a sale rings the towns instead.
+            bool ride = choices != null && (ChoosingRide(state) || ChoosingCup(state));
             _controller.Markers?.ShowChoices(ride ? null : choices);
             // The group light under the mouse is drawn again from scratch once the choice is over.
             _highlightedFor = ChoiceHighlight;
@@ -1163,6 +1179,10 @@ namespace Lazpoly.Presentation.Game
                     RenderTravel(ui, player);
                     break;
 
+                case GamePhase.AwaitingCupChoice:
+                    RenderCup(ui, state, player);
+                    break;
+
                 case GamePhase.AwaitingDiceChoice:
                     RenderDiceChoice(ui, state, player);
                     break;
@@ -1302,6 +1322,44 @@ namespace Lazpoly.Presentation.Game
             }
 
             ui.Button(L("Burada kal"), () => _controller.Submit(new DeclineTravelCommand(player.Id)));
+        }
+
+        /// <summary>
+        /// The champions' cup: the player picks one of their towns on the board and pays to bring the cup there, which raises
+        /// its rent; the town that held it goes back to its own rent. Or they pass.
+        /// </summary>
+        private void RenderCup(UiBuilder ui, GameState state, PlayerState player)
+        {
+            BoardDefinition board = _controller.Session.Board;
+            int fee = board[player.Position].Fee;
+            int percent = GameRules.NextCupPercent(board, state, player.Position);
+            UiBuilder card = ui.Card();
+            card.Label(F($"{L(board[player.Position].Name)}: {fee} ödeyip şehirlerinden birinin kirasını %{percent} artırabilirsin."));
+            card.Label(state.CupSquare == GameState.NoCup
+                    ? L("Tahtada parlayan şehirlerinden birine tıkla. Kupa bir sonraki seçime kadar orada kalır.")
+                    : F($"Kupa şu an {L(board[state.CupSquare].Name)} şehrinde (%{state.CupPercent}). Başka bir şehir seçilirse oradan kalkar."),
+                UiTextStyle.Small, UiTheme.Muted);
+
+            int target = _pinnedSquare;
+            var host = new HostCupCommand(player.Id, target);
+            if (target >= 0 && _controller.IsAllowed(host))
+            {
+                ui.Button(F($"Kupa {L(board[target].Name)} şehrine ({fee})"), () =>
+                {
+                    _pinnedSquare = NoSquare;
+                    _controller.Submit(host);
+                }, style: UiButtonStyle.Primary, height: CardButton);
+            }
+            else
+            {
+                ui.Button(L("Önce bir şehir seç"), null, false, UiButtonStyle.Primary, CardButton);
+            }
+
+            ui.Button(L("Geç"), () =>
+            {
+                _pinnedSquare = NoSquare;
+                _controller.Submit(new DeclineCupCommand(player.Id));
+            });
         }
 
         /// <summary>

@@ -39,7 +39,7 @@ namespace Lazpoly.Presentation.Texts
                 sections.Insert(2, Section(L("Süre"), F($"Zar atmak, satın almak ve bina kurmak için {decision} sn, borç için satışa ve takas cevabına {sale} sn var. Süre dolunca oyun senin yerine karar verir: zarı atar, şehri almaz, sırayı bitirir, borcunu otomatik satışla öder.")));
             }
 
-            if (HasType(board, SquareType.Card)) sections.Add(Section(L("Sokak Haberi"), L("Bu kareye gelen bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));
+            if (HasType(board, SquareType.Card)) sections.Add(Section(CardSquaresTitle(board), L("Bu kareye gelen desteden rastgele bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));
             if (board.HasPot) sections.Add(Section(L("Çay Molası"), L("Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır.")));
             if (board.HasJail)
             {
@@ -47,6 +47,19 @@ namespace Lazpoly.Presentation.Texts
             }
 
             if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelen isterse {fare} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine gidilemez.")));
+            int taxPercent = TaxPercent(board);
+            if (taxPercent > 0)
+            {
+                sections.Add(Section(L("Vergi"), F($"Vergi karesine gelen, sahip olduğu şehirlerin ve tatil yerlerinin fiyatı ile üstlerindeki binaların maliyeti toplamının %{taxPercent} kadarını bankaya öder. Nakit sayılmaz; mülkü olmayan bir şey ödemez.")));
+            }
+
+            int cup = IndexOfType(board, SquareType.Cup);
+            if (cup >= 0)
+            {
+                SquareDefinition square = board[cup];
+                sections.Add(Section(L(square.Name), F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir ve o şehrin kirası artar: ilk seçimde %{square.BoostPercent}, sonra kim seçerse seçsin her seçimde %{square.BoostStep} daha fazla. Kupa tek bir şehirde durur; başka bir şehir seçilince oraya geçer, eski şehrin kirası normale döner. Tatil yerleri seçilemez.")));
+            }
+
             if (HasType(board, SquareType.Lookout)) sections.Add(Section(L("Seyir Terası"), L("Buraya gelen bir sonraki sırasında iki kez zar atar ve hangisiyle gideceğini seçer.")));
             sections.Add(Section(L("İpucu"), L("Bir kareye fareyle gel ya da tıkla: fiyatı, kira tablosu ve sahibi kartında görünür. Fare tekeriyle yakınlaş, Home ile başa dön.")));
             return sections;
@@ -54,14 +67,40 @@ namespace Lazpoly.Presentation.Texts
 
         private static KeyValuePair<string, string> Section(string title, string body) => new KeyValuePair<string, string>(title, body);
 
-        private static bool HasType(BoardDefinition board, SquareType type)
+        /// <summary>The card squares' names, once each: "Şans", or "Sokak Haberi ve Şans" on a board that has both (Faz 24).</summary>
+        private static string CardSquaresTitle(BoardDefinition board)
+        {
+            var names = new List<string>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Card && !names.Contains(board[i].Name)) names.Add(board[i].Name);
+            }
+
+            return names.Count == 2 ? F($"{L(names[0])} ve {L(names[1])}") : string.Join(", ", names.ConvertAll(name => L(name)));
+        }
+
+        /// <summary>The rate of the board's first tax taken as a share of property value; 0 when every tax is a fixed amount.</summary>
+        private static int TaxPercent(BoardDefinition board)
         {
             for (int i = 0; i < board.Count; i++)
             {
-                if (board[i].Type == type) return true;
+                if (board[i].Type == SquareType.Tax && board[i].TaxPercent > 0) return board[i].TaxPercent;
             }
 
-            return false;
+            return 0;
+        }
+
+        private static bool HasType(BoardDefinition board, SquareType type) => IndexOfType(board, type) >= 0;
+
+        /// <summary>The first square of a type; -1 when the board has none.</summary>
+        private static int IndexOfType(BoardDefinition board, SquareType type)
+        {
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == type) return i;
+            }
+
+            return -1;
         }
     }
 }

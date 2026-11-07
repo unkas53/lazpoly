@@ -18,7 +18,7 @@ namespace Lazpoly.Presentation.Data
         public GroupEntry[] groups;
         public SquareEntry[] squares;
 
-        /// <summary>The "Sokak Haberi" deck drawn on card squares.</summary>
+        /// <summary>The deck drawn on the card squares ("Şans").</summary>
         public CardEntry[] cards;
     }
 
@@ -58,7 +58,16 @@ namespace Lazpoly.Presentation.Data
         public int group;
         public int amount;
 
-        /// <summary>Price of a ride from a travel square.</summary>
+        /// <summary>
+        /// On a tax square instead of an amount: the share of the visitor's property value it takes, in percent. On a cup
+        /// square: how much the first pick raises its town's rent, in percent.
+        /// </summary>
+        public int percent;
+
+        /// <summary>On a cup square: the percent every pick adds to the next one's raise.</summary>
+        public int step;
+
+        /// <summary>Price of a ride from a travel square, of leaving jail early, or of bringing the cup to a town.</summary>
         public int fee;
 
         /// <summary>Cost of one house or the hotel; 0 or missing means the property takes no buildings.</summary>

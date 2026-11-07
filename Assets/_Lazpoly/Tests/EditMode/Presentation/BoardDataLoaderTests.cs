@@ -14,7 +14,7 @@ namespace Lazpoly.Presentation.Tests
         {
             BoardData data = BoardDataLoader.LoadFromResources();
 
-            Assert.AreEqual(28, data.Board.Count);
+            Assert.AreEqual(32, data.Board.Count);
             Assert.AreEqual(SquareType.Start, data.Board[0].Type);
             Assert.That(data.Rules.StartingMoney, Is.GreaterThan(0));
 
@@ -48,7 +48,7 @@ namespace Lazpoly.Presentation.Tests
         public void ShippedBoardHasTheSpecialSquaresAndADeck()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
-            foreach (SquareType type in new[] { SquareType.Card, SquareType.Jail, SquareType.Travel, SquareType.Lookout })
+            foreach (SquareType type in new[] { SquareType.Card, SquareType.Jail, SquareType.Travel, SquareType.Tax })
             {
                 bool found = false;
                 for (int i = 0; i < data.Board.Count; i++) found |= data.Board[i].Type == type;
@@ -56,12 +56,56 @@ namespace Lazpoly.Presentation.Tests
             }
 
             Assert.IsFalse(data.Board.HasPot, "the tea break gave way to the jail; taxes and fines go to the bank");
-            Assert.AreEqual(7, data.Board.JailIndex, "the jail stands on the first corner after the start");
+            Assert.AreEqual(8, data.Board.JailIndex, "the jail stands on the first corner after the start");
             Assert.AreEqual(50, data.Board[data.Board.JailIndex].Fee);
             Assert.AreEqual(3, data.Rules.JailTurns);
             Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == CardKind.GoToJail), "the card that led to the tea break now leads to jail");
             Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
             foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
+        }
+
+        [Test]
+        public void ShippedBoardHasThreeChanceSquaresAndThreeSouthAmericanCities()
+        {
+            BoardData data = BoardDataLoader.LoadFromResources();
+            BoardDefinition board = data.Board;
+            var chances = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Name == "Şans") chances.Add(i);
+            }
+
+            Assert.AreEqual(3, chances.Count, "three Şans squares (the owner's wish, Faz 24)");
+            foreach (int i in chances) Assert.AreEqual(SquareType.Card, board[i].Type, "a Şans square draws a card");
+            string Around(int i) => board[i - 1].Name + "|" + board[i + 1].Name;
+            CollectionAssert.AreEquivalent(new[] { "Prag|Viyana", "Barselona|Roma", "Otogar|Paris" }, chances.Select(Around).ToArray());
+
+            int rio = Enumerable.Range(0, board.Count).Single(i => board[i].Name == "Rio de Janeiro");
+            Assert.AreEqual(3, board.CountInGroup(board[rio].GroupId), "South America has a third city");
+            Assert.AreEqual("Lima", board[rio + 2].Name, "next to Rio de Janeiro and Buenos Aires");
+            Assert.AreEqual(board[rio].GroupId, board[rio + 2].GroupId);
+
+            // North Africa has a third city where the property tax was (the owner's wish, Faz 24); one tax is left.
+            CollectionAssert.AreEqual(new[] { "Kahire", "Marakeş", "Tunus" }, new[] { 1, 2, 3 }.Select(i => board[i].Name).ToArray());
+            Assert.AreEqual(3, board.CountInGroup(board[1].GroupId));
+            // Both fixed taxes gave way to cities; the lookout terrace became a tax of 10% of property value.
+            int[] taxes = Enumerable.Range(0, board.Count).Where(i => board[i].Type == SquareType.Tax).ToArray();
+            CollectionAssert.AreEqual(new[] { board.Count - 1 }, taxes, "one tax, where the lookout terrace was");
+            Assert.AreEqual("Vergi", board[board.Count - 1].Name);
+            Assert.AreEqual(10, board[board.Count - 1].TaxPercent);
+            Assert.AreEqual(0, board[board.Count - 1].TaxAmount);
+            Assert.IsFalse(Enumerable.Range(0, board.Count).Any(i => board[i].Type == SquareType.Lookout), "the lookout terrace is gone");
+
+            // East Asia too: Santorini moved up a square and Pekin took the luxury tax's place, next to Seul and Tokyo.
+            int seoul = Enumerable.Range(0, board.Count).Single(i => board[i].Name == "Seul");
+            CollectionAssert.AreEqual(new[] { "Roma", "Santorini", "Pekin", "Seul", "Tokyo" },
+                Enumerable.Range(seoul - 3, 5).Select(i => board[i].Name).ToArray());
+            Assert.AreEqual(3, board.CountInGroup(board[seoul].GroupId));
+            Assert.AreEqual(board[seoul].GroupId, board[seoul - 1].GroupId);
+
+            // Eight squares a side: the corners stay where the board's corners are.
+            CollectionAssert.AreEqual(new[] { "Başlangıç", "Hapis", "Şampiyonlar Kupası", "Otogar" },
+                new[] { 0, 8, 16, 24 }.Select(corner => board[corner].Name).ToArray());
         }
 
         [Test]
@@ -232,7 +276,13 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(60, data.Board[1].Price);
             Assert.AreEqual(5, data.Board[1].BaseRent);
             Assert.AreEqual(20, data.Board[2].TaxAmount);
+            Assert.AreEqual(0, data.Board[2].TaxPercent);
             Assert.AreEqual(500, data.Rules.StartingMoney);
+
+            BoardData share = BoardDataLoader.Parse(json.Replace(@"""amount"": 20", @"""percent"": 10"));
+            Assert.AreEqual(10, share.Board[2].TaxPercent);
+            Assert.AreEqual(0, share.Board[2].TaxAmount);
+            Assert.AreNotEqual(data.Checksum, share.Checksum, "the rate is part of the board's checksum");
             Assert.AreEqual(Color.red, data.GroupColor(1));
         }
 

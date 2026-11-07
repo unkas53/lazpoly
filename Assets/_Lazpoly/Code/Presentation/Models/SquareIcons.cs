@@ -6,8 +6,9 @@ namespace Lazpoly.Presentation.Models
 {
     /// <summary>
     /// Small signs that stand on the special squares so they read from across the table: a tea glass
-    /// on the pot square, a barred window at the jail, a bus at the bus station, binoculars on the lookout terrace and a folded
-    /// newspaper on the card square. Each is one mesh about a unit wide with its base at y = 0.
+    /// on the pot square, a barred window at the jail, a bus at the bus station and binoculars on the lookout terrace.
+    /// A card square carries none: the card corner has its kiosk scene and a Şans square a question mark printed flat
+    /// on the tile (Faz 24). Each is one mesh about a unit wide with its base at y = 0.
     /// </summary>
     public static class SquareIcons
     {
@@ -20,7 +21,6 @@ namespace Lazpoly.Presentation.Models
                 case SquareType.Jail: return Bars();
                 case SquareType.Travel: return Bus();
                 case SquareType.Lookout: return Binoculars();
-                case SquareType.Card: return Newspaper();
                 default: return null;
             }
         }
@@ -84,16 +84,6 @@ namespace Lazpoly.Presentation.Models
 
             parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(0.3f, 0.16f, 0.4f), 0.03f, 2), Matrix4x4.TRS(new Vector3(0f, 0.22f, 0.05f), Quaternion.identity, Vector3.one)));
             return MeshFactory.Combine("icon:binoculars", parts);
-        }
-
-        /// <summary>A folded newspaper: a flat sheet with its top half folded back on itself.</summary>
-        public static Mesh Newspaper()
-        {
-            return MeshFactory.Combine("icon:newspaper", new[]
-            {
-                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(0.9f, 0.06f, 0.7f), 0.02f, 2), Matrix4x4.TRS(new Vector3(0f, 0.03f, 0f), Quaternion.Euler(0f, -12f, 0f), Vector3.one)),
-                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(new Vector3(0.9f, 0.06f, 0.34f), 0.02f, 2), Matrix4x4.TRS(new Vector3(0f, 0.09f, 0.18f), Quaternion.Euler(0f, -12f, 0f), Vector3.one)),
-            });
         }
     }
 }

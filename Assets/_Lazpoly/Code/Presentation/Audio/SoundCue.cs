@@ -45,6 +45,7 @@ namespace Lazpoly.Presentation.Audio
             {
                 case MoneyChangedEvent e: return ForMoney(e);
                 case TradeProposedEvent _: return SoundCue.UiOpen;
+                case CupHostedEvent _: return SoundCue.Achievement;
                 case TradeResolvedEvent e: return e.Outcome == TradeOutcome.Accepted ? SoundCue.Trade : SoundCue.None;
                 case PlayerBankruptedEvent _: return SoundCue.Bankrupt;
                 case GameEndedEvent _: return SoundCue.Win;
@@ -66,6 +67,7 @@ namespace Lazpoly.Presentation.Audio
                 case MoneyReason.Card:
                     return e.Delta > 0 ? SoundCue.MoneyIn : SoundCue.MoneyOut;
                 case MoneyReason.Travel:
+                case MoneyReason.Cup:
                     return SoundCue.MoneyOut;
                 case MoneyReason.Tax:
                 case MoneyReason.Rent:

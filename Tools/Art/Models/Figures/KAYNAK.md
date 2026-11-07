@@ -32,3 +32,23 @@ Otogar köşesindeki sahne de proje sahibinin Meshy AI ile ürettiği bir modeld
 Araç modeli boyuna göre değil genişliğine göre ölçekler (bir birim genişlik, taban y = 0, önü +Z), aynı iki ayrıntı düzeyini ve 2048'lik dokuyu yazar (`figure_station.bytes`, `figure_station_skin.bytes`). Dosyalar yoksa oyun çizilmiş durağı gösterir.
 
 Steam yapay zekâ beyanına girer (Steam/README.md).
+
+## Şampiyonlar Kupası
+
+Kupanın şehrindeki kupa da proje sahibinin Meshy AI ile ürettiği bir modeldir: `Meshy_AI_MatteGoldLazPolyTroph_1107100206_texture.glb` (24 MB, 339.543 üçgen; önünde siyah "LazPoly CHAMPIONS" yazılı mat altın kupa, 2026-11-07; aynı günün ilk gümüş kupasının yerine geldi). Bu klasöre `ChampionsTrophy.glb` adıyla koyup çalıştır:
+
+    python3 Tools/Art/make_figures.py trophy=Tools/Art/Models/Figures/ChampionsTrophy.glb
+
+Araç onu bir figür gibi bir birim boya ölçekler (yazısı +Z'de), aynı iki ayrıntı düzeyini (120.000 / 24.000 üçgen) ve 2048'lik dokuyu yazar (`figure_trophy.bytes`, `figure_trophy_skin.bytes`). Dosyalar yoksa oyun çizilmiş altın kupayı gösterir.
+
+Steam yapay zekâ beyanına girer (Steam/README.md).
+
+## Şampiyonlar Kupası stadyumu
+
+Şampiyonlar Kupası köşesinde, kupanın yerine (sahibin isteği) proje sahibinin Meshy AI ile ürettiği çizgi film stadyumu durur: `Meshy_AI_CartoonStadiumDiorama_1107093213_image-to-3d-texture.glb` (140 MB, 3.904.102 üçgen, 2026-11-07). Bu klasöre `StadiumDiorama.glb` adıyla koyup çalıştır:
+
+    python3 Tools/Art/make_corner_models.py stadium=Tools/Art/Models/Figures/StadiumDiorama.glb
+
+Araç onu otogar dioraması gibi bir birim genişliğe ölçekler (taban y = 0, tribün +Z'de), iki ayrıntı düzeyini (120.000 / 30.000 üçgen) ve 2048'lik dokuyu yazar (`figure_stadium.bytes`, `figure_stadium_skin.bytes`). Dosyalar yoksa oyun çizilmiş kupayı gösterir.
+
+Steam yapay zekâ beyanına girer (Steam/README.md).

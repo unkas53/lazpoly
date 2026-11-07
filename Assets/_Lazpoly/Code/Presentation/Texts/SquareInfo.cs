@@ -59,14 +59,23 @@ namespace Lazpoly.Presentation.Texts
                 case SquareType.Tax:
                 {
                     var info = new SquareInfo(L(square.Name), L("Vergi"));
-                    info.Rows.Add(new SquareInfoRow(L("Ödenecek"), square.TaxAmount.ToString()));
+                    if (square.TaxPercent > 0)
+                    {
+                        info.Rows.Add(new SquareInfoRow(L("Oran"), F($"%{square.TaxPercent}")));
+                        info.Notes.Add(L("Mülk değerinden alınır: şehirlerin ve tatil yerlerinin fiyatı ile binaların maliyeti. Nakit sayılmaz; mülkü olmayan ödemez."));
+                    }
+                    else
+                    {
+                        info.Rows.Add(new SquareInfoRow(L("Ödenecek"), square.TaxAmount.ToString()));
+                    }
+
                     info.Notes.Add(board.HasPot ? L("Buraya gelen öder; para çay kumbarasına girer.") : L("Buraya gelen bankaya öder."));
                     return info;
                 }
 
                 case SquareType.Card:
                 {
-                    var info = new SquareInfo(L(square.Name), L("Sokak Haberi"));
+                    var info = new SquareInfo(L(square.Name), L(square.Name));
                     info.Rows.Add(new SquareInfoRow(L("Destedeki kart"), board.Cards.Count.ToString()));
                     info.Notes.Add(L("Buraya gelen bir kart çeker: para kazanabilir, ödeyebilir ya da başka kareye gidebilir."));
                     return info;
@@ -96,6 +105,18 @@ namespace Lazpoly.Presentation.Texts
                     info.Rows.Add(new SquareInfoRow(L("Bilet"), square.Fee.ToString()));
                     info.Notes.Add(L("Buraya gelen isterse bileti ödeyip başka oyuncuların şehirleri dışındaki bir kareye yürüyerek gider."));
                     info.Notes.Add(L("Başlangıçtan geçmiş sayılmaz."));
+                    return info;
+                }
+
+                case SquareType.Cup:
+                {
+                    var info = new SquareInfo(L(square.Name), L("Kupa"));
+                    info.Rows.Add(new SquareInfoRow(L("Ücret"), square.Fee.ToString()));
+                    info.Rows.Add(new SquareInfoRow(L("Sıradaki artış"), F($"%{GameRules.NextCupPercent(board, state, squareIndex)}")));
+                    info.Rows.Add(new SquareInfoRow(L("Kupanın şehri"),
+                        state.CupSquare == GameState.NoCup ? L("henüz yok") : F($"{L(board[state.CupSquare].Name)} (%{state.CupPercent})"), state.CupSquare != GameState.NoCup));
+                    info.Notes.Add(F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir; o şehrin kirası artar. Kupa tek bir şehirde durur: yeni bir şehir seçilince eskisinden kalkar."));
+                    info.Notes.Add(F($"Artış ilk seçimde %{square.BoostPercent}; oyun boyunca kim seçerse seçsin her seçimde %{square.BoostStep} büyür. Tatil yerleri seçilemez."));
                     return info;
                 }
 
@@ -145,9 +166,12 @@ namespace Lazpoly.Presentation.Texts
             }
 
             info.Rows.Add(new SquareInfoRow(L("Satış değeri"), square.SaleValue.ToString()));
+            bool cup = state.CupSquare == squareIndex;
+            if (cup) info.Rows.Add(new SquareInfoRow(L("Kupa"), F($"kira +%{state.CupPercent}"), live, rent: true));
 
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
             info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
+            if (cup) info.Notes.Add(F($"Şampiyonlar Kupası bu şehirde: kirası %{state.CupPercent} fazla."));
             info.Notes.Add(GroupNote(board, state, square.GroupId));
             if (square.IsDevelopable) info.Notes.Add(L("Sahibi şehre yeniden gelince ev kurar: başlangıçtan geçene kadar bir, sonra dörde kadar; dört evden sonra otel."));
             return info;

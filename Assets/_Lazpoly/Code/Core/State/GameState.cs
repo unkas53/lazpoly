@@ -48,6 +48,18 @@ namespace Lazpoly.Core.State
         /// <summary>1-based round counter: goes up each time the turn passes the first seat again.</summary>
         public int Round { get; internal set; }
 
+        /// <summary>Value of <see cref="CupSquare"/> before anyone has brought the cup to a town.</summary>
+        public const int NoCup = -1;
+
+        /// <summary>The town the champions' cup stands in, whose rent is <see cref="CupPercent"/> per cent higher; <see cref="NoCup"/> before the first pick.</summary>
+        public int CupSquare { get; internal set; } = NoCup;
+
+        /// <summary>How much, in percent, the cup raises its town's rent; 0 while no town has it.</summary>
+        public int CupPercent { get; internal set; }
+
+        /// <summary>How many times the cup has been brought to a town in this game, by anyone; each pick raises the next one's share.</summary>
+        public int CupPicks { get; internal set; }
+
         /// <summary>Money waiting in the pot for the next player who lands on the pot square.</summary>
         public int Pot { get; internal set; }
 
@@ -168,7 +180,17 @@ namespace Lazpoly.Core.State
                 Pot = snapshot.Pot,
                 BuiltThisVisit = snapshot.BuiltThisVisit,
                 RolledOutOfJail = snapshot.RolledOutOfJail,
+                CupSquare = snapshot.CupSquare,
+                CupPercent = snapshot.CupPercent,
+                CupPicks = snapshot.CupPicks,
             };
+
+            bool noCup = snapshot.CupSquare == NoCup;
+            if (snapshot.CupPicks < 0 || (noCup ? snapshot.CupPercent != 0 || snapshot.CupPicks != 0
+                    : snapshot.CupSquare < 0 || snapshot.CupSquare >= snapshot.Owners.Length || snapshot.CupPercent <= 0 || snapshot.CupPicks == 0))
+            {
+                throw new ArgumentException("Snapshot cup data is inconsistent.", nameof(snapshot));
+            }
 
             if (snapshot.BuiltThisVisit < NotArrived) throw new ArgumentException("Snapshot build count is out of range.", nameof(snapshot));
             if (snapshot.Round < 1 || snapshot.Pot < 0) throw new ArgumentException("Snapshot round or pot is out of range.", nameof(snapshot));
@@ -313,6 +335,9 @@ namespace Lazpoly.Core.State
             Mix(Pot);
             Mix(BuiltThisVisit);
             Mix(RolledOutOfJail ? 1 : 0);
+            Mix(CupSquare);
+            Mix(CupPercent);
+            Mix(CupPicks);
             Mix(DiceOptions == null ? 0 : 1);
             if (DiceOptions != null)
             {

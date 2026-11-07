@@ -28,5 +28,8 @@ namespace Lazpoly.Core.State
 
         /// <summary>The current player is in jail: they pay the fee to leave and roll, or wait out this turn.</summary>
         AwaitingJailDecision = 9,
+
+        /// <summary>The current player stands on the cup square and may pay to bring the cup to one of their towns, or pass.</summary>
+        AwaitingCupChoice = 10,
     }
 }

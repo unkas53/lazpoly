@@ -249,6 +249,12 @@ namespace Lazpoly.Presentation.Game
         public int ShownCard { get; private set; } = -1;
         public int ShownCardPlayer { get; private set; } = -1;
 
+        /// <summary>The square the shown card was drawn on (Sokak Haberi or a Şans square), for the card's title; -1 when none.</summary>
+        public int ShownCardSquare { get; private set; } = -1;
+
+        /// <summary>Where each pawn last stopped on the table, as shown (the state may already be further on).</summary>
+        private readonly Dictionary<int, int> _shownSquares = new Dictionary<int, int>();
+
         /// <summary>Real time the shown card was drawn, so the HUD can fade it.</summary>
         public float ShownCardTime { get; private set; }
 
@@ -362,6 +368,7 @@ namespace Lazpoly.Presentation.Game
             if (Faces != null && Faces.Update(Time.unscaledTime)) Revision++; // A Steam profile picture arrived.
             UpdateDayLight();
             ShowNextBubble();
+            if (_bubble != null && _hud != null) _bubble.TopClearPixels = _hud.ReservedTopPixels;
             AnnounceDraw();
             UpdateDecisionClock();
             if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;
@@ -945,6 +952,7 @@ namespace Lazpoly.Presentation.Game
                 _board.SetBuildingLevel(i, state.GetBuildingLevel(i));
             }
 
+            _board.SetCup(state.CupSquare);
             ShowRents(animate: false);
         }
 
@@ -1112,6 +1120,7 @@ namespace Lazpoly.Presentation.Game
                         break;
                     case PlayerMovedEvent moved:
                         _lastMover = moved.PlayerId;
+                        _shownSquares[moved.PlayerId] = moved.ToSquare;
                         PawnView pawn = _pawns[moved.PlayerId];
                         Markers.ShowTarget(moved.ToSquare, ColorOf(moved.PlayerId));
                         if (moved.Kind == MoveKind.Jump) yield return pawn.JumpTo(moved.ToSquare);
@@ -1125,6 +1134,14 @@ namespace Lazpoly.Presentation.Game
                         _board.NudgePot(pot.Delta > 0);
                         Revision++;
                         break;
+                    case CupHostedEvent cup:
+                        // The cup moves to its new town (leaving the one before) and the rents on the board change with it.
+                        _board.SetCup(cup.SquareIndex, animate: true);
+                        ShowRents();
+                        Pawn(cup.PlayerId)?.Cheer();
+                        Say(cup.PlayerId, F($"Kupa {L(_session.Board[cup.SquareIndex].Name)} şehrine!"));
+                        Revision++;
+                        break;
                     case JailChangedEvent jail:
                         Say(jail.PlayerId, L(jail.Turns == 0 ? "Özgürüm!" : jail.Turns >= _session.Rules.JailTurns ? "Hapse düştüm!" : "Bekliyorum..."));
                         Revision++;
@@ -1132,6 +1149,7 @@ namespace Lazpoly.Presentation.Game
                     case CardDrawnEvent card:
                         ShownCard = card.CardIndex;
                         ShownCardPlayer = card.PlayerId;
+                        ShownCardSquare = _shownSquares.TryGetValue(card.PlayerId, out int drawnOn) ? drawnOn : _session.State.FindPlayer(card.PlayerId)?.Position ?? -1;
                         ShownCardTime = Time.unscaledTime;
                         Revision++;
                         // A moment to read the card before its effect plays.

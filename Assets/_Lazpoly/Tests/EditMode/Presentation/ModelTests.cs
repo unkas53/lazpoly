@@ -139,15 +139,15 @@ namespace Lazpoly.Presentation.Tests
             var root = new GameObject("Scenes");
             try
             {
-                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Start, Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel })
+                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Cup })
                 {
                     Assert.IsTrue(CornerParts.Has(type));
                     GameObject scene = CornerParts.For(type, type.ToString(), root.transform);
                     Assert.IsNotNull(scene, $"{type} has no scene.");
                     MeshFilter[] parts = scene.GetComponentsInChildren<MeshFilter>();
-                    if (type == Lazpoly.Core.Board.SquareType.Travel)
+                    if (type == Lazpoly.Core.Board.SquareType.Travel || type == Lazpoly.Core.Board.SquareType.Cup)
                     {
-                        Assert.IsTrue(CornerParts.ShowsFront(scene), "the bus station is the owner's textured diorama");
+                        Assert.IsTrue(CornerParts.ShowsFront(scene), $"{type}: the owner's textured model");
                         Assert.AreEqual(1, parts.Length);
                         Assert.Greater(parts[0].sharedMesh.triangles.Length / 3, 20000, "in full detail");
                     }
@@ -180,7 +180,10 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 Assert.Greater(CornerParts.BusStop("Drawn stop", root.transform).GetComponentsInChildren<MeshFilter>().Length, 3, "the drawn stop stands in without the diorama");
+                Assert.Greater(CornerParts.Trophy("Drawn cup", root.transform).GetComponentsInChildren<MeshFilter>().Length, 3, "the drawn cup stands in without the owner's model");
                 Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Lookout));
+                Assert.IsFalse(CornerParts.Has(Lazpoly.Core.Board.SquareType.Start), "the start's pier and lighthouse are gone; an arrow is printed instead");
+                Assert.IsNull(CornerParts.For(Lazpoly.Core.Board.SquareType.Start, "none", root.transform));
                 Assert.IsNull(CornerParts.For(Lazpoly.Core.Board.SquareType.Tax, "none", root.transform));
             }
             finally
@@ -263,13 +266,53 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheStartArrowIsAFlatPrintPointingAhead()
+        {
+            Mesh arrow = FloorPrint.ArrowMesh();
+            Assert.Greater(arrow.triangles.Length, 0);
+            Assert.Less(arrow.bounds.size.y, 0.01f, "printed flat, no relief");
+            Assert.That(arrow.bounds.min.y, Is.InRange(-0.001f, 0.005f));
+            Assert.That(arrow.bounds.max.z, Is.EqualTo(FloorPrint.ArrowSize.y / 2f).Within(0.01f), "the tip leads at +z");
+            Assert.That(arrow.bounds.min.z, Is.EqualTo(-FloorPrint.ArrowSize.y / 2f).Within(0.01f));
+            Assert.That(arrow.bounds.size.x, Is.EqualTo(FloorPrint.ArrowSize.x).Within(0.01f));
+            Assert.That(arrow.bounds.center.x, Is.EqualTo(0f).Within(0.005f), "straight, not lopsided");
+        }
+
+        [Test]
+        public void TheTaxDocumentIsAFlatPrintOfPaperAndInk()
+        {
+            foreach (Mesh print in new[] { FloorPrint.DocumentPaper(), FloorPrint.DocumentInk() })
+            {
+                Assert.Greater(print.triangles.Length, 0);
+                Assert.That(print.bounds.min.y, Is.InRange(-0.001f, 0.005f), "it lies on the tile, the ink on the paper");
+                Assert.Less(print.bounds.size.y, 0.01f, "printed flat, no relief");
+                Assert.LessOrEqual(print.bounds.size.x, FloorPrint.DocumentSize.x + 0.01f);
+                Assert.LessOrEqual(print.bounds.size.z, FloorPrint.DocumentSize.y + 0.01f);
+            }
+
+            var root = new GameObject("Holder");
+            try
+            {
+                GameObject document = FloorPrint.Document("Doc", root.transform, 0.5f, Color.black);
+                foreach (MeshRenderer renderer in document.GetComponentsInChildren<MeshRenderer>())
+                {
+                    Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, renderer.shadowCastingMode, "a print casts no shadow");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void SpheresAndSignsFaceOutwardAndStandOnTheTable()
         {
             Mesh sphere = MeshFactory.Sphere();
             AssertFacesOutward(sphere, Vector3.zero);
             Assert.That(sphere.bounds.extents.magnitude, Is.EqualTo(Mathf.Sqrt(3f)).Within(0.05f));
 
-            foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Lookout, Lazpoly.Core.Board.SquareType.Card })
+            foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Lookout })
             {
                 Mesh sign = SquareIcons.For(type);
                 Assert.IsNotNull(sign, $"{type} has no sign.");
@@ -281,6 +324,7 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Property));
             Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Start));
+            Assert.IsNull(SquareIcons.For(Lazpoly.Core.Board.SquareType.Card), "a Şans square has its question mark printed on the tile, not standing on it");
         }
 
         [Test]

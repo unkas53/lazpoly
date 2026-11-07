@@ -53,6 +53,15 @@ namespace Lazpoly.Core.State
                     if (e.RolledOut) state.RolledOutOfJail = true;
                     break;
 
+                case CupHostedEvent e:
+                    RequirePlayer(state, e.PlayerId);
+                    RequireSquare(state, e.SquareIndex);
+                    if (e.Percent <= 0) throw new InvalidOperationException("The cup must raise the rent.");
+                    state.CupSquare = e.SquareIndex;
+                    state.CupPercent = e.Percent;
+                    state.CupPicks++;
+                    break;
+
                 case PotChangedEvent e:
                     if (state.Pot + e.Delta < 0) throw new InvalidOperationException("The pot cannot go below zero.");
                     state.Pot += e.Delta;

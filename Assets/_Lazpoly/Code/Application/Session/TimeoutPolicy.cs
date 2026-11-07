@@ -39,6 +39,7 @@ namespace Lazpoly.App.Session
                 case GamePhase.AwaitingTravelDecision: return new DeclineTravelCommand(playerId);
                 case GamePhase.AwaitingDiceChoice: return new ChooseDiceCommand(playerId, 0);
                 case GamePhase.AwaitingJailDecision: return new RollInJailCommand(playerId);
+                case GamePhase.AwaitingCupChoice: return new DeclineCupCommand(playerId);
                 default: return null;
             }
         }

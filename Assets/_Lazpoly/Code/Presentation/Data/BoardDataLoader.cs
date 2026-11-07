@@ -95,7 +95,7 @@ namespace Lazpoly.Presentation.Data
                 case "rest":
                     return SquareDefinition.Rest(entry.name);
                 case "tax":
-                    return SquareDefinition.Tax(entry.name, entry.amount);
+                    return entry.percent > 0 ? SquareDefinition.PercentTax(entry.name, entry.percent) : SquareDefinition.Tax(entry.name, entry.amount);
                 case "card":
                     return SquareDefinition.Card(entry.name);
                 case "pot":
@@ -106,6 +106,8 @@ namespace Lazpoly.Presentation.Data
                     return SquareDefinition.Jail(entry.name, entry.fee);
                 case "lookout":
                     return SquareDefinition.Lookout(entry.name);
+                case "cup":
+                    return SquareDefinition.Cup(entry.name, entry.fee, entry.percent, entry.step);
                 case "resort":
                     if (entry.group != 0 && !groups.ContainsKey(entry.group))
                     {

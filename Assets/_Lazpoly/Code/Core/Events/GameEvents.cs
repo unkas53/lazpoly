@@ -35,6 +35,9 @@ namespace Lazpoly.Core.Events
 
         /// <summary>The fee for leaving jail early.</summary>
         Jail = 14,
+
+        /// <summary>The fee for bringing the champions' cup to a town.</summary>
+        Cup = 15,
     }
 
     /// <summary>How a pawn gets to its new square, so every screen animates the move the same way.</summary>
@@ -236,6 +239,24 @@ namespace Lazpoly.Core.Events
 
         public int PlayerId { get; }
         public bool HasLookout { get; }
+    }
+
+    /// <summary>
+    /// The cup came to a town: from now on its rent is <see cref="Percent"/> per cent higher, the town that held the cup
+    /// before goes back to its own rent, and the game's pick count goes up by one.
+    /// </summary>
+    public sealed class CupHostedEvent : GameEvent
+    {
+        public CupHostedEvent(int playerId, int squareIndex, int percent)
+        {
+            PlayerId = playerId;
+            SquareIndex = squareIndex;
+            Percent = percent;
+        }
+
+        public int PlayerId { get; }
+        public int SquareIndex { get; }
+        public int Percent { get; }
     }
 
     /// <summary>A player with a lookout rolled twice; they pick one pair, which then counts as their roll.</summary>
