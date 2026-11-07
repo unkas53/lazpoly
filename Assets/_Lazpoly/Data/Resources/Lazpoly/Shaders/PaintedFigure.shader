@@ -39,7 +39,8 @@ Shader "Lazpoly/PaintedFigure"
             Cull Back
 
             HLSLPROGRAM
-            #pragma target 3.5
+            // Asking the texture which mipmap it would read (CalculateLevelOfDetail) needs shader model 4.1 or later.
+            #pragma target 4.5
             #pragma vertex PaintedVertex
             #pragma fragment PaintedFragment
 
