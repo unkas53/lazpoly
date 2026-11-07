@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Renders the character portraits the menu, the lobby and the player cards show, from the game's own figures.
 
-For every textured figure (Tools/Art/make_figures.py made figure_<id>.bytes and figure_<id>_skin.bytes) this
+For every textured figure (Tools/Art/make_figures.py made figure_<id>.bytes and figure_<id>_skin.jpg) this
 renders two pictures with Blender's Cycles on a transparent background, lit the same way for all of them:
   * Figure_<id>: the whole figure, three quarters towards the viewer, for the character cards (FIGURE_SIZE),
   * Face_<id>: head and shoulders, for the round avatar on a player card and a lobby seat (FACE_SIZE),
@@ -91,7 +91,9 @@ def build(figure_id):
         polygon.use_smooth = True
     mesh.update()
 
-    skin = Image.open(os.path.join(MODELS, f"figure_{figure_id}_skin.bytes")).convert("RGB")
+    skin_path = next(os.path.join(MODELS, f"figure_{figure_id}_skin.{kind}") for kind in ("jpg", "png", "bytes")
+                     if os.path.exists(os.path.join(MODELS, f"figure_{figure_id}_skin.{kind}")))
+    skin = Image.open(skin_path).convert("RGB")
     temp = os.path.join(tempfile.gettempdir(), f"lazpoly_skin_{figure_id}.png")
     skin.save(temp)
     material = bpy.data.materials.new(figure_id)

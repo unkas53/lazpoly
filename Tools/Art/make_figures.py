@@ -10,7 +10,11 @@ The game shows a figure about 1.8 board units tall, so this script:
   * simplifies it twice with meshoptimizer (which keeps the UV seams): HIGH triangles for the High graphics
     quality and LOW for Medium and Low,
   * writes Assets/_Lazpoly/Data/Resources/Lazpoly/Models/figure_<id>.bytes (the meshes) and
-    figure_<id>_skin.bytes (the colour map as a JPEG, SKIN pixels square).
+    figure_<id>_skin.jpg (or .png), the colour map as a texture Unity imports (write_skin): the model's own image
+    byte for byte when it is at most SKIN pixels, else scaled down to SKIN with a sharp, full-colour JPEG. Unity
+    makes its mipmaps and compresses it to BC7 when the game is built (at most SKIN_IN_GAME pixels, see its .meta),
+    so the game never decodes or compresses a colour map while playing. The old way (a 2048 JPEG with halved colour
+    detail, compressed to DXT by the game itself) left grainy, speckled surfaces on the small figures.
 
 Format of the mesh file (little-endian): "LZF1", uint8 level count, then per level: uint8 name length, ASCII name
 ("High" or "Low"), int32 vertex count, float32 x/y/z per vertex, int16 normal x/y/z per vertex (1/32767), uint16 u/v
@@ -19,6 +23,7 @@ per vertex (1/65535), uint8 index size (2 or 4), int32 index count, the indices.
 Needs: pip install numpy pillow meshoptimizer. Run from the repository root:
     python3 Tools/Art/make_figures.py <id>=<model.glb> [<id>=<model.glb> ...]
 for example: python3 Tools/Art/make_figures.py suit=Tools/Art/Models/Figures/StylizedBusinessman.glb
+With --skins first, only the colour maps are written (for any figure or corner model; the meshes stay as they are).
 """
 import io
 import json
@@ -33,8 +38,9 @@ import meshoptimizer
 TARGET = os.path.join("Assets", "_Lazpoly", "Data", "Resources", "Lazpoly", "Models")
 HIGH = 120000
 LOW = 24000
-SKIN = 2048
-SKIN_QUALITY = 90
+SKIN = 4096
+SKIN_IN_GAME = 2048
+SKIN_QUALITY = 95
 FEET = 0.03  # share of the height counted as the feet when centring
 
 COMPONENTS = {5126: np.float32, 5125: np.uint32, 5123: np.uint16, 5121: np.uint8}
@@ -125,12 +131,186 @@ def pack_level(name, positions, normals, uvs, indices):
     return out
 
 
+def original_colour(path):
+    """The GLB's base colour image exactly as it is stored (JPEG or PNG bytes)."""
+    data = open(path, "rb").read()
+    json_length, = struct.unpack("<I", data[12:16])
+    doc = json.loads(data[20:20 + json_length])
+    offset = 20 + json_length
+    bin_length, = struct.unpack("<I", data[offset:offset + 4])
+    blob = data[offset + 8:offset + 8 + bin_length]
+    material = doc["materials"][doc["meshes"][0]["primitives"][0]["material"]]
+    texture = doc["textures"][material["pbrMetallicRoughness"]["baseColorTexture"]["index"]]
+    view = doc["bufferViews"][doc["images"][texture["source"]]["bufferView"]]
+    start = view.get("byteOffset", 0)
+    return blob[start:start + view["byteLength"]]
+
+
+SKIN_META = """fileFormatVersion: 2
+guid: {guid}
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {{}}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 1
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: {size}
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 2
+    aniso: 8
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 100
+  spriteMode: 0
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {{x: 0.5, y: 0.5}}
+  spritePixelsToUnits: 100
+  spriteBorder: {{x: 0, y: 0, z: 0, w: 0}}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 0
+  alphaIsTransparency: 0
+  spriteTessellationDetail: -1
+  textureType: 0
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 1
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: {size}
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 2
+    compressionQuality: 100
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 1
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: {size}
+    resizeAlgorithm: 0
+    textureFormat: 25
+    textureCompression: 2
+    compressionQuality: 100
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 1
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 1
+  spriteSheet:
+    serializedVersion: 2
+    sprites: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable: {{}}
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+"""
+
+
+def write_skin(figure, source, colour, largest=SKIN, in_game=SKIN_IN_GAME):
+    """
+    Writes the figure's colour map as a texture for Unity to import: the model's own image byte for byte when it is at
+    most `largest` pixels (None: whatever its size), else scaled down to `largest` as a JPEG at quality SKIN_QUALITY
+    with full colour detail (no chroma subsampling, which smeared the colour across the atlas's tightly packed pieces).
+    A new file gets a .meta that imports it with mipmaps, trilinear filtering and BC7 at most `in_game` pixels; an
+    existing .meta is kept. Older colour maps of the figure (the runtime JPEG, the other image type) are removed.
+    """
+    import uuid
+    original = original_colour(source)
+    kind = "png" if original[:4] == b"\x89PNG" else "jpg" if original[:3] == b"\xff\xd8\xff" else None
+    if kind is not None and (largest is None or max(colour.size) <= largest):
+        data, extension = original, kind
+    else:
+        buffer = io.BytesIO()
+        colour.resize((largest, largest), Image.LANCZOS).save(buffer, "JPEG", quality=SKIN_QUALITY, subsampling=0, optimize=True)
+        data, extension = buffer.getvalue(), "jpg"
+    stale = [f"figure_{figure}_skin.bytes", f"figure_{figure}_skin.{'png' if extension == 'jpg' else 'jpg'}"]
+    for name in stale:
+        for path in (os.path.join(TARGET, name), os.path.join(TARGET, name + ".meta")):
+            if os.path.exists(path):
+                os.remove(path)
+    path = os.path.join(TARGET, f"figure_{figure}_skin.{extension}")
+    with open(path, "wb") as out:
+        out.write(data)
+    if not os.path.exists(path + ".meta"):
+        with open(path + ".meta", "w", newline="\n") as out:
+            out.write(SKIN_META.format(guid=uuid.uuid4().hex, size=in_game))
+    return path, len(data)
+
+
 def main():
     jobs = sys.argv[1:]
+    skins_only = bool(jobs) and jobs[0] == "--skins"
+    if skins_only:
+        jobs = jobs[1:]
     if not jobs or any("=" not in job for job in jobs):
         sys.exit(__doc__)
     for job in jobs:
         figure, source = job.split("=", 1)
+        if skins_only:
+            colour = read_glb(source)[4]
+            path, size = write_skin(figure, source, colour)
+            print(f"{figure}: {colour.size[0]} px colour map -> {os.path.basename(path)}, {size / 1e6:.1f} MB")
+            continue
         positions, normals, uvs, indices, colour = read_glb(source)
         positions, normals, uvs, indices = to_game(positions, normals, uvs, indices)
         pack = bytearray(b"LZF1") + struct.pack("<B", 2)
@@ -141,12 +321,8 @@ def main():
             print(f"{figure} {level}: {len(i)} triangles, {len(p)} vertices (from {len(indices)})")
         with open(os.path.join(TARGET, f"figure_{figure}.bytes"), "wb") as out:
             out.write(pack)
-        skin = colour.resize((SKIN, SKIN), Image.LANCZOS)
-        buffer = io.BytesIO()
-        skin.save(buffer, "JPEG", quality=SKIN_QUALITY, optimize=True)
-        with open(os.path.join(TARGET, f"figure_{figure}_skin.bytes"), "wb") as out:
-            out.write(buffer.getvalue())
-        print(f"{figure}: {len(pack) / 1e6:.1f} MB of meshes, {len(buffer.getvalue()) / 1e6:.1f} MB colour map")
+        path, size = write_skin(figure, source, colour)
+        print(f"{figure}: {len(pack) / 1e6:.1f} MB of meshes, {size / 1e6:.1f} MB colour map ({os.path.basename(path)})")
 
 
 if __name__ == "__main__":

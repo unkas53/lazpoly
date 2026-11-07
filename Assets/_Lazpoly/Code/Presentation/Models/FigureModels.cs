@@ -10,7 +10,7 @@ namespace Lazpoly.Presentation.Models
     /// <summary>
     /// The characters' figures: the owner's textured models, made with Meshy AI from pictures (<see cref="Ids"/>).
     /// Tools/Art/make_figures.py turns each into figure_&lt;id&gt;.bytes (two levels of detail, one unit tall, soles at
-    /// y = 0, facing +Z) and figure_&lt;id&gt;_skin.bytes (the colour map). A figure keeps its own clothes and stands
+    /// y = 0, facing +Z) and figure_&lt;id&gt;_skin.jpg (the colour map, an imported texture). A figure keeps its own clothes and stands
     /// right on the tile (the owner had the coloured disc under its feet taken away). The whole model shows at the
     /// High graphics quality and the light one at Medium and Low (<see cref="SetFullDetail"/>, switched in place like
     /// the buildings). When a figure's files are missing another one stands in (<see cref="CreateOrStandIn"/>).
@@ -202,10 +202,10 @@ namespace Lazpoly.Presentation.Models
             return null;
         }
 
-        /// <summary>The colour map, compressed on the graphics card once decoded; null (a white figure) when it is missing.</summary>
         /// <summary>
-        /// The colour map: an imported texture when there is one (figure_&lt;id&gt;_skin.jpg, which Unity compresses when the
-        /// game is built, so nothing is decoded while playing), otherwise the .bytes JPEG decoded here.
+        /// The colour map: the imported texture (figure_&lt;id&gt;_skin.jpg, which Unity gives its mipmaps and compresses to
+        /// BC7 when the game is built, so nothing is decoded while playing), otherwise a .bytes JPEG decoded here; null (a
+        /// white figure) when it is missing.
         /// </summary>
         private static Texture2D LoadSkin(string id) =>
             Resources.Load<Texture2D>(SkinResource(id)) ?? SkinFrom(id, Resources.Load<TextAsset>(SkinResource(id)));

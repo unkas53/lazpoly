@@ -17,7 +17,7 @@ Kaynak GLB dosyaları büyük oldukları için depoda değil; proje dosyalarınd
 
     python3 Tools/Art/make_figures.py suit=Tools/Art/Models/Figures/StylizedBusinessman.glb cane=Tools/Art/Models/Figures/GentlemanWithCane.glb teal=Tools/Art/Models/Figures/TealSuitBusinesswoman.glb hip=Tools/Art/Models/Figures/BusinesswomanHandOnHip.glb navy=Tools/Art/Models/Figures/NavySuitBusinessman.glb purple=Tools/Art/Models/Figures/PurpleBlazerBusinessman.glb boss=Tools/Art/Models/Figures/MobBoss.glb mob=Tools/Art/Models/Figures/MobWomanMainPose.glb
 
-Araç her modeli bir birim boya ölçekler, Yüksek ayar için 120.000, Orta/Düşük için 24.000 üçgene indirir ve renk dokusunu 2048 piksele küçültür (`Assets/_Lazpoly/Data/Resources/Lazpoly/Models/figure_<kimlik>.bytes` ve `figure_<kimlik>_skin.bytes`).
+Araç her modeli bir birim boya ölçekler, Yüksek ayar için 120.000, Orta/Düşük için 24.000 üçgene indirir ve renk dokusunu Unity'nin içe aldığı bir doku olarak yazar: 4096 ve altıysa olduğu gibi, 8192'likler 4096'ya küçültülür (`Assets/_Lazpoly/Data/Resources/Lazpoly/Models/figure_<kimlik>.bytes` ve `figure_<kimlik>_skin.jpg`; oyunda mipmap'li BC7, 2048 piksel). Yalnız dokuları yeniden yazmak için: `python3 Tools/Art/make_figures.py --skins <kimlik>=<model.glb> ...`.
 
 Menüde, lobide ve oyuncu kartlarında görünen karakter resimleri (`Figure_<kimlik>` bütün figür, `Face_<kimlik>` baş ve omuzlar) bu figürlerden Blender ile çizilir (`pip install bpy`, yalnız resim üretmek için):
 
@@ -29,7 +29,7 @@ Otogar köşesindeki sahne de proje sahibinin Meshy AI ile ürettiği bir modeld
 
     python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
 
-Araç modeli boyuna göre değil genişliğine göre ölçekler (bir birim genişlik, taban y = 0, önü +Z), aynı iki ayrıntı düzeyini ve 2048'lik dokuyu yazar (`figure_station.bytes`, `figure_station_skin.bytes`). Dosyalar yoksa oyun çizilmiş durağı gösterir.
+Araç modeli boyuna göre değil genişliğine göre ölçekler (bir birim genişlik, taban y = 0, önü +Z), aynı iki ayrıntı düzeyini ve içe alınan dokuyu yazar (`figure_station.bytes`, `figure_station_skin.jpg`). Dosyalar yoksa oyun çizilmiş durağı gösterir.
 
 Steam yapay zekâ beyanına girer (Steam/README.md).
 

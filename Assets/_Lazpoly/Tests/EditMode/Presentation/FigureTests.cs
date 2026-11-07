@@ -105,13 +105,31 @@ namespace Lazpoly.Presentation.Tests
 
         private static string[] FigureIds => FigureModels.Ids;
 
+        private static string[] SceneIds => new[] { FigureModels.StationId, FigureModels.StadiumId, FigureModels.TrophyId, FigureModels.MoneyStackId, FigureModels.GoldBarId };
+
+        [TestCaseSource(nameof(SceneIds))]
+        public void TheOtherMeshyModelsAlsoComeWithAnImportedColourMap(string id)
+        {
+            var skin = Resources.Load<Texture2D>(FigureModels.SkinResource(id));
+            Assert.IsNotNull(skin, "imported as a texture, not decoded while playing");
+            Assert.Greater(skin.mipmapCount, 8, "with all its mipmaps");
+            Assert.AreEqual(FilterMode.Trilinear, skin.filterMode);
+            Assert.IsNull(Resources.Load<TextAsset>(FigureModels.SkinResource(id)), "no old runtime JPEG beside it");
+        }
+
         [TestCaseSource(nameof(FigureIds))]
         public void TheFiguresAreOneUnitTallAndLighterForMediumAndLow(string id)
         {
             string folder = Path.Combine(Application.dataPath, "_Lazpoly", "Data", "Resources", "Lazpoly", "Models");
             string path = Path.Combine(folder, $"figure_{id}.bytes");
             Assert.IsTrue(File.Exists(path), "run Tools/Art/make_figures.py");
-            Assert.IsTrue(File.Exists(Path.Combine(folder, $"figure_{id}_skin.bytes")), "the colour map ships with the figure");
+            Assert.IsTrue(File.Exists(Path.Combine(folder, $"figure_{id}_skin.jpg")), "the colour map ships with the figure");
+            Assert.IsFalse(File.Exists(Path.Combine(folder, $"figure_{id}_skin.bytes")), "no colour map left for the game to decode and squeeze itself");
+            var skin = Resources.Load<Texture2D>(FigureModels.SkinResource(id));
+            Assert.IsNotNull(skin, "Unity imports the colour map as a texture");
+            Assert.Greater(skin.mipmapCount, 8, "with all its mipmaps, so the small figure is not grainy");
+            Assert.AreEqual(FilterMode.Trilinear, skin.filterMode);
+            Assert.GreaterOrEqual(skin.width, 2048, "sharp enough for the figure's size on the screen");
             var levels = FigurePack.Parse(File.ReadAllBytes(path));
             FigureMesh high = levels.Single(level => level.Name == FigurePack.HighLevel);
             FigureMesh low = levels.Single(level => level.Name == FigurePack.LowLevel);
