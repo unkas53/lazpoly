@@ -57,11 +57,16 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 BoardView board = BoardView.Create(holder.transform, _data);
-                Assert.IsNotNull(board.transform.Find("Scene Cup"), "the cup stands on the corner");
+                Assert.IsNotNull(board.transform.Find("Scene Cup"), "the stadium stands on the corner");
                 Assert.AreSame(board.transform.Find("Scene Cup"), board.CupScene);
-                Assert.IsNotNull(board.CupScene.Find(FigureModels.BodyPart), "the owner's cup model, not the drawn one");
+                Assert.IsNotNull(board.CupScene.Find(FigureModels.BodyPart), "the owner's stadium model, not the drawn cup");
+                Assert.Greater(board.CupScene.Find(FigureModels.BodyPart).GetComponent<MeshFilter>().sharedMesh.bounds.size.x, 0.9f, "the stadium (one unit wide), not the cup");
                 Vector3 front = board.CupScene.localRotation * Vector3.forward;
-                Assert.Greater(Vector3.Dot(front, -BoardView.ScreenUp(BoardCameraRig.BaseYaw)), 0.99f, "its lettering faces the camera");
+                Assert.Greater(Vector3.Dot(front, -BoardView.ScreenUp(BoardCameraRig.BaseYaw)), 0.99f, "its stand faces the camera");
+                Vector3 up = board.CupScene.localPosition - board.Layout.SquareCenter(CupCorner);
+                Assert.Greater(Vector3.Dot(up, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), 0f, "up the screen, behind the name");
+                Assert.GreaterOrEqual(BoardView.StadiumShift - BoardView.StadiumSize * BoardView.StadiumDepth / 2f, BoardView.CupNameDepth / 2f - BoardView.CupNameShift,
+                    "its front edge stays behind the name");
                 Assert.IsNull(board.transform.Find("Scene Card"), "the kiosk is gone");
 
                 TextMesh name = board.NameLabel(CupCorner);

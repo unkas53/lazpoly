@@ -183,8 +183,14 @@ namespace Lazpoly.Presentation.Tabletop
         public const float CupNameDepth = 0.30f;
         public const float CupNameShift = 0.12f;
 
-        /// <summary>The owner's cup model on the corner: its height in corner sides (it is one unit tall, three quarters wide).</summary>
-        public const float CupModelSize = 0.40f;
+        /// <summary>
+        /// The owner's stadium on the cup's corner (in the cup model's place, the owner's wish): its width in corner sides, its
+        /// depth for its width (Tools/Art/make_corner_models.py), and how far up the screen from the corner's middle it stands,
+        /// so its front edge stays just behind the two-line name and its back low enough to clear the turn banner.
+        /// </summary>
+        public const float StadiumSize = 0.46f;
+        public const float StadiumDepth = 0.98f;
+        public const float StadiumShift = 0.26f;
 
         /// <summary>
         /// The cup's scene is a little smaller than the other corners' and stands nearer the corner's middle (less inset
@@ -926,7 +932,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>A model's turn that shows its front (+Z) straight to a camera at <paramref name="yaw"/>.</summary>
         public static Quaternion FacingCamera(float yaw) => Quaternion.LookRotation(-ScreenUp(yaw));
 
-        /// <summary>The cup on its corner; null on a board without one.</summary>
+        /// <summary>The scene on the cup's corner (the owner's stadium); null on a board without one.</summary>
         public Transform CupScene => _cupScene;
 
         /// <summary>A corner's scene stands on one side of the corner with the pawns on the other, both on the part away from the name.</summary>
@@ -947,8 +953,9 @@ namespace Lazpoly.Presentation.Tabletop
 
             if (cup)
             {
-                // The owner's cup: its lettering turns straight to the camera, whichever way the table is turned.
-                scene.transform.localScale = Vector3.one * (side * CupModelSize);
+                // The owner's stadium: up the screen behind the name, its stand turned straight to the camera whichever way the table is turned.
+                scene.transform.localPosition = center + DiagonalTops(BoardCameraRig.BaseYaw) * (side * StadiumShift) + Vector3.up * TileHeight;
+                scene.transform.localScale = Vector3.one * (side * StadiumSize);
                 _cupScene = scene.transform;
                 _cupScene.localRotation = FacingCamera(_yaw);
                 return;

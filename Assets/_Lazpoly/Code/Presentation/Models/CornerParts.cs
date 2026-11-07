@@ -43,7 +43,7 @@ namespace Lazpoly.Presentation.Models
                 case SquareType.Pot: return TeaGarden(name, parent);
                 case SquareType.Jail: return Cell(name, parent);
                 case SquareType.Card: return Kiosk(name, parent);
-                case SquareType.Cup: return ChampionsCup(name, parent) ?? Trophy(name, parent);
+                case SquareType.Cup: return Stadium(name, parent) ?? Trophy(name, parent);
                 case SquareType.Travel: return Station(name, parent) ?? BusStop(name, parent);
                 default: return null;
             }
@@ -58,9 +58,18 @@ namespace Lazpoly.Presentation.Models
             FigureModels.IsAvailable(FigureModels.StationId) ? FigureModels.Create(FigureModels.StationId, name, parent) : null;
 
         /// <summary>
+        /// The owner's stadium diorama for the Şampiyonlar Kupası corner (made with Meshy AI; <see cref="FigureModels.StadiumId"/>):
+        /// one unit wide and about as deep, its base at y = 0, its main stand at +Z. It took the cup's place on the corner at
+        /// the owner's wish; the cup model still marks the town that holds the cup. Null when its files are not in the build,
+        /// and the drawn <see cref="Trophy"/> stands in.
+        /// </summary>
+        public static GameObject Stadium(string name, Transform parent) =>
+            FigureModels.IsAvailable(FigureModels.StadiumId) ? FigureModels.Create(FigureModels.StadiumId, name, parent) : null;
+
+        /// <summary>
         /// The owner's champions' cup (made with Meshy AI; <see cref="FigureModels.TrophyId"/>): one unit tall, about 0.75 wide
-        /// across its handles, its base at y = 0 and its lettering at +Z. Null when its files are not in the build, and the
-        /// drawn <see cref="Trophy"/> stands in.
+        /// across its handles, its base at y = 0 and its lettering at +Z: the mark on the town that holds the cup
+        /// (<see cref="BoardView.SetCup"/>). Null when its files are not in the build, and the drawn <see cref="Trophy"/> stands in.
         /// </summary>
         public static GameObject ChampionsCup(string name, Transform parent) =>
             FigureModels.IsAvailable(FigureModels.TrophyId) ? FigureModels.Create(FigureModels.TrophyId, name, parent) : null;
