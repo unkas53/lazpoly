@@ -65,7 +65,9 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsNull(board.transform.Find("Scene Card"), "the kiosk is gone");
 
                 TextMesh name = board.NameLabel(CupCorner);
-                Assert.AreEqual("ŞAMPİYONLAR KUPASI", name.text, "in capitals like the jail, the tax and Şans, on one line");
+                Assert.AreEqual("ŞAMPİYONLAR\nKUPASI", name.text, "in capitals like the jail, the tax and Şans, on two lines to print large");
+                Assert.AreEqual("ONE", BoardView.TwoLines("ONE"));
+                Assert.AreEqual("CHAMPIONS'\nCUP", BoardView.TwoLines("CHAMPIONS' CUP"));
                 Vector3 line = name.transform.localRotation * Vector3.right;
                 Assert.Greater(Vector3.Dot(line, BoardView.DiagonalLine(BoardCameraRig.BaseYaw)), 0.99f, "it runs across the corner (the owner's wish)");
                 Assert.That(Mathf.Abs(Vector3.Dot(line, board.Layout.Outward(CupCorner))), Is.EqualTo(Mathf.Sqrt(0.5f)).Within(0.01f), "at 45 degrees to the edges");

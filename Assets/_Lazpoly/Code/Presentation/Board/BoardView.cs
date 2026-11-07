@@ -173,24 +173,25 @@ namespace Lazpoly.Presentation.Tabletop
         public const float JailNameOffset = 0.26f;
 
         /// <summary>
-        /// The cup's long name runs across its corner on one line, along the tile's diagonal that lies left to right on the
-        /// screen (the owner's wish, Faz 24; <see cref="DiagonalRotation"/>): it starts as large as the jail's and shrinks to
-        /// its room, which is this long and deep in corner sides, its line this far below the corner's middle on the screen.
+        /// The cup's long name runs across its corner, along the tile's diagonal that lies left to right on the screen (the
+        /// owner's wish, Faz 24; <see cref="DiagonalRotation"/>), on two lines ("ŞAMPİYONLAR" over "KUPASI") so the letters can
+        /// be large: it starts as large as the jail's and shrinks to its room, which is this long and deep in corner sides, its
+        /// middle this far below the corner's middle on the screen.
         /// </summary>
         public const float CupNameScale = 1.6f;
-        public const float CupNameLength = 0.9f;
-        public const float CupNameDepth = 0.14f;
-        public const float CupNameShift = 0.15f;
+        public const float CupNameLength = 1.15f;
+        public const float CupNameDepth = 0.30f;
+        public const float CupNameShift = 0.12f;
 
         /// <summary>The owner's cup model on the corner: its height in corner sides (it is one unit tall, three quarters wide).</summary>
-        public const float CupModelSize = 0.32f;
+        public const float CupModelSize = 0.40f;
 
         /// <summary>
         /// The cup's scene is a little smaller than the other corners' and stands nearer the corner's middle (less inset
         /// towards the outer edge), so on the far corner its top stays clear of the banner over the board.
         /// </summary>
         public const float CupSceneSize = 0.30f;
-        public const float CupSceneInset = 0.10f;
+        public const float CupSceneInset = 0.04f;
 
 
         /// <summary>
@@ -1340,10 +1341,20 @@ namespace Lazpoly.Presentation.Tabletop
         /// off the corners) and the cup's in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", "ŞAMPİYONLAR KUPASI", Turkish capitals
         /// in Turkish), the others as written.
         /// </summary>
-        public static string PrintedName(SquareDefinition square, bool corner) =>
-            square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup
-            || (square.Type == SquareType.Card && !corner)
+        /// The cup's corner breaks its name onto two lines (<see cref="TwoLines"/>).
+        public static string PrintedName(SquareDefinition square, bool corner)
+        {
+            if (square.Type == SquareType.Cup) return corner ? TwoLines(Upper(L(square.Name))) : Upper(L(square.Name));
+            return square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || (square.Type == SquareType.Card && !corner)
                 ? Upper(L(square.Name)) : L(square.Name);
+        }
+
+        /// <summary>A name broken onto two lines at its first space; a one-word name stays on one.</summary>
+        public static string TwoLines(string name)
+        {
+            int space = name.IndexOf(' ');
+            return space < 0 ? name : name.Substring(0, space) + "\n" + name.Substring(space + 1);
+        }
 
         /// <summary>Rewrites every name and price in the current language, so a language change needs no new scene.</summary>
         public void Relabel()
