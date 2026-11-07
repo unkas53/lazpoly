@@ -368,6 +368,7 @@ namespace Lazpoly.Presentation.Game
             if (Faces != null && Faces.Update(Time.unscaledTime)) Revision++; // A Steam profile picture arrived.
             UpdateDayLight();
             ShowNextBubble();
+            if (_bubble != null && _hud != null) _bubble.TopClearPixels = _hud.ReservedTopPixels;
             AnnounceDraw();
             UpdateDecisionClock();
             if (_board == null || Paused || IsBusy || EndReason.HasValue || Time.time < _nextAiMoveTime) return;

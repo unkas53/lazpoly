@@ -134,6 +134,13 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Screen pixels kept clear of the board at each side edge (see <see cref="UiLayout.ReservedSidePixels"/>).</summary>
         public float ReservedSidePixels => UiLayout.ReservedSidePixels(_canvas != null ? _canvas.scaleFactor : 1f);
 
+        /// <summary>The turn banner's lower edge, in canvas units under the top of the screen.</summary>
+        public const float BannerBottom = 112f;
+
+        /// <summary>Screen pixels the turn banner covers at the top while it shows, a little gap included; nothing while it is gone.</summary>
+        public float ReservedTopPixels =>
+            _bannerGroup != null && _bannerGroup.alpha > 0f ? (BannerBottom + 8f) * (_canvas != null ? _canvas.scaleFactor : 1f) : 0f;
+
         /// <summary>Whether the decision panel at the bottom has something to show.</summary>
         public bool TurnPanelShown => _turnPanel != null && _turnPanel.gameObject.activeSelf;
 
@@ -261,7 +268,7 @@ namespace Lazpoly.Presentation.Game
 
             // The banner sits high, clear of the board's far corner and its cup (the owner's wish, Faz 24).
             RectTransform banner = UiRoot.Rect(_canvas.transform, "Turn Banner", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(-320f, -112f), new Vector2(320f, -22f));
+                new Vector2(-320f, -BannerBottom), new Vector2(320f, -22f));
             _bannerFill = UiRoot.Banner(banner, 90f, dark: false); // The cream skin, tinted in the player's colour when it shows.
             _bannerGroup = banner.gameObject.AddComponent<CanvasGroup>();
             _bannerGroup.blocksRaycasts = false;

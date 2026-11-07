@@ -430,6 +430,33 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ASpeechBubbleDropsBelowTheTurnBanner()
+        {
+            var holder = new GameObject("Camera");
+            var target = new RenderTexture(800, 600, 16);
+            try
+            {
+                Camera camera = holder.AddComponent<Camera>();
+                camera.targetTexture = target;
+                camera.fieldOfView = 40f;
+                holder.transform.position = new Vector3(0f, 0f, -10f);
+                Vector3 high = camera.ScreenToWorldPoint(new Vector3(400f, 590f, 10f));
+                Assert.AreEqual(Vector3.zero, SpeechBubble.DropBelow(camera, high, 0.1f, 0f), "nothing kept clear, nothing moves");
+                Vector3 drop = SpeechBubble.DropBelow(camera, high, 0.1f, 100f);
+                Assert.Less(drop.y, 0f, "a bubble under the band drops");
+                Vector3 top = camera.WorldToScreenPoint(high + drop + Vector3.up * 0.1f);
+                Assert.That(top.y, Is.EqualTo(camera.pixelHeight - 100f).Within(0.5f), "its top meets the band's lower edge");
+                Vector3 low = camera.ScreenToWorldPoint(new Vector3(400f, 200f, 10f));
+                Assert.AreEqual(Vector3.zero, SpeechBubble.DropBelow(camera, low, 0.1f, 100f), "a low bubble stays put");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(holder);
+                UnityEngine.Object.DestroyImmediate(target);
+            }
+        }
+
+        [Test]
         public void ASpeechBubbleWrapsItsLineInPaperOverThePawn()
         {
             var root = new GameObject("Scene");
