@@ -60,7 +60,7 @@ namespace Lazpoly.Presentation.Effects
         {
             if (amount <= 0) return (0, 0);
             int notes = Mathf.Min(amount / NoteValue, MaxNotes);
-            int rest = amount - notes * NoteValue;
+            int rest = amount % NoteValue; // Past the notes' limit the hundreds stay notes; coins show only the odd part.
             int coins = rest > 0 ? Mathf.Clamp((rest + CoinValue - 1) / CoinValue, 1, MaxCoins) : 0;
             return (notes, coins);
         }
