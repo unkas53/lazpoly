@@ -21,6 +21,7 @@ namespace Lazpoly.Presentation.Texts
         Trade = 9,
         Pot = 10,
         Jail = 11,
+        Cup = 12,
     }
 
     public readonly struct Tip
@@ -58,6 +59,8 @@ namespace Lazpoly.Presentation.Texts
                        L("Borcunu ödeyecek kadar paran yok. Satacağın şehirleri haritada işaretleyip Sat'a bas; yetmezse iflas edersin."))
                    ?? Offer(TipId.Travel, myTurn && state.Phase == GamePhase.AwaitingTravelDecision,
                        F($"Otogardasın. Tahtada parlayan karelerden birine tıkla ve {board[me.Position].Fee} ödeyerek oraya yürü. İstemezsen \"Burada kal\"."))
+                   ?? Offer(TipId.Cup, myTurn && state.Phase == GamePhase.AwaitingCupChoice,
+                       F($"Şampiyonlar Kupası! Tahtada parlayan şehirlerinden birine tıkla; {board[me.Position].Fee} ödersen kupa oraya gider ve kirası %{GameRules.NextCupPercent(board, state, me.Position)} artar. İstemezsen \"Geç\"."))
                    ?? Offer(TipId.Jail, myTurn && state.Phase == GamePhase.AwaitingJailDecision && board.HasJail,
                        F($"Hapistesin: {me.JailTurns} tur daha beklemen gerek. \"Öde ve çık\" ile {GameRules.JailFee(board)} ödeyip hemen zar atabilirsin; ya da bedava zar at, çift gelirse çıkıp ilerlersin."))
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,

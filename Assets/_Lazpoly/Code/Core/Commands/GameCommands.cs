@@ -106,6 +106,21 @@ namespace Lazpoly.Core.Commands
         public DeclineTravelCommand(int playerId) : base(playerId) { }
     }
 
+    /// <summary>
+    /// Pays the cup square's fee and brings the cup to <see cref="SquareCommand.SquareIndex"/>, one of the player's towns (it may
+    /// already hold it: it then keeps it at the new, higher raise).
+    /// </summary>
+    public sealed class HostCupCommand : SquareCommand
+    {
+        public HostCupCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
+    }
+
+    /// <summary>Passes on the cup: nothing is paid and no rent changes.</summary>
+    public sealed class DeclineCupCommand : GameCommand
+    {
+        public DeclineCupCommand(int playerId) : base(playerId) { }
+    }
+
     /// <summary>Pays the jail's fee to leave it at once; the player then rolls as usual.</summary>
     public sealed class PayJailFeeCommand : GameCommand
     {

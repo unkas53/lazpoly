@@ -65,6 +65,7 @@ namespace Lazpoly.Presentation.Texts
                 case PlayerTimedOutEvent e: return e.PlayerId;
                 case LookoutChangedEvent e: return e.PlayerId;
                 case JailChangedEvent e: return e.PlayerId;
+                case CupHostedEvent e: return e.PlayerId;
                 case TradeProposedEvent e: return e.Offer.FromPlayerId;
                 case DebtIncurredEvent e: return e.PlayerId;
                 default: return GameState.NoOwner;
@@ -117,6 +118,8 @@ namespace Lazpoly.Presentation.Texts
                     return e.Turns > 0
                         ? F($"{NameOf(state, e.PlayerId)} hapiste: {e.Turns} tur bekleyecek")
                         : F($"{NameOf(state, e.PlayerId)} hapisten çıktı");
+                case CupHostedEvent e:
+                    return F($"{NameOf(state, e.PlayerId)} Şampiyonlar Kupası'nı {L(board[e.SquareIndex].Name)} şehrine getirdi: kirası %{e.Percent} arttı");
                 case DiceOptionsEvent e:
                     return F($"{NameOf(state, e.PlayerId)} iki kez attı: {e.FirstDie1} + {e.FirstDie2} ya da {e.SecondDie1} + {e.SecondDie2}");
                 case PotChangedEvent _:
@@ -147,6 +150,7 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Pot: return L("çay kumbarası");
                 case MoneyReason.Travel: return L("otogar bileti");
                 case MoneyReason.Jail: return L("hapisten çıkış");
+                case MoneyReason.Cup: return L("kupa");
                 default: return reason.ToString();
             }
         }

@@ -71,6 +71,8 @@ namespace Lazpoly.App.AI
                     return ChooseDice(view);
                 case GamePhase.AwaitingJailDecision:
                     return DecideJail(view);
+                case GamePhase.AwaitingCupChoice:
+                    return DecideCup(view);
                 default:
                     return null;
             }
@@ -116,6 +118,30 @@ namespace Lazpoly.App.AI
 
             if (best < 0 || view.MakesMistake()) return stay;
             return new TravelCommand(PlayerId, best);
+        }
+
+        /// <summary>
+        /// Brings the cup to its town with the highest rent (which may already hold it: the raise grows) when the fee leaves its
+        /// reserve whole; otherwise passes.
+        /// </summary>
+        private GameCommand DecideCup(View view)
+        {
+            var pass = new DeclineCupCommand(PlayerId);
+            int fee = view.Board[view.Me.Position].Fee;
+            if (view.Me.Money - fee < view.Reserve || view.MakesMistake()) return pass;
+            int best = -1;
+            int bestRent = 0;
+            for (int square = 0; square < view.Board.Count; square++)
+            {
+                if (view.State.GetOwner(square) != PlayerId || !GameRules.CanHoldCup(view.Board, square)) continue;
+                int rent = GameRules.RentWithoutCup(view.Board, view.Rules, view.State, square);
+                if (best >= 0 && rent <= bestRent) continue;
+                best = square;
+                bestRent = rent;
+            }
+
+            var host = new HostCupCommand(PlayerId, best);
+            return best >= 0 && view.Legal(host) ? host : (GameCommand)pass;
         }
 
         /// <summary>Pays its way out of jail when the fee leaves its reserve whole; otherwise rolls for a double.</summary>

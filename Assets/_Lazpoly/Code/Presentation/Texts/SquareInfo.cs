@@ -108,6 +108,18 @@ namespace Lazpoly.Presentation.Texts
                     return info;
                 }
 
+                case SquareType.Cup:
+                {
+                    var info = new SquareInfo(L(square.Name), L("Kupa"));
+                    info.Rows.Add(new SquareInfoRow(L("Ücret"), square.Fee.ToString()));
+                    info.Rows.Add(new SquareInfoRow(L("Sıradaki artış"), F($"%{GameRules.NextCupPercent(board, state, squareIndex)}")));
+                    info.Rows.Add(new SquareInfoRow(L("Kupanın şehri"),
+                        state.CupSquare == GameState.NoCup ? L("henüz yok") : F($"{L(board[state.CupSquare].Name)} (%{state.CupPercent})"), state.CupSquare != GameState.NoCup));
+                    info.Notes.Add(F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir; o şehrin kirası artar. Kupa tek bir şehirde durur: yeni bir şehir seçilince eskisinden kalkar."));
+                    info.Notes.Add(F($"Artış ilk seçimde %{square.BoostPercent}; oyun boyunca kim seçerse seçsin her seçimde %{square.BoostStep} büyür. Tatil yerleri seçilemez."));
+                    return info;
+                }
+
                 case SquareType.Lookout:
                 {
                     var info = new SquareInfo(L(square.Name), L("Seyir"));
@@ -154,9 +166,12 @@ namespace Lazpoly.Presentation.Texts
             }
 
             info.Rows.Add(new SquareInfoRow(L("Satış değeri"), square.SaleValue.ToString()));
+            bool cup = state.CupSquare == squareIndex;
+            if (cup) info.Rows.Add(new SquareInfoRow(L("Kupa"), F($"kira +%{state.CupPercent}"), live, rent: true));
 
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
             info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
+            if (cup) info.Notes.Add(F($"Şampiyonlar Kupası bu şehirde: kirası %{state.CupPercent} fazla."));
             info.Notes.Add(GroupNote(board, state, square.GroupId));
             if (square.IsDevelopable) info.Notes.Add(L("Sahibi şehre yeniden gelince ev kurar: başlangıçtan geçene kadar bir, sonra dörde kadar; dört evden sonra otel."));
             return info;

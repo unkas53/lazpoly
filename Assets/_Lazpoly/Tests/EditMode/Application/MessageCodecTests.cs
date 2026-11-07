@@ -40,6 +40,9 @@ namespace Lazpoly.App.Tests
             busy.Players[0].JailTurns = 2;
             busy.Phase = GamePhase.AwaitingJailDecision;
             busy.RolledOutOfJail = true;
+            busy.CupSquare = 1;
+            busy.CupPercent = 60;
+            busy.CupPicks = 2;
             yield return new GameStartMessage
             {
                 ProtocolVersion = MessageCodec.ProtocolVersion, BoardChecksum = 1UL, YourPlayerId = 1, Sequence = 3, Snapshot = busy,
@@ -64,6 +67,8 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new ChooseDiceCommand(1, 1) };
             yield return new CommandMessage { Command = new PayJailFeeCommand(1) };
             yield return new CommandMessage { Command = new RollInJailCommand(2) };
+            yield return new CommandMessage { Command = new HostCupCommand(1, 4) };
+            yield return new CommandMessage { Command = new DeclineCupCommand(2) };
             var events = new EventsMessage { Sequence = 9, StateHash = 0xDEADBEEFUL };
             events.Events.AddRange(new GameEvent[]
             {
@@ -91,6 +96,9 @@ namespace Lazpoly.App.Tests
                 new JailChangedEvent(2, 3),
                 new JailChangedEvent(1, 0, rolledOut: true),
                 new MoneyChangedEvent(1, -50, MoneyReason.Jail),
+                new CupHostedEvent(1, 4, 70),
+                new MoneyChangedEvent(1, -50, MoneyReason.Cup),
+                new PhaseChangedEvent(GamePhase.AwaitingCupChoice),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -167,6 +175,35 @@ namespace Lazpoly.App.Tests
                 Assert.AreEqual(message.GetType(), decoded.GetType());
                 CollectionAssert.AreEqual(encoded, MessageCodec.Encode(decoded), $"{message.Type} changed in transit.");
             }
+        }
+
+        [Test]
+        public void TheCupTravelsAndAJailLayoutReadsWithoutIt()
+        {
+            GameStateSnapshot snapshot = SampleSnapshot();
+            snapshot.CupSquare = 4;
+            snapshot.CupPercent = 70;
+            snapshot.CupPicks = 3;
+            var w = new NetWriter();
+            MessageCodec.WriteSnapshot(w, snapshot);
+            byte[] bytes = w.ToArray();
+
+            GameStateSnapshot read = MessageCodec.ReadSnapshot(new NetReader(bytes));
+            Assert.AreEqual(new[] { 4, 70, 3 }, new[] { read.CupSquare, read.CupPercent, read.CupPicks });
+
+            // Layout 9 ended where the cup's three numbers begin.
+            var old = new byte[bytes.Length - 12];
+            System.Array.Copy(bytes, old, old.Length);
+            GameStateSnapshot jail = MessageCodec.ReadSnapshot(new NetReader(old), MessageCodec.JailSnapshotVersion);
+            Assert.AreEqual(GameState.NoCup, jail.CupSquare);
+            Assert.AreEqual(0, jail.CupPicks);
+
+            var cup = (CommandMessage)MessageCodec.Decode(MessageCodec.Encode(new CommandMessage { Command = new HostCupCommand(2, 7) }));
+            Assert.AreEqual(7, ((HostCupCommand)cup.Command).SquareIndex);
+            var events = new EventsMessage();
+            events.Events.Add(new CupHostedEvent(2, 7, 80));
+            var hosted = (CupHostedEvent)((EventsMessage)MessageCodec.Decode(MessageCodec.Encode(events))).Events[0];
+            Assert.AreEqual(new[] { 2, 7, 80 }, new[] { hosted.PlayerId, hosted.SquareIndex, hosted.Percent });
         }
 
         [Test]

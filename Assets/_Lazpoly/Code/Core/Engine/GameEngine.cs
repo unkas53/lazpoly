@@ -53,6 +53,11 @@ namespace Lazpoly.Core.Engine
                 }
             }
 
+            if (state.CupSquare != GameState.NoCup && !GameRules.CanHoldCup(board, state.CupSquare))
+            {
+                throw new ArgumentException($"Snapshot puts the cup on square {state.CupSquare}, which is not a town.", nameof(snapshot));
+            }
+
             return new GameEngine(board, rules, state, random);
         }
 
@@ -129,6 +134,15 @@ namespace Lazpoly.Core.Engine
                 case ChooseDiceCommand c:
                     int[] chosen = GameRules.DiceOption(State, c.Option);
                     MoveWithDice(player, chosen[0], chosen[1]);
+                    break;
+                case HostCupCommand c:
+                    int cupFee = Board[player.Position].Fee;
+                    if (cupFee > 0) Emit(new MoneyChangedEvent(player.Id, -cupFee, MoneyReason.Cup));
+                    Emit(new CupHostedEvent(player.Id, c.SquareIndex, GameRules.NextCupPercent(Board, State, player.Position)));
+                    FinishMove();
+                    break;
+                case DeclineCupCommand _:
+                    FinishMove();
                     break;
                 case PayJailFeeCommand _:
                     Transfer(player.Id, GameRules.FineCollector(Board), Board[Board.JailIndex].Fee, MoneyReason.Jail);
@@ -262,6 +276,12 @@ namespace Lazpoly.Core.Engine
                     // Offered only when the player can pay the fare.
                     if (player.Money < square.Fee) return false;
                     Emit(new PhaseChangedEvent(GamePhase.AwaitingTravelDecision));
+                    return true;
+
+                case SquareType.Cup:
+                    // Offered only to a player with a town to bring it to and the fee to pay.
+                    if (!GameRules.CanBringCup(Board, State, player)) return false;
+                    Emit(new PhaseChangedEvent(GamePhase.AwaitingCupChoice));
                     return true;
 
                 case SquareType.Lookout:

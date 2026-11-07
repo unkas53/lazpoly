@@ -282,5 +282,30 @@ namespace Lazpoly.App.Tests
             Assert.AreEqual(Other, command.PlayerId, "The AI answers the person's offer although it is not its turn.");
             Assert.Throws<ArgumentException>(() => roster.Add(Other, AiDifficulty.Hard));
         }
+
+        [Test]
+        public void TheAiBringsTheCupToItsDearestTownWhenItCanSpareTheFee()
+        {
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Start"),
+                SquareDefinition.Property("Cheap", 60, 10, 0),
+                SquareDefinition.Property("Dear", 200, 40, 0),
+                SquareDefinition.Resort("Beach", 200, 50, 0),
+                SquareDefinition.Cup("Cup", 50, 50, 10),
+            });
+            GameState state = GameState.CreateInitial(board, Rules, new[] { new PlayerSeat(1, "P1"), new PlayerSeat(2, "P2") });
+            foreach (int square in new[] { 1, 2, 3 }) GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(square, GameState.NoOwner, 1));
+            GameStateReducer.Apply(state, new PlayerMovedEvent(1, 0, 4, false));
+            GameStateReducer.Apply(state, new PhaseChangedEvent(GamePhase.AwaitingCupChoice));
+
+            GameCommand command = new AiPlayer(1, AiDifficulty.Hard).Decide(board, Rules, state, new NoMistakes());
+            Assert.IsInstanceOf<HostCupCommand>(command);
+            Assert.AreEqual(2, ((HostCupCommand)command).SquareIndex, "the town with the highest rent, never the resort");
+
+            GameStateReducer.Apply(state, new MoneyChangedEvent(1, 60 - state.FindPlayer(1).Money, MoneyReason.Rent));
+            Assert.IsInstanceOf<DeclineCupCommand>(new AiPlayer(1, AiDifficulty.Hard).Decide(board, Rules, state, new NoMistakes()),
+                "the fee would eat its reserve");
+        }
     }
 }

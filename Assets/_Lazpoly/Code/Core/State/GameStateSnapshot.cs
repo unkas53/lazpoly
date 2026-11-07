@@ -40,6 +40,11 @@ namespace Lazpoly.Core.State
         /// <summary>The player on turn left jail with a double this turn, which earns no second roll.</summary>
         public bool RolledOutOfJail;
 
+        /// <summary>The town holding the champions' cup (<see cref="GameState.NoCup"/> when none), its raise in percent and the game's pick count.</summary>
+        public int CupSquare = GameState.NoCup;
+        public int CupPercent;
+        public int CupPicks;
+
         /// <summary>Null unless a lookout's two rolls wait for a choice.</summary>
         public int[] DiceOptions;
         public List<PlayerEntry> Players = new List<PlayerEntry>();
@@ -66,6 +71,9 @@ namespace Lazpoly.Core.State
                 Pot = state.Pot,
                 BuiltThisVisit = state.BuiltThisVisit,
                 RolledOutOfJail = state.RolledOutOfJail,
+                CupSquare = state.CupSquare,
+                CupPercent = state.CupPercent,
+                CupPicks = state.CupPicks,
                 DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],

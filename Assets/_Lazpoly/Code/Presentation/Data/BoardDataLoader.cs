@@ -106,6 +106,8 @@ namespace Lazpoly.Presentation.Data
                     return SquareDefinition.Jail(entry.name, entry.fee);
                 case "lookout":
                     return SquareDefinition.Lookout(entry.name);
+                case "cup":
+                    return SquareDefinition.Cup(entry.name, entry.fee, entry.percent, entry.step);
                 case "resort":
                     if (entry.group != 0 && !groups.ContainsKey(entry.group))
                     {

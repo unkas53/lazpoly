@@ -64,6 +64,7 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
         private static readonly Color CardColor = new Color(0.98f, 0.80f, 0.42f);
+        private static readonly Color CupColor = new Color(0.99f, 0.86f, 0.40f);
         private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
         private static readonly Color TravelColor = new Color(0.62f, 0.74f, 0.95f);
         private static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
@@ -242,6 +243,11 @@ namespace Lazpoly.Presentation.Tabletop
         private TextMesh[] _chanceMarks;
         private Transform[] _documents;
         private Transform _startArrow;
+
+        // The small cup beside the buildings of the town that holds it (SetCup), its size, and that town; -1 while none does.
+        private Transform _cupTrophy;
+        private Vector3 _cupScale;
+        private int _cupSquare = -1;
         private TextMesh[] _prices;
         private int?[] _rents;
         private readonly List<KeyValuePair<Transform, Vector3>> _marks = new List<KeyValuePair<Transform, Vector3>>();
@@ -838,6 +844,60 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The start square's arrow, pointing the way the pawns go; null on a board without corners.</summary>
         public Transform StartArrow => _startArrow;
 
+        /// <summary>How big the cup beside a town's buildings is, and how far from the tile's middle it stands along the edge and towards the camera, in tile widths and depths.</summary>
+        public const float CupSize = 0.28f;
+        public const float CupSide = 0.37f;
+        public const float CupForward = 0.08f;
+
+        /// <summary>The small cup on the town that holds it; hidden while no town does.</summary>
+        public Transform CupTrophy => _cupTrophy;
+
+        /// <summary>The town the board shows the cup on; -1 while none.</summary>
+        public int CupShownOn => _cupSquare;
+
+        /// <summary>
+        /// Shows the champions' cup on a town (the owner's wish, Faz 24): a small gold cup beside its buildings, on the screen's
+        /// right of them, its handles across the screen. Only one town holds it; it leaves the town before. A square that is no
+        /// town (or -1) hides it. With <paramref name="animate"/> it rises up on its new town.
+        /// </summary>
+        public void SetCup(int squareIndex, bool animate = false)
+        {
+            if (_data == null) return;
+            bool town = squareIndex >= 0 && squareIndex < _data.Board.Count && _data.Board[squareIndex].Type == SquareType.Property && !_data.Board[squareIndex].IsResort;
+            if (!town)
+            {
+                _cupSquare = -1;
+                if (_cupTrophy != null) _cupTrophy.gameObject.SetActive(false);
+                return;
+            }
+
+            if (squareIndex == _cupSquare) return;
+            if (_cupTrophy == null)
+            {
+                _cupTrophy = CornerParts.Trophy("Cup on town", transform).transform;
+                _cupScale = Vector3.one * (_width * CupSize);
+            }
+
+            _cupSquare = squareIndex;
+            _cupTrophy.localScale = _cupScale;
+            _cupTrophy.gameObject.SetActive(true);
+            PlaceCup();
+            if (animate) StartCoroutine(Raise(_cupTrophy, _cupScale));
+        }
+
+        /// <summary>Puts the cup beside its town's buildings for the camera's turn now: on the screen's right of them, a little towards the camera.</summary>
+        private void PlaceCup()
+        {
+            if (_cupTrophy == null || _cupSquare < 0) return;
+            Vector3 center = Layout.SquareCenter(_cupSquare);
+            Vector3 outward = Outward(center);
+            Vector3 along = Vector3.Cross(Vector3.up, outward);
+            if (Vector3.Dot(along, ScreenRight(_yaw)) < 0f) along = -along;
+            float width = Layout.SquareSize(_cupSquare).x - Gap;
+            _cupTrophy.localPosition = BuildingRowCenter(center) + along * (width * CupSide) + ScreenDown(outward) * (_depth * CupForward);
+            _cupTrophy.localRotation = Quaternion.LookRotation(BuildingFront(outward, _yaw));
+        }
+
         /// <summary>A corner's scene stands on one side of the corner with the pawns on the other, both on the part away from the name.</summary>
         private void CreateScene(SquareType type, int index, Vector3 center, Vector3 outward, float side)
         {
@@ -976,7 +1036,7 @@ namespace Lazpoly.Presentation.Tabletop
             : IsChance(index) ? ChanceNameScale
             : _data.Board[index].Type == SquareType.Tax ? TaxNameScale : 1f;
 
-        /// <summary>A Şans square: a card square along an edge (the card corner is Sokak Haberi, with its kiosk).</summary>
+        /// <summary>A Şans square: a card square along an edge (a card corner has its kiosk instead).</summary>
         private bool IsChance(int index) => _data.Board[index].Type == SquareType.Card && !Layout.IsCorner(index);
 
         /// <summary>A tax taken as a share of property value: it shows no figure but a document, its name low on the tile.</summary>
@@ -1130,6 +1190,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Turns the building models and plots to show their fronts to a camera at <paramref name="yaw"/>.</summary>
         private void TurnBuildings(float yaw)
         {
+            PlaceCup();
             foreach (KeyValuePair<Transform, Vector3> scene in _frontScenes)
             {
                 if (scene.Key != null) scene.Key.localRotation = Quaternion.LookRotation(BuildingFront(scene.Value, yaw));
@@ -1298,6 +1359,7 @@ namespace Lazpoly.Presentation.Tabletop
                 case SquareType.Tax: return TaxColor;
                 case SquareType.Property: return square.IsResort ? SandColor : data.GroupColor(square.GroupId);
                 case SquareType.Card: return CardColor;
+                case SquareType.Cup: return CupColor;
                 case SquareType.Pot: return PotColor;
                 case SquareType.Jail: return JailColor;
                 case SquareType.Travel: return TravelColor;

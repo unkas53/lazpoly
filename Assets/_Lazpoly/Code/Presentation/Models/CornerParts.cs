@@ -5,8 +5,8 @@ namespace Lazpoly.Presentation.Models
 {
     /// <summary>
     /// The little scenes that stand on the corner squares and say what the corner is, in the town's own words: a barred
-    /// cell at the jail (a tea garden on boards that still have a tea break), a newspaper kiosk for the street news and a
-    /// minibus stop at the bus station. The start has none: an arrow is printed on it (Faz 24). Each is a parent
+    /// cell at the jail (a tea garden on boards that still have a tea break), a newspaper kiosk on a card corner, the
+    /// champions' cup on its plinth and a minibus stop at the bus station. The start has none: an arrow is printed on it (Faz 24). Each is a parent
     /// object with its base at y = 0, one unit wide (x) and deep (z), built from the game's own meshes
     /// so the board can scale and place it. The board turns a scene's +Z outward; the far corners' scenes
     /// (kiosk, bus stop) keep their open side at -Z, towards the camera.
@@ -28,9 +28,12 @@ namespace Lazpoly.Presentation.Models
         public static readonly Color Stone = new Color(0.68f, 0.66f, 0.62f);
         public static readonly Color Iron = new Color(0.22f, 0.24f, 0.28f);
 
+        /// <summary>The cup's gold: deeper and shinier than <see cref="Brass"/>, so it does not read as the yellow pawn.</summary>
+        public static readonly Color Gold = new Color(0.93f, 0.68f, 0.16f);
+
         /// <summary>Whether a corner of this type carries a scene.</summary>
         public static bool Has(SquareType type) =>
-            type == SquareType.Pot || type == SquareType.Jail || type == SquareType.Card || type == SquareType.Travel;
+            type == SquareType.Pot || type == SquareType.Jail || type == SquareType.Card || type == SquareType.Travel || type == SquareType.Cup;
 
         /// <summary>The scene for a corner square's type, or null when the type has none.</summary>
         public static GameObject For(SquareType type, string name, Transform parent)
@@ -40,6 +43,7 @@ namespace Lazpoly.Presentation.Models
                 case SquareType.Pot: return TeaGarden(name, parent);
                 case SquareType.Jail: return Cell(name, parent);
                 case SquareType.Card: return Kiosk(name, parent);
+                case SquareType.Cup: return Trophy(name, parent);
                 case SquareType.Travel: return Station(name, parent) ?? BusStop(name, parent);
                 default: return null;
             }
@@ -126,6 +130,34 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
+        /// <summary>
+        /// The champions' cup: a gold cup with two handles (along x) on a two-step dark plinth, base at y = 0, about one unit tall
+        /// and 0.8 wide across its handles. It stands on the cup corner, and small beside the buildings of the town that holds it.
+        /// </summary>
+        public static GameObject Trophy(string name, Transform parent)
+        {
+            GameObject root = Root(name, parent);
+            Part(root, "Plinth", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), DarkTimber, new Vector3(0f, 0.08f, 0f), new Vector3(0.5f, 0.16f, 0.5f));
+            Part(root, "Step", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), DarkTimber, new Vector3(0f, 0.2f, 0f), new Vector3(0.38f, 0.08f, 0.38f));
+            Part(root, "Plate", MeshFactory.RoundedBox(Vector3.one, 0.005f, 2), Gold, new Vector3(0f, 0.08f, -0.252f), new Vector3(0.3f, 0.07f, 0.01f), smoothness: 0.6f);
+            Part(root, "Cup", Cup(), Gold, new Vector3(0f, 0.24f, 0f), Vector3.one, smoothness: 0.6f);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Part(root, "Handle", MeshFactory.Ring(0.7f, 1f, 24), Gold, new Vector3(side * 0.27f, 0.78f, 0.02f), new Vector3(0.13f, 0.04f, 0.13f),
+                    Quaternion.Euler(90f, 0f, 0f), 0.6f);
+            }
+
+            return root;
+        }
+
+        /// <summary>The cup itself, turned on a lathe: a round foot, a stem with a knot and a deep bowl with a rim, base at y = 0, 0.72 tall.</summary>
+        public static Mesh Cup() => MeshFactory.Lathe("corner:cup", new[]
+        {
+            new Vector2(0f, 0f), new Vector2(0.16f, 0f), new Vector2(0.16f, 0.03f), new Vector2(0.05f, 0.08f), new Vector2(0.04f, 0.2f),
+            new Vector2(0.08f, 0.23f), new Vector2(0.04f, 0.27f), new Vector2(0.08f, 0.32f), new Vector2(0.21f, 0.42f), new Vector2(0.27f, 0.56f),
+            new Vector2(0.28f, 0.72f), new Vector2(0.24f, 0.72f), new Vector2(0f, 0.64f),
+        }, 24);
+
         /// <summary>A shelter with a bench and a glass back at +Z, and a minibus pulled up in front of it along the edge.</summary>
         public static GameObject BusStop(string name, Transform parent)
         {
@@ -163,9 +195,10 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
-        private static void Part(GameObject root, string name, Mesh mesh, Color color, Vector3 position, Vector3 scale, Quaternion? rotation = null)
+        private static void Part(GameObject root, string name, Mesh mesh, Color color, Vector3 position, Vector3 scale, Quaternion? rotation = null,
+            float smoothness = 0.2f)
         {
-            GameObject part = ModelParts.Create(name, root.transform, mesh, color, 0.2f);
+            GameObject part = ModelParts.Create(name, root.transform, mesh, color, smoothness);
             part.transform.localPosition = position;
             part.transform.localScale = scale;
             if (rotation.HasValue) part.transform.localRotation = rotation.Value;

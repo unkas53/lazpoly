@@ -14,7 +14,7 @@ namespace Lazpoly.Core.Board
         /// <summary>No effect.</summary>
         Rest = 3,
 
-        /// <summary>Landing draws a card from the board's deck ("Sokak Haberi").</summary>
+        /// <summary>Landing draws a card from the board's deck ("Şans").</summary>
         Card = 4,
 
         /// <summary>Landing collects the pot that taxes and card fines have filled ("Çay Molası").</summary>
@@ -31,5 +31,11 @@ namespace Lazpoly.Core.Board
         /// turns; on each of them they may pay the square's fee to leave at once ("Hapis").
         /// </summary>
         Jail = 8,
+
+        /// <summary>
+        /// Landing lets the player pay the square's fee to bring the cup to one of their towns: the cup stands in one town
+        /// at a time and raises its rent by a share that grows with every pick in the game ("Şampiyonlar Kupası", Faz 24).
+        /// </summary>
+        Cup = 9,
     }
 }

@@ -28,6 +28,8 @@ namespace Lazpoly.PlayTests
                     return new RejectTradeCommand(state.PendingTrade.ToPlayerId);
                 case GamePhase.AwaitingTravelDecision:
                     return new DeclineTravelCommand(me);
+                case GamePhase.AwaitingCupChoice:
+                    return new DeclineCupCommand(me);
                 case GamePhase.AwaitingDiceChoice:
                     return new ChooseDiceCommand(me, 1);
                 case GamePhase.AwaitingJailDecision:

@@ -139,7 +139,7 @@ namespace Lazpoly.Presentation.Tests
             var root = new GameObject("Scenes");
             try
             {
-                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel })
+                foreach (Lazpoly.Core.Board.SquareType type in new[] { Lazpoly.Core.Board.SquareType.Pot, Lazpoly.Core.Board.SquareType.Jail, Lazpoly.Core.Board.SquareType.Card, Lazpoly.Core.Board.SquareType.Travel, Lazpoly.Core.Board.SquareType.Cup })
                 {
                     Assert.IsTrue(CornerParts.Has(type));
                     GameObject scene = CornerParts.For(type, type.ToString(), root.transform);

@@ -104,7 +104,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(board[seoul].GroupId, board[seoul - 1].GroupId);
 
             // Eight squares a side: the corners stay where the board's corners are.
-            CollectionAssert.AreEqual(new[] { "Başlangıç", "Hapis", "Sokak Haberi", "Otogar" },
+            CollectionAssert.AreEqual(new[] { "Başlangıç", "Hapis", "Şampiyonlar Kupası", "Otogar" },
                 new[] { 0, 8, 16, 24 }.Select(corner => board[corner].Name).ToArray());
         }
 

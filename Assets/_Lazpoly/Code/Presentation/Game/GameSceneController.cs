@@ -951,6 +951,7 @@ namespace Lazpoly.Presentation.Game
                 _board.SetBuildingLevel(i, state.GetBuildingLevel(i));
             }
 
+            _board.SetCup(state.CupSquare);
             ShowRents(animate: false);
         }
 
@@ -1130,6 +1131,14 @@ namespace Lazpoly.Presentation.Game
                         _shownPot += pot.Delta;
                         _board.SetPot(_shownPot);
                         _board.NudgePot(pot.Delta > 0);
+                        Revision++;
+                        break;
+                    case CupHostedEvent cup:
+                        // The cup moves to its new town (leaving the one before) and the rents on the board change with it.
+                        _board.SetCup(cup.SquareIndex, animate: true);
+                        ShowRents();
+                        Pawn(cup.PlayerId)?.Cheer();
+                        Say(cup.PlayerId, F($"Kupa {L(_session.Board[cup.SquareIndex].Name)} şehrine!"));
                         Revision++;
                         break;
                     case JailChangedEvent jail:

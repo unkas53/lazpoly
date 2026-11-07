@@ -53,6 +53,13 @@ namespace Lazpoly.Presentation.Texts
                 sections.Add(Section(L("Vergi"), F($"Vergi karesine gelen, sahip olduğu şehirlerin ve tatil yerlerinin fiyatı ile üstlerindeki binaların maliyeti toplamının %{taxPercent} kadarını bankaya öder. Nakit sayılmaz; mülkü olmayan bir şey ödemez.")));
             }
 
+            int cup = IndexOfType(board, SquareType.Cup);
+            if (cup >= 0)
+            {
+                SquareDefinition square = board[cup];
+                sections.Add(Section(L(square.Name), F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir ve o şehrin kirası artar: ilk seçimde %{square.BoostPercent}, sonra kim seçerse seçsin her seçimde %{square.BoostStep} daha fazla. Kupa tek bir şehirde durur; başka bir şehir seçilince oraya geçer, eski şehrin kirası normale döner. Tatil yerleri seçilemez.")));
+            }
+
             if (HasType(board, SquareType.Lookout)) sections.Add(Section(L("Seyir Terası"), L("Buraya gelen bir sonraki sırasında iki kez zar atar ve hangisiyle gideceğini seçer.")));
             sections.Add(Section(L("İpucu"), L("Bir kareye fareyle gel ya da tıkla: fiyatı, kira tablosu ve sahibi kartında görünür. Fare tekeriyle yakınlaş, Home ile başa dön.")));
             return sections;
@@ -60,7 +67,7 @@ namespace Lazpoly.Presentation.Texts
 
         private static KeyValuePair<string, string> Section(string title, string body) => new KeyValuePair<string, string>(title, body);
 
-        /// <summary>The card squares' names, once each: "Sokak Haberi", or "Sokak Haberi ve Şans" when the board has both (Faz 24).</summary>
+        /// <summary>The card squares' names, once each: "Şans", or "Sokak Haberi ve Şans" on a board that has both (Faz 24).</summary>
         private static string CardSquaresTitle(BoardDefinition board)
         {
             var names = new List<string>();
@@ -83,14 +90,17 @@ namespace Lazpoly.Presentation.Texts
             return 0;
         }
 
-        private static bool HasType(BoardDefinition board, SquareType type)
+        private static bool HasType(BoardDefinition board, SquareType type) => IndexOfType(board, type) >= 0;
+
+        /// <summary>The first square of a type; -1 when the board has none.</summary>
+        private static int IndexOfType(BoardDefinition board, SquareType type)
         {
             for (int i = 0; i < board.Count; i++)
             {
-                if (board[i].Type == type) return true;
+                if (board[i].Type == type) return i;
             }
 
-            return false;
+            return -1;
         }
     }
 }

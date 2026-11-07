@@ -39,6 +39,10 @@ namespace Lazpoly.Core.Tests
                 case GamePhase.AwaitingDiceChoice:
                     return new ChooseDiceCommand(me, dice.NextInt(0, 2));
 
+                case GamePhase.AwaitingCupChoice:
+                    GameCommand host = dice.NextInt(0, 2) == 0 ? FirstLegal(engine, square => new HostCupCommand(me, square)) : null;
+                    return host ?? new DeclineCupCommand(me);
+
                 case GamePhase.AwaitingJailDecision:
                     var pay = new PayJailFeeCommand(me);
                     return dice.NextInt(0, 2) == 0 && Legal(engine, pay) ? pay : (GameCommand)new RollInJailCommand(me);

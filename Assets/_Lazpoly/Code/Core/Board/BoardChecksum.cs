@@ -60,6 +60,8 @@ namespace Lazpoly.Core.Board
                 Mix(square.Fee);
                 Mix(square.IsResort ? 1 : 0);
                 Mix(square.TaxPercent);
+                Mix(square.BoostPercent);
+                Mix(square.BoostStep);
             }
 
             Mix(board.Cards.Count);

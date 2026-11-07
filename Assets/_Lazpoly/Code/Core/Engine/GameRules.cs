@@ -98,6 +98,19 @@ namespace Lazpoly.Core.Engine
                 case DeclineTravelCommand _:
                     return OnTurn(state, player, GamePhase.AwaitingTravelDecision);
 
+                case HostCupCommand c:
+                {
+                    RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingCupChoice);
+                    if (turn != RejectionReason.None) return turn;
+                    RejectionReason owned = RequireOwnProperty(board, state, player, c.SquareIndex);
+                    if (owned != RejectionReason.None) return owned;
+                    if (!CanHoldCup(board, c.SquareIndex)) return RejectionReason.InvalidSquare;
+                    return player.Money >= board[player.Position].Fee ? RejectionReason.None : RejectionReason.InsufficientFunds;
+                }
+
+                case DeclineCupCommand _:
+                    return OnTurn(state, player, GamePhase.AwaitingCupChoice);
+
                 case PayJailFeeCommand _:
                 {
                     RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingJailDecision);
@@ -120,8 +133,15 @@ namespace Lazpoly.Core.Engine
             }
         }
 
-        /// <summary>Rent the owner would collect on a property right now.</summary>
+        /// <summary>Rent the owner would collect on a property right now, the cup's raise included (rounded down).</summary>
         public static int CalculateRent(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex)
+        {
+            int rent = RentWithoutCup(board, rules, state, squareIndex);
+            return squareIndex == state.CupSquare ? rent * (100 + state.CupPercent) / 100 : rent;
+        }
+
+        /// <summary>Rent the owner would collect on a property right now if the cup were not there.</summary>
+        public static int RentWithoutCup(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex)
         {
             SquareDefinition square = board[squareIndex];
             if (square.Type != SquareType.Property) return 0;
@@ -137,6 +157,32 @@ namespace Lazpoly.Core.Engine
             return OwnsWholeGroup(board, state, ownerId, square.GroupId)
                 ? square.BaseRent * rules.FullGroupRentMultiplier
                 : square.BaseRent;
+        }
+
+        /// <summary>Whether the champions' cup may stand on a square: towns only, never a holiday resort.</summary>
+        public static bool CanHoldCup(BoardDefinition board, int squareIndex) =>
+            squareIndex >= 0 && squareIndex < board.Count && board[squareIndex].Type == SquareType.Property && !board[squareIndex].IsResort;
+
+        /// <summary>
+        /// The raise, in percent, the next pick on the cup square at <paramref name="cupSquare"/> gives its town: the square's
+        /// first raise plus its step for every pick made so far in the game, whoever made it (50, 60, 70...). 0 off a cup square.
+        /// </summary>
+        public static int NextCupPercent(BoardDefinition board, GameState state, int cupSquare)
+        {
+            SquareDefinition square = board[cupSquare];
+            return square.Type == SquareType.Cup ? square.BoostPercent + square.BoostStep * state.CupPicks : 0;
+        }
+
+        /// <summary>Whether a player on the cup square is offered it: they own a town to bring it to and can pay the fee.</summary>
+        public static bool CanBringCup(BoardDefinition board, GameState state, PlayerState player)
+        {
+            if (player == null || board[player.Position].Type != SquareType.Cup || player.Money < board[player.Position].Fee) return false;
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (CanHoldCup(board, i) && state.GetOwner(i) == player.Id) return true;
+            }
+
+            return false;
         }
 
         /// <summary>How many holiday resorts <paramref name="ownerId"/> holds; each one's rent is its base rent times this.</summary>
