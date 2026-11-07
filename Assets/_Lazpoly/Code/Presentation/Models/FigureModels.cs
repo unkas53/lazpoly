@@ -48,10 +48,11 @@ namespace Lazpoly.Presentation.Models
         public const string StadiumId = "stadium";
 
         /// <summary>
-        /// Not a character: the owner's cartoon dollar stack (Meshy AI), the bundle paid money travels as, one unit long
-        /// (Tools/Art/make_corner_models.py with a small triangle budget; <see cref="MoneyBundle"/>).
+        /// Not characters: the pieces paid money travels as, the owner's banded money stack and gold bar (Meshy AI), each
+        /// one unit long, at their original quality (Tools/Art/make_corner_models.py; <see cref="MoneyBundle"/>).
         /// </summary>
-        public const string DollarsId = "dollars";
+        public const string MoneyStackId = "moneystack";
+        public const string GoldBarId = "goldbar";
 
         private const float Smoothness = 0.2f;
 

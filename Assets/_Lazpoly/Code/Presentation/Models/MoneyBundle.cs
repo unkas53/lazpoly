@@ -1,128 +1,129 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Models
 {
+    /// <summary>The two pieces paid money travels as.</summary>
+    public enum MoneyPiece
+    {
+        /// <summary>The owner's banded stack of green notes (Meshy AI).</summary>
+        Stack = 0,
+
+        /// <summary>The owner's gold bar (Meshy AI), for the big sums.</summary>
+        Gold = 1,
+    }
+
     /// <summary>
-    /// One bundle of paid money: the owner's cartoon dollar stack (Meshy AI, Tools/Art/make_corner_models.py
-    /// "dollars", <see cref="FigureModels.DollarsId"/>), a thick banded stack of green notes. It lies flat with its lowest
-    /// face at y = 0, its middle on the y axis, its length along x and its print reading to a camera that looks along +Z.
-    /// Every bundle shares one material, and none of it casts a shadow. Without the model a plain green stack with a band
-    /// stands in.
+    /// One piece of paid money: the owner's banded money stack or gold bar (Meshy AI, Tools/Art/make_corner_models.py
+    /// "moneystack" and "goldbar" at their original quality, <see cref="FigureModels.MoneyStackId"/>,
+    /// <see cref="FigureModels.GoldBarId"/>). A piece lies flat with its lowest face at y = 0, its middle on the y axis,
+    /// its length along x and its print reading to a camera that looks along +Z. Every piece of a kind shares one
+    /// material, and none casts a shadow. Without its model a plain block in its colour stands in.
     /// </summary>
     public static class MoneyBundle
     {
-        /// <summary>The bundle's size in board units: this long, and as wide and thick as the model's own proportions.</summary>
-        public const float Length = 1.4f;
-        public const float Width = Length * 0.629f;
-        public const float Height = Length * 0.443f;
+        /// <summary>A piece's length on the table in board units; its width and thickness follow the model's proportions.</summary>
+        public static float Length(MoneyPiece piece) => piece == MoneyPiece.Gold ? 1.2f : 1.4f;
+        public static float Width(MoneyPiece piece) => Length(piece) * (piece == MoneyPiece.Gold ? 0.545f : 0.586f);
+        public static float Height(MoneyPiece piece) => Length(piece) * (piece == MoneyPiece.Gold ? 0.315f : 0.473f);
 
-        /// <summary>The stand-in's band: its width along the bundle and how far it stands off the paper.</summary>
-        public const float BandWidth = 0.22f;
-        public const float BandLift = 0.008f;
+        /// <summary>The model of each piece.</summary>
+        public static string ModelId(MoneyPiece piece) => piece == MoneyPiece.Gold ? FigureModels.GoldBarId : FigureModels.MoneyStackId;
 
         private static readonly Color Green = new Color(0.45f, 0.72f, 0.40f);
-        private static readonly Color Band = new Color(0.96f, 0.74f, 0.20f);
+        private static readonly Color GoldColor = new Color(0.95f, 0.72f, 0.20f);
 
-        private static Material _modelMaterial;
-        private static Mesh _block;
-        private static Mesh _band;
-        private static Material _blockMaterial;
-        private static Material _bandMaterial;
+        private static readonly Dictionary<MoneyPiece, Material> ModelMaterials = new Dictionary<MoneyPiece, Material>();
+        private static readonly Dictionary<MoneyPiece, Material> StandInMaterials = new Dictionary<MoneyPiece, Material>();
 
-        /// <summary>Whether the owner's dollar stack is in the build.</summary>
-        public static bool HasModel => FigureModels.IsAvailable(FigureModels.DollarsId);
+        /// <summary>Whether the owner's model of the piece is in the build.</summary>
+        public static bool HasModel(MoneyPiece piece) => FigureModels.IsAvailable(ModelId(piece));
 
         /// <summary>
-        /// Reads the model (the owner's full-quality stack, big) over the first frames of the table, ahead of the first
-        /// payment, so neither the table's opening nor the payment waits for it all at once. Run it as a coroutine.
+        /// Reads both models (the owner's full-quality pieces, big) over the first frames of the table, ahead of the first
+        /// payment, so neither the table's opening nor the payment waits for them all at once. Run it as a coroutine.
         /// </summary>
-        public static System.Collections.IEnumerator Preload() => FigureModels.Warm(FigureModels.DollarsId);
+        public static IEnumerator Preload()
+        {
+            yield return FigureModels.Warm(FigureModels.MoneyStackId);
+            yield return FigureModels.Warm(FigureModels.GoldBarId);
+        }
 
-        /// <summary>A bundle as a parent object with its parts; its scale is one.</summary>
-        public static GameObject Create(string name, Transform parent)
+        /// <summary>A piece as a parent object with its parts; its scale is one.</summary>
+        public static GameObject Create(MoneyPiece piece, string name, Transform parent)
         {
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
-            GameObject model = FigureModels.Create(FigureModels.DollarsId, "Dollars", root.transform);
+            GameObject model = FigureModels.Create(ModelId(piece), piece.ToString(), root.transform);
             if (model != null)
             {
-                // The model is one unit long; its print reads from -Z, so it turns round to read to the camera.
-                model.transform.localScale = Vector3.one * Length;
+                // The models are one unit long; their print reads from -Z, so they turn round to read to the camera.
+                model.transform.localScale = Vector3.one * Length(piece);
                 model.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-                Share(model.GetComponentInChildren<Renderer>());
+                Share(piece, model.GetComponentInChildren<Renderer>());
             }
             else
             {
-                StandIn(root.transform);
+                StandIn(piece, root.transform);
             }
 
             foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>()) renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             return root;
         }
 
-        /// <summary>Every bundle draws with the first one's material; the copy each new model brings is thrown away.</summary>
-        private static void Share(Renderer renderer)
+        /// <summary>Every piece of a kind draws with the first one's material; the copy each new model brings is thrown away.</summary>
+        private static void Share(MoneyPiece piece, Renderer renderer)
         {
             if (renderer == null) return;
             Material own = renderer.sharedMaterial;
-            if (_modelMaterial == null)
+            if (!ModelMaterials.TryGetValue(piece, out Material shared) || shared == null)
             {
-                _modelMaterial = own;
+                ModelMaterials[piece] = own;
                 return;
             }
 
-            if (own == _modelMaterial) return;
-            renderer.sharedMaterial = _modelMaterial;
-            if (own != null)
+            if (own == shared) return;
+            renderer.sharedMaterial = shared;
+            if (own != null) Destroy(own);
+        }
+
+        /// <summary>A plain block in the piece's colour, for when its model is missing.</summary>
+        private static void StandIn(MoneyPiece piece, Transform parent)
+        {
+            if (!StandInMaterials.TryGetValue(piece, out Material material) || material == null)
             {
-                if (Application.isPlaying) Object.Destroy(own);
-                else Object.DestroyImmediate(own);
-            }
-        }
+                var template = Resources.Load<Material>(ModelParts.MaterialResource);
+                if (template != null)
+                {
+                    material = new Material(template) { name = $"money-{piece}", hideFlags = HideFlags.DontSave, color = piece == MoneyPiece.Gold ? GoldColor : Green };
+                    if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", piece == MoneyPiece.Gold ? 0.6f : 0.15f);
+                    if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", piece == MoneyPiece.Gold ? 0.8f : 0f);
+                }
 
-        /// <summary>A plain green stack with a band round its middle, for when the model is missing.</summary>
-        private static void StandIn(Transform parent)
-        {
-            if (_block == null || _band == null || _blockMaterial == null || _bandMaterial == null)
-            {
-                Mesh block = MeshFactory.RoundedBox(new Vector3(Length, Height, Width), 0.04f, 2);
-                _block = MeshFactory.Combine("money-bundle-block", new[] { new KeyValuePair<Mesh, Matrix4x4>(block, Matrix4x4.Translate(new Vector3(0f, Height / 2f, 0f))) });
-                Mesh strip = MeshFactory.RoundedBox(new Vector3(BandWidth, Height + 2f * BandLift, Width + 2f * BandLift), BandLift, 2);
-                _band = MeshFactory.Combine("money-bundle-band", new[] { new KeyValuePair<Mesh, Matrix4x4>(strip, Matrix4x4.Translate(new Vector3(0f, Height / 2f, 0f))) });
-                _blockMaterial = Shared("money-bundle-green", Green, 0.15f);
-                _bandMaterial = Shared("money-bundle-band", Band, 0.3f);
+                StandInMaterials[piece] = material;
             }
 
-            Part("Stack", parent, _block, _blockMaterial);
-            Part("Band", parent, _band, _bandMaterial);
-        }
-
-        private static Material Shared(string name, Color color, float smoothness)
-        {
-            var template = Resources.Load<Material>(ModelParts.MaterialResource);
-            if (template == null) return null;
-            var material = new Material(template) { name = name, hideFlags = HideFlags.DontSave, color = color };
-            if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", smoothness);
-            return material;
-        }
-
-        private static void Part(string name, Transform parent, Mesh mesh, Material material)
-        {
-            var part = new GameObject(name);
+            Vector3 size = new Vector3(Length(piece), Height(piece), Width(piece));
+            Mesh block = MeshFactory.RoundedBox(size, 0.04f, 2);
+            var part = new GameObject("Block");
             part.transform.SetParent(parent, false);
-            part.AddComponent<MeshFilter>().sharedMesh = mesh;
+            part.transform.localPosition = new Vector3(0f, size.y / 2f, 0f);
+            part.AddComponent<MeshFilter>().sharedMesh = block;
             part.AddComponent<MeshRenderer>().sharedMaterial = material;
+        }
+
+        private static void Destroy(Object thing)
+        {
+            if (Application.isPlaying) Object.Destroy(thing);
+            else Object.DestroyImmediate(thing);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            _modelMaterial = null;
-            _block = null;
-            _band = null;
-            _blockMaterial = null;
-            _bandMaterial = null;
+            ModelMaterials.Clear();
+            StandInMaterials.Clear();
         }
     }
 }

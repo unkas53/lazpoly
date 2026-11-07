@@ -1,11 +1,13 @@
+using System.Collections.Generic;
 using Lazpoly.Presentation.Models;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
-    /// One bundle of paid money on its way, the owner's wish (Faz 25): a payment travels as the owner's thick dollar stacks
-    /// (<see cref="MoneyBundle"/>), two side by side and piled on each other. It comes out of the payer's
+    /// One bundle of paid money on its way, the owner's wish (Faz 25): a payment travels as the owner's banded money stacks and,
+    /// for the big sums, gold bars (<see cref="MoneyBundle"/>), two side by side and piled on each other, the gold at the
+    /// bottom. It comes out of the payer's
     /// figure, goes straight to the middle of the table, waits there a moment, then goes straight on to whoever gets it (a
     /// figure, or the bank's safe) and sinks into it. It lies flat and never turns on the way. The whole payment takes
     /// <see cref="Seconds"/> at normal speed, and the game waits for it. The timeline and the pile are pure
@@ -30,9 +32,14 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>How long the bundle takes to grow to its size as it leaves the payer.</summary>
         public const float PopSeconds = 0.15f;
 
-        /// <summary>One bundle for every hundred started, at least one and at most <see cref="MaxBundles"/>.</summary>
+        /// <summary>
+        /// A gold bar for every full <see cref="GoldValue"/> (at most <see cref="MaxGold"/>), a money stack for every hundred
+        /// started of the rest; at least one piece and at most <see cref="MaxPieces"/>.
+        /// </summary>
+        public const int GoldValue = 500;
+        public const int MaxGold = 2;
         public const int BundleValue = 100;
-        public const int MaxBundles = 4;
+        public const int MaxPieces = 4;
 
         /// <summary>How many bundles lie side by side in a layer of the pile, and the gaps between them and between the layers.</summary>
         public const int PerLayer = 2;
@@ -50,26 +57,49 @@ namespace Lazpoly.Presentation.Effects
         private float _age;
         private Vector3 _size;
 
-        /// <summary>How many thick bundles show a payment of <paramref name="amount"/>: none for nothing, else one per hundred started.</summary>
-        public static int Bundles(int amount)
+        /// <summary>The pieces that show a payment of <paramref name="amount"/>, the gold bars first: none for nothing.</summary>
+        public static MoneyPiece[] Pieces(int amount)
         {
-            if (amount <= 0) return 0;
-            return Mathf.Clamp((amount + BundleValue - 1) / BundleValue, 1, MaxBundles);
+            if (amount <= 0) return new MoneyPiece[0];
+            int gold = Mathf.Min(amount / GoldValue, MaxGold);
+            int rest = amount - gold * GoldValue;
+            int stacks = Mathf.Min((rest + BundleValue - 1) / BundleValue, MaxPieces - gold);
+            if (gold + stacks == 0) stacks = 1;
+            var pieces = new MoneyPiece[gold + stacks];
+            for (int i = 0; i < pieces.Length; i++) pieces[i] = i < gold ? MoneyPiece.Gold : MoneyPiece.Stack;
+            return pieces;
         }
 
         /// <summary>
-        /// Where the <paramref name="index"/>th of <paramref name="count"/> bundles lies in the pile, in the pile's own frame
-        /// (x along the bundles, y up, z across): two side by side in each layer, each layer on the one below, a lone bundle
-        /// in the middle of its layer, each a little off the line. The pile is centred across.
+        /// Where the <paramref name="index"/>th of the <paramref name="pieces"/> lies in the pile, in the pile's own frame
+        /// (x along the pieces, y up, z across): two side by side in each layer, each layer on the tallest piece of the one
+        /// below, a lone piece in the middle of its layer, each a little off the line. The pile is centred across.
         /// </summary>
-        public static Vector3 StackOffset(int index, int count)
+        public static Vector3 StackOffset(int index, IReadOnlyList<MoneyPiece> pieces)
         {
             int layer = index / PerLayer;
-            int inLayer = Mathf.Min(PerLayer, count - layer * PerLayer);
-            float across = MoneyBundle.Width + SideGap;
-            float z = inLayer > 1 ? (index % PerLayer - (inLayer - 1) / 2f) * across : 0f;
+            float y = 0f;
+            for (int below = 0; below < layer; below++) y += LayerHeight(pieces, below) + LayerGap;
+
+            int first = layer * PerLayer;
+            int inLayer = Mathf.Min(PerLayer, pieces.Count - first);
+            float z = 0f;
+            if (inLayer > 1)
+            {
+                float left = MoneyBundle.Width(pieces[first]), right = MoneyBundle.Width(pieces[first + 1]);
+                float span = left / 2f + SideGap + right / 2f;
+                z = index == first ? -span / 2f : span / 2f;
+            }
+
             float x = ((index * 37) % 5 - 2) / 2f * Jitter;
-            return new Vector3(x, layer * (MoneyBundle.Height + LayerGap), z);
+            return new Vector3(x, y, z);
+        }
+
+        private static float LayerHeight(IReadOnlyList<MoneyPiece> pieces, int layer)
+        {
+            float tallest = 0f;
+            for (int i = layer * PerLayer; i < Mathf.Min(pieces.Count, (layer + 1) * PerLayer); i++) tallest = Mathf.Max(tallest, MoneyBundle.Height(pieces[i]));
+            return tallest;
         }
 
         /// <summary>
@@ -79,11 +109,11 @@ namespace Lazpoly.Presentation.Effects
         /// </summary>
         public static float Fly(Transform parent, Vector3 from, Vector3 middle, Vector3 to, int amount, Quaternion rest, float speed)
         {
-            int count = Bundles(amount);
-            for (int i = 0; i < count; i++)
+            MoneyPiece[] pieces = Pieces(amount);
+            for (int i = 0; i < pieces.Length; i++)
             {
-                GameObject piece = MoneyBundle.Create("Money Bundle", parent);
-                Vector3 offset = rest * StackOffset(i, count);
+                GameObject piece = MoneyBundle.Create(pieces[i], $"Money {pieces[i]}", parent);
+                Vector3 offset = rest * StackOffset(i, pieces);
                 var flight = piece.AddComponent<MoneyFlight>();
                 flight._from = from + offset;
                 flight._middle = middle + offset;

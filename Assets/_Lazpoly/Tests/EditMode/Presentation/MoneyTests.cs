@@ -16,56 +16,72 @@ namespace Lazpoly.Presentation.Tests
     public class MoneyTests
     {
         [Test]
-        public void APaymentIsShownInThickBundles()
+        public void APaymentIsShownInMoneyStacksAndGoldBars()
         {
-            Assert.AreEqual(0, MoneyFlight.Bundles(0));
-            Assert.AreEqual(1, MoneyFlight.Bundles(10), "even a small payment goes as a bundle");
-            Assert.AreEqual(1, MoneyFlight.Bundles(100));
-            Assert.AreEqual(3, MoneyFlight.Bundles(260));
-            Assert.AreEqual(MoneyFlight.MaxBundles, MoneyFlight.Bundles(5000));
-            Assert.GreaterOrEqual(MoneyBundle.Height, 0.25f * MoneyBundle.Width, "a thick tomar, not a single note");
+            CollectionAssert.IsEmpty(MoneyFlight.Pieces(0));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(10), "even a small payment goes as a stack");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(100));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(260));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold }, MoneyFlight.Pieces(500), "a gold bar for every full 500");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(650), "the gold first, at the bottom");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(5000));
+            Assert.LessOrEqual(MoneyFlight.Pieces(499).Length, MoneyFlight.MaxPieces);
+            foreach (MoneyPiece piece in new[] { MoneyPiece.Stack, MoneyPiece.Gold })
+            {
+                Assert.GreaterOrEqual(MoneyBundle.Height(piece), 0.25f * MoneyBundle.Width(piece), $"{piece}: thick, not a single note");
+            }
         }
 
         [Test]
-        public void TheBundlesLieSideBySideAndPileUp()
+        public void ThePiecesLieSideBySideAndPileUp()
         {
-            Vector3 first = MoneyFlight.StackOffset(0, 3), second = MoneyFlight.StackOffset(1, 3), third = MoneyFlight.StackOffset(2, 3);
+            MoneyPiece[] three = { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Stack };
+            Vector3 first = MoneyFlight.StackOffset(0, three), second = MoneyFlight.StackOffset(1, three), third = MoneyFlight.StackOffset(2, three);
             Assert.AreEqual(0f, first.y);
             Assert.AreEqual(first.y, second.y, 1e-5f, "two side by side in a layer");
-            Assert.Greater(Mathf.Abs(second.z - first.z), MoneyBundle.Width, "beside each other, not overlapping");
+            Assert.Greater(Mathf.Abs(second.z - first.z), MoneyBundle.Width(MoneyPiece.Stack), "beside each other, not overlapping");
             Assert.AreEqual(0f, first.z + second.z, 1e-5f, "the layer is centred across");
-            Assert.AreEqual(MoneyBundle.Height + MoneyFlight.LayerGap, third.y - first.y, 1e-5f, "the next layer lies on top");
-            Assert.AreEqual(0f, third.z, 1e-5f, "a lone bundle in the middle of its layer");
-            Assert.AreEqual(0f, MoneyFlight.StackOffset(0, 1).z, 1e-5f);
-            for (int i = 0; i < MoneyFlight.MaxBundles; i++)
-            {
-                Assert.LessOrEqual(Mathf.Abs(MoneyFlight.StackOffset(i, MoneyFlight.MaxBundles).x), MoneyFlight.Jitter, "squared up");
-            }
+            Assert.AreEqual(MoneyBundle.Height(MoneyPiece.Stack) + MoneyFlight.LayerGap, third.y - first.y, 1e-5f, "the next layer lies on top");
+            Assert.AreEqual(0f, third.z, 1e-5f, "a lone piece in the middle of its layer");
+            Assert.AreEqual(0f, MoneyFlight.StackOffset(0, new[] { MoneyPiece.Gold }).z, 1e-5f);
 
+            MoneyPiece[] mixed = MoneyFlight.Pieces(650);
+            Vector3 gold = MoneyFlight.StackOffset(0, mixed), beside = MoneyFlight.StackOffset(1, mixed), top = MoneyFlight.StackOffset(2, mixed);
+            Assert.Greater(beside.z - gold.z, (MoneyBundle.Width(MoneyPiece.Gold) + MoneyBundle.Width(MoneyPiece.Stack)) / 2f, "gold and a stack side by side");
+            Assert.AreEqual(Mathf.Max(MoneyBundle.Height(MoneyPiece.Gold), MoneyBundle.Height(MoneyPiece.Stack)) + MoneyFlight.LayerGap, top.y, 1e-5f, "on the taller one below");
+
+            MoneyPiece[] most = MoneyFlight.Pieces(5000);
+            for (int i = 0; i < most.Length; i++)
+            {
+                Assert.LessOrEqual(Mathf.Abs(MoneyFlight.StackOffset(i, most).x), MoneyFlight.Jitter, "squared up");
+            }
         }
 
         [Test]
-        public void ABundleIsTheOwnersDollarStackSharingOneMaterial()
+        public void EachPieceIsTheOwnersModelSharingOneMaterial()
         {
             var root = new GameObject("Table");
             try
             {
-                Assert.IsTrue(MoneyBundle.HasModel, "run Tools/Art/make_corner_models.py dollars=...");
-                GameObject bundle = MoneyBundle.Create("Bundle", root.transform);
-                Renderer body = bundle.GetComponentInChildren<Renderer>();
-                Assert.IsNotNull(body.sharedMaterial.mainTexture, "the model's colour map");
-                Bounds bounds = body.bounds;
-                Assert.That(bounds.size.x, Is.EqualTo(MoneyBundle.Length).Within(0.05f), "as long as a bundle");
-                Assert.That(bounds.size.y, Is.EqualTo(MoneyBundle.Height).Within(0.05f));
-                Assert.That(bounds.size.z, Is.EqualTo(MoneyBundle.Width).Within(0.05f));
-                Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), "it lies on y = 0");
-                foreach (Renderer part in bundle.GetComponentsInChildren<Renderer>())
+                foreach (MoneyPiece kind in new[] { MoneyPiece.Stack, MoneyPiece.Gold })
                 {
-                    Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, part.shadowCastingMode, part.name);
-                }
+                    Assert.IsTrue(MoneyBundle.HasModel(kind), $"{kind}: run Tools/Art/make_corner_models.py (see the README)");
+                    GameObject piece = MoneyBundle.Create(kind, kind.ToString(), root.transform);
+                    Renderer body = piece.GetComponentInChildren<Renderer>();
+                    Assert.IsNotNull(body.sharedMaterial.mainTexture, $"{kind}: the model's colour map");
+                    Bounds bounds = body.bounds;
+                    Assert.That(bounds.size.x, Is.EqualTo(MoneyBundle.Length(kind)).Within(0.05f), $"{kind}: its length");
+                    Assert.That(bounds.size.y, Is.EqualTo(MoneyBundle.Height(kind)).Within(0.05f), $"{kind}: its thickness");
+                    Assert.That(bounds.size.z, Is.EqualTo(MoneyBundle.Width(kind)).Within(0.05f), $"{kind}: its width");
+                    Assert.That(bounds.min.y, Is.EqualTo(0f).Within(0.01f), $"{kind} lies on y = 0");
+                    foreach (Renderer part in piece.GetComponentsInChildren<Renderer>())
+                    {
+                        Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, part.shadowCastingMode, part.name);
+                    }
 
-                Material shared = MoneyBundle.Create("Other", root.transform).GetComponentInChildren<Renderer>().sharedMaterial;
-                Assert.AreSame(body.sharedMaterial, shared, "bundles share their material");
+                    Material shared = MoneyBundle.Create(kind, "Other", root.transform).GetComponentInChildren<Renderer>().sharedMaterial;
+                    Assert.AreSame(body.sharedMaterial, shared, $"{kind}: pieces share their material");
+                }
             }
             finally
             {
@@ -94,8 +110,7 @@ namespace Lazpoly.Presentation.Tests
                 float seconds = MoneyFlight.Fly(root.transform, from, middle, to, 260, Quaternion.identity, 2f);
                 Assert.AreEqual(1.5f, seconds, 1e-4f, "the animation speed setting shortens it");
                 MoneyFlight[] pieces = root.GetComponentsInChildren<MoneyFlight>();
-                Assert.AreEqual(3, pieces.Length, "three bundles for 260");
-                Assert.AreEqual(MoneyFlight.MaxBundles, MoneyFlight.Bundles(5000), "a big payment piles up to four bundles");
+                Assert.AreEqual(3, pieces.Length, "three stacks for 260");
                 Assert.Less(Vector3.Distance(pieces[0].transform.position, pieces[2].transform.position), 1.5f, "the bundles leave together, piled");
             }
             finally
@@ -156,7 +171,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Greater(board.MoneyMiddle.y, BoardView.LawnHeight + 0.5f, "money gathers in the air over the lawn");
                 Vector3 middle = new Vector3(board.MoneyMiddle.x, 0f, board.MoneyMiddle.z);
                 Assert.That(Vector3.Dot(middle, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(-BoardView.MoneyBack).Within(0.01f), "level with the dice");
-                Assert.Greater(Vector3.Dot(middle, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), 1f + MoneyBundle.Length / 2f, "beside the dice on the right (their outer edge is about 1 unit out), clear of them");
+                Assert.Greater(Vector3.Dot(middle, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), 1f + MoneyBundle.Length(MoneyPiece.Stack) / 2f, "beside the dice on the right (their outer edge is about 1 unit out), clear of them");
                 Assert.Greater(board.Safe.GetComponentsInChildren<MeshRenderer>().Length, 8, "feet, body, door, dial, handle, hinges and slot");
             }
             finally
