@@ -65,13 +65,13 @@ namespace Lazpoly.Presentation.Tabletop
         public const float SafeSize = 1.5f;
 
         /// <summary>
-        /// Where paid money gathers before it goes on to whoever gets it: beside the dice on the screen's right (this many
-        /// board units right of the lawn's middle and this many down the screen, level with the dice) and this high over the
-        /// lawn, so the thick bundles cover neither the dice nor the score above them.
+        /// Where paid money gathers before it goes on to whoever gets it: low on the lawn to the right of and a little below
+        /// the dice (this many board units right of the lawn's middle and this many down the screen) and only this high over
+        /// the lawn, so even a two-layer pile of stacks and gold bars stays clear of the dice and of the score above them.
         /// </summary>
-        public const float MoneySide = 2.3f;
-        public const float MoneyBack = 1.5f;
-        public const float MoneyHover = 0.6f;
+        public const float MoneySide = 2.6f;
+        public const float MoneyBack = 2.2f;
+        public const float MoneyHover = 0.3f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;

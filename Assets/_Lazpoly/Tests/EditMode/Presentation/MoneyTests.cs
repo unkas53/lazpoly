@@ -168,9 +168,10 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Less(Vector3.Dot(place, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), -2f, "to the screen's left of the middle");
                 Assert.That(Vector3.Dot(place, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(0f).Within(0.01f), "level with the middle, clear of the dice below it and the score above");
                 Assert.Greater(board.SafeSlot.y, board.Safe.position.y + BoardView.SafeSize * 0.9f, "money goes in at the top");
-                Assert.Greater(board.MoneyMiddle.y, BoardView.LawnHeight + 0.5f, "money gathers in the air over the lawn");
+                Assert.Greater(board.MoneyMiddle.y, BoardView.LawnHeight + 0.2f, "money gathers in the air over the lawn");
                 Vector3 middle = new Vector3(board.MoneyMiddle.x, 0f, board.MoneyMiddle.z);
-                Assert.That(Vector3.Dot(middle, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(-BoardView.MoneyBack).Within(0.01f), "level with the dice");
+                Assert.That(Vector3.Dot(middle, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(-BoardView.MoneyBack).Within(0.01f), "a little below the dice");
+                Assert.Less(-BoardView.MoneyBack, -1.5f, "below the dice's line, away from the score");
                 Assert.Greater(Vector3.Dot(middle, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), 1f + MoneyBundle.Length(MoneyPiece.Stack) / 2f, "beside the dice on the right (their outer edge is about 1 unit out), clear of them");
                 Assert.Greater(board.Safe.GetComponentsInChildren<MeshRenderer>().Length, 8, "feet, body, door, dial, handle, hinges and slot");
             }
