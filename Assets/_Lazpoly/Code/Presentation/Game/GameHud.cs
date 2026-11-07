@@ -1263,7 +1263,7 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>
         /// The city's card while it is for sale: the land and the houses the first visit allows,
-        /// "buy" with the whole price, or "move on". Buying puts the building card away for this visit.
+        /// "buy" with the whole price (the land and the picked houses in one command and one payment), or "move on". Buying puts the building card away for this visit.
         /// </summary>
         private void RenderCityCard(UiBuilder ui)
         {
@@ -1275,7 +1275,7 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>
         /// The same card on an owned city: the levels above the one it stands at, what they cost
-        /// and earn, "build" or "not now". Building sends one command per house; the host accepts each in turn.
+        /// and earn, "build" or "not now". Building sends one command for the picked level, built at once in one payment.
         /// </summary>
         private void RenderBuildCard(UiBuilder ui)
         {

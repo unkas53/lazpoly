@@ -87,7 +87,15 @@ namespace Lazpoly.App.AI
 
             // A square that completes a group is worth dipping into the reserve for.
             int reserve = view.CompletesGroup(square, PlayerId) ? view.Reserve / 3 : view.Reserve;
-            return view.Me.Money - price >= reserve ? buy : (GameCommand)new DeclinePurchaseCommand(PlayerId);
+            if (view.Me.Money - price < reserve) return new DeclinePurchaseCommand(PlayerId);
+
+            // The houses it would put up afterwards go up with the purchase, in one step and one payment, like a person's
+            // pick on the city card.
+            int cost = view.Board[square].BuildingCost;
+            int spare = view.Me.Money - price - view.Reserve * Profile.BuildReserveMultiplier;
+            int levels = cost > 0 && spare > 0 ? Math.Min(GameRules.BuildableAfterPurchase(view.Board, view.Me, square), spare / cost) : 0;
+            var withHouses = new BuyPropertyCommand(PlayerId, levels);
+            return levels > 0 && view.Legal(withHouses) ? withHouses : buy;
         }
 
         /// <summary>Takes a ride to a free property it can afford (one completing a group first) or to a rich pot.</summary>

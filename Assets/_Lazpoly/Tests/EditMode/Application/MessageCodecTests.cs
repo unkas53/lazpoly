@@ -51,6 +51,7 @@ namespace Lazpoly.App.Tests
             yield return new RefusedMessage { Reason = RefusalReason.BoardMismatch };
             yield return new CommandMessage { Command = new RollDiceCommand(1) };
             yield return new CommandMessage { Command = new BuyPropertyCommand(2) };
+            yield return new CommandMessage { Command = new BuyPropertyCommand(2, 4) };
             yield return new CommandMessage { Command = new DeclinePurchaseCommand(3) };
             yield return new CommandMessage { Command = new EndTurnCommand(4) };
             yield return new CommandMessage { Command = new BuildCommand(1, 5) };

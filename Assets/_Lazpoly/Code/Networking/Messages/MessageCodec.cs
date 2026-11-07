@@ -14,7 +14,7 @@ namespace Lazpoly.Net.Messages
     public static class MessageCodec
     {
         /// <summary>
-        /// 15: a build command carries how many levels go up at once. 14: the champions' cup (its commands, event and the cup's town, raise and picks in the state). 13: the jail (its commands, event and each player's turns to wait). 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
+        /// 15: a build or buy command carries how many levels go up at once. 14: the champions' cup (its commands, event and the cup's town, raise and picks in the state). 13: the jail (its commands, event and each player's turns to wait). 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
         /// not end on another player's town. 10: the engine
         /// ends an insolvent player's game at once and the turn ends by itself. Mixed builds must not share a table.
         /// </summary>
@@ -197,6 +197,7 @@ namespace Lazpoly.Net.Messages
             w.WriteInt(command.PlayerId);
             switch (command)
             {
+                case BuyPropertyCommand c: w.WriteByte((byte)Math.Clamp(c.Levels, 0, byte.MaxValue)); break;
                 case BuildCommand c:
                     w.WriteInt(c.SquareIndex);
                     w.WriteByte((byte)Math.Clamp(c.Levels, 0, byte.MaxValue));
@@ -244,7 +245,7 @@ namespace Lazpoly.Net.Messages
             switch (tag)
             {
                 case CommandTag.Roll: return new RollDiceCommand(playerId);
-                case CommandTag.Buy: return new BuyPropertyCommand(playerId);
+                case CommandTag.Buy: return new BuyPropertyCommand(playerId, r.ReadByte());
                 case CommandTag.Decline: return new DeclinePurchaseCommand(playerId);
                 case CommandTag.EndTurn: return new EndTurnCommand(playerId);
                 case CommandTag.Build:

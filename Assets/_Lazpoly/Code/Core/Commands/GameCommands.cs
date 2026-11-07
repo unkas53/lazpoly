@@ -19,9 +19,20 @@ namespace Lazpoly.Core.Commands
         public RollDiceCommand(int playerId) : base(playerId) { }
     }
 
+    /// <summary>
+    /// Buys the square the player stands on, and with <see cref="Levels"/> above zero puts that many building levels up on
+    /// it in the same step: the level picked on the city card is built at once, the plot never shows on its own, and the
+    /// price and the buildings are paid in one payment (the owner's wish).
+    /// </summary>
     public sealed class BuyPropertyCommand : GameCommand
     {
-        public BuyPropertyCommand(int playerId) : base(playerId) { }
+        public BuyPropertyCommand(int playerId, int levels = 0) : base(playerId)
+        {
+            Levels = levels;
+        }
+
+        /// <summary>How many building levels go up with the purchase; the rules allow 0 up to the first-lap or full limit.</summary>
+        public int Levels { get; }
     }
 
     public sealed class DeclinePurchaseCommand : GameCommand

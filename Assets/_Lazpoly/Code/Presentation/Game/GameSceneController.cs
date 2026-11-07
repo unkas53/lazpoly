@@ -1169,9 +1169,13 @@ namespace Lazpoly.Presentation.Game
                             break;
                         }
 
+                        // Bought with buildings on the same card: the picked level goes up at once and the plot never shows
+                        // on its own (the owner's wish). The buildings go up first, so the marker stays hidden when the owner is set.
+                        int builtWithPurchase = BuiltWithPurchase(owner, _pendingEvents);
+                        if (builtWithPurchase > 0) _board.SetBuildingLevel(owner.SquareIndex, builtWithPurchase, animate: true);
                         _board.SetOwner(owner.SquareIndex, ColorOf(owner.NewOwnerId));
                         ShowRents();
-                        _board.RaiseFlag(owner.SquareIndex);
+                        if (builtWithPurchase == 0) _board.RaiseFlag(owner.SquareIndex);
                         Pawn(owner.NewOwnerId)?.Cheer();
                         // Bought from the bank on landing; a trade has its own lines.
                         if (owner.PreviousOwnerId == GameState.NoOwner && _shownPhase == GamePhase.AwaitingBuyDecision)
@@ -1351,6 +1355,22 @@ namespace Lazpoly.Presentation.Game
             yield return new WaitForSeconds(seconds - sink);
             if (toBank) _board.NudgeSafe();
             yield return new WaitForSeconds(sink);
+        }
+
+        /// <summary>
+        /// The building level a town bought from the bank gets in the same step (the level picked on the city card), from
+        /// the events still waiting; 0 when it is bought bare or changes hands otherwise.
+        /// </summary>
+        public static int BuiltWithPurchase(PropertyOwnerChangedEvent owner, IEnumerable<GameEvent> next)
+        {
+            if (owner == null || owner.PreviousOwnerId != GameState.NoOwner || owner.NewOwnerId == GameState.NoOwner) return 0;
+            foreach (GameEvent gameEvent in next)
+            {
+                if (gameEvent is BuildingLevelChangedEvent building && building.SquareIndex == owner.SquareIndex) return building.Level;
+                if (gameEvent is PropertyOwnerChangedEvent || gameEvent is PlayerMovedEvent || gameEvent is TurnStartedEvent || gameEvent is MoneyChangedEvent) break;
+            }
+
+            return 0;
         }
 
         /// <summary>
