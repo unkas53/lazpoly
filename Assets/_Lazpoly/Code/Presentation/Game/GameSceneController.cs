@@ -53,10 +53,6 @@ namespace Lazpoly.Presentation.Game
         /// <summary>How long the line over the table (who rolls first) stays up.</summary>
         public const float AnnouncementSeconds = 3f;
 
-        /// <summary>A payment of this much or more flies as several coins.</summary>
-        private const int CoinStep = 120;
-        private const int MaxCoins = 4;
-
         private readonly Queue<GameEvent> _pendingEvents = new Queue<GameEvent>();
         private readonly Dictionary<int, PawnView> _pawns = new Dictionary<int, PawnView>();
         private readonly BubbleQueue _bubbleQueue = new BubbleQueue();
@@ -281,9 +277,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether the roll on show was made by someone at this screen: the "you roll again" note is for them alone.</summary>
         public bool ShownRollByPerson => _session != null && ShownRollPlayer != GameState.NoOwner && _session.CanControl(ShownRollPlayer) && !_session.IsAiPlaying(ShownRollPlayer);
 
-        /// <summary>Who paid last and why, so the matching gain can be shown as coins flying from them.</summary>
-        private int _lastPayer = -1;
-        private MoneyReason _lastPaymentReason;
+        /// <summary>Payments still in the queue that an earlier flight already carried (more houses bought at once).</summary>
+        private readonly HashSet<GameEvent> _flownAlong = new HashSet<GameEvent>();
 
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
 
@@ -1060,6 +1055,7 @@ namespace Lazpoly.Presentation.Game
             _playback = null;
             _playing = false;
             _pendingEvents.Clear();
+            _flownAlong.Clear();
             Markers?.HideTarget();
             SyncViewsToState();
             AddLog(L("Oyun durumu ev sahibinden yeniden alındı."));
@@ -1156,11 +1152,13 @@ namespace Lazpoly.Presentation.Game
                         yield return new WaitForSeconds(CardReadSeconds / Mathf.Max(Settings.AnimationSpeed, 0.1f));
                         break;
                     case MoneyChangedEvent money:
-                        yield return ShowPayment(money);
+                        // The payer's money drops as the notes leave; a player paid by them gains once the flight has landed
+                        // (their event comes right after the payment's), and money from the bank shows at once.
                         _shownMoney[money.PlayerId] = ShownMoneyOf(money.PlayerId) + money.Delta;
                         Revision++;
                         ShowMoney(money);
                         React(money.PlayerId, money.Delta);
+                        if (money.Delta < 0) yield return ShowPayment(money);
                         break;
                     case PropertyOwnerChangedEvent owner:
                         if (owner.NewOwnerId == GameState.NoOwner)
@@ -1323,45 +1321,73 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
-        /// Money seen moving: rent flies from the payer's pawn to the owner's, taxes and fines to the
-        /// pot. The gain side waits for the coins to land before its number changes.
+        /// Money seen moving (the owner's wish, Faz 25): the owner's notes and coins rise out of the payer's figure, gather in the
+        /// middle of the table and go on to the figure of the player who gets them, or into the bank's safe. It takes
+        /// <see cref="MoneyFlight.Seconds"/> at normal speed and the game waits for it. Houses bought together fly as one payment.
         /// </summary>
         private IEnumerator ShowPayment(MoneyChangedEvent money)
         {
-            if (money.Delta < 0)
+            if (_flownAlong.Remove(money)) yield break;
+            PawnView payer = Pawn(money.PlayerId);
+            if (payer == null || !payer.gameObject.activeInHierarchy) yield break;
+
+            int amount = -money.Delta;
+            PawnView receiver = Pawn(PaymentReceiver(money, _pendingEvents));
+            bool toBank = receiver == null || !receiver.gameObject.activeInHierarchy;
+            if (toBank)
             {
-                _lastPayer = money.PlayerId;
-                _lastPaymentReason = money.Reason;
-                bool toPot = _session.Board.HasPot && (money.Reason == MoneyReason.Tax || money.Reason == MoneyReason.Card);
-                if (toPot && _pawns.TryGetValue(money.PlayerId, out PawnView payer) && payer.gameObject.activeInHierarchy)
+                foreach (MoneyChangedEvent along in PaidAlong(money, _pendingEvents))
                 {
-                    FlyCoins(payer.transform.position, _board.transform.position + Vector3.up * 0.2f, -money.Delta);
+                    _flownAlong.Add(along);
+                    amount -= along.Delta;
                 }
-
-                yield break;
             }
 
-            bool rent = money.Reason == MoneyReason.Rent && _lastPayer >= 0 && _lastPaymentReason == MoneyReason.Rent && _lastPayer != money.PlayerId;
-            if (!rent || !_pawns.TryGetValue(_lastPayer, out PawnView from) || !_pawns.TryGetValue(money.PlayerId, out PawnView to)) yield break;
-            if (!from.gameObject.activeInHierarchy || !to.gameObject.activeInHierarchy) yield break;
-            _lastPayer = -1;
-            float seconds = FlyCoins(from.transform.position, to.transform.position, money.Delta);
-            yield return new WaitForSeconds(seconds);
+            Vector3 to = toBank ? _board.SafeSlot : FigureMiddle(receiver);
+            Quaternion rest = Quaternion.LookRotation(BoardView.ScreenUp(_labelYaw));
+            float seconds = MoneyFlight.Fly(transform, FigureMiddle(payer), _board.MoneyMiddle, to, amount, rest, Speed);
+            float sink = MoneyFlight.SinkSeconds / Speed;
+            yield return new WaitForSeconds(seconds - sink);
+            if (toBank) _board.NudgeSafe();
+            yield return new WaitForSeconds(sink);
         }
 
-        /// <summary>Starts one coin per <see cref="CoinStep"/> of the amount (at least one, at most four) and says how long they fly.</summary>
-        private float FlyCoins(Vector3 from, Vector3 to, int amount)
+        /// <summary>
+        /// Who gets a payment: the player whose gain of the same sum for the same reason comes right after it (rent, a trade,
+        /// a bankrupt's cash), or nobody (<see cref="GameState.NoOwner"/>) when it goes to the bank.
+        /// </summary>
+        public static int PaymentReceiver(MoneyChangedEvent paid, IEnumerable<GameEvent> next)
         {
-            int coins = Mathf.Clamp(amount / CoinStep + 1, 1, MaxCoins);
-            float total = 0f;
-            for (int i = 0; i < coins; i++)
+            if (paid == null || paid.Delta >= 0) return GameState.NoOwner;
+            foreach (GameEvent gameEvent in next)
             {
-                CoinFlight coin = CoinFlight.Spawn(transform, from + Vector3.up * 0.3f, to + Vector3.up * 0.3f, Speed, i * 0.08f);
-                total = Mathf.Max(total, coin.TotalSeconds);
+                return gameEvent is MoneyChangedEvent gain && gain.Delta == -paid.Delta && gain.Reason == paid.Reason && gain.PlayerId != paid.PlayerId
+                    ? gain.PlayerId : GameState.NoOwner;
             }
 
-            return total;
+            return GameState.NoOwner;
         }
+
+        /// <summary>
+        /// The bank payments still waiting that fly with <paramref name="paid"/>: the same player's further building payments
+        /// before anyone moves or the turn passes (houses bought together), so they make one flight instead of one each.
+        /// </summary>
+        public static List<MoneyChangedEvent> PaidAlong(MoneyChangedEvent paid, IEnumerable<GameEvent> next)
+        {
+            var along = new List<MoneyChangedEvent>();
+            if (paid == null || paid.Delta >= 0 || paid.Reason != MoneyReason.Building) return along;
+            foreach (GameEvent gameEvent in next)
+            {
+                if (gameEvent is TurnStartedEvent || gameEvent is PlayerMovedEvent) break;
+                if (gameEvent is MoneyChangedEvent more && more.PlayerId == paid.PlayerId && more.Delta < 0 && more.Reason == MoneyReason.Building) along.Add(more);
+            }
+
+            return along;
+        }
+
+        /// <summary>Where money leaves or reaches a figure: about its waist.</summary>
+        private static Vector3 FigureMiddle(PawnView pawn) =>
+            pawn.transform.position + Vector3.up * (pawn.IsCharacter ? PawnView.CharacterHeight * MoneyHeight : 0.65f);
 
         /// <summary>A sum worth reacting to: from this much on a figure cheers at money coming in or sulks at money going out.</summary>
         public const int CheerFrom = 150;
