@@ -70,6 +70,14 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Post-processing runs on Medium and High; Low draws the plain picture.</summary>
         public static bool PostProcessingOn(GraphicsQuality quality) => quality != GraphicsQuality.Low;
 
+        /// <summary>
+        /// Whether the colour effects (grading, tonemapping, vignette, bloom) draw. Built games never had them (the URP
+        /// renderer lacked its post-processing resources until Faz 25), so the bright, pastel look the owner approved is the
+        /// look without them; switched on, the table turned darker and greyer. Post-processing itself stays on for the
+        /// anti-aliasing (SMAA on High, FXAA on Medium).
+        /// </summary>
+        public static readonly bool LookEffectsOn = false;
+
         /// <summary>Bloom is the costliest effect and the one that made the labels glow, so only High keeps it.</summary>
         public static bool BloomOn(GraphicsQuality quality) => quality == GraphicsQuality.High;
 
@@ -150,7 +158,7 @@ namespace Lazpoly.Presentation.Tabletop
                 volume.profile = CreateProfile();
             }
 
-            volume.enabled = postProcessing;
+            volume.enabled = postProcessing && LookEffectsOn;
             if (volume.profile != null && volume.profile.TryGet(out Bloom bloom)) bloom.active = BloomOn(quality);
         }
 

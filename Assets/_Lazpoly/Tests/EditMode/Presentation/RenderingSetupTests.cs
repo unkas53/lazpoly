@@ -54,6 +54,22 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsTrue(RoomDressing.PostProcessingOn(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
             Assert.IsFalse(RoomDressing.BloomOn(Lazpoly.Infra.Settings.GraphicsQuality.Medium), "Medium runs the grading without bloom");
             Assert.IsTrue(RoomDressing.BloomOn(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            Assert.IsFalse(RoomDressing.LookEffectsOn, "the owner's bright look: no grading, tonemapping or vignette");
+
+            var holder = new GameObject("Camera Test");
+            try
+            {
+                Camera camera = holder.AddComponent<Camera>();
+                RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.High);
+                var data = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                Assert.IsTrue(data.renderPostProcessing, "post-processing runs for the edge smoothing");
+                Assert.AreEqual(UnityEngine.Rendering.Universal.AntialiasingMode.SubpixelMorphologicalAntiAliasing, data.antialiasing);
+                Assert.IsFalse(camera.GetComponent<Volume>().enabled, "but the colour effects stay off");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
         }
 
         [Test]
