@@ -60,9 +60,16 @@ namespace Lazpoly.Presentation.Tests
             CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyPile.Pieces(50));
             CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyPile.Pieces(1500));
             Assert.AreEqual(MoneyPile.MaxPieces, MoneyPile.Pieces(100000).Length);
-            Assert.AreEqual(0f, MoneyPile.GridOffset(0, 1).x, 1e-5f, "a lone piece in the middle");
-            Assert.Greater(MoneyPile.GridOffset(1, 4).x - MoneyPile.GridOffset(0, 4).x, MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale, "two to a row, side by side");
-            Assert.Greater(MoneyPile.GridOffset(0, 4).z, MoneyPile.GridOffset(2, 4).z, "the first row at the back");
+            Assert.AreEqual(0f, MoneyPile.SlotOffset(0, 1).x, 1e-5f, "a lone piece in the middle");
+            for (int i = 0; i < MoneyPile.MaxPieces; i++)
+            {
+                Vector3 slot = MoneyPile.SlotOffset(i, MoneyPile.MaxPieces);
+                Assert.AreEqual(0f, slot.z, 1e-5f, "one row, none behind another");
+                Assert.LessOrEqual(Mathf.Abs(slot.x) + MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale / 2f, MoneyPile.TraySize.x / 2f + 1e-4f, "on the tray");
+                if (i > 0) Assert.AreEqual(MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale + MoneyPile.Gap, slot.x - MoneyPile.SlotOffset(i - 1, MoneyPile.MaxPieces).x, 1e-4f, "side by side, even gaps");
+            }
+
+            Assert.AreEqual(0f, MoneyPile.SlotOffset(0, 3).x + MoneyPile.SlotOffset(2, 3).x, 1e-5f, "the row is centred on the tray");
 
             float yaw = BoardCameraRig.BaseYaw, half = 8f;
             Vector3 up = BoardView.ScreenUp(yaw), right = BoardView.ScreenRight(yaw);
@@ -72,6 +79,11 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(seat < 2 ? 1f : -1f, Mathf.Sign(Vector3.Dot(spot, up)), $"seat {seat + 1}: towards its card's edge of the screen");
                 Assert.AreEqual(seat % 2 == 0 ? -1f : 1f, Mathf.Sign(Vector3.Dot(spot, right)), $"seat {seat + 1}: towards its card's side");
                 Assert.Greater(Mathf.Max(Mathf.Abs(spot.x), Mathf.Abs(spot.z)), half, $"seat {seat + 1}: outside the board's edge");
+                Vector3 outward = BoardView.MoneyEdgeOutward(seat, yaw);
+                Assert.AreEqual(1f, Mathf.Max(Mathf.Abs(outward.x), Mathf.Abs(outward.z)), 1e-4f, $"seat {seat + 1}: across one of the board's edges");
+                Quaternion turn = BoardView.MoneyPileTurn(seat, yaw);
+                Assert.AreEqual(0f, Vector3.Dot(turn * Vector3.right, outward), 1e-4f, $"seat {seat + 1}: the row runs along the edge");
+                Assert.Greater(Vector3.Dot(turn * Vector3.forward, up), 0f, $"seat {seat + 1}: the print reads to the camera");
             }
 
             Vector3 first = BoardView.MoneyPileSpot(0, 8, half, yaw), fifth = BoardView.MoneyPileSpot(4, 8, half, yaw);
@@ -87,6 +99,25 @@ namespace Lazpoly.Presentation.Tests
                 board.ShowSeatMoney(1, 1500);
                 CollectionAssert.AreEqual(MoneyPile.Pieces(1500), board.MoneyPiles[1].Shown);
                 Assert.Greater(board.SeatMoneySpot(1).y, 0f, "money leaves from over the tray");
+                Assert.AreEqual(3, board.MoneyShelves.Count, "every tray stands on a shelf");
+                for (int seat = 0; seat < 3; seat++)
+                {
+                    Bounds shelf = board.MoneyShelves[seat].GetComponent<Renderer>().bounds;
+                    Transform tray = board.MoneyPiles[seat].Root;
+                    Assert.AreEqual(tray.position.y, shelf.max.y, 1e-3f, $"seat {seat + 1}: the tray lies on its shelf");
+                    Assert.Less(shelf.max.y, 0f, $"seat {seat + 1}: the shelf a little under the plate's top");
+                    foreach (float x in new[] { -0.5f, 0.5f })
+                    foreach (float z in new[] { -0.5f, 0.5f })
+                    {
+                        Vector3 corner = tray.TransformPoint(Vector3.Scale(MoneyPile.TraySize, new Vector3(x, 0f, z)));
+                        Assert.IsTrue(shelf.min.x - 1e-3f <= corner.x && corner.x <= shelf.max.x + 1e-3f && shelf.min.z - 1e-3f <= corner.z && corner.z <= shelf.max.z + 1e-3f,
+                            $"seat {seat + 1}: the tray's corners on the shelf");
+                    }
+
+                    Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSize.z / 2f);
+                    Assert.Less(Vector3.Dot(inner, BoardView.MoneyEdgeOutward(seat, yaw)), board.HalfExtent, $"seat {seat + 1}: the shelf comes out from under the plate");
+                }
+
                 board.ShowSeatMoney(1, 0);
                 CollectionAssert.IsEmpty(board.MoneyPiles[1].Shown, "a player with nothing has an empty tray");
             }
@@ -213,6 +244,14 @@ namespace Lazpoly.Presentation.Tests
                 Vector3 middle = new Vector3(board.MoneyMiddle.x, 0f, board.MoneyMiddle.z);
                 Assert.That(Vector3.Dot(middle, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(-BoardView.MoneyBack).Within(0.01f), "below the dice");
                 Assert.Greater(BoardView.MoneyBack, 1.5f + 0.35f + MoneyBundle.Width(MoneyPiece.Stack), "clear of the dice, which lie 1.5 units down");
+                // From the 35 degree camera a stack's top shows this far up the picture from its foot; the waiting row's
+                // nearest tops still stay below the dice's front (1.5 down, a turned die reaching half its 0.7 diagonal).
+                float tops = (BoardView.MoneyHover + MoneyBundle.Height(MoneyPiece.Stack)) / Mathf.Tan(BoardCameraRig.Pitch * Mathf.Deg2Rad);
+                Assert.Greater(BoardView.MoneyBack - MoneyBundle.Width(MoneyPiece.Stack) / 2f - tops, 1.5f + 0.7f * 0.71f + 0.3f, "the waiting row never hides the dice");
+                MoneyPiece[] longest = MoneyFlight.Pieces(5000);
+                float lawnCorner = board.Layout.HalfSize * 2f - board.Layout.Depth * 1.05f;
+                Assert.Less(MoneyFlight.RowLength(longest) / 2f + BoardView.MoneyBack + MoneyBundle.Width(MoneyPiece.Stack) / 2f,
+                    lawnCorner / 2f * Mathf.Sqrt(2f) - 0.5f, "the longest row stays over the lawn");
                 Assert.That(Vector3.Dot(middle, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), Is.EqualTo(0f).Within(0.01f), "in the middle of the table");
                 Assert.Greater(board.Safe.GetComponentsInChildren<MeshRenderer>().Length, 8, "feet, body, door, dial, handle, hinges and slot");
             }

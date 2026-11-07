@@ -67,19 +67,29 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>
         /// Where paid money gathers before it goes on to whoever gets it: in the middle of the table, below the dice (this
         /// many board units down the screen from the lawn's middle, centred across) and only this high over the lawn, so the
-        /// row of stacks and gold bars stays clear of the dice and of the score above them.
+        /// row of stacks and gold bars stays clear of the dice and of the score above them; far enough down that even from
+        /// the low camera (35 degrees) the tops of the waiting stacks stay below the dice in the picture.
         /// </summary>
         public const float MoneySide = 0f;
-        public const float MoneyBack = 3.4f;
+        public const float MoneyBack = 4.5f;
         public const float MoneyHover = 0.3f;
 
         /// <summary>
-        /// Each player's money lies just outside the board's edge that faces their corner card (seats 1-4 take a corner
-        /// each, 5-8 share them): this far out from the plate's edge, and when two share an edge, this far either side of
-        /// its middle along it.
+        /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
+        /// corner each, 5-8 share them), its tray along the edge: the tray's middle this far out from the plate's edge, and
+        /// when two share an edge, this far either side of its middle along it.
         /// </summary>
-        public const float MoneyPileOut = 1.5f;
+        public const float MoneyPileOut = 0.85f;
         public const float MoneyPileSpread = 2.4f;
+
+        /// <summary>
+        /// The shelf each tray stands on, so the money lies on the table and not in the air: in the plate's wood, a little
+        /// lower than the plate's top, reaching this far in under the plate, this far round the tray and this thick.
+        /// </summary>
+        public const float ShelfDrop = 0.03f;
+        public const float ShelfTuck = 0.3f;
+        public const float ShelfMargin = 0.15f;
+        public const float ShelfThickness = 0.3f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;
@@ -507,20 +517,39 @@ namespace Lazpoly.Presentation.Tabletop
         public Transform Safe => _safe;
 
         private readonly List<MoneyPile> _moneyPiles = new List<MoneyPile>();
+        private readonly List<Transform> _shelves = new List<Transform>();
 
-        /// <summary>Lays a money tray at the table's edge for each seat, in the seat's colour, in seat order.</summary>
+        /// <summary>Lays a money tray on a shelf at the table's edge for each seat, in the seat's colour, in seat order.</summary>
         public void CreateMoneyPiles(IReadOnlyList<Color> seatColors)
         {
-            foreach (MoneyPile pile in _moneyPiles)
+            foreach (MoneyPile pile in _moneyPiles) Discard(pile.Root.gameObject);
+            foreach (Transform shelf in _shelves) Discard(shelf.gameObject);
+            _moneyPiles.Clear();
+            _shelves.Clear();
+            Mesh shelfMesh = MeshFactory.RoundedBox(ShelfSize, 0.08f, 2);
+            for (int seat = 0; seat < seatColors.Count; seat++)
             {
-                if (Application.isPlaying) Destroy(pile.Root.gameObject);
-                else DestroyImmediate(pile.Root.gameObject);
+                _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
+                _shelves.Add(ModelParts.Create($"Money shelf of seat {seat + 1}", transform, shelfMesh, PlateColor, 0.25f).transform);
             }
 
-            _moneyPiles.Clear();
-            for (int seat = 0; seat < seatColors.Count; seat++) _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
             PlaceMoneyPiles(_yaw);
         }
+
+        private static void Discard(GameObject thing)
+        {
+            if (Application.isPlaying) Destroy(thing);
+            else DestroyImmediate(thing);
+        }
+
+        /// <summary>A shelf's size: along the edge round the tray, across from under the plate to past the tray, and its thickness.</summary>
+        public static Vector3 ShelfSize => new Vector3(
+            MoneyPile.TraySize.x + 2f * ShelfMargin,
+            ShelfThickness,
+            ShelfTuck + MoneyPileOut + MoneyPile.TraySize.z / 2f + ShelfMargin);
+
+        /// <summary>The seats' shelves at the table's edge, in seat order.</summary>
+        public IReadOnlyList<Transform> MoneyShelves => _shelves;
 
         /// <summary>The seats' money at the table's edge, in seat order.</summary>
         public IReadOnlyList<MoneyPile> MoneyPiles => _moneyPiles;
@@ -536,26 +565,52 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Where a seat's money lies, in the board's frame: outside the middle of the board's edge that faces the seat's
-        /// corner card (0 top left, 1 top right, 2 bottom left, 3 bottom right; seat 5 shares seat 1's edge and so on).
+        /// corner card (0 top left, 1 top right, 2 bottom left, 3 bottom right; seat 5 shares seat 1's edge and so on), on
+        /// its shelf a little below the plate's top.
         /// </summary>
-        public static Vector3 MoneyPileSpot(int seat, int seats, float halfExtent, float yaw)
+        public static Vector3 MoneyPileSpot(int seat, int seats, float halfExtent, float yaw) =>
+            MoneyEdgeOutward(seat, yaw) * (halfExtent + MoneyPileOut) + MoneyEdgeAlong(seat, seats, yaw) - Vector3.up * ShelfDrop;
+
+        /// <summary>The way out of the board across the edge a seat's money lies at (one of the board's axes).</summary>
+        public static Vector3 MoneyEdgeOutward(int seat, float yaw)
         {
             int corner = seat % 4;
             Vector3 up = ScreenUp(yaw), right = ScreenRight(yaw);
-            Vector3 outward = ((corner < 2 ? up : -up) + (corner % 2 == 0 ? -right : right)).normalized;
-            Vector3 along = Vector3.Cross(Vector3.up, outward).normalized;
+            return ((corner < 2 ? up : -up) + (corner % 2 == 0 ? -right : right)).normalized;
+        }
+
+        /// <summary>How far along its edge a seat's money lies from the edge's middle: aside only when two seats share the edge.</summary>
+        private static Vector3 MoneyEdgeAlong(int seat, int seats, float yaw)
+        {
+            int corner = seat % 4;
             bool shared = seats > corner + 4;
             float offset = shared ? (seat < 4 ? -MoneyPileSpread : MoneyPileSpread) : 0f;
-            return outward * (halfExtent + MoneyPileOut) + along * offset;
+            return Vector3.Cross(Vector3.up, MoneyEdgeOutward(seat, yaw)) * offset;
+        }
+
+        /// <summary>
+        /// How a seat's tray lies: its row along the board's edge, turned whichever way of the two lets the money's print read
+        /// to the camera (away from it for the far edges, towards the board for the near ones).
+        /// </summary>
+        public static Quaternion MoneyPileTurn(int seat, float yaw)
+        {
+            Vector3 outward = MoneyEdgeOutward(seat, yaw);
+            return Quaternion.LookRotation(Vector3.Dot(outward, ScreenUp(yaw)) > 0f ? outward : -outward);
         }
 
         private void PlaceMoneyPiles(float yaw)
         {
+            Vector3 shelf = ShelfSize;
             for (int seat = 0; seat < _moneyPiles.Count; seat++)
             {
                 Transform root = _moneyPiles[seat].Root;
                 root.localPosition = MoneyPileSpot(seat, _moneyPiles.Count, HalfExtent, yaw);
-                root.localRotation = Quaternion.LookRotation(ScreenUp(yaw));
+                root.localRotation = MoneyPileTurn(seat, yaw);
+                if (seat >= _shelves.Count) continue;
+                Vector3 outward = MoneyEdgeOutward(seat, yaw);
+                _shelves[seat].localPosition = outward * (HalfExtent - ShelfTuck + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
+                    - Vector3.up * (ShelfDrop + shelf.y / 2f);
+                _shelves[seat].localRotation = Quaternion.LookRotation(outward);
             }
         }
 
