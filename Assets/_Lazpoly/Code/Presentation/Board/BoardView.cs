@@ -65,11 +65,13 @@ namespace Lazpoly.Presentation.Tabletop
         public const float SafeSize = 1.5f;
 
         /// <summary>
-        /// Where paid money gathers before it goes on to whoever gets it: this many board units down the screen from the lawn's
-        /// middle and this high over it, between the dice and the score so it covers neither.
+        /// Where paid money gathers before it goes on to whoever gets it: beside the dice on the screen's right (this many
+        /// board units right of the lawn's middle and this many down the screen, level with the dice) and this high over the
+        /// lawn, so the thick bundles cover neither the dice nor the score above them.
         /// </summary>
-        public const float MoneyBack = 1.0f;
-        public const float MoneyHover = 1.0f;
+        public const float MoneySide = 2.3f;
+        public const float MoneyBack = 1.5f;
+        public const float MoneyHover = 0.6f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;
@@ -495,7 +497,7 @@ namespace Lazpoly.Presentation.Tabletop
         public Transform Safe => _safe;
 
         /// <summary>Where paid money gathers in the middle of the table, over the lawn (world space).</summary>
-        public Vector3 MoneyMiddle => transform.TransformPoint(new Vector3(0f, LawnHeight + MoneyHover, 0f) - ScreenUp(_yaw) * MoneyBack);
+        public Vector3 MoneyMiddle => transform.TransformPoint(new Vector3(0f, LawnHeight + MoneyHover, 0f) - ScreenUp(_yaw) * MoneyBack + ScreenRight(_yaw) * MoneySide);
 
         /// <summary>The slot on the safe's top that money paid to the bank drops into (world space).</summary>
         public Vector3 SafeSlot => _safe != null ? _safe.TransformPoint(LawnParts.SafeSlot) : MoneyMiddle;
