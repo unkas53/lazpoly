@@ -64,32 +64,67 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void APaymentIsShownInNotesAndCoins()
+        public void APaymentIsShownInThickBundles()
         {
-            Assert.AreEqual((0, 0), MoneyFlight.Pieces(0));
-            Assert.AreEqual((0, 1), MoneyFlight.Pieces(10));
-            Assert.AreEqual((0, 2), MoneyFlight.Pieces(50));
-            Assert.AreEqual((1, 0), MoneyFlight.Pieces(100));
-            Assert.AreEqual((2, 3), MoneyFlight.Pieces(260));
-            Assert.AreEqual((MoneyFlight.MaxNotes, 0), MoneyFlight.Pieces(5000));
-            Assert.AreEqual((MoneyFlight.MaxNotes, MoneyFlight.MaxCoins), MoneyFlight.Pieces(899));
+            Assert.AreEqual(0, MoneyFlight.Bundles(0));
+            Assert.AreEqual(1, MoneyFlight.Bundles(10), "even a small payment goes as a bundle");
+            Assert.AreEqual(1, MoneyFlight.Bundles(100));
+            Assert.AreEqual(3, MoneyFlight.Bundles(260));
+            Assert.AreEqual(MoneyFlight.MaxBundles, MoneyFlight.Bundles(5000));
+            Assert.GreaterOrEqual(MoneyBundle.Height, 0.25f * MoneyBundle.Width, "a thick tomar, not a single note");
+            Assert.Greater(MoneyBundle.Height, 8f * MoneyBundle.NoteThickness);
         }
 
         [Test]
-        public void TheMoneyTravelsAsOneStack()
+        public void TheBundlesLieSideBySideAndPileUp()
         {
-            for (int i = 1; i < MoneyFlight.MaxNotes; i++)
+            Vector3 first = MoneyFlight.StackOffset(0, 3), second = MoneyFlight.StackOffset(1, 3), third = MoneyFlight.StackOffset(2, 3);
+            Assert.AreEqual(0f, first.y);
+            Assert.AreEqual(first.y, second.y, 1e-5f, "two side by side in a layer");
+            Assert.Greater(Mathf.Abs(second.z - first.z), MoneyBundle.Width, "beside each other, not overlapping");
+            Assert.AreEqual(0f, first.z + second.z, 1e-5f, "the layer is centred across");
+            Assert.AreEqual(MoneyBundle.Height + MoneyFlight.LayerGap, third.y - first.y, 1e-5f, "the next layer lies on top");
+            Assert.AreEqual(0f, third.z, 1e-5f, "a lone bundle in the middle of its layer");
+            Assert.AreEqual(0f, MoneyFlight.StackOffset(0, 1).z, 1e-5f);
+            for (int i = 0; i < MoneyFlight.MaxBundles; i++)
             {
-                Vector3 below = MoneyFlight.StackOffset(i - 1, MoneyFlight.MaxNotes, 0), above = MoneyFlight.StackOffset(i, MoneyFlight.MaxNotes, 0);
-                Assert.AreEqual(MoneyFlight.NoteLayer, above.y - below.y, 1e-5f, "each note lies on the one before (a deste)");
-                Assert.LessOrEqual(new Vector2(above.x - below.x, above.z - below.z).magnitude, 3f * MoneyFlight.Jitter, "squared up, not spread out");
+                Assert.LessOrEqual(Mathf.Abs(MoneyFlight.StackOffset(i, MoneyFlight.MaxBundles).x), MoneyFlight.Jitter, "squared up");
             }
 
-            Vector3 firstCoin = MoneyFlight.StackOffset(3, 3, 2), secondCoin = MoneyFlight.StackOffset(4, 3, 2);
-            Assert.AreEqual(MoneyFlight.CoinLayer, secondCoin.y - firstCoin.y, 1e-5f, "the coins pile up too");
-            Assert.AreEqual(firstCoin.x, secondCoin.x, 1e-5f);
-            Assert.Greater(firstCoin.x - MoneyFlight.StackOffset(0, 3, 2).x, MoneyFlight.NoteLength / 2f, "beside the notes' stack, not on it");
-            Assert.AreEqual(Vector3.zero, MoneyFlight.StackOffset(0, 0, 1), "a lone coin is the bundle's middle");
+            for (int i = 1; i < MoneyBundle.Sheets; i++)
+            {
+                Vector3 below = MoneyBundle.SheetOffset(i - 1), above = MoneyBundle.SheetOffset(i);
+                Assert.Greater(above.y, below.y, "the sheets lie on each other");
+                Assert.LessOrEqual(Mathf.Abs(above.x), MoneyBundle.SheetJitter);
+                Assert.LessOrEqual(Mathf.Abs(above.z), MoneyBundle.SheetJitter);
+            }
+
+            Assert.Less(MoneyBundle.SheetOffset(MoneyBundle.Sheets - 1).y, MoneyBundle.Height - MoneyBundle.NoteThickness, "under the top note");
+        }
+
+        [Test]
+        public void ABundleIsPaperWithANoteOnTopAndABand()
+        {
+            var root = new GameObject("Table");
+            try
+            {
+                GameObject bundle = MoneyBundle.Create("Bundle", root.transform);
+                Assert.IsNotNull(bundle.transform.Find("Sheets"));
+                Assert.IsNotNull(bundle.transform.Find("Band"));
+                Assert.IsNotNull(bundle.transform.Find("Top Note"), "the owner's note lies on top");
+                foreach (Renderer part in bundle.GetComponentsInChildren<Renderer>())
+                {
+                    Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, part.shadowCastingMode, part.name);
+                    Assert.IsNotNull(part.sharedMaterial, part.name);
+                }
+
+                Material shared = MoneyBundle.Create("Other", root.transform).transform.Find("Sheets").GetComponent<Renderer>().sharedMaterial;
+                Assert.AreSame(bundle.transform.Find("Sheets").GetComponent<Renderer>().sharedMaterial, shared, "bundles share their materials");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
         }
 
         [Test]
@@ -113,8 +148,8 @@ namespace Lazpoly.Presentation.Tests
                 float seconds = MoneyFlight.Fly(root.transform, from, middle, to, 260, Quaternion.identity, 2f);
                 Assert.AreEqual(1.5f, seconds, 1e-4f, "the animation speed setting shortens it");
                 MoneyFlight[] pieces = root.GetComponentsInChildren<MoneyFlight>();
-                Assert.AreEqual(5, pieces.Length, "two notes and three coins");
-                Assert.Less(Vector3.Distance(pieces[0].transform.position, pieces[1].transform.position), 0.2f, "the notes leave together, stacked");
+                Assert.AreEqual(3, pieces.Length, "three bundles for 260");
+                Assert.Less(Vector3.Distance(pieces[0].transform.position, pieces[2].transform.position), 1.5f, "the bundles leave together, piled");
             }
             finally
             {
