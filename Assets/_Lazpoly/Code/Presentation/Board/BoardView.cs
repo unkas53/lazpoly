@@ -183,8 +183,11 @@ namespace Lazpoly.Presentation.Tabletop
         /// The cup's scene is a little smaller than the other corners' and stands nearer the corner's middle (less inset
         /// towards the outer edge), so on the far corner its top stays clear of the banner over the board.
         /// </summary>
-        public const float CupSceneSize = 0.34f;
+        public const float CupSceneSize = 0.30f;
         public const float CupSceneInset = 0.10f;
+
+        /// <summary>The cup's two-line name sits a little further from the corner's middle than a one-line name, clear of the cup's plinth.</summary>
+        public const float CupNameOffset = 0.22f;
 
         /// <summary>
         /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, low on
@@ -803,7 +806,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // A corner has no price: its name lies on the outer part, or the inner edge when the corner faces away,
                 // clear of its scene and pawns.
                 Vector3 namePlace = corner
-                    ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : CornerNameOffset))
+                    ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : square.Type == SquareType.Cup ? CupNameOffset : CornerNameOffset))
                     : center + down * (_depth * (IsChance(i) || DocumentUnderName(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkColor);
