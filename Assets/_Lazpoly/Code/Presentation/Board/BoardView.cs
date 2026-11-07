@@ -69,7 +69,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// middle and this high over it, between the dice and the score so it covers neither.
         /// </summary>
         public const float MoneyBack = 1.0f;
-        public const float MoneyHover = 1.4f;
+        public const float MoneyHover = 1.0f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;
