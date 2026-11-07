@@ -179,8 +179,12 @@ namespace Lazpoly.Presentation.Tabletop
         public const float CupNameScale = 1.6f;
         public const float CupNameLines = 1.5f;
 
-        /// <summary>The cup's scene is a little smaller than the other corners' so its top stays clear of the banner over the far corner.</summary>
-        public const float CupSceneSize = 0.36f;
+        /// <summary>
+        /// The cup's scene is a little smaller than the other corners' and stands nearer the corner's middle (less inset
+        /// towards the outer edge), so on the far corner its top stays clear of the banner over the board.
+        /// </summary>
+        public const float CupSceneSize = 0.34f;
+        public const float CupSceneInset = 0.10f;
 
         /// <summary>
         /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, low on
@@ -914,8 +918,10 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject scene = CornerParts.For(type, $"Scene {type}", transform);
             if (scene == null) return;
             bool far = FacesAway(outward);
-            scene.transform.localPosition = center + SceneSide(index, far) * (side * SceneOffset) + outward * (side * SceneInset * (far ? 1f : -1f)) + Vector3.up * TileHeight;
-            scene.transform.localScale = Vector3.one * (side * (type == SquareType.Cup ? CupSceneSize : SceneSize));
+            bool cup = type == SquareType.Cup;
+            scene.transform.localPosition = center + SceneSide(index, far) * (side * SceneOffset)
+                + outward * (side * (cup ? CupSceneInset : SceneInset) * (far ? 1f : -1f)) + Vector3.up * TileHeight;
+            scene.transform.localScale = Vector3.one * (side * (cup ? CupSceneSize : SceneSize));
             if (!CornerParts.ShowsFront(scene))
             {
                 scene.transform.localRotation = Quaternion.LookRotation(outward);
