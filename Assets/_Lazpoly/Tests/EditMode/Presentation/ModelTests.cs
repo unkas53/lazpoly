@@ -57,6 +57,8 @@ namespace Lazpoly.Presentation.Tests
             {
                 Assert.AreEqual(32, paper.width);
                 Assert.AreEqual(32, paper.height);
+                Assert.Greater(paper.mipmapCount, 1, "far tiles read small mipmaps instead of shimmering");
+                Assert.GreaterOrEqual(paper.anisoLevel, 8, "the tiles lie at a slant and stay sharp far off");
                 float darkest = 1f;
                 float sum = 0f;
                 foreach (Color pixel in paper.GetPixels())

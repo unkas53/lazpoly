@@ -62,13 +62,41 @@ namespace Lazpoly.Presentation.Tests
                 Camera camera = holder.AddComponent<Camera>();
                 RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.High);
                 Assert.IsTrue(RoomDressing.RunsPostProcessing(camera), "post-processing runs for the edge smoothing");
-                Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "SMAA on High");
+                Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "edges smoothed on High");
+                Assert.IsTrue(RoomDressing.SmoothsOverTime(camera), "TAA on High");
+                RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.Medium);
+                Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "FXAA on Medium");
+                Assert.IsFalse(RoomDressing.SmoothsOverTime(camera), "Medium keeps MSAA, so no TAA");
+                RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.High);
                 Assert.IsFalse(RoomDressing.ShowsLookEffects(camera), "but the colour effects stay off");
             }
             finally
             {
                 Object.DestroyImmediate(holder);
             }
+        }
+
+        [Test]
+        public void TemporalSmoothingOnHighDrawsWithoutMsaaAndTexturesFilterAtASlant()
+        {
+            // URP's TAA cannot run with MSAA, so High draws single-sampled; Medium keeps 2x MSAA, Low none.
+            Assert.IsTrue(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
+            Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.Low));
+            Assert.AreEqual(1, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            Assert.AreEqual(2, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
+            Assert.AreEqual(1, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.Low));
+            Assert.That(RoomDressing.TaaSharpening, Is.InRange(0f, 1f));
+            Assert.AreEqual(AnisotropicFiltering.ForceEnable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            Assert.AreEqual(AnisotropicFiltering.ForceEnable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
+            Assert.AreEqual(AnisotropicFiltering.Enable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.Low));
+        }
+
+        [Test]
+        public void ThePaintedShaderTellsTemporalSmoothingHowFiguresMove()
+        {
+            string path = System.IO.Path.Combine(Application.dataPath, "_Lazpoly", "Data", "Resources", "Lazpoly", "Shaders", "PaintedFigure.shader");
+            StringAssert.Contains("\"LightMode\" = \"MotionVectors\"", System.IO.File.ReadAllText(path), "moving figures would ghost under TAA");
         }
 
         [Test]

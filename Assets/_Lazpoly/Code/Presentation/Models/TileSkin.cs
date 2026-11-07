@@ -71,6 +71,7 @@ namespace Lazpoly.Presentation.Models
                 name = "tile-paper",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Trilinear,
+                anisoLevel = 8, // the tiles lie at a slant to the camera
             };
             var pixels = new Color32[size * size];
             for (int y = 0; y < size; y++)
@@ -156,6 +157,7 @@ namespace Lazpoly.Presentation.Models
                 name = $"tile-town-{key}",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Trilinear,
+                anisoLevel = 8, // the tiles lie at a slant to the camera
             };
             // The paper and the pattern are the same for every colour, so they are worked out once per shape and reused.
             float[] paper = Grid($"grain:{width}:{height}", width, height, PaperGrain);
@@ -209,6 +211,7 @@ namespace Lazpoly.Presentation.Models
                 name = $"tile-{key}",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Trilinear,
+                anisoLevel = 8, // the tiles lie at a slant to the camera
             };
             float[] paper = Grid($"grain:{width}:{height}", width, height, PaperGrain);
             // The scallops' centres run along the sea's edge inside the frame; distances are measured in tile widths.

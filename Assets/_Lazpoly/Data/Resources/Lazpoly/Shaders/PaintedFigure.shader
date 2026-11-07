@@ -166,6 +166,22 @@ Shader "Lazpoly/PaintedFigure"
             ENDHLSL
         }
 
+        // TAA on High blends each frame with the last ones; a walking figure or a flying banknote must say how it moved,
+        // or its old place would trail behind it as a ghost. Same pass as URP's Lit shader.
+        Pass
+        {
+            Name "MotionVectors"
+            Tags { "LightMode" = "MotionVectors" }
+            ColorMask RG
+
+            HLSLPROGRAM
+            #pragma target 3.5
+            #pragma shader_feature_local_vertex _ADD_PRECOMPUTED_VELOCITY
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ObjectMotionVectors.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
             Name "DepthNormals"
