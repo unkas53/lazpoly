@@ -78,6 +78,15 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public static readonly bool LookEffectsOn = false;
 
+        /// <summary>Whether the camera runs URP's post-processing (the edge smoothing needs it).</summary>
+        public static bool RunsPostProcessing(Camera camera) => camera.GetUniversalAdditionalCameraData().renderPostProcessing;
+
+        /// <summary>Whether the camera smooths edges after drawing (SMAA or FXAA).</summary>
+        public static bool SmoothsEdges(Camera camera) => camera.GetUniversalAdditionalCameraData().antialiasing != AntialiasingMode.None;
+
+        /// <summary>Whether the camera's colour effects (its volume) draw.</summary>
+        public static bool ShowsLookEffects(Camera camera) => camera.TryGetComponent(out Volume volume) && volume.enabled;
+
         /// <summary>Bloom is the costliest effect and the one that made the labels glow, so only High keeps it.</summary>
         public static bool BloomOn(GraphicsQuality quality) => quality == GraphicsQuality.High;
 

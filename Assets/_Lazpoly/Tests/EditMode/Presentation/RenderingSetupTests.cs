@@ -61,10 +61,9 @@ namespace Lazpoly.Presentation.Tests
             {
                 Camera camera = holder.AddComponent<Camera>();
                 RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.High);
-                var data = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
-                Assert.IsTrue(data.renderPostProcessing, "post-processing runs for the edge smoothing");
-                Assert.AreEqual(UnityEngine.Rendering.Universal.AntialiasingMode.SubpixelMorphologicalAntiAliasing, data.antialiasing);
-                Assert.IsFalse(camera.GetComponent<Volume>().enabled, "but the colour effects stay off");
+                Assert.IsTrue(RoomDressing.RunsPostProcessing(camera), "post-processing runs for the edge smoothing");
+                Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "SMAA on High");
+                Assert.IsFalse(RoomDressing.ShowsLookEffects(camera), "but the colour effects stay off");
             }
             finally
             {
