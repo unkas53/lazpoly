@@ -16,14 +16,20 @@ The game shows a figure about 1.8 board units tall, so this script:
     so the game never decodes or compresses a colour map while playing. The old way (a 2048 JPEG with halved colour
     detail, compressed to DXT by the game itself) left grainy, speckled surfaces on the small figures.
 
-Format of the mesh file (little-endian): "LZF1", uint8 level count, then per level: uint8 name length, ASCII name
+Each vertex is also painted (paint): its colour map averaged over the triangles around it, on the surface. The game
+shows that colour wherever the colour map would be read from its small mipmaps (the PaintedFigure shader), because
+there the atlas's pieces, packed edge to edge, bleed into each other as grain and specks.
+
+Format of the mesh file (little-endian): "LZF2", uint8 level count, then per level: uint8 name length, ASCII name
 ("High" or "Low"), int32 vertex count, float32 x/y/z per vertex, int16 normal x/y/z per vertex (1/32767), uint16 u/v
-per vertex (1/65535), uint8 index size (2 or 4), int32 index count, the indices.
+per vertex (1/65535), uint8 red/green/blue per vertex, uint8 index size (2 or 4), int32 index count, the indices.
+("LZF1" files, from before the painting, have no colours.)
 
 Needs: pip install numpy pillow meshoptimizer. Run from the repository root:
     python3 Tools/Art/make_figures.py <id>=<model.glb> [<id>=<model.glb> ...]
 for example: python3 Tools/Art/make_figures.py suit=Tools/Art/Models/Figures/StylizedBusinessman.glb
 With --skins first, only the colour maps are written (for any figure or corner model; the meshes stay as they are).
+With --paint first, the meshes already in the game are painted from their models' colour maps (nothing else changes).
 """
 import io
 import json
@@ -112,7 +118,71 @@ def compact(positions, normals, uvs, indices):
     return positions[used], normals[used], uvs[used], remap[indices]
 
 
-def pack_level(name, positions, normals, uvs, indices):
+def paint(uvs, indices, colour, positions):
+    """
+    Each vertex's colour: the colour map averaged over every triangle that meets at the vertex (15 samples spread over
+    each triangle, bilinear), weighted by the triangles' areas on the model. It is a filter on the surface itself, so
+    unlike the map's mipmaps it never mixes in the pieces that merely lie next to the vertex's piece on the atlas.
+    """
+    image = np.asarray(colour, dtype=np.uint8)
+    height, width = image.shape[0], image.shape[1]
+    steps = [(a, b, 4 - a - b) for a in range(5) for b in range(5 - a)]
+    weights = np.array(steps, dtype=np.float64)
+    weights = (weights + 0.25) / (weights + 0.25).sum(axis=1, keepdims=True)  # keep the samples inside the triangle
+    corners = uvs[indices]  # triangles x 3 x 2, in the game's coordinates (v up from the image's bottom row)
+    total = np.zeros((len(indices), 3))
+    for weight in weights:
+        point = (corners * weight[None, :, None]).sum(axis=1)
+        x = np.clip(point[:, 0] * width - 0.5, 0, width - 1.001)
+        y = np.clip((1.0 - point[:, 1]) * height - 0.5, 0, height - 1.001)
+        x0, y0 = np.floor(x).astype(np.int64), np.floor(y).astype(np.int64)
+        fx, fy = (x - x0)[:, None], (y - y0)[:, None]
+        top = image[y0, x0] * (1 - fx) + image[y0, x0 + 1] * fx
+        bottom = image[y0 + 1, x0] * (1 - fx) + image[y0 + 1, x0 + 1] * fx
+        total += top * (1 - fy) + bottom * fy
+    means = total / len(weights)
+    triangle = positions[indices]
+    areas = np.linalg.norm(np.cross(triangle[:, 1] - triangle[:, 0], triangle[:, 2] - triangle[:, 0]), axis=1) + 1e-12
+    sums = np.zeros((len(uvs), 3))
+    mass = np.zeros(len(uvs))
+    for corner in range(3):
+        np.add.at(sums, indices[:, corner], means * areas[:, None])
+        np.add.at(mass, indices[:, corner], areas)
+    painted = sums / np.maximum(mass, 1e-12)[:, None]
+    return np.clip(np.round(painted), 0, 255).astype(np.uint8)
+
+
+def read_pack(path):
+    """The levels of a figure file: (name, positions, normals, uvs, indices), as make_figures.py wrote them."""
+    data = open(path, "rb").read()
+    magic, count = data[:4], data[4]
+    if magic not in (b"LZF1", b"LZF2"):
+        sys.exit(f"{path}: not a figure file")
+    offset, levels = 5, []
+    for _ in range(count):
+        length = data[offset]
+        name = data[offset + 1:offset + 1 + length].decode("ascii")
+        offset += 1 + length
+        vertices, = struct.unpack_from("<i", data, offset)
+        offset += 4
+        positions = np.frombuffer(data, "<f4", vertices * 3, offset).reshape(-1, 3).astype(np.float64)
+        offset += vertices * 12
+        normals = np.frombuffer(data, "<i2", vertices * 3, offset).reshape(-1, 3) / 32767.0
+        offset += vertices * 6
+        uvs = np.frombuffer(data, "<u2", vertices * 2, offset).reshape(-1, 2) / 65535.0
+        offset += vertices * 4
+        if magic == b"LZF2":
+            offset += vertices * 3
+        size = data[offset]
+        count_indices, = struct.unpack_from("<i", data, offset + 1)
+        offset += 5
+        indices = np.frombuffer(data, "<u4" if size == 4 else "<u2", count_indices, offset).astype(np.int64).reshape(-1, 3)
+        offset += count_indices * size
+        levels.append((name, positions, normals, uvs, indices))
+    return levels
+
+
+def pack_level(name, positions, normals, uvs, indices, colours):
     out = bytearray()
     encoded = name.encode("ascii")
     out += struct.pack("<B", len(encoded)) + encoded
@@ -124,6 +194,7 @@ def pack_level(name, positions, normals, uvs, indices):
     if uvs.min() < -1e-4 or uvs.max() > 1 + 1e-4:
         sys.exit(f"{name}: UVs outside 0-1 ({uvs.min():.3f}..{uvs.max():.3f})")
     out += np.round(np.clip(uvs, 0, 1) * 65535).astype("<u2").tobytes()
+    out += np.ascontiguousarray(colours, dtype=np.uint8).tobytes()
     flat = indices.reshape(-1)
     wide = len(positions) > 65535
     out += struct.pack("<B", 4 if wide else 2) + struct.pack("<i", len(flat))
@@ -300,12 +371,25 @@ def write_skin(figure, source, colour, largest=SKIN, in_game=SKIN_IN_GAME):
 def main():
     jobs = sys.argv[1:]
     skins_only = bool(jobs) and jobs[0] == "--skins"
-    if skins_only:
+    paint_only = bool(jobs) and jobs[0] == "--paint"
+    if skins_only or paint_only:
         jobs = jobs[1:]
     if not jobs or any("=" not in job for job in jobs):
         sys.exit(__doc__)
     for job in jobs:
         figure, source = job.split("=", 1)
+        if paint_only:
+            colour = read_glb(source)[4]
+            path = os.path.join(TARGET, f"figure_{figure}.bytes")
+            pack = bytearray(b"LZF2")
+            levels = read_pack(path)
+            pack += struct.pack("<B", len(levels))
+            for name, p, n, u, i in levels:
+                pack += pack_level(name, p, n, u, i, paint(u, i, colour, p))
+            with open(path, "wb") as out:
+                out.write(pack)
+            print(f"{figure}: painted {', '.join(name for name, *_ in levels)} ({len(pack) / 1e6:.1f} MB)")
+            continue
         if skins_only:
             colour = read_glb(source)[4]
             path, size = write_skin(figure, source, colour)
@@ -313,11 +397,11 @@ def main():
             continue
         positions, normals, uvs, indices, colour = read_glb(source)
         positions, normals, uvs, indices = to_game(positions, normals, uvs, indices)
-        pack = bytearray(b"LZF1") + struct.pack("<B", 2)
+        pack = bytearray(b"LZF2") + struct.pack("<B", 2)
         for level, triangles in (("High", HIGH), ("Low", LOW)):
             kept = simplify(positions, indices, triangles)
             p, n, u, i = compact(positions, normals, uvs, kept)
-            pack += pack_level(level, p, n, u, i)
+            pack += pack_level(level, p, n, u, i, paint(u, i, colour, p))
             print(f"{figure} {level}: {len(i)} triangles, {len(p)} vertices (from {len(indices)})")
         with open(os.path.join(TARGET, f"figure_{figure}.bytes"), "wb") as out:
             out.write(pack)

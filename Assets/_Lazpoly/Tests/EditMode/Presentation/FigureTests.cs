@@ -186,12 +186,63 @@ namespace Lazpoly.Presentation.Tests
             Assert.Throws<System.FormatException>(() => FigurePack.Parse(wrong));
         }
 
-        /// <summary>One triangle in the make_figures.py format.</summary>
-        private static byte[] TinyFigure()
+        [Test]
+        public void APaintedFigureFileCarriesEachVertexsColour()
+        {
+            byte[] figure = TinyFigure(painted: true);
+            FigureMesh level = FigurePack.Parse(figure).Single();
+            Assert.IsNotNull(level.Colors);
+            Assert.AreEqual(new Color32(10, 20, 30, 255), level.Colors[0]);
+            Assert.AreEqual(new Color32(250, 0, 128, 255), level.Colors[2]);
+            Assert.That(level.Uvs[2].x, Is.EqualTo(1f).Within(1e-4f), "the colours follow the texture coordinates");
+            Assert.AreEqual(1, level.TriangleCount);
+            Assert.Throws<System.FormatException>(() => FigurePack.Parse(figure.Take(figure.Length - 2).ToArray()), "cut short");
+            Assert.IsNull(FigurePack.Parse(TinyFigure()).Single().Colors, "an older file has no colours");
+            Mesh mesh = level.ToMesh("painted");
+            Assert.AreEqual(3, mesh.colors32.Length, "the mesh carries them");
+            Object.DestroyImmediate(mesh);
+        }
+
+        private static string[] PaintedIds => FigureModels.Ids.Concat(new[] { FigureModels.StationId, FigureModels.StadiumId, FigureModels.TrophyId, FigureModels.MoneyStackId, FigureModels.GoldBarId }).ToArray();
+
+        [TestCaseSource(nameof(PaintedIds))]
+        public void EveryMeshyModelIsPaintedAndDrawnWithThePaintedShader(string id)
+        {
+            Assert.IsTrue(FigureModels.IsPainted(id), "run Tools/Art/make_figures.py --paint (see the README)");
+            var root = new GameObject("Figure Test");
+            try
+            {
+                GameObject figure = FigureModels.Create(id, id, root.transform);
+                Renderer body = figure.GetComponentInChildren<Renderer>();
+                Mesh mesh = body.GetComponent<MeshFilter>().sharedMesh;
+                Assert.AreEqual(mesh.vertexCount, mesh.colors32.Length, "every vertex has its colour");
+                Color32 first = mesh.colors32[0];
+                Assert.IsTrue(mesh.colors32.Any(color => color.r != first.r || color.g != first.g || color.b != first.b), "painted from the colour map, not one flat colour");
+                Assert.AreEqual(FigureModels.PaintedShaderName, body.sharedMaterial.shader.name);
+                Assert.IsTrue(body.sharedMaterial.shader.isSupported, "the shader compiles");
+                Assert.IsNotNull(body.sharedMaterial.mainTexture, "the colour map still shows where it is drawn large");
+                Assert.AreEqual(Color.white, body.sharedMaterial.color);
+
+                Material faded = ModelFade.Copy(body.sharedMaterial, 0.4f);
+                Assert.AreEqual(FigureModels.PaintedShaderName, faded.shader.name, "a waiting player's figure fades in the same shader");
+                Assert.AreEqual(0.4f, faded.color.a, 1e-4f);
+                Assert.AreEqual((int)UnityEngine.Rendering.RenderQueue.Transparent, faded.renderQueue);
+                Assert.AreEqual(0f, faded.GetFloat("_ZWrite"));
+                Assert.AreEqual(1f, body.sharedMaterial.GetFloat("_ZWrite"), "the solid one stays solid");
+                Object.DestroyImmediate(faded);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        /// <summary>One triangle in the make_figures.py format (painted: the "LZF2" kind with vertex colours).</summary>
+        private static byte[] TinyFigure(bool painted = false)
         {
             using var stream = new MemoryStream();
             using var writer = new BinaryWriter(stream);
-            writer.Write(FigurePack.Magic);
+            writer.Write(painted ? FigurePack.PaintedMagic : FigurePack.Magic);
             writer.Write((byte)1);
             writer.Write((byte)4);
             writer.Write(System.Text.Encoding.ASCII.GetBytes("High"));
@@ -205,6 +256,11 @@ namespace Lazpoly.Presentation.Tests
             }
 
             foreach (ushort value in new ushort[] { 0, 0, 0, 65535, 65535, 0 }) writer.Write(value);
+            if (painted)
+            {
+                foreach (byte value in new byte[] { 10, 20, 30, 0, 255, 0, 250, 0, 128 }) writer.Write(value);
+            }
+
             writer.Write((byte)2);
             writer.Write(3);
             foreach (ushort index in new ushort[] { 0, 1, 2 }) writer.Write(index);

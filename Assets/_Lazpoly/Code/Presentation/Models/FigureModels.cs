@@ -56,11 +56,22 @@ namespace Lazpoly.Presentation.Models
 
         private const float Smoothness = 0.2f;
 
+        /// <summary>
+        /// The shader of a painted figure (its vertices carry its colours, see <see cref="FigureMesh.Colors"/>): it shows
+        /// those where the colour map would be read from its small mipmaps, so the atlas's pieces do not bleed into grain.
+        /// </summary>
+        public const string PaintedShaderResource = "Lazpoly/Shaders/PaintedFigure";
+        public const string PaintedShaderName = "Lazpoly/PaintedFigure";
+
+        private static Shader _paintedShader;
+        private static bool _reportedPaintedMissing;
+
         private sealed class Figure
         {
             public Mesh Full;
             public Mesh Light;
             public Texture2D Skin;
+            public bool Painted;
         }
 
         private static readonly Dictionary<string, Figure> Figures = new Dictionary<string, Figure>();
@@ -83,6 +94,7 @@ namespace Lazpoly.Presentation.Models
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
             GameObject body = ModelParts.Create(BodyPart, root.transform, _fullDetail ? figure.Full : figure.Light, Color.white, Smoothness);
+            if (figure.Painted) Paint(body.GetComponent<Renderer>().sharedMaterial);
             if (figure.Skin != null) ModelParts.Skin(body, figure.Skin);
             Live.Add((body.GetComponent<MeshFilter>(), id));
             return root;
@@ -144,6 +156,7 @@ namespace Lazpoly.Presentation.Models
                 Full = full.ToMesh($"figure-{id}"),
                 Light = light == full ? null : light.ToMesh($"figure-{id}-low"),
                 Skin = LoadSkin(id),
+                Painted = full.Colors != null,
             };
             figure.Light ??= figure.Full;
             Figures[id] = figure;
@@ -189,7 +202,30 @@ namespace Lazpoly.Presentation.Models
             }
 
             if (Figures.ContainsKey(id)) yield break;
-            Figures[id] = new Figure { Full = fullMesh, Light = lightMesh, Skin = skin };
+            Figures[id] = new Figure { Full = fullMesh, Light = lightMesh, Skin = skin, Painted = full.Colors != null };
+        }
+
+        /// <summary>Whether a figure's vertices carry its colours, so it is drawn with the painted shader.</summary>
+        public static bool IsPainted(string id) => Load(id)?.Painted ?? false;
+
+        /// <summary>Turns a figure's material to the painted shader, keeping its colour and shine; left as it is when the shader is missing.</summary>
+        private static void Paint(Material material)
+        {
+            if (material == null) return;
+            if (_paintedShader == null) _paintedShader = Resources.Load<Shader>(PaintedShaderResource);
+            if (_paintedShader == null || !_paintedShader.isSupported)
+            {
+                if (!_reportedPaintedMissing)
+                {
+                    _reportedPaintedMissing = true;
+                    Debug.LogWarning($"[Lazpoly] Painted figure shader '{PaintedShaderResource}' is missing or unsupported; figures use the plain one.");
+                }
+
+                return;
+            }
+
+            material.shader = _paintedShader;
+            material.SetFloat("_Smoothness", Smoothness);
         }
 
         private static FigureMesh Find(IReadOnlyList<FigureMesh> levels, string name)

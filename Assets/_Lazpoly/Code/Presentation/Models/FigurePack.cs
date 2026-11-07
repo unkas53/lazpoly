@@ -7,16 +7,20 @@ using UnityEngine.Rendering;
 
 namespace Lazpoly.Presentation.Models
 {
-    /// <summary>One level of detail of a textured figure: positions, normals, texture coordinates and triangles.</summary>
+    /// <summary>
+    /// One level of detail of a textured figure: positions, normals, texture coordinates and triangles, and in a painted
+    /// figure (an "LZF2" file) each vertex's colour, its colour map averaged over the surface around it.
+    /// </summary>
     public sealed class FigureMesh
     {
-        public FigureMesh(string name, Vector3[] positions, Vector3[] normals, Vector2[] uvs, int[] triangles)
+        public FigureMesh(string name, Vector3[] positions, Vector3[] normals, Vector2[] uvs, int[] triangles, Color32[] colors = null)
         {
             Name = name;
             Positions = positions;
             Normals = normals;
             Uvs = uvs;
             Triangles = triangles;
+            Colors = colors;
         }
 
         public string Name { get; }
@@ -24,6 +28,9 @@ namespace Lazpoly.Presentation.Models
         public Vector3[] Normals { get; }
         public Vector2[] Uvs { get; }
         public int[] Triangles { get; }
+
+        /// <summary>Each vertex's colour (sRGB), or null when the figure was not painted.</summary>
+        public Color32[] Colors { get; }
 
         public int TriangleCount => Triangles.Length / 3;
 
@@ -34,6 +41,7 @@ namespace Lazpoly.Presentation.Models
             mesh.vertices = Positions;
             mesh.normals = Normals;
             mesh.uv = Uvs;
+            if (Colors != null) mesh.colors32 = Colors;
             mesh.triangles = Triangles;
             mesh.RecalculateBounds();
             mesh.UploadMeshData(true);
@@ -45,10 +53,13 @@ namespace Lazpoly.Presentation.Models
     /// Reads a figure file Tools/Art/make_figures.py writes (figure_&lt;id&gt;.bytes): "LZF1", the number of levels,
     /// then for each its name ("High", "Low"), vertex positions (float), normals (16-bit, in 1/32767), texture
     /// coordinates (16-bit, in 1/65535), the index size (2 or 4 bytes) and the triangle indices, all little-endian.
+    /// A painted figure starts "LZF2" instead and has each vertex's colour (red, green, blue bytes) after its texture
+    /// coordinates.
     /// </summary>
     public static class FigurePack
     {
         public static readonly byte[] Magic = Encoding.ASCII.GetBytes("LZF1");
+        public static readonly byte[] PaintedMagic = Encoding.ASCII.GetBytes("LZF2");
 
         public const string HighLevel = "High";
         public const string LowLevel = "Low";
@@ -62,15 +73,13 @@ namespace Lazpoly.Presentation.Models
                 using (var reader = new BinaryReader(new MemoryStream(data, false)))
                 {
                     byte[] magic = reader.ReadBytes(Magic.Length);
-                    for (int i = 0; i < Magic.Length; i++)
-                    {
-                        if (magic.Length != Magic.Length || magic[i] != Magic[i]) throw new FormatException("not a figure");
-                    }
+                    bool painted = Matches(magic, PaintedMagic);
+                    if (!painted && !Matches(magic, Magic)) throw new FormatException("not a figure");
 
                     int count = reader.ReadByte();
                     if (count == 0) throw new FormatException("no levels");
                     var levels = new List<FigureMesh>(count);
-                    for (int i = 0; i < count; i++) levels.Add(ReadLevel(reader));
+                    for (int i = 0; i < count; i++) levels.Add(ReadLevel(reader, painted));
                     if (reader.BaseStream.Position != data.Length) throw new FormatException("data after the last level");
                     return levels;
                 }
@@ -81,7 +90,18 @@ namespace Lazpoly.Presentation.Models
             }
         }
 
-        private static FigureMesh ReadLevel(BinaryReader reader)
+        private static bool Matches(byte[] read, byte[] magic)
+        {
+            if (read.Length != magic.Length) return false;
+            for (int i = 0; i < magic.Length; i++)
+            {
+                if (read[i] != magic[i]) return false;
+            }
+
+            return true;
+        }
+
+        private static FigureMesh ReadLevel(BinaryReader reader, bool painted)
         {
             int nameLength = reader.ReadByte();
             string name = Encoding.ASCII.GetString(reader.ReadBytes(nameLength));
@@ -102,6 +122,14 @@ namespace Lazpoly.Presentation.Models
             Buffer.BlockCopy(Read(reader, texture.Length * 2), 0, texture, 0, texture.Length * 2);
             var uvs = new Vector2[vertices];
             for (int i = 0; i < vertices; i++) uvs[i] = new Vector2(texture[2 * i], texture[2 * i + 1]) / 65535f;
+
+            Color32[] colors = null;
+            if (painted)
+            {
+                byte[] rgb = Read(reader, vertices * 3);
+                colors = new Color32[vertices];
+                for (int i = 0; i < vertices; i++) colors[i] = new Color32(rgb[3 * i], rgb[3 * i + 1], rgb[3 * i + 2], 255);
+            }
 
             int indexSize = reader.ReadByte();
             if (indexSize != 2 && indexSize != 4) throw new FormatException($"{name}: {indexSize}-byte indices");
@@ -124,7 +152,7 @@ namespace Lazpoly.Presentation.Models
                 if (index < 0 || index >= vertices) throw new FormatException($"{name}: index {index} past {vertices} vertices");
             }
 
-            return new FigureMesh(name, positions, normals, uvs, triangles);
+            return new FigureMesh(name, positions, normals, uvs, triangles, colors);
         }
 
         private static byte[] Read(BinaryReader reader, int count)

@@ -44,6 +44,7 @@ namespace Lazpoly.Presentation.Models
         /// <summary>A see-through copy of <paramref name="solid"/>: its colour and shine at <paramref name="alpha"/>; null when the fade material is missing.</summary>
         public static Material Copy(Material solid, float alpha)
         {
+            if (solid != null && solid.shader != null && solid.shader.name == FigureModels.PaintedShaderName) return FadedPainted(solid, alpha);
             Material fade = Base();
             if (fade == null || solid == null) return null;
             var copy = new Material(fade) { name = solid.name + " (faded)" };
@@ -52,6 +53,24 @@ namespace Lazpoly.Presentation.Models
             copy.color = color;
             if (solid.mainTexture != null) copy.mainTexture = solid.mainTexture; // A textured figure fades with its clothes on.
             if (solid.HasProperty("_Smoothness") && copy.HasProperty("_Smoothness")) copy.SetFloat("_Smoothness", solid.GetFloat("_Smoothness"));
+            return copy;
+        }
+
+        /// <summary>
+        /// A painted figure fades in its own shader (the plain fade material would lose its vertex colours and bring the
+        /// grain back): the same material blended over what is behind it, in the transparent queue.
+        /// </summary>
+        private static Material FadedPainted(Material solid, float alpha)
+        {
+            var copy = new Material(solid) { name = solid.name + " (faded)" };
+            Color color = solid.color;
+            color.a = Mathf.Clamp01(alpha);
+            copy.color = color;
+            copy.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            copy.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            copy.SetFloat("_ZWrite", 0f);
+            copy.SetOverrideTag("RenderType", "Transparent");
+            copy.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             return copy;
         }
 

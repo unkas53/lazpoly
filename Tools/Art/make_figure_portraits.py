@@ -33,9 +33,10 @@ TURN = 18.0  # degrees the figure turns towards the viewer's right, so it does n
 
 
 def read_high(path):
-    """The High level of an LZF1 file: positions (Unity, left-handed), uvs and triangles."""
+    """The High level of an LZF1 or LZF2 file: positions (Unity, left-handed), uvs and triangles."""
     data = open(path, "rb").read()
-    if data[:4] != b"LZF1":
+    painted = data[:4] == b"LZF2"
+    if data[:4] != b"LZF1" and not painted:
         raise SystemExit(f"{path} is not a figure")
     pos = 5
     for _ in range(data[4]):
@@ -49,6 +50,8 @@ def read_high(path):
         pos += count * 6  # normals: Blender works them out again
         uvs = np.frombuffer(data, np.uint16, count * 2, pos).reshape(-1, 2) / 65535.0
         pos += count * 4
+        if painted:
+            pos += count * 3  # vertex colours: the portrait uses the colour map
         size = data[pos]
         (indices,) = struct.unpack_from("<i", data, pos + 1)
         pos += 5

@@ -54,11 +54,11 @@ def main():
         positions, normals, uvs, indices = to_game(positions, normals, uvs, indices)
         size = positions.max(axis=0) - positions.min(axis=0)
         print(f"{model}: {size[0]:.2f} wide, {size[1]:.2f} tall, {size[2]:.2f} deep")
-        pack = bytearray(b"LZF1") + struct.pack("<B", 2)
+        pack = bytearray(b"LZF2") + struct.pack("<B", 2)
         for level, triangles in (("High", high), ("Low", low)):
             kept = figures.simplify(positions, indices, triangles)
             p, n, u, i = figures.compact(positions, normals, uvs, kept)
-            pack += figures.pack_level(level, p, n, u, i)
+            pack += figures.pack_level(level, p, n, u, i, figures.paint(u, i, colour, p))
             print(f"{model} {level}: {len(i)} triangles, {len(p)} vertices (from {len(indices)})")
         with open(os.path.join(figures.TARGET, f"figure_{model}.bytes"), "wb") as out:
             out.write(pack)
