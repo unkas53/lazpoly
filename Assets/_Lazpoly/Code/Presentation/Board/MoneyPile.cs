@@ -31,13 +31,13 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public const float CaseMargin = 0.1f;
         public const float CaseWall = 0.05f;
-        public const float CaseHeight = 0.16f;
+        public const float CaseHeight = 0.22f;
         public const float CaseFloor = 0.04f;
         public const float LiningThickness = 0.015f;
         public const float CaseDepth = 0.95f;
 
         /// <summary>The handle stands this far out of the bottom half's front wall (the side away from the hinge).</summary>
-        public const float HandleReach = 0.12f;
+        public const float HandleReach = 0.17f;
 
         /// <summary>Brass for the clasps and the hinges.</summary>
         public static readonly Color Brass = new Color(0.93f, 0.76f, 0.33f);
@@ -183,8 +183,8 @@ namespace Lazpoly.Presentation.Tabletop
         {
             float front = -CaseDepth / 2f, height = CaseHeight * 0.55f;
             var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            Add(parts, new Vector3(0.7f, 0.07f, 0.07f), new Vector3(0f, height, front - HandleReach + 0.035f));
-            foreach (float side in new[] { -1f, 1f }) Add(parts, new Vector3(0.07f, 0.06f, HandleReach), new Vector3(side * 0.3f, height, front - HandleReach / 2f));
+            Add(parts, new Vector3(0.95f, 0.1f, 0.1f), new Vector3(0f, height, front - HandleReach + 0.05f));
+            foreach (float side in new[] { -1f, 1f }) Add(parts, new Vector3(0.09f, 0.08f, HandleReach), new Vector3(side * 0.4f, height, front - HandleReach / 2f));
             return MeshFactory.Combine("money-case-handle", parts);
         }
 
