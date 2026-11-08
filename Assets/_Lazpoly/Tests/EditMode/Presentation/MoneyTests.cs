@@ -206,6 +206,46 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheStartingMoneyComesUpThroughEachPlayersHatchIntoTheirCase()
+        {
+            const int count = 4;
+            float start = MoneyFlight.DealStartsAt(count);
+            for (int i = 0; i < count; i++)
+            {
+                Assert.IsTrue(MoneyFlight.Hidden(start, i, count, true), $"piece {i}: under the table when the deal starts");
+                Assert.Greater(MoneyFlight.RiseAt(i, count), start, $"piece {i}: comes up after the hatch opens");
+            }
+
+            Assert.AreEqual(0f, MoneyHatch.OpennessAt(0f, MoneyFlight.ReceiverOpensAt(count) - start, MoneyFlight.ReceiverShutsAt(count) - start), 1e-4f, "the hatch starts shut");
+            Assert.AreEqual(1f, MoneyHatch.OpennessAt(MoneyFlight.RiseAt(0, count) - start, MoneyFlight.ReceiverOpensAt(count) - start, MoneyFlight.ReceiverShutsAt(count) - start), 1e-4f,
+                "and is open as the first piece comes up");
+            Assert.Less(MoneyFlight.Seconds(count, true) - start + 7 * GameSceneController.DealStagger, 5f, "eight players' money is handed out in a few seconds");
+
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                board.CreateMoneyPiles(new[] { Color.red, Color.blue });
+                float seconds = MoneyFlight.Deal(holder.transform, 1500, board.MoneyPileOf(1), board.HatchOf(1), 1f);
+                Assert.AreEqual(MoneyFlight.Seconds(count, true) - start, seconds, 1e-4f);
+                MoneyFlight[] pieces = holder.GetComponentsInChildren<MoneyFlight>();
+                Assert.AreEqual(MoneyFlight.Pieces(1500).Length, pieces.Length);
+                foreach (MoneyFlight piece in pieces)
+                {
+                    Assert.AreEqual(Vector3.zero, piece.transform.localScale, "out of sight under the hatch at first");
+                    Assert.That(Quaternion.Angle(piece.transform.rotation, board.MoneyPileOf(1).Root.rotation), Is.LessThan(0.01f), "turned as it will lie in the case");
+                    Assert.Less(piece.transform.position.y, board.HatchOf(1).Mouth.y, "under the hatch");
+                }
+
+                Assert.AreEqual(0f, MoneyFlight.Deal(holder.transform, 0, board.MoneyPileOf(0), board.HatchOf(0), 1f), "nothing to hand out");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void EachSeatsHatchLiesOnTheLawnOnItsSide()
         {
             var holder = new GameObject("Board Test");

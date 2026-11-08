@@ -88,6 +88,14 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>A new game's draw for who rolls first waits to be shown until the loading screen has gone.</summary>
         private bool _drawToAnnounce;
+
+        /// <summary>A new game's starting money still to come up through the hatches before the draw (the owner's wish), and whether it is on its way.</summary>
+        private bool _dealToShow;
+        private bool _dealing;
+        private bool _logAfterDeal;
+
+        /// <summary>The game was loaded from a save: its money is already in the cases.</summary>
+        private bool _resumedGame;
         private SettingsService _settings;
         private IAchievementService _achievements;
         private IPresenceService _presence;
@@ -215,7 +223,7 @@ namespace Lazpoly.Presentation.Game
         public PawnView PawnOf(int playerId) => _pawns.TryGetValue(playerId, out PawnView pawn) ? pawn : null;
 
         /// <summary>True while events are still being animated; the HUD waits before offering actions.</summary>
-        public bool IsBusy => _playing || _pendingEvents.Count > 0 || _drawToAnnounce;
+        public bool IsBusy => _playing || _pendingEvents.Count > 0 || _drawToAnnounce || _dealing;
 
         /// <summary>
         /// True while the pause menu holds a local game still: the computer does not move and the
@@ -667,6 +675,7 @@ namespace Lazpoly.Presentation.Game
                 try
                 {
                     LocalGame resumed = LocalGame.Resume(_data.Board, _data.Rules, _data.Checksum, save);
+                    _resumedGame = true;
                     AddLog(L("Kayıtlı oyun yüklendi."));
                     return resumed;
                 }
@@ -755,8 +764,19 @@ namespace Lazpoly.Presentation.Game
             _board.CreateMoneyPiles(trayColors);
             SyncViewsToState();
             _drawToAnnounce = IsFirstRoll(state);
-            if (_drawToAnnounce) AddLog(FirstRollText(state.CurrentPlayer.Name), LogTone.Neutral, state.CurrentPlayer.Id);
-            AddLog(F($"Sıra: {state.CurrentPlayer.Name}"), LogTone.Neutral, state.CurrentPlayer.Id, turnStart: true);
+            _dealToShow = DealsStartingMoney(state, _resumedGame);
+            _logAfterDeal = _dealToShow;
+            if (_dealToShow)
+            {
+                // The cases start empty; each player's money comes up through their hatch before the draw.
+                foreach (PlayerState player in state.Players) _shownMoney[player.Id] = 0;
+                ShowMoneyPiles();
+            }
+            else
+            {
+                if (_drawToAnnounce) AddLog(FirstRollText(state.CurrentPlayer.Name), LogTone.Neutral, state.CurrentPlayer.Id);
+                AddLog(F($"Sıra: {state.CurrentPlayer.Name}"), LogTone.Neutral, state.CurrentPlayer.Id, turnStart: true);
+            }
             ShowPresence();
             NoteLoadTime(state.Players.Count);
         }
@@ -820,15 +840,66 @@ namespace Lazpoly.Presentation.Game
 
         public static string FirstRollText(string name) => F($"Kura: ilk zarı {name} atar");
 
+        /// <summary>Whether a table opening on <paramref name="state"/> first hands out the starting money: a new game, not one loaded from a save.</summary>
+        public static bool DealsStartingMoney(GameState state, bool resumed) => !resumed && IsFirstRoll(state);
+
+        /// <summary>Each player's money sets off this long after the one before, so the hatches open one after another.</summary>
+        public const float DealStagger = 0.3f;
+
+        /// <summary>
+        /// The bank hands out the starting money (the owner's wish): one player after another, each one's money comes up
+        /// through their hatch into their case, and their card's sum shows it as it lands. The draw follows.
+        /// </summary>
+        private IEnumerator DealStartingMoney()
+        {
+            _dealing = true;
+            float speed = Speed;
+            float last = 0f;
+            IReadOnlyList<PlayerState> players = _session.State.Players;
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerState player = players[i];
+                float seconds = MoneyFlight.Deal(transform, player.Money, _board.MoneyPileOf(i), _board.HatchOf(i), speed);
+                StartCoroutine(ShowDealt(player.Id, player.Money, seconds));
+                last = seconds;
+                if (i < players.Count - 1) yield return new WaitForSeconds(DealStagger / speed);
+            }
+
+            yield return new WaitForSeconds(last);
+            foreach (PlayerState player in _session.State.Players) _shownMoney[player.Id] = player.Money;
+            Revision++;
+            _dealing = false;
+        }
+
+        private IEnumerator ShowDealt(int playerId, int money, float seconds)
+        {
+            yield return new WaitForSeconds(seconds);
+            _shownMoney[playerId] = money;
+            Revision++;
+        }
+
         /// <summary>
         /// Puts the draw over the table once the loading screen has gone, and lets the computer wait while it
         /// is read; the "your turn" line comes after it.
         /// </summary>
         private void AnnounceDraw()
         {
-            if (!_drawToAnnounce || SceneFader.IsLoading) return;
+            if (!_drawToAnnounce || SceneFader.IsLoading || _dealing) return;
+            if (_dealToShow)
+            {
+                _dealToShow = false;
+                if (_board != null) StartCoroutine(DealStartingMoney());
+                return;
+            }
+
             _drawToAnnounce = false;
             PlayerState first = _session.State.CurrentPlayer;
+            if (_logAfterDeal)
+            {
+                AddLog(FirstRollText(first.Name), LogTone.Neutral, first.Id);
+                AddLog(F($"Sıra: {first.Name}"), LogTone.Neutral, first.Id, turnStart: true);
+            }
+
             Announcement = FirstRollText(first.Name);
             AnnouncementPlayer = first.Id;
             AnnouncementTime = Time.unscaledTime;

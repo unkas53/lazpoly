@@ -171,6 +171,46 @@ namespace Lazpoly.Presentation.Effects
             return Seconds(count, toPlayer) / speed;
         }
 
+        /// <summary>
+        /// The bank hands a player <paramref name="amount"/> at the game's start (the owner's wish): it comes up through the
+        /// player's hatch, which opens for it, and goes into their case, the second half of a payment. Returns how long it
+        /// takes at <paramref name="speed"/>.
+        /// </summary>
+        public static float Deal(Transform parent, int amount, MoneyPile receiver, MoneyHatch hatch, float speed)
+        {
+            MoneyPiece[] pieces = Pieces(amount);
+            if (pieces.Length == 0 || receiver == null || hatch == null) return 0f;
+            speed = Mathf.Max(speed, 0.1f);
+            int count = pieces.Length;
+            float start = DealStartsAt(count);
+            hatch.Swing(ReceiverOpensAt(count) - start, ReceiverShutsAt(count) - start, speed);
+            for (int i = 0; i < count; i++)
+            {
+                GameObject piece = MoneyBundle.Create(pieces[i], $"Money {pieces[i]}", parent);
+                var flight = piece.AddComponent<MoneyFlight>();
+                flight._index = i;
+                flight._count = count;
+                flight._toPlayer = true;
+                flight._speed = speed;
+                flight._age = start;
+                flight._underB = hatch.Mouth - Vector3.up * SinkDepth;
+                flight._underA = flight._underB;
+                flight._overB = hatch.Mouth + Vector3.up * Hover;
+                flight._to = receiver.Root.TransformPoint(MoneyPile.SlotOffset(i, count));
+                flight._restA = receiver.Root.rotation;
+                flight._restB = receiver.Root.rotation;
+                flight._size = Vector3.one * (MoneyPile.PieceScale * receiver.Root.lossyScale.x / Mathf.Max(parent.lossyScale.x, 1e-4f));
+                piece.transform.position = flight._underB;
+                piece.transform.rotation = flight._restB;
+                piece.transform.localScale = Vector3.zero;
+            }
+
+            return (Seconds(count, true) - start) / speed;
+        }
+
+        /// <summary>Where a deal starts on a payment's timeline: every piece already under the table, the hatch about to open.</summary>
+        public static float DealStartsAt(int count) => ReceiverOpensAt(count);
+
         private void Update()
         {
             _age += Time.deltaTime * _speed;
