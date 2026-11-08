@@ -163,8 +163,9 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void TheScreenToursTableLeavesThePersonOnATownForSale()
         {
-            BoardDefinition board = BoardDataLoader.LoadFromResources().Board;
-            var rules = new RulesConfig(800, 100, 6, 3, 2, 50);
+            BoardData data = BoardDataLoader.LoadFromResources();
+            BoardDefinition board = data.Board;
+            RulesConfig rules = data.Rules;
             var engine = new GameEngine(board, rules, ScreenTour.Seats(), new Pcg32Random(5UL));
             var save = new SavedGame { Snapshot = GameStateSnapshot.Capture(engine.State) };
             foreach (KeyValuePair<int, AiDifficulty> seat in ScreenTour.Ai()) save.AiPlayers[seat.Key] = new SavedAiPlayer { Difficulty = seat.Value };

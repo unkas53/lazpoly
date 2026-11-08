@@ -33,7 +33,7 @@ namespace Lazpoly.Presentation.Perf
         public const float SettleSeconds = 0.8f;
 
         /// <summary>The person's money at the tour's table: enough for the dearest town and its buildings.</summary>
-        public const int PersonMoney = 5000;
+        public const int PersonMoney = 5000000;
 
         /// <summary>How many towns each computer holds at the start, so the corner cards and the board show owners.</summary>
         public const int TownsEach = 2;

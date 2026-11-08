@@ -150,7 +150,7 @@ Paketler bilerek az tutuldu: Steamworks.NET (`2025.164.1`), URP, Test Framework,
   | `LAZ_FIRST_HOTEL` | Otelci | İlk otelini kur. |
   | `LAZ_TRADE_DONE` | Pazarlıkçı | Bir takası tamamla. |
   | `LAZ_BANKRUPT_RIVAL` | Alacaklı | Bir rakibi sana olan borcu yüzünden iflas ettir. |
-  | `LAZ_TYCOON` | Kodaman | Aynı anda 5000 paraya sahip ol. |
+  | `LAZ_TYCOON` | Kodaman | Aynı anda 6M paraya sahip ol. |
 
 ## Faz 6c: görsel cila (kodla yapılmış modeller)
 

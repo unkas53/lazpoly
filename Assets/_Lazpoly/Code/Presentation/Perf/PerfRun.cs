@@ -33,14 +33,14 @@ namespace Lazpoly.Presentation.Perf
         public const string BuiltFlag = "-built";
 
         /// <summary>Everyone's money on the built table, so nobody goes bankrupt (and loses their buildings) during the run.</summary>
-        public const int BuiltMoney = 100000;
+        public const int BuiltMoney = 100000000;
 
         /// <summary>With <see cref="Flag"/>: the player on turn is a person in debt, selling.</summary>
         public const string DebtFlag = "-debt";
 
         /// <summary>The debt <see cref="OpenDebt"/> sets up, against the debtor's <see cref="DebtMoney"/>.</summary>
-        public const int DebtAmount = 100;
-        public const int DebtMoney = 10;
+        public const int DebtAmount = 100000;
+        public const int DebtMoney = 10000;
 
         /// <summary>How many towns the debtor holds, spread around the board.</summary>
         public const int DebtTowns = 4;

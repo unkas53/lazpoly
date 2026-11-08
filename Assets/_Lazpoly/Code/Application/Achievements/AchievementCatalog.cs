@@ -33,7 +33,7 @@ namespace Lazpoly.App.Achievements
         public const string Tycoon = "LAZ_TYCOON";
 
         /// <summary>Money a player must hold at once for <see cref="Tycoon"/>.</summary>
-        public const int TycoonMoney = 5000;
+        public const int TycoonMoney = 6000000;
 
         public static readonly IReadOnlyList<AchievementDefinition> All = new[]
         {
@@ -44,7 +44,7 @@ namespace Lazpoly.App.Achievements
             new AchievementDefinition(FirstHotel, "Otelci", "İlk otelini kur."),
             new AchievementDefinition(TradeDone, "Pazarlıkçı", "Bir takası tamamla."),
             new AchievementDefinition(BankruptRival, "Alacaklı", "Bir rakibi sana olan borcu yüzünden iflas ettir."),
-            new AchievementDefinition(Tycoon, "Kodaman", $"Aynı anda {TycoonMoney} paraya sahip ol."),
+            new AchievementDefinition(Tycoon, "Kodaman", $"Aynı anda {TycoonMoney / 1000000}M paraya sahip ol."),
         };
     }
 }

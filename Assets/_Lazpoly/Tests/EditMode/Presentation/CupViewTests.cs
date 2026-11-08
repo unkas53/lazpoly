@@ -43,7 +43,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(16, CupCorner, "the corner after the jail's side (the owner's wish, Faz 24)");
             SquareDefinition cup = _data.Board[CupCorner];
             Assert.AreEqual("Şampiyonlar Kupası", cup.Name);
-            Assert.AreEqual(50, cup.Fee);
+            Assert.AreEqual(50000, cup.Fee, "50K (the owner's wish, Faz 27)");
             Assert.AreEqual(50, cup.BoostPercent);
             Assert.AreEqual(10, cup.BoostStep);
             Assert.IsFalse(Enumerable.Range(0, _data.Board.Count).Any(i => _data.Board[i].Name == "Sokak Haberi"), "the street news is gone");

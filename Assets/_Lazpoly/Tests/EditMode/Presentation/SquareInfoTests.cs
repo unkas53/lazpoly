@@ -147,8 +147,8 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("200", ValueOf(info, "Fiyat"));
             Assert.AreEqual("50", ValueOf(info, "1 tatil yeri"));
             Assert.AreEqual("100", ValueOf(info, "2 tatil yeri"));
-            Assert.AreEqual("150", ValueOf(info, "3 tatil yeri"));
-            Assert.AreEqual("200", ValueOf(info, "4 tatil yeri"));
+            Assert.AreEqual("200", ValueOf(info, "3 tatil yeri"), "each further resort doubles the rent (the owner's wish, Faz 27)");
+            Assert.AreEqual("400", ValueOf(info, "4 tatil yeri"));
             Assert.AreEqual(4, info.Rows.Count(row => row.Rent));
             Assert.IsFalse(info.Rows.Any(row => row.Label == "Ev maliyeti"), "a resort takes no buildings");
             Assert.IsFalse(info.Rows.Any(row => row.Current));

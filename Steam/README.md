@@ -24,7 +24,7 @@ Steamworks > Stats & Achievements > Achievements. API adları koddakiyle birebir
 | LAZ_FIRST_HOTEL | Otelci | İlk otelini kur. |
 | LAZ_TRADE_DONE | Pazarlıkçı | Bir takası tamamla. |
 | LAZ_BANKRUPT_RIVAL | Alacaklı | Bir rakibi sana olan borcu yüzünden iflas ettir. |
-| LAZ_TYCOON | Kodaman | Aynı anda 5000 paraya sahip ol. |
+| LAZ_TYCOON | Kodaman | Aynı anda 6M paraya sahip ol. |
 
 Her biri için kilitli ve açık simge (64x64 JPG) gerekir; simgeler henüz yok. Kaydedip **Publish** et.
 `SteamPartnerFilesTests` tablodaki adların kodla aynı kaldığını denetler.
