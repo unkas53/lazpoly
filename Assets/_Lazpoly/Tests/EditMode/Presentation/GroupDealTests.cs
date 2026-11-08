@@ -81,7 +81,7 @@ namespace Lazpoly.Presentation.Tests
                 GroupDeal.Text("Bilgisayar 3", GroupDeal.TownNames(Board, 2)));
             Assert.AreEqual("Ayşe yoğun bir mesai harcayarak Paris ve Londra arasında ticaret anlaşması imzaladı",
                 GroupDeal.Text("Ayşe", GroupDeal.TownNames(Board, 7)));
-            Assert.AreEqual("Bu şehirlerin evsiz kirası artık 2 katı.", GroupDeal.RentText(2));
+            Assert.AreEqual("Bu şehirlerin kiraları artık 2 katı.", GroupDeal.RentText(2));
         }
 
         [Test]

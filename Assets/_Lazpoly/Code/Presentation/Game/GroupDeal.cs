@@ -61,8 +61,8 @@ namespace Lazpoly.Presentation.Game
             return F($"{player} yoğun bir mesai harcayarak {list} arasında ticaret anlaşması imzaladı");
         }
 
-        /// <summary>The line under it: the towns' rent without buildings is now <paramref name="multiplier"/> times.</summary>
-        public static string RentText(int multiplier) => F($"Bu şehirlerin evsiz kirası artık {multiplier} katı.");
+        /// <summary>The line under it: the towns' rent, houses and hotel too, is now <paramref name="multiplier"/> times.</summary>
+        public static string RentText(int multiplier) => F($"Bu şehirlerin kiraları artık {multiplier} katı.");
 
         private static IEnumerable<string> ListHead(IReadOnlyList<string> names)
         {

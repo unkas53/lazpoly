@@ -152,12 +152,10 @@ namespace Lazpoly.Core.Engine
 
             if (square.IsResort) return square.BaseRent * ResortsOwned(board, state, ownerId);
 
+            // The whole colour group in one hand multiplies the rent at every level, houses and hotel too (the owner's wish, Faz 26).
             int level = state.GetBuildingLevel(squareIndex);
-            if (level > 0) return square.DevelopedRents[level - 1];
-
-            return OwnsWholeGroup(board, state, ownerId, square.GroupId)
-                ? square.BaseRent * rules.FullGroupRentMultiplier
-                : square.BaseRent;
+            int rent = level > 0 ? square.DevelopedRents[level - 1] : square.BaseRent;
+            return OwnsWholeGroup(board, state, ownerId, square.GroupId) ? rent * rules.FullGroupRentMultiplier : rent;
         }
 
         /// <summary>Whether the champions' cup may stand on a square: towns only, never a holiday resort.</summary>

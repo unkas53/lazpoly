@@ -159,7 +159,9 @@ namespace Lazpoly.Presentation.Texts
                 for (int i = 0; i < square.DevelopedRents.Count; i++)
                 {
                     string label = i + 1 == SquareDefinition.MaxBuildingLevel ? L("Otel") : F($"{i + 1} ev");
-                    info.Rows.Add(new SquareInfoRow(label, square.DevelopedRents[i].ToString(), live && level == i + 1, rent: true));
+                    // With the whole colour in one hand every level's rent is multiplied too (Faz 26).
+                    int rent = square.DevelopedRents[i] * (wholeGroup ? rules.FullGroupRentMultiplier : 1);
+                    info.Rows.Add(new SquareInfoRow(label, rent.ToString(), live && level == i + 1, rent: true));
                 }
 
                 info.Rows.Add(new SquareInfoRow(L("Ev maliyeti"), square.BuildingCost.ToString()));

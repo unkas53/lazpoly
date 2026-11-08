@@ -311,10 +311,10 @@
   "Otel +{0}": "Hotel +{0}",
   "Binalı şehirler önce bina satılınca takas edilir.": "Cities with buildings can be traded once the buildings are sold.",
   "Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {0} eve kadar. Dört evli şehre yeniden gelince otel kurulur.": "You reached your own city! Build houses from the building card: one house until you pass Start, up to {0} after that. Come back to a four-house city to build the hotel.",
-  "Bir rengin tamamı sende olunca boş kirası katlanır. Eksik kareyi \"Takas Teklif Et\" ile para ya da mülk karşılığında iste.": "Owning a whole colour multiplies its bare rent. Ask for the missing square with \"Offer a Trade\", for cash or property.",
+  "Bir rengin tamamı sende olunca evli ve otelli kiralar da katlanır. Eksik kareyi \"Takas Teklif Et\" ile para ya da mülk karşılığında iste.": "Owning a whole colour multiplies its rents, houses and hotel too. Ask for the missing square with \"Offer a Trade\", for cash or property.",
   "Sahibi şehre yeniden gelince ev kurar: başlangıçtan geçene kadar bir, sonra dörde kadar; dört evden sonra otel.": "The owner builds on returning to the city: one house until they pass Start, up to four later; after four houses, the hotel.",
   "Şehirler ve evler": "Cities and houses",
-  "Satın aldığın şehre yeniden gelince ev kurabilirsin: başlangıçtan ilk geçişine kadar bir ev, sonra dörde kadar. Dört evli şehre bir daha gelince otel kurulur. Bir rengin bütün kareleri sendeyse boş kirası {0} katına çıkar.": "When you return to a city you own you can build: one house until you first pass Start, up to four after that. Return once more to a four-house city to build the hotel. Owning every square of a colour multiplies its bare rent by {0}.",
+  "Satın aldığın şehre yeniden gelince ev kurabilirsin: başlangıçtan ilk geçişine kadar bir ev, sonra dörde kadar. Dört evli şehre bir daha gelince otel kurulur. Bir rengin bütün kareleri sendeyse o şehirlerin kirası, evli ve otelliyken de, {0} katına çıkar.": "When you return to a city you own you can build: one house until you first pass Start, up to four after that. Return once more to a four-house city to build the hotel. Owning every square of a colour multiplies those cities' rent by {0}, with houses and the hotel too.",
   "Kendi sıranda başka bir oyuncuya para ve mülk karşılığında takas teklif edebilirsin. Binalı şehirler takas edilemez.": "On your turn you can offer another player a trade of cash and property. Cities with buildings cannot be traded.",
   "Ev ya da otel, kendi sıranda bu şehre gelince kurulur.": "Houses and the hotel are built when you land on this city on your turn.",
   "Otel, dört evli şehre bir sonraki gelişinde kurulur.": "The hotel goes up on your next visit to this four-house city.",
@@ -644,5 +644,5 @@
   "Takas yapıyoruz...": "Trading...",
   "TİCARET ANLAŞMASI": "TRADE AGREEMENT",
   "{0} yoğun bir mesai harcayarak {1} arasında ticaret anlaşması imzaladı": "After long hours of hard work, {0} signed a trade agreement between {1}",
-  "Bu şehirlerin evsiz kirası artık {0} katı.": "These cities' rent without buildings is now {0} times as much."
+  "Bu şehirlerin kiraları artık {0} katı.": "These cities' rents are now {0} times as much."
 }

@@ -110,7 +110,8 @@ namespace Lazpoly.Presentation.Tests
             PropertyChoice choice = Choice(state, 1, buying: true);
             Assert.IsTrue(choice.FullGroup, "buying Sur Yolu completes the group");
             Assert.AreEqual(8, choice.RentAt(0));
-            Assert.AreEqual(50, choice.RentAt(1), "houses earn their own rent");
+            Assert.AreEqual(100, choice.RentAt(1), "houses' rent is doubled too (the owner's wish, Faz 26)");
+            Assert.AreEqual(1400, choice.RentAt(5), "and the hotel's");
 
             Own(state, 1, 1);
             Assert.IsTrue(Choice(state, 1, buying: false).FullGroup);

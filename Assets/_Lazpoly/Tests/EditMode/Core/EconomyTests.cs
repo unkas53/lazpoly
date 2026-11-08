@@ -197,6 +197,25 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
+        public void TheWholeColourDoublesTheRentAtEveryLevel()
+        {
+            var engine = NewGame();
+            Give(engine, A1, Alice);
+            Assert.AreEqual(10, engine.CalculateRent(A1));
+            GameStateReducer.Apply(engine.State, new BuildingLevelChangedEvent(A1, 2));
+            Assert.AreEqual(150, engine.CalculateRent(A1), "Two houses without the rest of the colour.");
+
+            Give(engine, A2, Alice);
+            Assert.AreEqual(300, engine.CalculateRent(A1), "The whole colour doubles the houses' rent too (the owner's wish, Faz 26).");
+            Assert.AreEqual(24, engine.CalculateRent(A2), "and the bare land's.");
+            GameStateReducer.Apply(engine.State, new BuildingLevelChangedEvent(A1, SquareDefinition.MaxBuildingLevel));
+            Assert.AreEqual(1400, engine.CalculateRent(A1), "and the hotel's.");
+
+            Give(engine, A2, Bob);
+            Assert.AreEqual(700, engine.CalculateRent(A1), "Losing a town of the colour takes the double away.");
+        }
+
+        [Test]
         public void TheHotelNeedsAReturnVisitToAFourHouseTown()
         {
             var engine = NewGame(money: 5000);

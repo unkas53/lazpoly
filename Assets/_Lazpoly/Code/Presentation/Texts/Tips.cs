@@ -78,7 +78,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
                        F($"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır."))
                    ?? Offer(TipId.Trade, myTurn && state.Phase == GamePhase.WaitingForRoll && state.Round >= 3,
-                       L("Bir rengin tamamı sende olunca boş kirası katlanır. Eksik kareyi \"Takas Teklif Et\" ile para ya da mülk karşılığında iste."));
+                       L("Bir rengin tamamı sende olunca evli ve otelli kiralar da katlanır. Eksik kareyi \"Takas Teklif Et\" ile para ya da mülk karşılığında iste."));
         }
 
         private static bool HasSellable(BoardDefinition board, GameState state, int playerId)

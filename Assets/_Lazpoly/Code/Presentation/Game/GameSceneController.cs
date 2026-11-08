@@ -986,6 +986,17 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The trade agreement card (the owner's wish, Faz 26), staged on the board's first colour group, as everyone sees it.
+            int staged = FirstColourGroup(_session.Board);
+            if (staged != 0)
+            {
+                _groupDealsToShow.Add(new KeyValuePair<int, int>(person, staged));
+                StartCoroutine(ShowGroupDeals());
+                yield return ScreenTour.Until(() => false, 0.5f);
+                yield return ScreenTour.Take("ticaret-anlasmasi");
+                yield return ScreenTour.Until(() => !CenterNotice.Showing(Time.time - ShownGroupDealTime, GroupDeal.Seconds), GroupDeal.Seconds + 1f);
+            }
+
             foreach ((HudWindow window, string name) in new[]
             {
                 (HudWindow.Properties, "mulkler"), (HudWindow.Trade, "takas"), (HudWindow.Log, "olaylar"),
@@ -1372,6 +1383,17 @@ namespace Lazpoly.Presentation.Game
         /// Whether a completed group's card waits for <paramref name="next"/>: the rest of a trade's towns and its result card,
         /// and the buildings bought with the town, are shown first.
         /// </summary>
+        /// <summary>The group of the board's first town (not a holiday resort), or 0 when there is none.</summary>
+        public static int FirstColourGroup(BoardDefinition board)
+        {
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Property && !board[i].IsResort && board[i].GroupId != 0) return board[i].GroupId;
+            }
+
+            return 0;
+        }
+
         public static bool GroupDealWaits(GameEvent next) =>
             next is PropertyOwnerChangedEvent || next is TradeResolvedEvent || next is BuildingLevelChangedEvent;
 

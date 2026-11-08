@@ -130,12 +130,13 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The whole price of standing at <paramref name="pick"/>: the land if buying, plus each building above the current level.</summary>
         public int CostOf(int pick) => Price + Math.Max(0, pick - Level) * BuildingCost;
 
-        /// <summary>Rent a visitor would pay at <paramref name="level"/>; bare land earns more once the group is complete.</summary>
+        /// <summary>Rent a visitor would pay at <paramref name="level"/>; every level earns more once the group is complete.</summary>
         public int RentAt(int level)
         {
-            if (level > 0 && _developedRents != null && _developedRents.Count > 0)
-                return _developedRents[Math.Min(level, _developedRents.Count) - 1];
-            return FullGroup ? _baseRent * _fullGroupMultiplier : _baseRent;
+            int rent = level > 0 && _developedRents != null && _developedRents.Count > 0
+                ? _developedRents[Math.Min(level, _developedRents.Count) - 1]
+                : _baseRent;
+            return FullGroup ? rent * _fullGroupMultiplier : rent;
         }
 
         /// <summary>

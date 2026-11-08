@@ -63,6 +63,8 @@ namespace Lazpoly.Presentation.Tests
             GameStateReducer.Apply(state, new BuildingLevelChangedEvent(1, 2));
             SquareInfo built = SquareInfo.Describe(Board, Rules, state, 1, null);
             Assert.AreEqual("2 ev", built.Rows.Single(row => row.Current).Label);
+            Assert.AreEqual("300", built.Rows.Single(row => row.Current).Value, "the whole colour doubles the houses' rent too");
+            Assert.AreEqual("1400", ValueOf(built, "Otel"));
             CollectionAssert.Contains(built.Notes, "Sahibi Ayşe.");
             CollectionAssert.Contains(built.Notes, "Bu renk: 2 kare; Ayşe 2.");
         }
