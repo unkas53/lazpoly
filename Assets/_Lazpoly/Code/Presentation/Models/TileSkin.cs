@@ -110,8 +110,11 @@ namespace Lazpoly.Presentation.Models
         /// <summary>Whether a point of the tile (u, v both 0-1) lies on the frame line.</summary>
         public static bool OnFrame(float u, float v) => Mathf.Abs(FrameDistance(u, v)) <= FrameWidth;
 
-        /// <summary>The frame's corners are rounded this much (of the tile's size), so they are soft rather than sharp.</summary>
-        public const float FrameCorner = 0.04f;
+        /// <summary>
+        /// How much the frame's corners are rounded (of the tile's size): not at all since the squares are square-cornered
+        /// and lie side by side (Faz 25, the owner's wish); the lines of neighbours meet in straight seams.
+        /// </summary>
+        public const float FrameCorner = 0f;
 
         /// <summary>
         /// How far a point of the tile lies outside the frame's rounded rectangle (negative inside it), in the tile's
