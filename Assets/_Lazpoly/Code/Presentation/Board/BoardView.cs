@@ -66,14 +66,6 @@ namespace Lazpoly.Presentation.Tabletop
         public const float TitleSize = 0.30f;
 
         /// <summary>
-        /// The bank's safe (the kasa) on the lawn, which money paid to the bank flies into (the owner's wish, Faz 25): to the
-        /// screen's left of the middle by this many lawn widths, clear of the dice below the middle and the score and logo
-        /// above it, this many board units tall, its door turned to the camera.
-        /// </summary>
-        public const float SafeSide = -0.27f;
-        public const float SafeSize = 1.5f;
-
-        /// <summary>
         /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
         /// corner each, 5-8 share them), its money case along the edge: the case's bottom half's middle this far out from the
         /// plate's edge (past the gap and the shelf's margin), and when two share an edge, this far either side of its middle
@@ -339,7 +331,6 @@ namespace Lazpoly.Presentation.Tabletop
         private TextMesh _score;
         private TextMesh _pot;
         private PotPile _potPile;
-        private Transform _safe;
 
         public BoardLayout Layout { get; private set; }
 
@@ -515,17 +506,8 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             if (_potPile != null) _potPile.Root.localPosition = new Vector3(0f, LawnHeight, 0f) + up * (_inner * PotPileOffset) + ScreenRight(yaw) * (_inner * PotPileSide);
-            if (_safe != null)
-            {
-                _safe.localPosition = new Vector3(0f, LawnHeight, 0f) + ScreenRight(yaw) * (_inner * SafeSide);
-                _safe.localRotation = FacingCamera(yaw);
-            }
-
             PlaceMoneyPiles(yaw);
         }
-
-        /// <summary>The bank's safe on the lawn.</summary>
-        public Transform Safe => _safe;
 
         private readonly List<MoneyPile> _moneyPiles = new List<MoneyPile>();
         private readonly List<Transform> _shelves = new List<Transform>();
@@ -548,7 +530,7 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
                 _shelves.Add(ModelParts.Create($"Money shelf of seat {seat + 1}", transform, shelfMesh, PlateColor, 0.25f).transform);
-                _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}", seatColors[seat]));
+                _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}"));
             }
 
             PlaceMoneyPiles(_yaw);
@@ -644,7 +626,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// How far a hatch's middle lies in from the lawn's edge, and how far either side of the edge's middle when two seats
-        /// share the edge: the top ones stay clear of the logo, the side ones of the safe and the pot.
+        /// share the edge: the top ones stay clear of the logo, the bottom ones of the dice and the pot.
         /// </summary>
         public const float HatchInset = 0.61f;
         public const float HatchSpread = 1.25f;
@@ -656,12 +638,6 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public static Vector3 HatchSpot(int seat, int seats, float lawnHalf, float yaw) =>
             MoneyEdgeOutward(seat, yaw) * (lawnHalf - HatchInset) + MoneyEdgeAlong(seat, seats, yaw) * (HatchSpread / MoneyPileSpread);
-
-        /// <summary>The safe swells for a moment as money paid to the bank arrives under the table.</summary>
-        public void NudgeSafe()
-        {
-            if (_safe != null && _animating.Add(_safe)) StartCoroutine(Nudge(_safe, rock: false));
-        }
 
         /// <summary>The pot's label rocks when money drops in and swells when it is paid out.</summary>
         public void NudgePot(bool paidIn)
@@ -1180,15 +1156,13 @@ namespace Lazpoly.Presentation.Tabletop
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
         }
 
-        /// <summary>The dice score large on the lawn with the pot's line under it, and the bank's safe beside the middle; <see cref="FaceCamera"/> places and turns them.</summary>
+        /// <summary>The dice score large on the lawn with the pot's line under it, <see cref="FaceCamera"/> places and turns them.</summary>
         private void CreateScoreboard(float inner, bool hasPot)
         {
             var board = new GameObject("Scoreboard");
             board.transform.SetParent(transform, false);
             _scoreboard = board.transform;
             _score = CreateText("Score", ScoreText(0, 0), _scoreboard, Vector3.zero, 192, inner * 0.008f, ScoreColor);
-            _safe = LawnParts.Safe("Safe", transform).transform;
-            _safe.localScale = Vector3.one * SafeSize;
             if (!hasPot) return;
             _pot = CreateText("Pot", "", _scoreboard, new Vector3(0f, -inner * 0.1f, 0f), 128, inner * 0.0036f, PotTextColor);
             _potPile = new PotPile(transform);

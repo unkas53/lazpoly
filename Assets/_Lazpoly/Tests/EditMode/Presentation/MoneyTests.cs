@@ -235,12 +235,10 @@ namespace Lazpoly.Presentation.Tests
                     Assert.AreEqual(Mathf.Sign(Vector3.Dot(pile, along)), Mathf.Sign(Vector3.Dot(spot, along)), $"seat {seat + 1}: beside its case's way");
                     Assert.That(Quaternion.Angle(hatch.transform.localRotation, BoardView.MoneyPileTurn(seat, yaw)), Is.LessThan(0.01f), $"seat {seat + 1}: turned as its case, so the money fits");
 
-                    // Clear of the logo above the middle and of the safe at the left.
+                    // Clear of the logo above the middle.
                     float logoHalf = inner * BoardView.TitleSize / 2f, logoUp = inner * BoardView.TitleOffset;
                     bool onLogo = Mathf.Abs(Vector3.Dot(spot, right)) - reach < logoHalf && Mathf.Abs(Vector3.Dot(spot, up) - logoUp) - reach < logoHalf;
                     Assert.IsFalse(onLogo, $"seat {seat + 1}: clear of the logo");
-                    Vector3 safe = board.Safe.localPosition;
-                    Assert.Greater(Vector3.Distance(new Vector3(spot.x, 0f, spot.z), new Vector3(safe.x, 0f, safe.z)), BoardView.SafeSize / 2f + reach, $"seat {seat + 1}: clear of the safe");
                     for (int other = 0; other < seat; other++)
                     {
                         Vector3 gap = spot - board.HatchOf(other).transform.localPosition;
@@ -301,19 +299,23 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheBanksSafeStandsOnTheLawnBesideTheMiddle()
+        public void TheLawnHasNoSafeAndEveryHatchIsTheSameDarkColour()
         {
             var holder = new GameObject("Board Test");
             try
             {
                 BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
-                Assert.IsNotNull(board.Safe, "the kasa");
-                Vector3 front = board.Safe.localRotation * Vector3.forward;
-                Assert.Greater(Vector3.Dot(front, -BoardView.ScreenUp(BoardCameraRig.BaseYaw)), 0.99f, "its door faces the camera");
-                Vector3 place = board.Safe.localPosition;
-                Assert.Less(Vector3.Dot(place, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), -2f, "to the screen's left of the middle");
-                Assert.That(Vector3.Dot(place, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(0f).Within(0.01f), "level with the middle, clear of the dice below it and the score above");
-                Assert.Greater(board.Safe.GetComponentsInChildren<MeshRenderer>().Length, 8, "feet, body, door, dial, handle, hinges and slot");
+                board.CreateMoneyPiles(new[] { Color.red, Color.blue, Color.green });
+                foreach (Transform part in holder.GetComponentsInChildren<Transform>(true))
+                    Assert.AreNotEqual("Safe", part.name, "the bank's safe is gone: paid money goes down the hatches");
+                foreach (MoneyHatch hatch in board.MoneyHatches)
+                {
+                    Color lid = hatch.Lid.GetComponentInChildren<Renderer>().sharedMaterial.color;
+                    Assert.That(lid.r, Is.EqualTo(MoneyHatch.LidColor.r).Within(0.01f), $"{hatch.name}: one colour for every player");
+                    Assert.Less(Mathf.Max(lid.r, lid.g, lid.b), 0.2f, $"{hatch.name}: nearly black");
+                }
+
+                Assert.Greater(MoneyHatch.LidColor.r, MoneyHatch.HoleDark.r + 0.05f, "the hole stays darker than the lid");
             }
             finally
             {

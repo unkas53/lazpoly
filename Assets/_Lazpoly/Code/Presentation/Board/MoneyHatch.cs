@@ -6,7 +6,8 @@ namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
     /// A player's money hatch on the table, the owner's wish (Faz 25): paid money goes down through the payer's hatch, and
-    /// money a player gets comes up through theirs. A metal frame round a dark hole, and a lid in the player's colour hinged on
+    /// money a player gets comes up through theirs. A metal frame round a dark hole, and an almost black lid (one colour for
+    /// every player, the owner's wish) hinged on
     /// its back edge (away from the camera, so the open lid never hides the hole). <see cref="Swing"/> opens it at one moment
     /// and closes it at another; the swing itself is pure (<see cref="OpennessAt"/>).
     /// </summary>
@@ -26,7 +27,10 @@ namespace Lazpoly.Presentation.Tabletop
         public const float SwingSeconds = 0.25f;
 
         public static readonly Color Metal = new Color(0.55f, 0.57f, 0.6f);
-        public static readonly Color HoleDark = new Color(0.05f, 0.05f, 0.06f);
+        public static readonly Color HoleDark = new Color(0.02f, 0.02f, 0.025f);
+
+        /// <summary>Every hatch's lid: nearly black, a shade lighter than the hole so the open lid still reads.</summary>
+        public static readonly Color LidColor = new Color(0.11f, 0.11f, 0.12f);
 
         private Transform _lid;
         private float _openAt = -1f;
@@ -46,7 +50,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The middle of the hole at the frame's top (world space): money goes down and comes up here.</summary>
         public Vector3 Mouth => transform.TransformPoint(new Vector3(0f, FrameHeight, 0f));
 
-        public static MoneyHatch Create(Transform parent, string name, Color color)
+        public static MoneyHatch Create(Transform parent, string name)
         {
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
@@ -62,7 +66,7 @@ namespace Lazpoly.Presentation.Tabletop
             var hinge = new GameObject("Lid");
             hinge.transform.SetParent(root.transform, false);
             hinge.transform.localPosition = new Vector3(0f, FrameHeight, HoleWidth / 2f + Rim / 2f);
-            Part(hinge.transform, "Lid plate", color, new Vector3(HoleLength + Rim, LidThickness, HoleWidth + Rim),
+            Part(hinge.transform, "Lid plate", LidColor, new Vector3(HoleLength + Rim, LidThickness, HoleWidth + Rim),
                 new Vector3(0f, LidThickness / 2f, -(HoleWidth + Rim) / 2f), 0.4f);
             Part(hinge.transform, "Lid grip", Metal, new Vector3(0.22f, 0.03f, 0.05f), new Vector3(0f, LidThickness + 0.015f, -(HoleWidth + Rim) + 0.08f), 0.6f);
 

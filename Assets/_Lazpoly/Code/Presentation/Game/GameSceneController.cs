@@ -1344,7 +1344,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>
         /// Money seen moving (the owner's wish, Faz 25): the money leaves the payer's case at its size and turned its way, goes
         /// down through the payer's hatch at their corner, and for another player comes up through theirs and into their case;
-        /// money for the bank ends under the table and the safe gives a nudge. The game waits for it
+        /// money for the bank ends under the table. The game waits for it
         /// (<see cref="MoneyFlight.Seconds"/>). Houses bought together fly as one payment.
         /// </summary>
         private IEnumerator ShowPayment(MoneyChangedEvent money)
@@ -1369,7 +1369,6 @@ namespace Lazpoly.Presentation.Game
             float seconds = MoneyFlight.Fly(transform, amount, _board.MoneyPileOf(payer), _board.HatchOf(payer),
                 toBank ? null : _board.MoneyPileOf(receiver), toBank ? null : _board.HatchOf(receiver), Speed);
             yield return new WaitForSeconds(seconds);
-            if (toBank && seconds > 0f) _board.NudgeSafe();
         }
 
         /// <summary>
