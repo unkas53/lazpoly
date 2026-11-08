@@ -140,27 +140,49 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
-        public void SellsHousesThenPropertiesAndGivesUpLast()
+        public void SellsWholeTownsWithTheirBuildingsAsAPersonDoesAndGivesUpLast()
         {
+            // The owner's wish (Faz 27): a computer player sells a town with its buildings in one go, as a person does, never house by house.
             GameState state = NewState();
             Own(state, A1, Me);
             Own(state, A2, Me);
             Own(state, Solo, Me);
             Apply(state, new BuildingLevelChangedEvent(A1, 1), new BuildingLevelChangedEvent(A2, 2));
             SetMoney(state, Me, 10);
-            Apply(state, new DebtIncurredEvent(Me, Other, 500, MoneyReason.Rent), new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
+            Apply(state, new DebtIncurredEvent(Me, Other, 200, MoneyReason.Rent), new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
 
-            var sell = Decide(state, Me, AiDifficulty.Normal) as SellBuildingCommand;
-            Assert.IsNotNull(sell);
-            Assert.AreEqual(A2, sell.SquareIndex, "Sells evenly, from the tallest building.");
+            // Missing 190: Solo (150, no buildings) goes first, then A1 with its house (100 + 25) covers the remaining 40.
+            var first = Decide(state, Me, AiDifficulty.Normal) as SellPropertyCommand;
+            Assert.IsNotNull(first, "A whole town, not a building.");
+            Assert.AreEqual(Solo, first.SquareIndex, "Towns without buildings go first.");
+            Apply(state, new PropertyOwnerChangedEvent(Solo, Me, GameState.NoOwner));
+            SetMoney(state, Me, 160);
 
-            Apply(state, new BuildingLevelChangedEvent(A1, 0), new BuildingLevelChangedEvent(A2, 0));
-            var sale = Decide(state, Me, AiDifficulty.Normal) as SellPropertyCommand;
-            Assert.IsNotNull(sale);
-            Assert.AreEqual(A2, sale.SquareIndex, "Sells the cheapest property first (ties: the later square).");
+            var second = Decide(state, Me, AiDifficulty.Normal) as SellPropertyCommand;
+            Assert.IsNotNull(second, "Still a whole town.");
+            Assert.AreEqual(A1, second.SquareIndex, "The cheapest sale that covers the rest, its house with it.");
+            Assert.AreEqual(1, state.GetBuildingLevel(A1), "Nothing was pulled down first.");
+            Apply(state, new BuildingLevelChangedEvent(A1, 0), new PropertyOwnerChangedEvent(A1, Me, GameState.NoOwner));
+            SetMoney(state, Me, 285);
+            Assert.IsInstanceOf<PayDebtCommand>(Decide(state, Me, AiDifficulty.Normal));
 
-            foreach (int square in new[] { A1, A2, Solo }) Apply(state, new PropertyOwnerChangedEvent(square, Me, GameState.NoOwner));
-            Assert.IsInstanceOf<DeclareBankruptcyCommand>(Decide(state, Me, AiDifficulty.Normal));
+            SetMoney(state, Me, 0);
+            Assert.IsInstanceOf<DeclareBankruptcyCommand>(Decide(state, Me, AiDifficulty.Normal), "A2 alone (150) cannot make 200.");
+        }
+
+        [Test]
+        public void NeverSellsABuildingOnItsOwn()
+        {
+            GameState state = NewState();
+            Own(state, A1, Me);
+            Own(state, A2, Me);
+            Apply(state, new BuildingLevelChangedEvent(A1, 3), new BuildingLevelChangedEvent(A2, 3));
+            SetMoney(state, Me, 0);
+            Apply(state, new DebtIncurredEvent(Me, Other, 20, MoneyReason.Rent), new PhaseChangedEvent(GamePhase.AwaitingDebtPayment));
+
+            GameCommand decision = Decide(state, Me, AiDifficulty.Normal);
+            Assert.IsNotInstanceOf<SellBuildingCommand>(decision, "Even when one house would cover it.");
+            Assert.IsInstanceOf<SellPropertyCommand>(decision);
         }
 
         [Test]

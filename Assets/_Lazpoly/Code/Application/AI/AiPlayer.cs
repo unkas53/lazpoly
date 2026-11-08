@@ -249,28 +249,18 @@ namespace Lazpoly.App.AI
             return null;
         }
 
-        /// <summary>Pays when it can; otherwise sells houses, then the least valuable property, then gives up.</summary>
+        /// <summary>
+        /// Pays when it can; otherwise sells whole towns, buildings and all, the way a person's sale and the debt screen's
+        /// automatic sale do (the owner's wish, Faz 27: never house by house), one town per decision; gives up when even
+        /// selling everything would not cover the debt.
+        /// </summary>
         private GameCommand RaiseMoney(View view)
         {
             var pay = new PayDebtCommand(PlayerId);
             if (view.Legal(pay)) return pay;
 
-            int bestSale = -1;
-            for (int square = 0; square < view.Board.Count; square++)
-            {
-                if (!view.Legal(new SellBuildingCommand(PlayerId, square))) continue;
-                if (bestSale < 0 || view.State.GetBuildingLevel(square) > view.State.GetBuildingLevel(bestSale)) bestSale = square;
-            }
-
-            if (bestSale >= 0) return new SellBuildingCommand(PlayerId, bestSale);
-
-            IReadOnlyList<int> squares = view.OwnSquaresByValue();
-            for (int i = squares.Count - 1; i >= 0; i--)
-            {
-                var sale = new SellPropertyCommand(PlayerId, squares[i]);
-                if (view.Legal(sale)) return sale;
-            }
-
+            IReadOnlyList<GameCommand> plan = DebtSettlement.Plan(view.Board, view.Rules, view.State, PlayerId);
+            if (plan.Count > 0 && view.Legal(plan[0])) return plan[0];
             return new DeclareBankruptcyCommand(PlayerId);
         }
 
@@ -368,23 +358,6 @@ namespace Lazpoly.App.AI
                 // Handing someone their missing piece makes them dangerous; a strong player charges for it.
                 if (Profile.Difficulty == AiDifficulty.Hard && CompletesGroupWith(square, receiverId, bundle)) value += Board[square].Price;
                 return value;
-            }
-
-            /// <summary>The player's properties, most valuable first (ties in board order).</summary>
-            public IReadOnlyList<int> OwnSquaresByValue()
-            {
-                var squares = new List<int>();
-                for (int i = 0; i < Board.Count; i++)
-                {
-                    if (State.GetOwner(i) == Me.Id) squares.Add(i);
-                }
-
-                squares.Sort((a, b) =>
-                {
-                    int byPrice = Board[b].Price.CompareTo(Board[a].Price);
-                    return byPrice != 0 ? byPrice : a.CompareTo(b);
-                });
-                return squares;
             }
 
             private int Worth(int square) => Board[square].Price;
