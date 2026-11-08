@@ -76,18 +76,20 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
-        /// corner each, 5-8 share them), its money case along the edge: the case's bottom half's middle this far out from the plate's edge, and
-        /// when two share an edge, this far either side of its middle along it.
+        /// corner each, 5-8 share them), its money case along the edge: the case's bottom half's middle this far out from the
+        /// plate's edge (past the gap and the shelf's margin), and when two share an edge, this far either side of its middle
+        /// along it.
         /// </summary>
-        public const float MoneyPileOut = 0.85f;
+        public static float MoneyPileOut => ShelfGap + ShelfMargin + MoneyPile.CaseSize.z / 2f;
         public const float MoneyPileSpread = 2.4f;
 
         /// <summary>
         /// The shelf each money case stands on, so the money lies on the table and not in the air: in the plate's wood, a little
-        /// lower than the plate's top, reaching this far in under the plate, this far round the open case and this thick.
+        /// lower than the plate's top, this far out from the plate's edge (the owner wanted a small gap between them; it first
+        /// reached in under the plate), this far round the open case and this thick.
         /// </summary>
         public const float ShelfDrop = 0.03f;
-        public const float ShelfTuck = 0.3f;
+        public const float ShelfGap = 0.3f;
         public const float ShelfMargin = 0.15f;
         public const float ShelfThickness = 0.3f;
 
@@ -542,11 +544,11 @@ namespace Lazpoly.Presentation.Tabletop
             else DestroyImmediate(thing);
         }
 
-        /// <summary>A shelf's size: along the edge round the case, across from under the plate to past the open lid, and its thickness.</summary>
+        /// <summary>A shelf's size: along the edge round the case, across round the case and its open lid, and its thickness.</summary>
         public static Vector3 ShelfSize => new Vector3(
             MoneyPile.CaseSize.x + 2f * ShelfMargin,
             ShelfThickness,
-            ShelfTuck + MoneyPileOut + MoneyPile.CaseSize.z / 2f + MoneyPile.CaseDepth + ShelfMargin);
+            ShelfMargin + MoneyPile.CaseSize.z + MoneyPile.CaseDepth + ShelfMargin);
 
         /// <summary>The seats' shelves at the table's edge, in seat order.</summary>
         public IReadOnlyList<Transform> MoneyShelves => _shelves;
@@ -609,7 +611,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 outward = MoneyEdgeOutward(seat, yaw);
                 _moneyPiles[seat].OpenAway(outward);
                 if (seat >= _shelves.Count) continue;
-                _shelves[seat].localPosition = outward * (HalfExtent - ShelfTuck + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
+                _shelves[seat].localPosition = outward * (HalfExtent + ShelfGap + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
                     - Vector3.up * (ShelfDrop + shelf.y / 2f);
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);
             }
