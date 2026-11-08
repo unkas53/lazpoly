@@ -146,9 +146,9 @@ namespace Lazpoly.App.Tests
             var bad = new NetWriter();
             MessageCodec.WriteTable(bad, table);
             byte[] bytes = bad.ToArray();
-            bytes[bytes.Length - 1] = 0xFF; // A negative turn time.
+            bytes[bytes.Length - 1] = 0xFF; // A negative game time (the last value since Faz 28).
             Assert.Throws<FormatException>(() => MessageCodec.ReadTable(new NetReader(bytes)));
-            Assert.Throws<FormatException>(() => MessageCodec.ReadTable(new NetReader(w.ToArray()), 4), "An unknown layout.");
+            Assert.Throws<FormatException>(() => MessageCodec.ReadTable(new NetReader(w.ToArray()), MessageCodec.TableVersion + 1), "An unknown layout.");
         }
 
         [Test]

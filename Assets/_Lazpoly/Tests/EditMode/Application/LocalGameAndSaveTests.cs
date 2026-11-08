@@ -211,7 +211,10 @@ namespace Lazpoly.App.Tests
 
             if (version >= 7)
             {
-                MessageCodec.WriteTable(w, save.Table); // Format 7 (Faz 13b) wrote today's table.
+                // Formats 7-10 (Faz 13b to Faz 27) wrote the table without the game time (layout 3).
+                w.WriteInt(save.Table.StartingMoney);
+                w.WriteInt(save.Table.RoundLimit);
+                w.WriteInt(save.Table.TurnSeconds);
             }
             else
             {
