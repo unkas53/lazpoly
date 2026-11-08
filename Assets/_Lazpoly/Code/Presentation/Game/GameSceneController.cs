@@ -261,6 +261,22 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>The last payment someone could not make and the game time it came, for the "cannot pay" card in the middle; null before any.</summary>
         public DebtIncurredEvent ShownDebt { get; private set; }
+
+        /// <summary>
+        /// The player whose third double in a row sends them to jail, while "Art arda 3 kez çift attın..." is up (the
+        /// owner's wish, Faz 29); <see cref="GameState.NoOwner"/> when none has been.
+        /// </summary>
+        public int ShownThirdDouble { get; private set; } = GameState.NoOwner;
+        public float ShownThirdDoubleTime { get; private set; } = float.NegativeInfinity;
+
+        /// <summary>Players already bankrupt in the state whose fall the table has not shown yet: their corner cards still look as before.</summary>
+        private readonly HashSet<int> _bankruptPending = new HashSet<int>();
+
+        /// <summary>
+        /// Whether <paramref name="player"/>'s corner card shows them bankrupt: only once their figure starts to fall (the
+        /// owner's wish, Faz 29), after the card saying they cannot pay.
+        /// </summary>
+        public bool ShowsBankrupt(PlayerState player) => player != null && player.IsBankrupt && !_bankruptPending.Contains(player.Id);
         public float ShownDebtTime { get; private set; }
 
         /// <summary>The last trade agreement card (a whole colour group in one hand): its sentence, whose it is and the game time it came; null before any.</summary>
@@ -290,6 +306,9 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Whether the shown roll was the third double in a row, which forfeits the move.</summary>
         public bool ShownRollForfeited { get; private set; }
+
+        /// <summary>True when the roll just shown is a third double that sends the player straight to jail.</summary>
+        public bool ShownRollJailed { get; private set; }
 
         /// <summary>Who made the roll on show.</summary>
         public int ShownRollPlayer { get; private set; } = GameState.NoOwner;
@@ -977,6 +996,15 @@ namespace Lazpoly.Presentation.Game
             yield return ScreenTour.Take("zar-toplami");
             yield return ScreenTour.Until(() => !RollTotal.Showing(Time.unscaledTime - ShownRollTime, ShownRollLasts), ShownRollLasts + 1f);
 
+            // The third double's card (the owner's wish, Faz 29), staged for the person.
+            ShownThirdDouble = person;
+            ShownThirdDoubleTime = Time.time;
+            Revision++;
+            yield return ScreenTour.Until(() => false, 0.4f);
+            yield return ScreenTour.Take("ucuncu-cift");
+            ShownThirdDouble = GameState.NoOwner;
+            Revision++;
+
             // The trade agreement card (the owner's wish, Faz 26), staged on the board's first colour group, as everyone sees it.
             int staged = FirstColourGroup(_session.Board);
             if (staged != 0)
@@ -1048,6 +1076,14 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether game time passes: not while paused, not once the game is over, not while the table opens.</summary>
         public static bool GameClockRuns(bool paused, bool over, bool opening) => !paused && !over && !opening;
 
+        /// <summary>
+        /// Whether <paramref name="rolled"/> is a third double in a row that sends its player straight to jail: the rules
+        /// follow a double with a jump to the cell, where a plain double walks.
+        /// </summary>
+        public static bool SendsToJail(DiceRolledEvent rolled, GameEvent next, int jailIndex) =>
+            rolled != null && rolled.Die1 == rolled.Die2 && jailIndex >= 0 && next is PlayerMovedEvent moved &&
+            moved.PlayerId == rolled.PlayerId && moved.Kind == MoveKind.Jump && moved.ToSquare == jailIndex;
+
         /// <summary>True for a batch that only moves the game clock on.</summary>
         public static bool OnlyClock(IReadOnlyList<GameEvent> events)
         {
@@ -1086,6 +1122,7 @@ namespace Lazpoly.Presentation.Game
         private void SyncViewsToState()
         {
             _shownPlayed = _session.State.PlayedSeconds;
+            _bankruptPending.Clear();
             GameState state = _session.State;
             foreach (PlayerState player in state.Players)
             {
@@ -1149,7 +1186,12 @@ namespace Lazpoly.Presentation.Game
             UnlockAchievements(events);
             ShowPresence();
             if (_board == null) return;
-            foreach (GameEvent gameEvent in events) _pendingEvents.Enqueue(gameEvent);
+            foreach (GameEvent gameEvent in PlaybackOrder.For(events))
+            {
+                if (gameEvent is PlayerBankruptedEvent fallen) _bankruptPending.Add(fallen.PlayerId);
+                _pendingEvents.Enqueue(gameEvent);
+            }
+
             if (!_playing) _playback = StartCoroutine(PlayEvents());
         }
 
@@ -1285,6 +1327,14 @@ namespace Lazpoly.Presentation.Game
                         if (rolled.Die1 == rolled.Die2) Say(rolled.PlayerId, L("Çift!"));
                         // The total stays up in the middle of the screen, then the pawn walks (the owner's wish, Faz 28).
                         yield return new WaitForSeconds(ShownRollLasts);
+                        if (ShownRollJailed)
+                        {
+                            // A third double: the card first, then the flight to the cell once it has gone (the owner's wish, Faz 29).
+                            ShownThirdDouble = rolled.PlayerId;
+                            ShownThirdDoubleTime = Time.time;
+                            Revision++;
+                            yield return new WaitForSeconds(CenterNotice.Seconds);
+                        }
                         break;
                     case PlayerMovedEvent moved:
                         _lastMover = moved.PlayerId;
@@ -1371,6 +1421,9 @@ namespace Lazpoly.Presentation.Game
                         yield return new WaitForSeconds(CenterNotice.Seconds);
                         break;
                     case PlayerBankruptedEvent bankrupt:
+                        // The corner card turns to İFLAS as the figure falls.
+                        _bankruptPending.Remove(bankrupt.PlayerId);
+                        Revision++;
                         Say(bankrupt.PlayerId, L("Battım..."));
                         yield return _pawns[bankrupt.PlayerId].Topple();
                         break;
@@ -1563,9 +1616,10 @@ namespace Lazpoly.Presentation.Game
             ShownRollTime = Time.unscaledTime;
             ShownRollPlayer = rolled.PlayerId;
             ShownRollLasts = RollTotal.Seconds / Speed;
-            // The engine ends the turn straight after a third double; the move is forfeited.
-            ShownRollForfeited = rolled.Die1 == rolled.Die2 && _pendingEvents.Count > 0 &&
-                                 _pendingEvents.Peek() is PhaseChangedEvent next && next.Phase == GamePhase.TurnEnd;
+            // The engine ends the turn straight after a third double: the move is forfeited, or the player flies to jail.
+            GameEvent after = _pendingEvents.Count > 0 ? _pendingEvents.Peek() : null;
+            ShownRollForfeited = rolled.Die1 == rolled.Die2 && after is PhaseChangedEvent next && next.Phase == GamePhase.TurnEnd;
+            ShownRollJailed = SendsToJail(rolled, after, _session.Board.JailIndex);
             Revision++;
         }
 
@@ -1654,7 +1708,7 @@ namespace Lazpoly.Presentation.Game
         {
             if (_board == null || _session.State == null) return;
             IReadOnlyList<PlayerState> players = _session.State.Players;
-            for (int i = 0; i < players.Count; i++) _board.ShowSeatMoney(i, players[i].IsBankrupt ? 0 : ShownMoneyOf(players[i].Id));
+            for (int i = 0; i < players.Count; i++) _board.ShowSeatMoney(i, ShowsBankrupt(players[i]) ? 0 : ShownMoneyOf(players[i].Id));
         }
 
         /// <summary>A sum worth reacting to: from this much on a figure cheers at money coming in or sulks at money going out.</summary>

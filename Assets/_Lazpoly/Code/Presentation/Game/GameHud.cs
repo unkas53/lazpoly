@@ -79,6 +79,7 @@ namespace Lazpoly.Presentation.Game
         private int _lastTurnNumber = -1;
         private CenterNotice _tradeNotice;
         private CenterNotice _debtNotice;
+        private CenterNotice _jailNotice;
         private CenterNotice _groupNotice;
         private Text _cardTitle;
         private Text _cardText;
@@ -290,6 +291,7 @@ namespace Lazpoly.Presentation.Game
             BuildCardPopup();
             _tradeNotice = new CenterNotice(_canvas.transform, "Trade Popup");
             _debtNotice = new CenterNotice(_canvas.transform, "Debt Popup");
+            _jailNotice = new CenterNotice(_canvas.transform, "Third Double Popup");
             _groupNotice = new CenterNotice(_canvas.transform, "Group Deal Popup", GroupDeal.Seconds);
             BuildRollPopup();
             BuildRollTotal();
@@ -405,6 +407,31 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
+        /// "Art arda 3 kez çift attın, doğrudan hapse gidiyorsun" in the middle after a third double (the owner's wish,
+        /// Faz 29); the table waits for it, then the figure flies to the cell. Others read it with the player's name.
+        /// </summary>
+        private void UpdateThirdDoublePopup()
+        {
+            int playerId = _controller.ShownThirdDouble;
+            float age = Time.time - _controller.ShownThirdDoubleTime;
+            if (playerId == GameState.NoOwner || !CenterNotice.Showing(age))
+            {
+                _jailNotice.Hide();
+                return;
+            }
+
+            bool mine = _controller.Session.CanControl(playerId) && !_controller.Session.IsAiPlaying(playerId);
+            _jailNotice.Title.text = L("HAPSE!");
+            _jailNotice.Title.color = UiTheme.Warning;
+            _jailNotice.Body.text = ThirdDoubleText(mine ? null : _controller.Session.State.FindPlayer(playerId)?.Name);
+            _jailNotice.Show(age);
+        }
+
+        /// <summary>The third double card's line: to the person who rolled it, or about <paramref name="name"/> to everyone else.</summary>
+        public static string ThirdDoubleText(string name) =>
+            name == null ? L("Art arda 3 kez çift attın, doğrudan hapse gidiyorsun.") : F($"{name} art arda 3 kez çift attı, doğrudan hapse gidiyor.");
+
+        /// <summary>
         /// "X yoğun bir mesai harcayarak (the towns) arasında ticaret anlaşması imzaladı" in the middle when a player comes to
         /// hold a whole colour group (the owner's wish, Faz 26), with what it does to the rent; up for 4 s while the table waits.
         /// </summary>
@@ -451,7 +478,8 @@ namespace Lazpoly.Presentation.Game
             }
 
             // Only doubles are worth a note, and only to the person who rolled them: a computer's doubles show in its bubble.
-            if (_controller.ShownDie1 != _controller.ShownDie2 || !_controller.ShownRollByPerson)
+            // A third double that sends them to jail has its own card instead.
+            if (_controller.ShownDie1 != _controller.ShownDie2 || !_controller.ShownRollByPerson || _controller.ShownRollJailed)
             {
                 _rollGroup.alpha = 0f;
                 return;
@@ -793,6 +821,7 @@ namespace Lazpoly.Presentation.Game
             UpdateCardPopup();
             UpdateTradePopup();
             UpdateDebtPopup();
+            UpdateThirdDoublePopup();
             UpdateGroupDealPopup();
             UpdateRollPopup();
             UpdateRollTotal();
@@ -1179,10 +1208,10 @@ namespace Lazpoly.Presentation.Game
                 Name = player.Name,
                 Number = PlayerCardView.NumberOf(seat),
                 Color = _controller.ColorOf(player.Id),
-                State = player.IsBankrupt ? PlayerCardState.Bankrupt : current ? PlayerCardState.Active : PlayerCardState.Normal,
+                State = _controller.ShowsBankrupt(player) ? PlayerCardState.Bankrupt : current ? PlayerCardState.Active : PlayerCardState.Normal,
                 Face = _controller.Faces?.For(player.Id),
                 Initial = Initial(player.Name),
-                Pips = player.IsBankrupt ? Array.Empty<PlayerCardPip>() : PlayerCardView.GroupsOf(state, player.Id, _controller.GroupOf, _controller.GroupColorOf),
+                Pips = _controller.ShowsBankrupt(player) ? Array.Empty<PlayerCardPip>() : PlayerCardView.GroupsOf(state, player.Id, _controller.GroupOf, _controller.GroupColorOf),
             };
             DescribeSeat(model, player);
             PlayerCardView view = PlayerCardView.Create(ui.Container, CornerWidth, model, PinSquare);

@@ -927,6 +927,13 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Hapis köşesi: hücre karenin ekranda sol ucuna, HAPİS yazısı sağ alt kenarına (sahibin isteğiyle 90° sola çevrili, sol alttan sağ üste okunur; `BoardView.TurnedLeft`), bekleyen figürler üst ucuna (`BoardView.JailSceneShift`, `JailNameShift`, `JailPawnShift`).
 - Zar toplamı: çimin ortasındaki iki zar sayısı kalktı. Zarlar durunca toplam, eskiden çimdeki zar sayılarının durduğu yerde (zarlarla LAZPOLY yazısı arasında, `BoardView.RollTotalSpot`) ekranda büyük rakamla çıkar, çiftse yanında "ÇİFT" yazar (zarlarla yazı arasında tek satırlık yer var); 1,1 sn kalır (oyun hızına göre), masa bekler, sonra figür yürür (`RollTotal`). -shots turunda `zar-toplami` karesi.
 
+## Faz 29: sıralar ve sabit güneş
+
+- Takas: kabul edilen takasta önce "takas kabul edildi" kartı çıkar (5 sn, masa bekler), para ve şehirler ondan sonra el değiştirir (sahibin isteği). Kurallar takası önce uygular, sonucu en son duyurur; masa gösterirken sonucu takasın adımlarının önüne alır (`PlaybackOrder`).
+- Güneş sabit: ışık bütün oyun öğle ışığında kalır (sahibin isteği). Turlar ilerledikçe akşama kayan gün ışığı ve Ayarlar'daki "Gün ışığı akışı" seçeneği kaldırıldı.
+- İflas: oyuncunun köşe kartı, "ödeyecek parası yok" kartı kapanıp figürü düşmeye başladığında iflas görünümüne geçer ve üstünde İFLAS yazar (önceden durum gelir gelmez geçiyordu; `GameSceneController.ShowsBankrupt`).
+- Art arda üçüncü çift: zar toplamından sonra ortada "HAPSE!" kartı çıkar: atan kişiye "Art arda 3 kez çift attın, doğrudan hapse gidiyorsun.", ötekilere adıyla; kart kapanınca figür hapse uçar (`GameSceneController.SendsToJail`). -shots turunda `ucuncu-cift` karesi.
+
 ## Kurallar
 
 Modüler sistemler, tek sorumluluk, durum değişikliklerini yalnızca host doğrular, her aşama test edilir,
