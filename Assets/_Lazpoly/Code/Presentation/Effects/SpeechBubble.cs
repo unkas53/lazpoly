@@ -1,3 +1,4 @@
+using Lazpoly.Presentation.UI;
 using Lazpoly.Presentation.Models;
 using UnityEngine;
 
@@ -61,7 +62,7 @@ namespace Lazpoly.Presentation.Effects
             mesh.alignment = TextAlignment.Center;
             mesh.fontSize = 96;
             mesh.characterSize = TextSize;
-            mesh.color = Ink;
+            mesh.color = UiBlend.ForVertices(Ink);
             mesh.font = UI.UiTheme.BoldFont;
             label.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
             Vector3 size = label.GetComponent<MeshRenderer>().bounds.size;
