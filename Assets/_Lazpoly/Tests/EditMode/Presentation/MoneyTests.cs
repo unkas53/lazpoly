@@ -120,8 +120,8 @@ namespace Lazpoly.Presentation.Tests
                     Assert.AreEqual(0f, Vector3.Dot(lidWay, Vector3.up), 1e-3f, $"seat {seat + 1}: flat on the shelf");
 
                     Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSize.z / 2f);
-                    Assert.AreEqual(board.HalfExtent + BoardView.ShelfGap, Vector3.Dot(inner, BoardView.MoneyEdgeOutward(seat, yaw)), 1e-3f, $"seat {seat + 1}: a small gap between the plate and the shelf");
-                    Assert.Greater(BoardView.ShelfGap, 0.1f, "the gap shows");
+                    Assert.AreEqual(board.HalfExtent + BoardView.ShelfGapAt(seat, yaw), Vector3.Dot(inner, BoardView.MoneyEdgeOutward(seat, yaw)), 1e-3f, $"seat {seat + 1}: a small gap between the plate and the shelf");
+                    Assert.GreaterOrEqual(BoardView.ShelfGapAt(seat, yaw), BoardView.ShelfGap, "the gap shows");
                 }
 
                 board.ShowSeatMoney(1, 0);

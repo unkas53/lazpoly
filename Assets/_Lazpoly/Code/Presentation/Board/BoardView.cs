@@ -80,7 +80,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// plate's edge (past the gap and the shelf's margin), and when two share an edge, this far either side of its middle
         /// along it.
         /// </summary>
-        public static float MoneyPileOut => ShelfGap + ShelfMargin + MoneyPile.CaseSize.z / 2f;
+        public static float MoneyPileOut(int seat, float yaw) => ShelfGapAt(seat, yaw) + ShelfMargin + MoneyPile.CaseSize.z / 2f;
         public const float MoneyPileSpread = 2.4f;
 
         /// <summary>
@@ -90,6 +90,19 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public const float ShelfDrop = 0.03f;
         public const float ShelfGap = 0.5f;
+
+        /// <summary>
+        /// How far a seat's shelf stands off the plate. On the two edges nearest the camera the plate's own side face, seen
+        /// from above, hangs down over the gap and hid it; there the shelf stands further out, by as much as that face covers
+        /// (its height less the shelf's drop, over the camera's slope, along the diagonal the edge's outward way makes on
+        /// screen), so the same strip of sky shows on every side.
+        /// </summary>
+        public static float ShelfGapAt(int seat, float yaw)
+        {
+            if (Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f) return ShelfGap;
+            float slope = Mathf.Tan(BoardCameraRig.Pitch * Mathf.Deg2Rad);
+            return ShelfGap + Mathf.Sqrt(2f) * (PlateThickness - 2f * ShelfDrop) / slope;
+        }
         public const float ShelfMargin = 0.15f;
         public const float ShelfThickness = 0.3f;
 
@@ -571,7 +584,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// its shelf a little below the plate's top.
         /// </summary>
         public static Vector3 MoneyPileSpot(int seat, int seats, float halfExtent, float yaw) =>
-            MoneyEdgeOutward(seat, yaw) * (halfExtent + MoneyPileOut) + MoneyEdgeAlong(seat, seats, yaw) - Vector3.up * ShelfDrop;
+            MoneyEdgeOutward(seat, yaw) * (halfExtent + MoneyPileOut(seat, yaw)) + MoneyEdgeAlong(seat, seats, yaw) - Vector3.up * ShelfDrop;
 
         /// <summary>The way out of the board across the edge a seat's money lies at (one of the board's axes).</summary>
         public static Vector3 MoneyEdgeOutward(int seat, float yaw)
@@ -611,7 +624,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 outward = MoneyEdgeOutward(seat, yaw);
                 _moneyPiles[seat].OpenAway(outward);
                 if (seat >= _shelves.Count) continue;
-                _shelves[seat].localPosition = outward * (HalfExtent + ShelfGap + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
+                _shelves[seat].localPosition = outward * (HalfExtent + ShelfGapAt(seat, yaw) + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
                     - Vector3.up * (ShelfDrop + shelf.y / 2f);
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);
             }
