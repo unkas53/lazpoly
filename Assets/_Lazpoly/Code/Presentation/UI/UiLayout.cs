@@ -43,7 +43,7 @@ namespace Lazpoly.Presentation.UI
         public const float RollPromptHeight = 76f;
         public const float RollPromptDrop = 135f; // Faz 23: higher, off the bottom row's squares and clear of the thrown dice (was 170).
 
-        /// <summary>How far above the screen's middle the roll's total stands (Faz 28): over the settled dice, under the top banner.</summary>
+        /// <summary>How far above the screen's middle the roll's total stands before the camera places it on the lawn's roll spot (Faz 28).</summary>
         public const float RollTotalRise = 150f;
 
         /// <summary>

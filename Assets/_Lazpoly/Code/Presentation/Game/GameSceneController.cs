@@ -998,9 +998,10 @@ namespace Lazpoly.Presentation.Game
 
             // The roll's total in the middle of the screen (the owner's wish, Faz 28), staged as a double so ÇİFT shows too.
             ShowRoll(new DiceRolledEvent(person, 3, 3));
+            ShownRollLasts = RollTotal.Seconds + ScreenTour.SettleSeconds + 1f; // Up long enough for the picture's settling wait.
             yield return ScreenTour.Until(() => false, RollTotal.PopSeconds + 0.1f);
             yield return ScreenTour.Take("zar-toplami");
-            yield return ScreenTour.Until(() => !RollTotal.Showing(Time.unscaledTime - ShownRollTime, ShownRollLasts), RollTotal.Seconds + 1f);
+            yield return ScreenTour.Until(() => !RollTotal.Showing(Time.unscaledTime - ShownRollTime, ShownRollLasts), ShownRollLasts + 1f);
 
             // The trade agreement card (the owner's wish, Faz 26), staged on the board's first colour group, as everyone sees it.
             int staged = FirstColourGroup(_session.Board);
@@ -1064,6 +1065,15 @@ namespace Lazpoly.Presentation.Game
         public double GameSecondsLeft =>
             _session?.Rules == null || _session.Rules.TimeLimitMinutes <= 0 ? double.PositiveInfinity : Math.Max(0, _session.Rules.TimeLimitSeconds - _shownPlayed);
 
+        /// <summary>
+        /// While the table opens: the loading screen, the starting money coming out of the hatches and the draw's banner.
+        /// The game clock starts once they are over.
+        /// </summary>
+        public bool Opening => _drawToAnnounce || _dealing || SceneFader.IsLoading || Time.unscaledTime - AnnouncementTime < AnnouncementSeconds;
+
+        /// <summary>Whether game time passes: not while paused, not once the game is over, not while the table opens.</summary>
+        public static bool GameClockRuns(bool paused, bool over, bool opening) => !paused && !over && !opening;
+
         /// <summary>True for a batch that only moves the game clock on.</summary>
         public static bool OnlyClock(IReadOnlyList<GameEvent> events)
         {
@@ -1085,7 +1095,7 @@ namespace Lazpoly.Presentation.Game
         {
             GameState state = _session.State;
             if (state == null || _board == null) return;
-            bool running = !Paused && !EndReason.HasValue && state.Phase != GamePhase.GameOver;
+            bool running = GameClockRuns(Paused, EndReason.HasValue || state.Phase == GamePhase.GameOver, Opening);
             if (running) _session.AddPlayTime(Time.unscaledDeltaTime);
             double carried = running ? _shownPlayed + Time.unscaledDeltaTime : _shownPlayed;
             _shownPlayed = Math.Min(Math.Max(carried, state.PlayedSeconds), state.PlayedSeconds + GameTimer.ReportSeconds + 1);

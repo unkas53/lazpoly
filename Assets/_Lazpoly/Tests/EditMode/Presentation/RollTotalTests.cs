@@ -48,6 +48,16 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheGameClockRunsOnlyWhileTheGameIsPlayed()
+        {
+            Assert.IsTrue(GameSceneController.GameClockRuns(paused: false, over: false, opening: false));
+            Assert.IsFalse(GameSceneController.GameClockRuns(paused: true, over: false, opening: false), "stands still while paused");
+            Assert.IsFalse(GameSceneController.GameClockRuns(paused: false, over: true, opening: false), "stops when the game is over");
+            Assert.IsFalse(GameSceneController.GameClockRuns(paused: false, over: false, opening: true),
+                "waits for the starting money and the draw");
+        }
+
+        [Test]
         public void TheLawnNoLongerPrintsTheDice()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
@@ -59,6 +69,11 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsNull(board.transform.Find("Scoreboard"), "no dice figures on the lawn (the owner's wish, Faz 28)");
                 foreach (TextMesh text in board.GetComponentsInChildren<TextMesh>(true))
                     Assert.AreNotEqual("–  –", text.text, $"{text.name} still prints the dice");
+
+                // The total stands up the screen from the lawn's middle (the dice rest below it), short of the LAZPOLY title.
+                float up = Vector3.Dot(board.transform.InverseTransformPoint(board.RollTotalSpot), BoardView.ScreenUp(BoardCameraRig.BaseYaw));
+                Assert.Greater(up, 0f);
+                Assert.Less(up, board.Inner * BoardView.TitleOffset * 0.6f, "clear of the title");
             }
             finally
             {

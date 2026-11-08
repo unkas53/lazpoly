@@ -658,6 +658,12 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How far up the screen from the lawn's middle the game clock stands, as a share of the lawn's inner width: near the top corner of the green (Faz 28).</summary>
         public const float ClockOffset = 0.52f;
 
+        /// <summary>
+        /// Where the roll's total shows over the lawn, in world space (Faz 28): where the lawn's dice figures used to lie,
+        /// between the settled dice and the LAZPOLY title, so the total covers neither.
+        /// </summary>
+        public Vector3 RollTotalSpot => transform.TransformPoint(new Vector3(0f, LawnHeight, 0f) + ScreenUp(_yaw) * (_inner * ScoreOffset));
+
         /// <summary>The camera turn the board's writing last faced (<see cref="FaceCamera"/>).</summary>
         public float Yaw => _yaw;
 

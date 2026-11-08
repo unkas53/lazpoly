@@ -480,10 +480,15 @@ namespace Lazpoly.Presentation.Game
             _totalGroup.interactable = false;
             _totalGroup.alpha = 0f;
             _totalRect = total;
-            _totalText = TotalLabel(total, "Figures", new Vector2(0f, 0.28f), Vector2.one, 168);
-            _totalNote = TotalLabel(total, "Double", Vector2.zero, new Vector2(1f, 0.32f), 54);
+            // The pivot sits in the figures' middle, which stand on the lawn's roll spot (UpdateRollTotal).
+            total.pivot = new Vector2(0.5f, RollTotalPivot);
+            _totalText = TotalLabel(total, "Figures", new Vector2(0f, 0.28f), Vector2.one, 150);
+            _totalNote = TotalLabel(total, "Double", new Vector2(0f, 0.12f), new Vector2(1f, 0.44f), 50);
             _totalNote.color = UiPalette.Ink.Gold;
         }
+
+        /// <summary>The middle of the total's figures as a share of its box's height, from the bottom.</summary>
+        private const float RollTotalPivot = 0.64f;
 
         private static Text TotalLabel(RectTransform parent, string name, Vector2 min, Vector2 max, int size)
         {
@@ -505,6 +510,21 @@ namespace Lazpoly.Presentation.Game
             return label;
         }
 
+        /// <summary>
+        /// Stands the total's figures on the lawn's roll spot (<see cref="BoardView.RollTotalSpot"/>), between the dice and
+        /// the title, wherever the camera looks from; without a camera it keeps its place above the screen's middle.
+        /// </summary>
+        private void PlaceRollTotal()
+        {
+            BoardView board = _controller.Board;
+            Camera camera = Camera.main;
+            if (board == null || camera == null) return;
+            Vector3 screen = camera.WorldToScreenPoint(board.RollTotalSpot);
+            if (screen.z <= 0f) return;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)_canvas.transform, screen, null, out Vector2 local))
+                _totalRect.anchoredPosition = local;
+        }
+
         private void UpdateRollTotal()
         {
             float age = Time.unscaledTime - _controller.ShownRollTime;
@@ -518,6 +538,7 @@ namespace Lazpoly.Presentation.Game
             _totalText.text = RollTotal.Text(_controller.ShownDie1, _controller.ShownDie2);
             string note = RollTotal.Note(_controller.ShownDie1, _controller.ShownDie2);
             _totalNote.text = note ?? "";
+            PlaceRollTotal();
             _totalGroup.alpha = RollTotal.Alpha(age, lasts);
             _totalRect.localScale = Vector3.one * RollTotal.Scale(age);
         }
