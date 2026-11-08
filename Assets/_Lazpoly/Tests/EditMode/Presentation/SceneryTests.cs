@@ -37,10 +37,8 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void LongNamesShrinkToTheirTileAndTheLawnShowsTheRoll()
+        public void LongNamesShrinkToTheirTile()
         {
-            Assert.AreEqual("6  4", BoardView.ScoreText(6, 4));
-            Assert.AreEqual("–  –", BoardView.ScoreText(0, 0), "nothing rolled yet");
             Assert.Greater(BoardView.PlateThickness, 0f);
             Assert.Greater(BoardView.LawnHeight, 0f);
 

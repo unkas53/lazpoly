@@ -293,6 +293,9 @@ namespace Lazpoly.Presentation.Game
         public int ShownDie2 { get; private set; }
         public float ShownRollTime { get; private set; } = float.NegativeInfinity;
 
+        /// <summary>How long the roll's total stays up in the middle of the screen (<see cref="RollTotal.Seconds"/> at the game's speed).</summary>
+        public float ShownRollLasts { get; private set; } = RollTotal.Seconds;
+
         /// <summary>Whether the shown roll was the third double in a row, which forfeits the move.</summary>
         public bool ShownRollForfeited { get; private set; }
 
@@ -993,6 +996,12 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The roll's total in the middle of the screen (the owner's wish, Faz 28), staged as a double so ÇİFT shows too.
+            ShowRoll(new DiceRolledEvent(person, 3, 3));
+            yield return ScreenTour.Until(() => false, RollTotal.PopSeconds + 0.1f);
+            yield return ScreenTour.Take("zar-toplami");
+            yield return ScreenTour.Until(() => !RollTotal.Showing(Time.unscaledTime - ShownRollTime, ShownRollLasts), RollTotal.Seconds + 1f);
+
             // The trade agreement card (the owner's wish, Faz 26), staged on the board's first colour group, as everyone sees it.
             int staged = FirstColourGroup(_session.Board);
             if (staged != 0)
@@ -1105,7 +1114,6 @@ namespace Lazpoly.Presentation.Game
             MarkTurn(state.CurrentPlayer.Id);
             _shownPot = state.Pot;
             _board.SetPot(state.Pot);
-            _board.ShowRoll(state.LastDie1, state.LastDie2);
             for (int i = 0; i < state.SquareCount; i++)
             {
                 int owner = state.GetOwner(i);
@@ -1291,7 +1299,8 @@ namespace Lazpoly.Presentation.Game
                         if (_pendingEvents.Count > 0 && _pendingEvents.Peek() is PlayerMovedEvent upcoming && upcoming.PlayerId == rolled.PlayerId)
                             Markers.ShowTarget(upcoming.ToSquare, ColorOf(rolled.PlayerId));
                         if (rolled.Die1 == rolled.Die2) Say(rolled.PlayerId, L("Çift!"));
-                        yield return new WaitForSeconds(RollReadSeconds / Speed);
+                        // The total stays up in the middle of the screen, then the pawn walks (the owner's wish, Faz 28).
+                        yield return new WaitForSeconds(ShownRollLasts);
                         break;
                     case PlayerMovedEvent moved:
                         _lastMover = moved.PlayerId;
@@ -1569,7 +1578,7 @@ namespace Lazpoly.Presentation.Game
             ShownDie2 = rolled.Die2;
             ShownRollTime = Time.unscaledTime;
             ShownRollPlayer = rolled.PlayerId;
-            _board.ShowRoll(rolled.Die1, rolled.Die2);
+            ShownRollLasts = RollTotal.Seconds / Speed;
             // The engine ends the turn straight after a third double; the move is forfeited.
             ShownRollForfeited = rolled.Die1 == rolled.Die2 && _pendingEvents.Count > 0 &&
                                  _pendingEvents.Peek() is PhaseChangedEvent next && next.Phase == GamePhase.TurnEnd;

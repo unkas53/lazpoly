@@ -116,7 +116,6 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How far a tile's own colour is washed towards the paper: the pastel of the printed board.</summary>
         public const float Pastel = 0.6f;
         private static readonly Color TitleColor = new Color(0.16f, 0.32f, 0.20f);
-        private static readonly Color ScoreColor = new Color(0.14f, 0.18f, 0.15f);
         private static readonly Color PotTextColor = new Color(0.20f, 0.26f, 0.20f);
         /// <summary>The one dark ink every name on the board is printed in.</summary>
         public static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
@@ -343,7 +342,6 @@ namespace Lazpoly.Presentation.Tabletop
         private float _yaw = BoardCameraRig.BaseYaw;
         private Transform _scoreboard;
         private Transform _title;
-        private TextMesh _score;
         private TextMesh _pot;
         private PotPile _potPile;
 
@@ -484,15 +482,6 @@ namespace Lazpoly.Presentation.Tabletop
             if (_pot != null) _pot.text = F($"Çay kumbarası {amount}");
             _potPile?.Show(amount);
         }
-
-        /// <summary>Shows the last roll large on the lawn; two dashes before the first roll of the game.</summary>
-        public void ShowRoll(int die1, int die2)
-        {
-            if (_score != null) _score.text = ScoreText(die1, die2);
-        }
-
-        /// <summary>What the lawn's score says for a roll: "6  4", or "–  –" when nothing has been rolled.</summary>
-        public static string ScoreText(int die1, int die2) => die1 == 0 ? "–  –" : $"{die1}  {die2}";
 
         /// <summary>
         /// Turns everything written on the board so it reads from a camera at <paramref name="yaw"/>: the
@@ -1199,14 +1188,16 @@ namespace Lazpoly.Presentation.Tabletop
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
         }
 
-        /// <summary>The dice score large on the lawn with the pot's line under it, <see cref="FaceCamera"/> places and turns them.</summary>
+        /// <summary>
+        /// The pot's line on the lawn, which <see cref="FaceCamera"/> places and turns; a board without a pot prints nothing there.
+        /// The lawn no longer prints the dice (the owner's wish, Faz 28): the roll's total shows on the screen instead.
+        /// </summary>
         private void CreateScoreboard(float inner, bool hasPot)
         {
+            if (!hasPot) return;
             var board = new GameObject("Scoreboard");
             board.transform.SetParent(transform, false);
             _scoreboard = board.transform;
-            _score = CreateText("Score", ScoreText(0, 0), _scoreboard, Vector3.zero, 192, inner * 0.008f, ScoreColor);
-            if (!hasPot) return;
             _pot = CreateText("Pot", "", _scoreboard, new Vector3(0f, -inner * 0.1f, 0f), 128, inner * 0.0036f, PotTextColor);
             _potPile = new PotPile(transform);
             SetPot(0);

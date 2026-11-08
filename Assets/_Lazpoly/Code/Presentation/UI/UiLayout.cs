@@ -43,6 +43,9 @@ namespace Lazpoly.Presentation.UI
         public const float RollPromptHeight = 76f;
         public const float RollPromptDrop = 135f; // Faz 23: higher, off the bottom row's squares and clear of the thrown dice (was 170).
 
+        /// <summary>How far above the screen's middle the roll's total stands (Faz 28): over the settled dice, under the top banner.</summary>
+        public const float RollTotalRise = 150f;
+
         /// <summary>
         /// Screen pixels kept clear of the board at each side edge (<see cref="SideReserve"/>). The corner
         /// cards sit in the empty triangles beside the diamond-shaped board, so they reserve nothing more.

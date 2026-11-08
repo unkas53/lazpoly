@@ -89,6 +89,10 @@ namespace Lazpoly.Presentation.Game
         private RectTransform _rollPrompt;
         private float _rollPromptShownAt = float.NegativeInfinity;
         private RectTransform _rollRect;
+        private RectTransform _totalRect;
+        private CanvasGroup _totalGroup;
+        private Text _totalText;
+        private Text _totalNote;
         private readonly Dictionary<int, RollingNumber> _money = new Dictionary<int, RollingNumber>();
         private readonly Dictionary<int, Text> _moneyLabels = new Dictionary<int, Text>();
         private readonly Dictionary<int, PlayerCardView> _playerCards = new Dictionary<int, PlayerCardView>();
@@ -288,6 +292,7 @@ namespace Lazpoly.Presentation.Game
             _debtNotice = new CenterNotice(_canvas.transform, "Debt Popup");
             _groupNotice = new CenterNotice(_canvas.transform, "Group Deal Popup", GroupDeal.Seconds);
             BuildRollPopup();
+            BuildRollTotal();
             BuildRollPrompt();
 
             RectTransform timer = UiRoot.Rect(_canvas.transform, "Move Timer", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
@@ -456,6 +461,65 @@ namespace Lazpoly.Presentation.Game
             _rollText.color = _controller.ShownRollForfeited ? UiPalette.Ink.Gold : UiPalette.Ink.OnMasthead;
             _rollGroup.alpha = Mathf.Clamp01(age / 0.12f) * Mathf.Clamp01((visible - age) / 0.35f);
             _rollRect.localScale = Vector3.one * Mathf.Lerp(0.7f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.25f)));
+        }
+
+        /// <summary>The ink of the roll's total: white figures with a dark edge, readable on the green lawn and on the road.</summary>
+        public static readonly Color TotalColor = Color.white;
+        public static readonly Color TotalEdge = new Color(0.08f, 0.12f, 0.09f, 0.85f);
+
+        /// <summary>
+        /// The roll's total in large figures above the middle of the screen, "ÇİFT" under it for a double (the owner's wish,
+        /// Faz 28; <see cref="RollTotal"/>). Everyone's roll shows it; it never takes the mouse.
+        /// </summary>
+        private void BuildRollTotal()
+        {
+            RectTransform total = UiRoot.Rect(_canvas.transform, "Roll Total", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-200f, UiLayout.RollTotalRise - 120f), new Vector2(200f, UiLayout.RollTotalRise + 120f));
+            _totalGroup = total.gameObject.AddComponent<CanvasGroup>();
+            _totalGroup.blocksRaycasts = false;
+            _totalGroup.interactable = false;
+            _totalGroup.alpha = 0f;
+            _totalRect = total;
+            _totalText = TotalLabel(total, "Figures", new Vector2(0f, 0.28f), Vector2.one, 168);
+            _totalNote = TotalLabel(total, "Double", Vector2.zero, new Vector2(1f, 0.32f), 54);
+            _totalNote.color = UiPalette.Ink.Gold;
+        }
+
+        private static Text TotalLabel(RectTransform parent, string name, Vector2 min, Vector2 max, int size)
+        {
+            RectTransform rect = UiRoot.Rect(parent, name, min, max, Vector2.zero, Vector2.zero);
+            var label = rect.gameObject.AddComponent<Text>();
+            UiTheme.Apply(label, UiTextStyle.Heading);
+            label.font = UiTheme.BoldFont;
+            label.resizeTextForBestFit = false;
+            label.fontSize = size;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.horizontalOverflow = HorizontalWrapMode.Overflow;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
+            label.color = TotalColor;
+            label.raycastTarget = false;
+            var edge = rect.gameObject.AddComponent<Outline>();
+            edge.effectColor = TotalEdge;
+            edge.effectDistance = new Vector2(3f, -3f);
+            UiRoot.AddShadow(rect.gameObject, 6f);
+            return label;
+        }
+
+        private void UpdateRollTotal()
+        {
+            float age = Time.unscaledTime - _controller.ShownRollTime;
+            float lasts = _controller.ShownRollLasts;
+            if (_controller.ShownDie1 == 0 || !RollTotal.Showing(age, lasts))
+            {
+                _totalGroup.alpha = 0f;
+                return;
+            }
+
+            _totalText.text = RollTotal.Text(_controller.ShownDie1, _controller.ShownDie2);
+            string note = RollTotal.Note(_controller.ShownDie1, _controller.ShownDie2);
+            _totalNote.text = note ?? "";
+            _totalGroup.alpha = RollTotal.Alpha(age, lasts);
+            _totalRect.localScale = Vector3.one * RollTotal.Scale(age);
         }
 
         /// <summary>The roll button's red: it tints the kit's cream skin to a brick red.</summary>
@@ -711,6 +775,7 @@ namespace Lazpoly.Presentation.Game
             UpdateDebtPopup();
             UpdateGroupDealPopup();
             UpdateRollPopup();
+            UpdateRollTotal();
             UpdateTip(state);
             UpdateTimer(state);
             AutoEndTurn(state, tradeOpen);
