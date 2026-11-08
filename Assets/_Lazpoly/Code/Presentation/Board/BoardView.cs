@@ -92,17 +92,15 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ShelfGap = 0.5f;
 
         /// <summary>
-        /// How far a seat's shelf stands off the plate. On the two edges nearest the camera the plate's own side face, seen
-        /// from above, hangs down over the gap and hid it; there the shelf stands further out, by as much as that face covers
-        /// (its height less the shelf's drop, over the camera's slope, along the diagonal the edge's outward way makes on
-        /// screen), so the same strip of sky shows on every side.
+        /// On the two edges nearest the camera the plate's own side face, seen from above, hangs down over the gap: at
+        /// <see cref="ShelfGap"/> no sky showed there, at 1.59 a strip three times the far edges' did and the 8-player
+        /// trays nearly touched the bottom corner cards. This gap shows a strip a little wider than the far edges' one.
         /// </summary>
-        public static float ShelfGapAt(int seat, float yaw)
-        {
-            if (Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f) return ShelfGap;
-            float slope = Mathf.Tan(BoardCameraRig.Pitch * Mathf.Deg2Rad);
-            return ShelfGap + Mathf.Sqrt(2f) * (PlateThickness - 2f * ShelfDrop) / slope;
-        }
+        public const float NearShelfGap = 1.15f;
+
+        /// <summary>How far a seat's shelf stands off the plate: further on the edges nearest the camera (<see cref="NearShelfGap"/>).</summary>
+        public static float ShelfGapAt(int seat, float yaw) =>
+            Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f ? ShelfGap : NearShelfGap;
         public const float ShelfMargin = 0.15f;
         public const float ShelfThickness = 0.3f;
 
