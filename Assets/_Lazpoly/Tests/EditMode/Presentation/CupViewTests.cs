@@ -4,6 +4,7 @@ using Lazpoly.Core.Events;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Data;
+using Lazpoly.Presentation.Game;
 using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Tabletop;
 using Lazpoly.Presentation.Texts;
@@ -45,7 +46,8 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("Şampiyonlar Kupası", cup.Name);
             Assert.AreEqual(50000, cup.Fee, "50K (the owner's wish, Faz 27)");
             Assert.AreEqual(50, cup.BoostPercent);
-            Assert.AreEqual(10, cup.BoostStep);
+            Assert.AreEqual(50, cup.BoostStep, "50, 100, 150... (the owner's rule, Faz 29)");
+            Assert.AreEqual(500, cup.BoostLimit, "never more than 500%");
             Assert.IsFalse(Enumerable.Range(0, _data.Board.Count).Any(i => _data.Board[i].Name == "Sokak Haberi"), "the street news is gone");
             Assert.AreEqual("Champions' Cup", Lang.Load(Lazpoly.Infra.Settings.Language.English)["Şampiyonlar Kupası"]);
         }
@@ -114,22 +116,31 @@ namespace Lazpoly.Presentation.Tests
             {
                 s.Owners[paris] = 1;
                 s.CupSquare = paris;
-                s.CupPercent = 60;
+                s.CupPercent = 100;
                 s.CupPicks = 2;
             });
 
             SquareInfo corner = SquareInfo.Describe(_data.Board, _data.Rules, state, CupCorner, null);
             Assert.AreEqual("Kupa", corner.Kind);
-            Assert.AreEqual("%70", corner.Rows.Single(r => r.Label == "Sıradaki artış").Value);
-            Assert.AreEqual("Paris (%60)", corner.Rows.Single(r => r.Label == "Kupanın şehri").Value);
+            Assert.AreEqual("%150", corner.Rows.Single(r => r.Label == "Sıradaki artış").Value, "the third pick: 50, 100, 150");
+            Assert.AreEqual("Paris (%100)", corner.Rows.Single(r => r.Label == "Kupanın şehri").Value);
 
             SquareInfo town = SquareInfo.Describe(_data.Board, _data.Rules, state, paris, null);
-            Assert.AreEqual("kira +%60", town.Rows.Single(r => r.Label == "Kupa").Value);
+            Assert.AreEqual("kira +%100", town.Rows.Single(r => r.Label == "Kupa").Value);
             Assert.IsTrue(town.Notes.Any(n => n.Contains("Şampiyonlar Kupası")));
 
-            string line = EventDescriber.Describe(new CupHostedEvent(1, paris, 60), state, _data.Board);
+            string line = EventDescriber.Describe(new CupHostedEvent(1, paris, 100), state, _data.Board);
             StringAssert.Contains("Paris", line);
-            StringAssert.Contains("%60", line);
+            StringAssert.Contains("%100", line);
+            Assert.IsTrue(corner.Notes.Any(n => n.Contains("en fazla %500")), "the limit is told");
+
+            Assert.AreEqual("Şampiyonlar Kupası maçları Paris şehrinde yapılıyor", CupNews.Text("Paris"));
+            Assert.AreEqual("Şehrin kirası %100 artıyor.", CupNews.RaiseText(100));
+            Assert.AreEqual("ŞAMPİYONLAR KUPASI", CupNews.Title);
+            Lang.Set(Lazpoly.Infra.Settings.Language.English);
+            Assert.AreEqual("The Champions' Cup matches are played in Paris", CupNews.Text("Paris"));
+            Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
+            Assert.Greater(CupNews.Seconds, 2f);
             Assert.AreEqual("kupa", EventDescriber.ReasonText(MoneyReason.Cup));
         }
 
@@ -138,7 +149,8 @@ namespace Lazpoly.Presentation.Tests
         {
             var section = HowToPlay.Sections(_data.Board, _data.Rules).Single(s => s.Key == "Şampiyonlar Kupası");
             StringAssert.Contains("50", section.Value);
-            StringAssert.Contains("%10", section.Value);
+            StringAssert.Contains("%50", section.Value);
+            StringAssert.Contains("en fazla %500", section.Value);
             StringAssert.Contains("tek bir şehirde", section.Value);
             Assert.IsFalse(HowToPlay.Sections(_data.Board, _data.Rules).Any(s => s.Key.Contains("Sokak Haberi")), "the card section is Şans alone");
 

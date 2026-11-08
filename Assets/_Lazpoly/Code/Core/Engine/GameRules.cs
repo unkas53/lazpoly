@@ -170,12 +170,16 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>
         /// The raise, in percent, the next pick on the cup square at <paramref name="cupSquare"/> gives its town: the square's
-        /// first raise plus its step for every pick made so far in the game, whoever made it (50, 60, 70...). 0 off a cup square.
+        /// first raise plus its step for every pick made so far in the game, whoever made it (50, 100, 150... on the shipped
+        /// board, the owner's rule, Faz 29), up to its limit (500). 0 off a cup square.
         /// </summary>
         public static int NextCupPercent(BoardDefinition board, GameState state, int cupSquare)
         {
             SquareDefinition square = board[cupSquare];
-            return square.Type == SquareType.Cup ? square.BoostPercent + square.BoostStep * state.CupPicks : 0;
+            if (square.Type != SquareType.Cup) return 0;
+            long percent = square.BoostPercent + (long)square.BoostStep * state.CupPicks;
+            if (square.BoostLimit > 0 && percent > square.BoostLimit) percent = square.BoostLimit;
+            return (int)Math.Min(percent, int.MaxValue);
         }
 
         /// <summary>Whether a player on the cup square is offered it: they own a town to bring it to and can pay the fee.</summary>

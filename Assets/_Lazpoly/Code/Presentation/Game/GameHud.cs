@@ -81,6 +81,7 @@ namespace Lazpoly.Presentation.Game
         private CenterNotice _debtNotice;
         private CenterNotice _jailNotice;
         private CenterNotice _groupNotice;
+        private CenterNotice _cupNotice;
         private Text _cardTitle;
         private Text _cardText;
         private CanvasGroup _cardGroup;
@@ -293,6 +294,7 @@ namespace Lazpoly.Presentation.Game
             _debtNotice = new CenterNotice(_canvas.transform, "Debt Popup");
             _jailNotice = new CenterNotice(_canvas.transform, "Third Double Popup");
             _groupNotice = new CenterNotice(_canvas.transform, "Group Deal Popup", GroupDeal.Seconds);
+            _cupNotice = new CenterNotice(_canvas.transform, "Cup Popup", CupNews.Seconds);
             BuildRollPopup();
             BuildRollTotal();
             BuildRollPrompt();
@@ -430,6 +432,23 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The third double card's line: to the person who rolled it, or about <paramref name="name"/> to everyone else.</summary>
         public static string ThirdDoubleText(string name) =>
             name == null ? L("Art arda 3 kez çift attın, doğrudan hapse gidiyorsun.") : F($"{name} art arda 3 kez çift attı, doğrudan hapse gidiyor.");
+
+        /// <summary>"Şampiyonlar Kupası maçları X şehrinde yapılıyor" in the middle when the cup goes to a town (Faz 29), with the raise.</summary>
+        private void UpdateCupPopup()
+        {
+            CupHostedEvent cup = _controller.ShownCup;
+            float age = Time.time - _controller.ShownCupTime;
+            if (cup == null || !CenterNotice.Showing(age, _cupNotice.Lasts))
+            {
+                _cupNotice.Hide();
+                return;
+            }
+
+            _cupNotice.Title.text = CupNews.Title;
+            _cupNotice.Title.color = UiTheme.Accent;
+            _cupNotice.Body.text = CupNews.Text(_controller.Session.Board[cup.SquareIndex].Name) + "\n" + CupNews.RaiseText(cup.Percent);
+            _cupNotice.Show(age);
+        }
 
         /// <summary>
         /// "X yoğun bir mesai harcayarak (the towns) arasında ticaret anlaşması imzaladı" in the middle when a player comes to
@@ -823,6 +842,7 @@ namespace Lazpoly.Presentation.Game
             UpdateDebtPopup();
             UpdateThirdDoublePopup();
             UpdateGroupDealPopup();
+            UpdateCupPopup();
             UpdateRollPopup();
             UpdateRollTotal();
             UpdateTip(state);

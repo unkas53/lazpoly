@@ -34,7 +34,7 @@
         { "type": "property", "name": "Prag", "price": 240000, "rent": 95000, "group": 4, "buildingCost": 130000, "rents": [150000, 200000, 250000, 305000, 355000] },
         { "type": "card", "name": "Şans" },
         { "type": "property", "name": "Viyana", "price": 260000, "rent": 105000, "group": 4, "buildingCost": 130000, "rents": [155000, 210000, 260000, 310000, 365000] },
-        { "type": "cup", "name": "Şampiyonlar Kupası", "fee": 50000, "percent": 50, "step": 10 },
+        { "type": "cup", "name": "Şampiyonlar Kupası", "fee": 50000, "percent": 50, "step": 50, "limit": 500 },
         { "type": "property", "name": "Barselona", "price": 280000, "rent": 110000, "group": 5, "buildingCost": 150000, "rents": [170000, 230000, 290000, 350000, 410000] },
         { "type": "card", "name": "Şans" },
         { "type": "property", "name": "Roma", "price": 300000, "rent": 120000, "group": 5, "buildingCost": 150000, "rents": [180000, 240000, 300000, 360000, 420000] },

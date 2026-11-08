@@ -654,5 +654,9 @@
   "ÇİFT": "DOUBLE",
   "HAPSE!": "TO JAIL!",
   "Art arda 3 kez çift attın, doğrudan hapse gidiyorsun.": "Three doubles in a row: you go straight to jail.",
-  "{0} art arda 3 kez çift attı, doğrudan hapse gidiyor.": "{0} rolled three doubles in a row and goes straight to jail."
+  "{0} art arda 3 kez çift attı, doğrudan hapse gidiyor.": "{0} rolled three doubles in a row and goes straight to jail.",
+  "Artış en fazla %{0} olur.": "The raise goes up to {0}% at most.",
+  "ŞAMPİYONLAR KUPASI": "CHAMPIONS' CUP",
+  "Şampiyonlar Kupası maçları {0} şehrinde yapılıyor": "The Champions' Cup matches are played in {0}",
+  "Şehrin kirası %{0} artıyor.": "The city's rent goes up {0}%."
 }

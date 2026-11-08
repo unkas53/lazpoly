@@ -62,6 +62,7 @@ namespace Lazpoly.Core.Board
                 Mix(square.TaxPercent);
                 Mix(square.BoostPercent);
                 Mix(square.BoostStep);
+                Mix(square.BoostLimit);
             }
 
             Mix(board.Cards.Count);

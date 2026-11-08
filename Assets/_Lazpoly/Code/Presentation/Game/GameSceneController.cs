@@ -262,6 +262,10 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The last payment someone could not make and the game time it came, for the "cannot pay" card in the middle; null before any.</summary>
         public DebtIncurredEvent ShownDebt { get; private set; }
 
+        /// <summary>The cup's last move, while its card "Şampiyonlar Kupası maçları X şehrinde yapılıyor" is up (Faz 29).</summary>
+        public CupHostedEvent ShownCup { get; private set; }
+        public float ShownCupTime { get; private set; } = float.NegativeInfinity;
+
         /// <summary>
         /// The player whose third double in a row sends them to jail, while "Art arda 3 kez çift attın..." is up (the
         /// owner's wish, Faz 29); <see cref="GameState.NoOwner"/> when none has been.
@@ -1019,6 +1023,18 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => ShownFireworksTime >= ShownGroupDealTime && Time.time - ShownFireworksTime >= burst, burst + 2f);
                 yield return ScreenTour.Take("havai-fisek");
                 yield return ScreenTour.Until(() => Time.time - ShownFireworksTime >= FireworkShow.Seconds(_session.Board.CountInGroup(staged)), FireworkShow.Seconds(4) + 1f);
+
+                // The cup's card and its fireworks (the owner's wish, Faz 29), staged on that group's first town; the table's
+                // own cup is put back after.
+                int cupTown = new List<int>(GameRules.GroupSquares(_session.Board, staged))[0];
+                StartCoroutine(CelebrateCup(new CupHostedEvent(person, cupTown, 50)));
+                yield return ScreenTour.Until(() => false, 0.5f);
+                yield return ScreenTour.Take("kupa-karti");
+                yield return ScreenTour.Until(() => ShownFireworksTime >= ShownCupTime && Time.time - ShownFireworksTime >= burst, CupNews.Seconds + burst + 2f);
+                yield return ScreenTour.Take("kupa-fisek");
+                yield return ScreenTour.Until(() => Time.time - ShownFireworksTime >= FireworkShow.Seconds(1) + 0.2f, FireworkShow.Seconds(1) + 1f);
+                _board.SetCup(_session.State.CupSquare);
+                ShowRents();
             }
 
             foreach ((HudWindow window, string name) in new[]
@@ -1353,12 +1369,9 @@ namespace Lazpoly.Presentation.Game
                         Revision++;
                         break;
                     case CupHostedEvent cup:
-                        // The cup moves to its new town (leaving the one before) and the rents on the board change with it.
-                        _board.SetCup(cup.SquareIndex, animate: true);
-                        ShowRents();
                         Pawn(cup.PlayerId)?.Cheer();
                         Say(cup.PlayerId, F($"Kupa {L(_session.Board[cup.SquareIndex].Name)} şehrine!"));
-                        Revision++;
+                        yield return CelebrateCup(cup);
                         break;
                     case JailChangedEvent jail:
                         Say(jail.PlayerId, L(jail.Turns == 0 ? "Özgürüm!" : jail.Turns >= _session.Rules.JailTurns ? "Hapse düştüm!" : "Bekliyorum..."));
@@ -1534,6 +1547,30 @@ namespace Lazpoly.Presentation.Game
                 yield return new WaitForSeconds(GroupDeal.Seconds);
                 yield return CelebrateGroup(deal.Value);
             }
+        }
+
+        /// <summary>
+        /// The cup goes to a town (the owner's wish, Faz 29): first the card "Şampiyonlar Kupası maçları X şehrinde yapılıyor"
+        /// (<see cref="CupNews.Seconds"/>), then the trophy moves there and fireworks go up over it, and only once they are over
+        /// do the rents on the board change (the town's, and the one the cup left). The table waits all along.
+        /// </summary>
+        private IEnumerator CelebrateCup(CupHostedEvent cup)
+        {
+            ShownCup = cup;
+            ShownCupTime = Time.time;
+            Revision++;
+            yield return new WaitForSeconds(CupNews.Seconds);
+
+            _board.SetCup(cup.SquareIndex, animate: true);
+            ShownFireworksTime = Time.time;
+            Revision++;
+            Fireworks.Launch(transform, new List<Vector3> { _board.SquarePosition(cup.SquareIndex) },
+                _board.transform.position + Vector3.up * _board.SurfaceY, CupNews.FireworkColor);
+            yield return new WaitForSeconds(FireworkShow.Seconds(1));
+
+            ShowRents();
+            _board.PopPrice(cup.SquareIndex);
+            Revision++;
         }
 
         /// <summary>Fireworks over the towns of <paramref name="groupId"/>, in the group's colour; then their new rents show, each with a swell.</summary>

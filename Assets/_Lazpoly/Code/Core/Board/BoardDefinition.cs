@@ -178,9 +178,9 @@ namespace Lazpoly.Core.Board
                     if (square.Fee <= 0) throw new ArgumentException($"Square {index} '{square.Name}': leaving jail early needs a fee.");
                     break;
                 case SquareType.Cup:
-                    if (square.Fee < 0 || square.BoostPercent <= 0 || square.BoostStep < 0)
+                    if (square.Fee < 0 || square.BoostPercent <= 0 || square.BoostStep < 0 || (square.BoostLimit != 0 && square.BoostLimit < square.BoostPercent))
                     {
-                        throw new ArgumentException($"Square {index} '{square.Name}': a cup needs a fee of 0 or more, a positive raise and a step of 0 or more.");
+                        throw new ArgumentException($"Square {index} '{square.Name}': a cup needs a fee of 0 or more, a positive raise, a step of 0 or more and no limit under its first raise.");
                     }
 
                     break;

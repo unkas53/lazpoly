@@ -13,11 +13,12 @@ namespace Lazpoly.Core.Board
         private readonly int[] _developedRents;
 
         private SquareDefinition(string name, SquareType type, int price, int baseRent, int groupId, int taxAmount,
-            int buildingCost, int[] developedRents, int fee = 0, bool isResort = false, int taxPercent = 0, int boostPercent = 0, int boostStep = 0)
+            int buildingCost, int[] developedRents, int fee = 0, bool isResort = false, int taxPercent = 0, int boostPercent = 0, int boostStep = 0, int boostLimit = 0)
         {
             Fee = fee;
             BoostPercent = boostPercent;
             BoostStep = boostStep;
+            BoostLimit = boostLimit;
             TaxPercent = taxPercent;
             IsResort = isResort;
             Name = name ?? throw new ArgumentNullException(nameof(name));
@@ -59,6 +60,9 @@ namespace Lazpoly.Core.Board
 
         /// <summary>On a cup square: the percent each pick adds to the next one's raise. 0 on other squares.</summary>
         public int BoostStep { get; }
+
+        /// <summary>On a cup square: the highest raise a pick can give, in percent (the owner's rule, Faz 29: 500); 0 for no limit.</summary>
+        public int BoostLimit { get; }
 
         /// <summary>
         /// Price of a ride (<see cref="SquareType.Travel"/>), of leaving jail early (<see cref="SquareType.Jail"/>), or of bringing the
@@ -103,10 +107,11 @@ namespace Lazpoly.Core.Board
 
         /// <summary>
         /// The champions' cup: for <paramref name="fee"/> the visitor raises one of their towns' rent by <paramref name="percent"/>
-        /// per cent, plus <paramref name="step"/> per cent for every pick made before in the game.
+        /// per cent, plus <paramref name="step"/> per cent for every pick made before in the game, never more than
+        /// <paramref name="limit"/> per cent (0 for no limit).
         /// </summary>
-        public static SquareDefinition Cup(string name, int fee, int percent, int step) =>
-            new SquareDefinition(name, SquareType.Cup, 0, 0, 0, 0, 0, null, fee, boostPercent: percent, boostStep: step);
+        public static SquareDefinition Cup(string name, int fee, int percent, int step, int limit = 0) =>
+            new SquareDefinition(name, SquareType.Cup, 0, 0, 0, 0, 0, null, fee, boostPercent: percent, boostStep: step, boostLimit: limit);
 
         /// <summary>Gives the next roll a choice of two.</summary>
         public static SquareDefinition Lookout(string name) => new SquareDefinition(name, SquareType.Lookout, 0, 0, 0, 0, 0, null);

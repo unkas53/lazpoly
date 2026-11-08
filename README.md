@@ -933,6 +933,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Güneş sabit: ışık bütün oyun öğle ışığında kalır (sahibin isteği). Turlar ilerledikçe akşama kayan gün ışığı ve Ayarlar'daki "Gün ışığı akışı" seçeneği kaldırıldı.
 - İflas: oyuncunun köşe kartı, "ödeyecek parası yok" kartı kapanıp figürü düşmeye başladığında iflas görünümüne geçer ve üstünde İFLAS yazar (önceden durum gelir gelmez geçiyordu; `GameSceneController.ShowsBankrupt`).
 - Art arda üçüncü çift: zar toplamından sonra ortada "HAPSE!" kartı çıkar: atan kişiye "Art arda 3 kez çift attın, doğrudan hapse gidiyorsun.", ötekilere adıyla; kart kapanınca figür hapse uçar (`GameSceneController.SendsToJail`). -shots turunda `ucuncu-cift` karesi.
+- Şampiyonlar Kupası (sahibin isteği): kupa bir şehre gelince önce ortada 4 sn "Şampiyonlar Kupası maçları X şehrinde yapılıyor" kartı (altında kiranın ne kadar arttığı), kart kapanınca kupa şehre geçer ve üstünde altın renginde havai fişekler patlar; fişekler bitince karelerdeki kiralar değişir, sonra oyun devam eder (`CupNews`, `GameSceneController.CelebrateCup`). Artış oyun boyunca her seçimde %50 büyür: %50, %100, %150... en fazla %500 (`board.json`: `step` 50, yeni `limit` 500; `SquareDefinition.BoostLimit`). Tahta verisi değiştiği için eski kayıtlar açılmaz; ağ protokolü 20. Denge: 4 oyuncuda ortalama 88 tur (önceden 109), 2 oyuncuda 79, 6 oyuncuda 318 (ortanca 115; sayaçsız simülasyonda birkaç oyun çok uzuyor, gerçek oyunu 30 dk saat bitirir). -shots turunda `kupa-karti` ve `kupa-fisek` kareleri.
 
 ## Kurallar
 

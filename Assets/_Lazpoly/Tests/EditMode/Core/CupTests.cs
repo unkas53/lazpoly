@@ -248,13 +248,44 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void TheChecksumKnowsTheCupsNumbers()
         {
-            ulong Sum(int percent, int step) => BoardChecksum.Compute(new BoardDefinition(new[]
+            ulong Sum(int percent, int step, int limit = 0) => BoardChecksum.Compute(new BoardDefinition(new[]
             {
-                SquareDefinition.Start("S"), SquareDefinition.Cup("Cup", 50, percent, step),
+                SquareDefinition.Start("S"), SquareDefinition.Cup("Cup", 50, percent, step, limit),
             }), Rules);
 
             Assert.AreNotEqual(Sum(50, 10), Sum(60, 10));
             Assert.AreNotEqual(Sum(50, 10), Sum(50, 20));
+            Assert.AreNotEqual(Sum(50, 50, 500), Sum(50, 50));
+        }
+
+        [Test]
+        public void TheRaiseGrowsByHalfEachPickUpToFiveHundredPercent()
+        {
+            // The owner's rule (Faz 29): 50, 100, 150... and never more than 500.
+            var squares = new SquareDefinition[12];
+            squares[0] = SquareDefinition.Start("Start");
+            for (int i = 1; i < squares.Length; i++) squares[i] = SquareDefinition.Rest($"Rest {i}");
+            squares[P1] = SquareDefinition.Property("P1", 60, 10, 0);
+            squares[CupSquare] = SquareDefinition.Cup("Cup", Fee, 50, 50, 500);
+            var board = new BoardDefinition(squares);
+            var fresh = new GameEngine(board, Rules, TestSeats(2), new ScriptedDice());
+            int[] expected = { 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 500, 500 };
+            for (int picks = 0; picks < expected.Length; picks++)
+            {
+                GameStateSnapshot snapshot = GameStateSnapshot.Capture(fresh.State);
+                if (picks > 0)
+                {
+                    snapshot.CupSquare = P1;
+                    snapshot.CupPercent = 50;
+                    snapshot.CupPicks = picks;
+                }
+
+                GameState state = GameEngine.Restore(board, Rules, snapshot, new ScriptedDice()).State;
+                Assert.AreEqual(expected[picks], GameRules.NextCupPercent(board, state, CupSquare), $"pick {picks + 1}");
+            }
+
+            Assert.Throws<ArgumentException>(() => new BoardDefinition(new[] { SquareDefinition.Start("S"), SquareDefinition.Cup("Cup", 50, 50, 50, 40) }),
+                "a limit under the first raise");
         }
     }
 }

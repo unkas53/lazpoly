@@ -67,6 +67,9 @@ namespace Lazpoly.Presentation.Data
         /// <summary>On a cup square: the percent every pick adds to the next one's raise.</summary>
         public int step;
 
+        /// <summary>On a cup square: the highest raise, in percent; 0 or missing for no limit.</summary>
+        public int limit;
+
         /// <summary>Price of a ride from a travel square, of leaving jail early, or of bringing the cup to a town.</summary>
         public int fee;
 

@@ -117,6 +117,7 @@ namespace Lazpoly.Presentation.Texts
                         state.CupSquare == GameState.NoCup ? L("henüz yok") : F($"{L(board[state.CupSquare].Name)} (%{state.CupPercent})"), state.CupSquare != GameState.NoCup));
                     info.Notes.Add(F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir; o şehrin kirası artar. Kupa tek bir şehirde durur: yeni bir şehir seçilince eskisinden kalkar."));
                     info.Notes.Add(F($"Artış ilk seçimde %{square.BoostPercent}; oyun boyunca kim seçerse seçsin her seçimde %{square.BoostStep} büyür. Tatil yerleri seçilemez."));
+                    if (square.BoostLimit > 0) info.Notes.Add(F($"Artış en fazla %{square.BoostLimit} olur."));
                     return info;
                 }
 

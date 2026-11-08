@@ -60,7 +60,8 @@ namespace Lazpoly.Presentation.Texts
             if (cup >= 0)
             {
                 SquareDefinition square = board[cup];
-                sections.Add(Section(L(square.Name), F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir ve o şehrin kirası artar: ilk seçimde %{square.BoostPercent}, sonra kim seçerse seçsin her seçimde %{square.BoostStep} daha fazla. Kupa tek bir şehirde durur; başka bir şehir seçilince oraya geçer, eski şehrin kirası normale döner. Tatil yerleri seçilemez.")));
+                sections.Add(Section(L(square.Name), F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir ve o şehrin kirası artar: ilk seçimde %{square.BoostPercent}, sonra kim seçerse seçsin her seçimde %{square.BoostStep} daha fazla. Kupa tek bir şehirde durur; başka bir şehir seçilince oraya geçer, eski şehrin kirası normale döner. Tatil yerleri seçilemez.")
+                    + (square.BoostLimit > 0 ? " " + F($"Artış en fazla %{square.BoostLimit} olur.") : "")));
             }
 
             if (HasType(board, SquareType.Lookout)) sections.Add(Section(L("Seyir Terası"), L("Buraya gelen bir sonraki sırasında iki kez zar atar ve hangisiyle gideceğini seçer.")));
