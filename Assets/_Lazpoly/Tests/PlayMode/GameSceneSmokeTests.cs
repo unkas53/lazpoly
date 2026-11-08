@@ -116,9 +116,18 @@ namespace Lazpoly.PlayTests
             // A drawn player rolls first, whoever it is: the turn order starts with them and the table says so.
             GameState start = controller.Session.State;
             Assert.AreEqual(start.Players[0].Id, start.CurrentPlayer.Id, "The game starts with the first seat of the turn order.");
-            Assert.AreEqual(1, start.TurnNumber, "The computer waits while the draw is shown.");
-            Assert.IsTrue(controller.Log.Any(entry => entry.Text == GameSceneController.FirstRollText(start.CurrentPlayer.Name)),
-                "The log does not say who the draw picked.");
+            // The starting money comes up through the hatches first; the draw is told once it has landed, and nobody plays before.
+            string drawn = GameSceneController.FirstRollText(start.CurrentPlayer.Name);
+            float dealt = Time.realtimeSinceStartup;
+            while (!controller.Log.Any(entry => entry.Text == drawn))
+            {
+                Assert.AreEqual(1, controller.Session.State.TurnNumber, "The computer waits while the money is handed out.");
+                Assert.IsTrue(controller.IsBusy, "The table holds still until the draw.");
+                Assert.Less(Time.realtimeSinceStartup - dealt, 20f, "The log does not say who the draw picked.");
+                yield return null;
+            }
+
+            Assert.AreEqual(1, controller.Session.State.TurnNumber, "The computer waits while the draw is shown.");
 
             float started = Time.realtimeSinceStartup;
             while (controller.Session.State.TurnNumber < 8 && controller.Session.State.Phase != GamePhase.GameOver)
