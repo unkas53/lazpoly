@@ -182,7 +182,7 @@ namespace Lazpoly.Presentation.Tests
                     Color sea = skin.GetPixelBilinear(0.5f, V(0.5f + BoardView.SeaOffset + 0.01f));
                     Assert.Greater(sea.b, sea.r + 0.2f, "the sea runs along the top inside the frame");
                     Color edge = skin.GetPixelBilinear(0.5f, V(0.02f));
-                    Assert.Greater(edge.r, edge.b, "outside the frame it is sand: the sea stays inside the frame");
+                    Assert.Greater(edge.b, edge.r, "the sea runs out to the frame on the tile's edge");
                     Color sand = skin.GetPixelBilinear(0.5f, V(0.5f + BoardView.ResortOffset));
                     Assert.Greater(sand.r, sand.b + 0.1f, "the beach stands on sand");
                 }

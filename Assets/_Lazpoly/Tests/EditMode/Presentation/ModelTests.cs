@@ -112,8 +112,8 @@ namespace Lazpoly.Presentation.Tests
             float u = (x + 0.5f) / skin.width, v = (y + 0.5f) / skin.height;
             Assert.IsTrue(TileSkin.OnFrame(u, v));
             Assert.That(skin.GetPixel(x, y).r, Is.EqualTo(paving.r * TileSkin.Value(u, v)).Within(0.01f), "the frame line keeps the paper's tone");
-            Color outside = skin.GetPixelBilinear(0.02f, 0.3f);
-            Assert.That(outside.b, Is.GreaterThan(0.75f), "outside the frame the tile is plain: the colour stays inside the frame");
+            Color nearEdge = skin.GetPixelBilinear(2f * TileSkin.FrameWidth + 0.01f, 0.3f);
+            Assert.That(nearEdge.b, Is.LessThan(0.75f), "the colour runs out to the frame on the tile's edge (no plain margin since the squares touch)");
 
             // A line like the frame's runs between the two parts, from one side of the frame to the other.
             // The row just past the band's end: paving, but on the line.
@@ -122,7 +122,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsTrue(TileSkin.OnDivider(du, dv, 0.6f));
             Assert.That(skin.GetPixel(skin.width / 2, row).b, Is.EqualTo(paving.b * TileSkin.Value(du, dv) * TileSkin.FrameShade).Within(0.01f),
                 "the dividing line is in the frame's tone");
-            Assert.IsFalse(TileSkin.OnDivider(0.02f, 0.6f, 0.6f), "it stops at the frame line");
+            Assert.IsFalse(TileSkin.OnDivider(TileSkin.FrameInset, 0.6f, 0.6f), "it stops at the frame line");
 
             // Round the strip the same frame tone.
             int fx = Mathf.RoundToInt(TileSkin.FrameInset * skin.width - 0.5f), fy = Mathf.RoundToInt(0.8f * skin.height);

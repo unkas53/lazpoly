@@ -111,10 +111,9 @@ namespace Lazpoly.Presentation.Tests
                     Color atTop = skin.GetPixelBilinear(0.5f, lowEnd ? insideTop : 1f - insideTop);
                     Assert.Greater(Mathf.Abs(atTop.r - underPrice.r) + Mathf.Abs(atTop.g - underPrice.g) + Mathf.Abs(atTop.b - underPrice.b), 0.1f,
                         $"{square.Name}: the colour runs up to the frame line at the top");
-                    Color edge = skin.GetPixelBilinear(0.5f, lowEnd ? 0.02f : 0.98f);
-                    float spread = Mathf.Max(edge.r, Mathf.Max(edge.g, edge.b)) - Mathf.Min(edge.r, Mathf.Min(edge.g, edge.b));
-                    Assert.That(spread, Is.LessThan(0.06f), $"{square.Name}: outside the frame the tile is the plain grey paving");
-                    Assert.That(edge.g, Is.GreaterThan(0.7f), $"{square.Name}: and light");
+                    Color edge = skin.GetPixelBilinear(0.5f, lowEnd ? 0.03f : 0.97f);
+                    Assert.Greater(Mathf.Abs(edge.r - underPrice.r) + Mathf.Abs(edge.g - underPrice.g) + Mathf.Abs(edge.b - underPrice.b), 0.1f,
+                        $"{square.Name}: the colour runs out to the frame on the tile's edge (no plain margin since the squares touch)");
                 }
             }
             finally

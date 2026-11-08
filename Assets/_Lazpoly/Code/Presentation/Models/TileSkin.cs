@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Models
 {
     /// <summary>
-    /// The printed look of a square: a soft paper grain and a thin frame line a little inside the
+    /// The printed look of a square: a soft paper grain and a thin frame line along the
     /// edge, drawn once into a small texture that every tile shares. The tile's own colour tints it,
     /// so one texture serves pastel properties and special squares alike. A town's tile has its own
     /// texture with its group's colour printed into it (<see cref="Town"/>).
@@ -20,8 +20,11 @@ namespace Lazpoly.Presentation.Models
         public const float DotRadius = 0.014f;
         public const float DotShade = 0.06f;
 
-        /// <summary>Where the frame line runs, as a fraction of the tile's size in from each edge.</summary>
-        public const float FrameInset = 0.07f;
+        /// <summary>
+        /// Where the frame line runs, as a fraction of the tile's size in from each edge: on the edge itself since the squares
+        /// lie side by side (Faz 25, the owner's wish), so two neighbours' lines meet in one line along their seam.
+        /// </summary>
+        public const float FrameInset = FrameWidth;
 
         /// <summary>Half the frame line's thickness, as a fraction of the tile's size.</summary>
         public const float FrameWidth = 0.008f;
