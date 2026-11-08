@@ -599,6 +599,14 @@ namespace Lazpoly.Presentation.Tests
                 Vector3 toName = Vector3.ProjectOnPlane(board.NameLabel(jail).transform.localPosition - center, Vector3.up);
                 Assert.Greater(Vector3.Dot(toName, right), 0f, "HAPİS lies to the right");
                 Assert.Less(Vector3.Dot(toName, up), 0f, "and low on the tile");
+                Vector3 line = board.NameLabel(jail).transform.localRotation * Vector3.right;
+                Assert.Greater(Vector3.Dot(line, right), 0.6f, "HAPİS reads from lower left (turned a quarter to the left, the owner's wish)");
+                Assert.Greater(Vector3.Dot(line, up), 0.6f, "to upper right");
+                Assert.Greater(Vector3.Dot(board.NameLabel(jail).transform.localRotation * Vector3.forward, Vector3.down), 0.99f, "still lying flat");
+                board.FaceCamera(BoardCameraRig.BaseYaw + 90f);
+                Vector3 turned = board.NameLabel(jail).transform.localRotation * Vector3.right;
+                Assert.Greater(Vector3.Dot(turned, BoardView.ScreenUp(BoardCameraRig.BaseYaw + 90f)), 0.6f, "never upside down with the table turned");
+                board.FaceCamera(BoardCameraRig.BaseYaw);
 
                 Vector3 toPawns = Vector3.ProjectOnPlane(board.transform.InverseTransformPoint(board.PawnSpot(jail)) - center, Vector3.up);
                 Assert.Greater(Vector3.Dot(toPawns, up), 0f, "the pawns wait towards the top corner, clear of both");

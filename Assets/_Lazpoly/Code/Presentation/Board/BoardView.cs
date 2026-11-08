@@ -493,7 +493,7 @@ namespace Lazpoly.Presentation.Tabletop
             for (int i = 0; _names != null && i < _names.Length; i++)
             {
                 Quaternion rotation = LabelRotation(Outward(Layout.SquareCenter(i)), yaw);
-                if (_names[i] != null) _names[i].transform.localRotation = DiagonalName(i) ? DiagonalRotation(yaw) : rotation;
+                if (_names[i] != null) _names[i].transform.localRotation = NameRotation(i, rotation, yaw);
                 if (_prices[i] != null) _prices[i].transform.localRotation = rotation;
                 if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
                 if (_documents[i] != null) _documents[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
@@ -1027,7 +1027,7 @@ namespace Lazpoly.Presentation.Tabletop
                     : center + down * (_depth * (IsChance(i) || DocumentUnderName(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkColor);
-                if (DiagonalName(i)) _names[i].transform.localRotation = DiagonalRotation(_yaw);
+                _names[i].transform.localRotation = NameRotation(i, _names[i].transform.localRotation, _yaw);
                 string subtitle = Subtitle(square);
                 if (subtitle != null || property)
                 {
@@ -1320,6 +1320,20 @@ namespace Lazpoly.Presentation.Tabletop
             return new Vector3(-line.z, 0f, line.x);
         }
 
+        /// <summary>
+        /// How a square's name lies, from <paramref name="lying"/> (its <see cref="LabelRotation"/>): the cup's across its
+        /// corner, the jail's turned a quarter to the left on the screen (the owner's wish, Faz 28), so it reads from lower
+        /// left to upper right along the tile's lower right edge; the others as they lie.
+        /// </summary>
+        private Quaternion NameRotation(int index, Quaternion lying, float yaw) =>
+            DiagonalName(index) ? DiagonalRotation(yaw) : JailName(index) ? TurnedLeft(lying) : lying;
+
+        /// <summary>The jail corner's name, which is turned (<see cref="TurnedLeft"/>).</summary>
+        private bool JailName(int index) => Layout.IsCorner(index) && _data.Board[index].Type == SquareType.Jail;
+
+        /// <summary>A label lying flat on the board turned a quarter to the left as the camera sees it (counter-clockwise from above).</summary>
+        public static Quaternion TurnedLeft(Quaternion lying) => Quaternion.AngleAxis(-90f, Vector3.up) * lying;
+
         /// <summary>Text lying on the board along <see cref="DiagonalLine"/>, reading left to right.</summary>
         public static Quaternion DiagonalRotation(float yaw) => Quaternion.LookRotation(Vector3.down, DiagonalTops(yaw));
 
@@ -1592,9 +1606,10 @@ namespace Lazpoly.Presentation.Tabletop
                 {
                     _names[i].text = PrintedName(square, Layout.IsCorner(i));
                     // A diagonal name is measured lying square to its edge, then turned back across the corner.
-                    if (DiagonalName(i)) _names[i].transform.localRotation = LabelRotation(outward, _yaw);
+                    // A diagonal or turned name is measured lying square to its edge, then turned back.
+                    _names[i].transform.localRotation = LabelRotation(outward, _yaw);
                     FitLabel(_names[i], NameCharacterSize(i), NameRoom(i, size), outward);
-                    if (DiagonalName(i)) _names[i].transform.localRotation = DiagonalRotation(_yaw);
+                    _names[i].transform.localRotation = NameRotation(i, LabelRotation(outward, _yaw), _yaw);
                 }
 
                 if (_prices[i] != null)
