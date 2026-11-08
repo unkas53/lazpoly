@@ -81,9 +81,13 @@ namespace Lazpoly.Presentation.Tests
                 previous = square.Price;
                 Assert.AreEqual(0, square.Price % 10000, $"{square.Name}: a tidy price");
                 Assert.That(square.BuildingCost, Is.InRange(square.Price / 3, square.Price), $"{square.Name}: a house costs a share of the town");
+                // The owner's rule (Faz 27): a level's rent is 40% of what the land and its buildings cost, to the nearest 5K.
+                Assert.AreEqual(RentForCost(square.Price), square.BaseRent, $"{square.Name}: the land's rent");
                 int rent = square.BaseRent;
-                foreach (int next in square.DevelopedRents)
+                for (int level = 1; level <= square.DevelopedRents.Count; level++)
                 {
+                    int next = square.DevelopedRents[level - 1];
+                    Assert.AreEqual(RentForCost(square.Price + level * square.BuildingCost), next, $"{square.Name}: the rent at level {level}");
                     Assert.Greater(next, rent, $"{square.Name}: every building raises the rent");
                     rent = next;
                 }
@@ -96,6 +100,17 @@ namespace Lazpoly.Presentation.Tests
             {
                 if (card.Kind == CardKind.Collect || card.Kind == CardKind.Pay) Assert.That(card.Amount, Is.InRange(10000, 300000), card.Text);
             }
+        }
+
+        /// <summary>40% of <paramref name="cost"/>, to the nearest 5K (84K gives 85K, as the owner put it).</summary>
+        private static int RentForCost(int cost) => (cost * 40 / 100 + 2500) / 5000 * 5000;
+
+        [Test]
+        public void TheRentRuleRoundsToTheNearestFiveThousand()
+        {
+            Assert.AreEqual(85000, RentForCost(210000), "84K");
+            Assert.AreEqual(80000, RentForCost(205000), "82K");
+            Assert.AreEqual(30000, RentForCost(80000), "32K");
         }
 
         [Test]

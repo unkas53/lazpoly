@@ -5,25 +5,25 @@
 ## Oyun süresi
 
 - Biten oyun: 1000, takılan: 0, tur sınırıyla biten: 0
-- Tur: ortalama 20.76, ortanca 20, %10 12, %90 32, en uzun 58
-- İlk 5 turda borca düşülen oyun: 23.1 %
-- İlk iflas: ortalama 9.31. tur
-- Oyun başına: 7.19 kart, 1.73 otogar yolculuğu, 0 kumbaradan ödenen para
+- Tur: ortalama 79.22, ortanca 69, %10 38, %90 128, en uzun 384
+- İlk 5 turda borca düşülen oyun: 3.3 %
+- İlk iflas: ortalama 28.01. tur
+- Oyun başına: 25.89 kart, 4.79 otogar yolculuğu, 0 kumbaradan ödenen para
 
 ## Kazananlar
 
 | Sıra | Kazanma |
 |---|---|
-| 1. oyuncu | 30.8 % |
-| 2. oyuncu | 28.3 % |
-| 3. oyuncu | 19.4 % |
-| 4. oyuncu | 21.5 % |
+| 1. oyuncu | 30.3 % |
+| 2. oyuncu | 26.3 % |
+| 3. oyuncu | 22.3 % |
+| 4. oyuncu | 21.1 % |
 
 | Zorluk | Oturduğu koltuk | Kazanma | Koltuk başına |
 |---|---|---|---|
-| Easy | 1334 | 260 | 19.5 % |
-| Normal | 1333 | 365 | 27.4 % |
-| Hard | 1333 | 375 | 28.1 % |
+| Easy | 1334 | 207 | 15.5 % |
+| Normal | 1333 | 376 | 28.2 % |
+| Hard | 1333 | 417 | 31.3 % |
 
 ## Renk grupları
 
@@ -31,50 +31,50 @@ Kira geliri ve yatırımın geri dönüşü (oyun başına kira / grubun toplam 
 
 | Grup | Fiyat | Oyun başına kira | Geri dönüş | Tamamlanan oyun | Ortalama tamamlanma turu |
 |---|---|---|---|---|---|
-| Kuzey Afrika | 260000 | 654864.4 | 2.52 | 9.2 % | 18.38 |
-| Güney Amerika | 500000 | 1242723 | 2.49 | 14.9 % | 18.23 |
-| Güneydoğu Asya | 560000 | 1118287 | 2 | 13.1 % | 16.6 |
-| Orta Avrupa | 500000 | 667051 | 1.33 | 46.6 % | 11.55 |
-| Akdeniz | 580000 | 591968 | 1.02 | 39.9 % | 10.86 |
-| Doğu Asya | 1020000 | 769236.5 | 0.75 | 7.6 % | 17.79 |
-| Batı Avrupa | 780000 | 492648.5 | 0.63 | 34.1 % | 13.82 |
-| Metropoller | 940000 | 615980 | 0.66 | 35.1 % | 13.27 |
-| Tatil Yerleri | 800000 | 156525 | 0.2 | 10.9 % | 14.67 |
+| Kuzey Afrika | 260000 | 1318226 | 5.07 | 50.3 % | 49.83 |
+| Güney Amerika | 500000 | 2576109 | 5.15 | 53.4 % | 48.72 |
+| Güneydoğu Asya | 560000 | 3080500 | 5.5 | 53.5 % | 46.27 |
+| Orta Avrupa | 500000 | 3393733.5 | 6.79 | 87.8 % | 28.95 |
+| Akdeniz | 580000 | 3617436 | 6.24 | 88.2 % | 29.94 |
+| Doğu Asya | 1020000 | 4426393.5 | 4.34 | 49.7 % | 51.71 |
+| Batı Avrupa | 780000 | 3742821.5 | 4.8 | 84.2 % | 34.1 |
+| Metropoller | 940000 | 4492367.5 | 4.78 | 83.6 % | 36.54 |
+| Tatil Yerleri | 800000 | 1390475 | 1.74 | 44.2 % | 42.37 |
 
 ## Kareler
 
 | # | Kare | Gelinme payı | Satın alınma (oyun başına) | Oyun başına kira |
 |---|---|---|---|---|
-| 0 | Başlangıç | 2.7 % | - | - |
-| 1 | Kahire | 2.4 % | 0.96 | 195675.5 |
-| 2 | Marakeş | 2.5 % | 1.02 | 202129.7 |
-| 3 | Tunus | 2.8 % | 1.11 | 257059.2 |
-| 4 | Bodrum | 3.1 % | 1.09 | 41300 |
-| 5 | Rio de Janeiro | 3.5 % | 1.15 | 454895 |
-| 6 | Buenos Aires | 3.3 % | 1.14 | 383618 |
-| 7 | Lima | 3.5 % | 1.08 | 404210 |
-| 8 | Hapis | 4.1 % | - | - |
-| 9 | Bangkok | 3.3 % | 1.07 | 327682 |
-| 10 | Hanoi | 3.3 % | 1.06 | 315062 |
-| 11 | Singapur | 3.7 % | 1.09 | 475543 |
-| 12 | Bali | 3.5 % | 1.03 | 47425 |
-| 13 | Prag | 3.3 % | 1.01 | 331403 |
-| 14 | Şans | 3.3 % | - | - |
-| 15 | Viyana | 3.5 % | 1.05 | 335648 |
-| 16 | Şampiyonlar Kupası | 3.3 % | - | - |
-| 17 | Barselona | 3.4 % | 0.99 | 298508 |
-| 18 | Şans | 3.3 % | - | - |
-| 19 | Roma | 3.3 % | 0.99 | 293460 |
-| 20 | Santorini | 3.1 % | 0.97 | 37000 |
-| 21 | Pekin | 3.0 % | 0.89 | 231482 |
-| 22 | Seul | 3.3 % | 0.93 | 297754 |
-| 23 | Tokyo | 3.1 % | 0.93 | 240000.5 |
-| 24 | Otogar | 3.1 % | - | - |
-| 25 | Şans | 2.7 % | - | - |
-| 26 | Paris | 2.9 % | 0.87 | 253983.5 |
-| 27 | Londra | 2.9 % | 0.88 | 238665 |
-| 28 | New York | 2.9 % | 0.89 | 245060 |
-| 29 | Maldivler | 2.6 % | 0.85 | 30800 |
-| 30 | İstanbul | 3.4 % | 1.04 | 370920 |
-| 31 | Vergi | 2.2 % | - | - |
+| 0 | Başlangıç | 3.0 % | - | - |
+| 1 | Kahire | 2.7 % | 1.72 | 423821 |
+| 2 | Marakeş | 2.8 % | 1.76 | 431319 |
+| 3 | Tunus | 2.8 % | 1.77 | 463086 |
+| 4 | Bodrum | 3.0 % | 1.56 | 344850 |
+| 5 | Rio de Janeiro | 3.4 % | 1.73 | 909034.5 |
+| 6 | Buenos Aires | 3.1 % | 1.71 | 802461 |
+| 7 | Lima | 3.1 % | 1.62 | 864613.5 |
+| 8 | Hapis | 3.8 % | - | - |
+| 9 | Bangkok | 3.0 % | 1.55 | 923484 |
+| 10 | Hanoi | 3.1 % | 1.58 | 941400 |
+| 11 | Singapur | 3.6 % | 1.49 | 1215616 |
+| 12 | Bali | 3.3 % | 1.52 | 374500 |
+| 13 | Prag | 3.2 % | 1.38 | 1635088 |
+| 14 | Şans | 3.2 % | - | - |
+| 15 | Viyana | 3.3 % | 1.35 | 1758645.5 |
+| 16 | Şampiyonlar Kupası | 3.4 % | - | - |
+| 17 | Barselona | 3.3 % | 1.28 | 1795086 |
+| 18 | Şans | 3.2 % | - | - |
+| 19 | Roma | 3.2 % | 1.29 | 1822350 |
+| 20 | Santorini | 3.1 % | 1.48 | 351650 |
+| 21 | Pekin | 3.0 % | 1.38 | 1349245.5 |
+| 22 | Seul | 3.3 % | 1.34 | 1575193.5 |
+| 23 | Tokyo | 3.2 % | 1.35 | 1501954.5 |
+| 24 | Otogar | 3.3 % | - | - |
+| 25 | Şans | 2.9 % | - | - |
+| 26 | Paris | 3.0 % | 1.24 | 1816872.5 |
+| 27 | Londra | 3.0 % | 1.24 | 1925949 |
+| 28 | New York | 2.9 % | 1.24 | 1922603.5 |
+| 29 | Maldivler | 2.9 % | 1.43 | 319475 |
+| 30 | İstanbul | 3.3 % | 1.23 | 2569764 |
+| 31 | Vergi | 2.6 % | - | - |
 
