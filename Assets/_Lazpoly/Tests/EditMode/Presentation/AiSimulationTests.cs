@@ -21,12 +21,22 @@ namespace Lazpoly.Presentation.Tests
         private const int Games = 25;
         private const int CommandLimit = 40000;
 
+        /// <summary>
+        /// Game time each computer move takes here: far quicker than at a real table (where the dice, the walk and the money
+        /// take seconds), so the clock only ends the rare game that bankruptcies alone never would.
+        /// </summary>
+        private const double SecondsPerMove = 0.5;
+
         [Test]
         public void EightComputerPlayersFinishEveryGame()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
+            // Every real table runs a game clock (15, 30 or 60 minutes, Faz 28). Since the cup's raise stops at 500% (Faz 29)
+            // two rich players can outlast each other's rents for ever; the longest table's clock ends such a game.
+            Lazpoly.Core.Rules.RulesConfig rules = data.Rules.WithTable(new Lazpoly.Core.Rules.TableRules(0, 0, Lazpoly.Core.Rules.TableRules.DefaultTurnSeconds, 60));
             var seen = new HashSet<System.Type>();
             int totalTurns = 0;
+            int byTime = 0;
 
             for (ulong seed = 1; seed <= Games; seed++)
             {
@@ -38,11 +48,15 @@ namespace Lazpoly.Presentation.Tests
                     ai.Add(i + 1, (AiDifficulty)(1 + (int)((seed + (ulong)i) % 3)));
                 }
 
-                LocalGame game = LocalGame.Create(data.Board, data.Rules, seats, ai, seed);
+                LocalGame game = LocalGame.Create(data.Board, rules, seats, ai, seed);
                 LocalGameSession session = game.Session;
                 session.EventsPublished += events =>
                 {
-                    foreach (GameEvent gameEvent in events) seen.Add(gameEvent.GetType());
+                    foreach (GameEvent gameEvent in events)
+                    {
+                        seen.Add(gameEvent.GetType());
+                        if (gameEvent is GameEndedEvent ended && ended.Reason == GameEndReason.TimeLimit) byTime++;
+                    }
                 };
 
                 int commands = 0;
@@ -50,6 +64,7 @@ namespace Lazpoly.Presentation.Tests
                 {
                     Assert.Less(commands, CommandLimit, $"Seed {seed}: no winner after {CommandLimit} moves (turn {session.State.TurnNumber}).");
                     Assert.IsTrue(session.StepAi(), $"Seed {seed}: the game waited although only computers play.");
+                    session.AddPlayTime(SecondsPerMove);
                     commands++;
                     AssertSound(session.State, data, seed);
                 }
@@ -68,7 +83,8 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsTrue(seen.Contains(expected), $"The computer players never produced {expected.Name}.");
             }
 
-            TestContext.WriteLine($"{Games} games, {totalTurns / Games} turns on average.");
+            Assert.Less(byTime, Games / 5, "most games still end with every other player bankrupt");
+            TestContext.WriteLine($"{Games} games, {totalTurns / Games} turns on average, {byTime} ended by the clock.");
         }
 
         [Test]
