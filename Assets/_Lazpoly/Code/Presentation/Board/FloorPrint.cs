@@ -10,18 +10,25 @@ namespace Lazpoly.Presentation.Tabletop
     /// with a folded corner and lines of writing, and the start square's arrow showing which way the pawns go. Built in a
     /// unit space: the sheet is <see cref="DocumentSize"/> across (x) and up the page (z), the arrow <see cref="ArrowSize"/>
     /// with its tip at +z, their base at y = 0, a few thousandths thick. The document's ink is a picture drawn with the
-    /// board's print shader (see <see cref="DocumentInk"/>), so its thin lines hold still under TAA.
+    /// board's print shader (see <see cref="DocumentSheet"/>), paper and ink alike, so its edges hold still under TAA.
     /// </summary>
     public static class FloorPrint
     {
         public static readonly Vector2 DocumentSize = new Vector2(0.72f, 0.92f);
         public static readonly Color Paper = new Color(0.97f, 0.96f, 0.92f);
+
+        /// <summary>
+        /// The paper's colour when printed as a picture (unlit, like the names): as light as the lit paper looked under the
+        /// noon sun, which brightened <see cref="Paper"/> to almost white.
+        /// </summary>
+        public static readonly Color PrintedPaper = new Color(1f, 0.99f, 0.96f);
         public static readonly Vector2 ArrowSize = new Vector2(0.52f, 1f);
         public static readonly Color ArrowRed = new Color(0.86f, 0.22f, 0.18f);
 
         private const float Sheet = 0.003f;
-        private const float Stroke = 0.06f;
-        private const float Line = 0.05f;
+        // Bold strokes (since the TAA flicker): the outline and the writing a quarter thicker than the first drawing.
+        private const float Stroke = 0.075f;
+        private const float Line = 0.065f;
 
         // Where the folded corner meets the top and the right edges.
         private const float FoldX = 0.12f;
@@ -36,20 +43,31 @@ namespace Lazpoly.Presentation.Tabletop
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
             root.transform.localScale = Vector3.one * scale;
-            Flat(ModelParts.Create("Paper", root.transform, DocumentPaper(), Paper, 0f));
-            Material print = PrintMaterial.ForPicture(DocumentInkPicture());
-            if (print != null)
+            Material paper = PrintMaterial.ForPicture(DocumentPaperPicture());
+            Material print = PrintMaterial.ForPicture(DocumentInkPicture(), 1);
+            if (paper != null && print != null)
             {
-                var part = new GameObject("Ink");
-                part.transform.SetParent(root.transform, false);
-                part.AddComponent<MeshFilter>().sharedMesh = DocumentInk(ink);
-                var renderer = part.AddComponent<MeshRenderer>();
-                renderer.sharedMaterial = print;
-                renderer.receiveShadows = false;
-                Flat(part);
+                PrintedSheet("Paper", root.transform, paper, PrintedPaper, 0.5f * Sheet);
+                PrintedSheet("Ink", root.transform, print, ink, Sheet);
             }
-            else Flat(ModelParts.Create("Ink", root.transform, DocumentInkBars(), ink, 0f));
+            else
+            {
+                Flat(ModelParts.Create("Paper", root.transform, DocumentPaper(), Paper, 0f));
+                Flat(ModelParts.Create("Ink", root.transform, DocumentInkBars(), ink, 0f));
+            }
+
             return root;
+        }
+
+        private static void PrintedSheet(string name, Transform parent, Material material, Color color, float height)
+        {
+            var part = new GameObject(name);
+            part.transform.SetParent(parent, false);
+            part.AddComponent<MeshFilter>().sharedMesh = DocumentSheet(color, height);
+            var renderer = part.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.receiveShadows = false;
+            Flat(part);
         }
 
         /// <summary>The arrow as one object, its local +z the way it points and its size <see cref="ArrowSize"/> times <paramref name="scale"/>.</summary>
@@ -80,54 +98,61 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The sheet's paper: the page less the corner folded down, with the flap (a square turned to a diamond whose edge is the fold).</summary>
         public static Mesh DocumentPaper()
         {
-            float halfX = DocumentSize.x / 2f - Stroke / 2f;
-            float halfZ = DocumentSize.y / 2f - Stroke / 2f;
-            return MeshFactory.Combine("print:document-paper", new[]
-            {
-                Bar(new Vector2(0f, (FoldZ - halfZ) / 2f), new Vector2(2f * halfX, FoldZ + halfZ), 0f, 0f),
-                Bar(new Vector2((FoldX - halfX) / 2f, (FoldZ + halfZ) / 2f), new Vector2(FoldX + halfX, halfZ - FoldZ), 0f, 0f),
-                Bar(new Vector2(FoldX, FoldZ), Vector2.one * (Mathf.Sqrt(2f) * (halfX - FoldX)), 45f, 0f),
-            });
+            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
+            foreach (InkBar bar in PaperShapes()) parts.Add(Bar(bar.At, bar.Size, bar.Angle, 0f));
+            return MeshFactory.Combine("print:document-paper", parts);
         }
 
         /// <summary>
-        /// The sheet's ink as a picture on one flat sheet lying on the paper, drawn with the board's print shader (like the
-        /// names). As separate thin bars (the first version, <see cref="DocumentInkBars"/>) the lines shimmered under TAA,
-        /// which nudges the picture by part of a pixel each frame; the print shader averages each pixel's footprint on the
-        /// picture, so the lines hold still. The vertices carry <paramref name="ink"/>, the picture's alpha gives the shape.
+        /// One flat sheet the size of the document at <paramref name="height"/>, drawn with the board's print shader (like
+        /// the names): the paper and the ink are each a picture on such a sheet. As thin solid bars (the first version,
+        /// <see cref="DocumentPaper"/> and <see cref="DocumentInkBars"/>) their edges shimmered under TAA, which nudges the
+        /// picture by part of a pixel each frame; the print shader averages each pixel's footprint on the picture, so the
+        /// edges hold still. The vertices carry <paramref name="color"/>, the picture's alpha gives the shape.
         /// </summary>
-        public static Mesh DocumentInk(Color ink)
+        public static Mesh DocumentSheet(Color color, float height)
         {
-            float halfX = DocumentSize.x / 2f, halfZ = DocumentSize.y / 2f, y = 1.5f * Sheet; // Just above the paper's top.
-            var mesh = new Mesh { name = "print:document-ink" };
-            mesh.vertices = new[] { new Vector3(-halfX, y, -halfZ), new Vector3(-halfX, y, halfZ), new Vector3(halfX, y, halfZ), new Vector3(halfX, y, -halfZ) };
+            float halfX = DocumentSize.x / 2f, halfZ = DocumentSize.y / 2f;
+            var mesh = new Mesh { name = "print:document-sheet" };
+            mesh.vertices = new[]
+            {
+                new Vector3(-halfX, height, -halfZ), new Vector3(-halfX, height, halfZ), new Vector3(halfX, height, halfZ), new Vector3(halfX, height, -halfZ),
+            };
             mesh.uv = new[] { new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(1f, 0f) };
-            mesh.colors = new[] { ink, ink, ink, ink };
+            mesh.colors = new[] { color, color, color, color };
             mesh.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
             mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
             mesh.RecalculateBounds();
             return mesh;
         }
 
-        /// <summary>The picture's width in texels; its height keeps the sheet's proportions. A line of writing is ~18 texels thick.</summary>
-        public const int InkPictureWidth = 256;
+        /// <summary>
+        /// The pictures' width in texels; their height keeps the sheet's proportions. A line of writing is ~17 texels thick;
+        /// small enough that the print shader's 4x4 samples per pixel cover the picture well when the table is seen whole.
+        /// </summary>
+        public const int PictureWidth = 192;
 
         private static Texture2D _inkPicture;
+        private static Texture2D _paperPicture;
+
+        /// <summary>The paper as a picture over the whole sheet: the page less the folded corner, its alpha the coverage.</summary>
+        public static Texture2D DocumentPaperPicture() => _paperPicture != null ? _paperPicture : _paperPicture = Picture("print-document-paper", PaperShapes());
+
+        /// <summary>The ink as a picture over the whole sheet: the outline, the fold and the writing, its alpha the coverage.</summary>
+        public static Texture2D DocumentInkPicture() => _inkPicture != null ? _inkPicture : _inkPicture = Picture("print-document-ink", InkBars());
 
         /// <summary>
-        /// The ink as a picture over the whole sheet (<see cref="DocumentSize"/>): white, its alpha how much of each texel
-        /// the ink covers (4x4 samples per texel), so the edges come out soft at any size.
+        /// A picture over the whole sheet (<see cref="DocumentSize"/>) of <paramref name="shapes"/>: white, its alpha how
+        /// much of each texel they cover (4x4 samples per texel), so the edges come out soft at any size.
         /// </summary>
-        public static Texture2D DocumentInkPicture()
+        private static Texture2D Picture(string name, List<InkBar> shapes)
         {
-            if (_inkPicture != null) return _inkPicture;
-            int width = InkPictureWidth;
+            int width = PictureWidth;
             int height = Mathf.RoundToInt(width * DocumentSize.y / DocumentSize.x);
             var picture = new Texture2D(width, height, TextureFormat.RGBA32, false, true)
             {
-                name = "print-document-ink", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave,
+                name = name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave,
             };
-            List<InkBar> bars = InkBars();
             var pixels = new Color32[width * height];
             const int samples = 4;
             for (int row = 0; row < height; row++)
@@ -141,7 +166,7 @@ namespace Lazpoly.Presentation.Tabletop
                         {
                             float x = ((column + (sx + 0.5f) / samples) / width - 0.5f) * DocumentSize.x;
                             float z = ((row + (sy + 0.5f) / samples) / height - 0.5f) * DocumentSize.y;
-                            foreach (InkBar bar in bars)
+                            foreach (InkBar bar in shapes)
                             {
                                 if (!bar.Covers(x, z)) continue;
                                 covered++;
@@ -155,8 +180,8 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             picture.SetPixels32(pixels);
-            picture.Apply(false, false); // Kept readable (a few hundred KB), so a test can check the drawing.
-            return _inkPicture = picture;
+            picture.Apply(false, false); // Kept readable (about 200 KB), so a test can check the drawing.
+            return picture;
         }
 
         /// <summary>The ink as separate thin bars on the paper: the drawing when the print shader is missing.</summary>
@@ -193,6 +218,19 @@ namespace Lazpoly.Presentation.Tabletop
             }
         }
 
+        /// <summary>The sheet's paper: the page less the corner folded down, with the flap (a square turned to a diamond whose edge is the fold).</summary>
+        private static List<InkBar> PaperShapes()
+        {
+            float halfX = DocumentSize.x / 2f - Stroke / 2f;
+            float halfZ = DocumentSize.y / 2f - Stroke / 2f;
+            return new List<InkBar>
+            {
+                new InkBar(new Vector2(0f, (FoldZ - halfZ) / 2f), new Vector2(2f * halfX, FoldZ + halfZ), 0f),
+                new InkBar(new Vector2((FoldX - halfX) / 2f, (FoldZ + halfZ) / 2f), new Vector2(FoldX + halfX, halfZ - FoldZ), 0f),
+                new InkBar(new Vector2(FoldX, FoldZ), Vector2.one * (Mathf.Sqrt(2f) * (halfX - FoldX)), 45f),
+            };
+        }
+
         /// <summary>The sheet's ink: its outline with the folded corner, and four lines of writing.</summary>
         private static List<InkBar> InkBars()
         {
@@ -207,8 +245,8 @@ namespace Lazpoly.Presentation.Tabletop
                 // The fold: a diagonal across the corner and the flap's two edges.
                 new InkBar(new Vector2((FoldX + halfX) / 2f, (FoldZ + halfZ) / 2f),
                     new Vector2(Mathf.Sqrt(2f) * (halfX - FoldX), Stroke), 45f), // No longer than the fold, so its ends stay inside the sheet.
-                new InkBar(new Vector2(FoldX, (FoldZ + halfZ) / 2f), new Vector2(Stroke * 0.7f, halfZ - FoldZ), 0f),
-                new InkBar(new Vector2((FoldX + halfX) / 2f, FoldZ), new Vector2(halfX - FoldX, Stroke * 0.7f), 0f),
+                new InkBar(new Vector2(FoldX, (FoldZ + halfZ) / 2f), new Vector2(Stroke * 0.8f, halfZ - FoldZ), 0f),
+                new InkBar(new Vector2((FoldX + halfX) / 2f, FoldZ), new Vector2(halfX - FoldX, Stroke * 0.8f), 0f),
             };
 
             float[] rows = { 0.08f, -0.06f, -0.2f, -0.32f };

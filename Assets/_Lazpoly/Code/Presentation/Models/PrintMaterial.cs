@@ -42,15 +42,18 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>
         /// The print material for a picture whose alpha is the shape (the tax document's ink), coloured by the mesh's
-        /// vertices; null when the shader is missing, so the caller can draw the shape another way.
+        /// vertices; null when the shader is missing, so the caller can draw the shape another way. A higher
+        /// <paramref name="layer"/> draws over a lower one.
         /// </summary>
-        public static Material ForPicture(Texture picture)
+        public static Material ForPicture(Texture picture, int layer = 0)
         {
             if (picture == null) return null;
             if (Pictures.TryGetValue(picture, out Material material) && material != null) return material;
             Shader shader = PrintShader();
             if (shader == null) return null;
             material = new Material(shader) { name = $"Print {picture.name}", mainTexture = picture };
+            // Pictures lying on each other (the document's ink on its paper) draw in this order, whatever their distance.
+            material.renderQueue = shader.renderQueue + layer;
             Pictures[picture] = material;
             return material;
         }
