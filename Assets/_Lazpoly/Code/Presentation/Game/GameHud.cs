@@ -78,6 +78,7 @@ namespace Lazpoly.Presentation.Game
         private int _lastTurnNumber = -1;
         private CenterNotice _tradeNotice;
         private CenterNotice _debtNotice;
+        private CenterNotice _groupNotice;
         private Text _cardTitle;
         private Text _cardText;
         private CanvasGroup _cardGroup;
@@ -284,6 +285,7 @@ namespace Lazpoly.Presentation.Game
             BuildCardPopup();
             _tradeNotice = new CenterNotice(_canvas.transform, "Trade Popup");
             _debtNotice = new CenterNotice(_canvas.transform, "Debt Popup");
+            _groupNotice = new CenterNotice(_canvas.transform, "Group Deal Popup", GroupDeal.Seconds);
             BuildRollPopup();
             BuildRollPrompt();
 
@@ -394,6 +396,26 @@ namespace Lazpoly.Presentation.Game
             _debtNotice.Title.color = UiTheme.Warning;
             _debtNotice.Body.text = F($"Ödenecek: {debt.Amount}") + "\n" + F($"Alacaklı: {EventDescriber.CreditorText(state, debt.CreditorId)}");
             _debtNotice.Show(age);
+        }
+
+        /// <summary>
+        /// "X yoğun bir mesai harcayarak (the towns) arasında ticaret anlaşması imzaladı" in the middle when a player comes to
+        /// hold a whole colour group (the owner's wish, Faz 26), with what it does to the rent; up for 4 s while the table waits.
+        /// </summary>
+        private void UpdateGroupDealPopup()
+        {
+            string deal = _controller.ShownGroupDeal;
+            float age = Time.time - _controller.ShownGroupDealTime;
+            if (deal == null || !CenterNotice.Showing(age, _groupNotice.Lasts))
+            {
+                _groupNotice.Hide();
+                return;
+            }
+
+            _groupNotice.Title.text = L("TİCARET ANLAŞMASI");
+            _groupNotice.Title.color = UiTheme.Gain;
+            _groupNotice.Body.text = deal + "\n" + GroupDeal.RentText(_controller.Session.Rules.FullGroupRentMultiplier);
+            _groupNotice.Show(age);
         }
 
         /// <summary>A note under the banner when a double is rolled (the lawn shows the figures). It never takes the mouse.</summary>
@@ -686,6 +708,7 @@ namespace Lazpoly.Presentation.Game
             UpdateCardPopup();
             UpdateTradePopup();
             UpdateDebtPopup();
+            UpdateGroupDealPopup();
             UpdateRollPopup();
             UpdateTip(state);
             UpdateTimer(state);

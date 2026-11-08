@@ -271,6 +271,17 @@ namespace Lazpoly.Presentation.Game
         public DebtIncurredEvent ShownDebt { get; private set; }
         public float ShownDebtTime { get; private set; }
 
+        /// <summary>The last trade agreement card (a whole colour group in one hand): its sentence, whose it is and the game time it came; null before any.</summary>
+        public string ShownGroupDeal { get; private set; }
+        public int ShownGroupDealPlayer { get; private set; } = GameState.NoOwner;
+        public float ShownGroupDealTime { get; private set; }
+
+        /// <summary>Each town's owner as shown on the table (the state may already be further on), to tell when a group completes.</summary>
+        private readonly Dictionary<int, int> _shownOwners = new Dictionary<int, int>();
+
+        /// <summary>Groups just completed, (player, group), waiting for their card once the change that completed them is shown.</summary>
+        private readonly List<KeyValuePair<int, int>> _groupDealsToShow = new List<KeyValuePair<int, int>>();
+
         /// <summary>The last roll shown on the table (0 before the first), and real time it settled, for the HUD's result popup.</summary>
         public int ShownDie1 { get; private set; }
         public int ShownDie2 { get; private set; }
@@ -1031,6 +1042,7 @@ namespace Lazpoly.Presentation.Game
             for (int i = 0; i < state.SquareCount; i++)
             {
                 int owner = state.GetOwner(i);
+                _shownOwners[i] = owner;
                 _board.SetOwner(i, owner == GameState.NoOwner ? (Color?)null : ColorOf(owner));
                 _board.SetBuildingLevel(i, state.GetBuildingLevel(i));
             }
@@ -1249,6 +1261,12 @@ namespace Lazpoly.Presentation.Game
                         if (money.Delta < 0) yield return ShowPayment(money);
                         break;
                     case PropertyOwnerChangedEvent owner:
+                        if (GroupDeal.Completes(_session.Board, _shownOwners, owner.SquareIndex, owner.NewOwnerId))
+                        {
+                            _groupDealsToShow.Add(new KeyValuePair<int, int>(owner.NewOwnerId, _session.Board[owner.SquareIndex].GroupId));
+                        }
+
+                        _shownOwners[owner.SquareIndex] = owner.NewOwnerId;
                         if (owner.NewOwnerId == GameState.NoOwner)
                         {
                             _board.ClearOwner(owner.SquareIndex, animate: true);
@@ -1331,7 +1349,14 @@ namespace Lazpoly.Presentation.Game
                             new List<Color>(_playerColors.Values));
                         break;
                 }
+
+                if (_groupDealsToShow.Count > 0 && !GroupDealWaits(_pendingEvents.Count > 0 ? _pendingEvents.Peek() : null))
+                {
+                    yield return ShowGroupDeals();
+                }
             }
+
+            if (_groupDealsToShow.Count > 0) yield return ShowGroupDeals();
 
             // Everything is shown now, so the money on screen is the state's money.
             foreach (PlayerState player in _session.State.Players) _shownMoney[player.Id] = player.Money;
@@ -1342,6 +1367,32 @@ namespace Lazpoly.Presentation.Game
         }
 
         private float Speed => Mathf.Max(Settings.AnimationSpeed, 0.1f);
+
+        /// <summary>
+        /// Whether a completed group's card waits for <paramref name="next"/>: the rest of a trade's towns and its result card,
+        /// and the buildings bought with the town, are shown first.
+        /// </summary>
+        public static bool GroupDealWaits(GameEvent next) =>
+            next is PropertyOwnerChangedEvent || next is TradeResolvedEvent || next is BuildingLevelChangedEvent;
+
+        /// <summary>The trade agreement card for each group just completed, one after another; the table waits <see cref="GroupDeal.Seconds"/> for each (the owner's wish, Faz 26).</summary>
+        private IEnumerator ShowGroupDeals()
+        {
+            while (_groupDealsToShow.Count > 0)
+            {
+                KeyValuePair<int, int> deal = _groupDealsToShow[0];
+                _groupDealsToShow.RemoveAt(0);
+                string name = _session.State.FindPlayer(deal.Key)?.Name ?? $"Oyuncu {deal.Key}";
+                ShownGroupDeal = GroupDeal.Text(name, GroupDeal.TownNames(_session.Board, deal.Value));
+                ShownGroupDealPlayer = deal.Key;
+                ShownGroupDealTime = Time.time;
+                AddLog(ShownGroupDeal, LogTone.Gain, deal.Key);
+                AudioPlayer.Play(SoundCue.Trade); // The handshake of an agreement.
+                Pawn(deal.Key)?.Cheer();
+                Revision++;
+                yield return new WaitForSeconds(GroupDeal.Seconds);
+            }
+        }
 
         /// <summary>
         /// A computer player's line in a bubble over its pawn, for the choices it makes (buying, letting a

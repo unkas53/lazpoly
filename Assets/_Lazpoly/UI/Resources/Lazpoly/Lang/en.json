@@ -641,5 +641,8 @@
   "kira +%{0}": "rent +{0}%",
   "Şampiyonlar Kupası bu şehirde: kirası %{0} fazla.": "The Champions' Cup is in this city: its rent is {0}% higher.",
   "Buraya gelen isterse {0} ödeyip kupayı kendi şehirlerinden birine getirir ve o şehrin kirası artar: ilk seçimde %{1}, sonra kim seçerse seçsin her seçimde %{2} daha fazla. Kupa tek bir şehirde durur; başka bir şehir seçilince oraya geçer, eski şehrin kirası normale döner. Tatil yerleri seçilemez.": "Whoever lands here may pay {0} to bring the cup to one of their cities, and that city's rent goes up: {1}% on the first pick, then {2}% more with every pick, whoever makes it. The cup stands in one city only; when another city is picked it moves there and the old city's rent goes back to normal. Holiday resorts cannot be picked.",
-  "Takas yapıyoruz...": "Trading..."
+  "Takas yapıyoruz...": "Trading...",
+  "TİCARET ANLAŞMASI": "TRADE AGREEMENT",
+  "{0} yoğun bir mesai harcayarak {1} arasında ticaret anlaşması imzaladı": "After long hours of hard work, {0} signed a trade agreement between {1}",
+  "Bu şehirlerin evsiz kirası artık {0} katı.": "These cities' rent without buildings is now {0} times as much."
 }
