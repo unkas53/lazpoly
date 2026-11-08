@@ -38,6 +38,12 @@ namespace Lazpoly.Presentation.Tabletop
         public const float Gap = 0f;
         private const float TileHeight = 0.2f;
 
+        /// <summary>
+        /// How round a tile's edges are. Only just: the squares lie side by side (Faz 25), and rounder edges (0.05) left a
+        /// groove between neighbours that read as a gap; the owner wanted them to meet with none.
+        /// </summary>
+        public const float TileEdgeRadius = 0.005f;
+
         /// <summary>How far the plate hangs below the squares; its edge shows in the isometric view.</summary>
         public const float PlateThickness = 0.6f;
 
@@ -930,7 +936,7 @@ namespace Lazpoly.Presentation.Tabletop
                 bool printed = town || square.IsResort;
                 Color body = printed ? Color.white : Color.Lerp(TileColor(square, data), PaperColor, Pastel);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
-                    MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), 0.05f, 4), body, 0.05f);
+                    MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), TileEdgeRadius, 2), body, 0.05f);
                 ModelParts.Skin(tileObject, town ? TownSkin(outward, size, BandColor(TileColor(square, data)))
                     : square.IsResort ? ResortSkin(outward, size) : paper);
                 _printed[i] = printed;
