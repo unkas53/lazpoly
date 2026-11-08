@@ -102,9 +102,9 @@ namespace Lazpoly.Presentation.Tests
                 Color gammaTop = TopLight(light.SunPitch, gamma.SunColor, gamma.SunIntensity, gamma.FillColor, gamma.FillIntensity, gamma.Ambient);
                 Color linearTop = TopLight(light.SunPitch, linear.SunColor.linear, linear.SunIntensity, linear.FillColor.linear,
                     linear.FillIntensity, linear.Ambient.linear);
-                Assert.AreEqual(Mathf.Pow(gammaTop.r, DayCycle.Gamma), linearTop.r, 0.01f);
-                Assert.AreEqual(Mathf.Pow(gammaTop.g, DayCycle.Gamma), linearTop.g, 0.01f);
-                Assert.AreEqual(Mathf.Pow(gammaTop.b, DayCycle.Gamma), linearTop.b, 0.01f);
+                Assert.AreEqual(Mathf.Pow(gammaTop.r, DayCycle.Gamma) * DayCycle.LinearGain, linearTop.r, 0.01f);
+                Assert.AreEqual(Mathf.Pow(gammaTop.g, DayCycle.Gamma) * DayCycle.LinearGain, linearTop.g, 0.01f);
+                Assert.AreEqual(Mathf.Pow(gammaTop.b, DayCycle.Gamma) * DayCycle.LinearGain, linearTop.b, 0.01f);
                 Assert.Greater(linear.ShadowStrength, gamma.ShadowStrength, "linear needs deeper shadows to look as dark");
                 Assert.LessOrEqual(linear.ShadowStrength, 1f);
             }

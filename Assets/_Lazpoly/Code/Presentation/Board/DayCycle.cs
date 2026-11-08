@@ -100,7 +100,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// yellower. Here every light is scaled, channel by channel, so the light falling on the board's top (the tiles, the
         /// grass) is the gamma light raised to <see cref="Gamma"/>, which gives back the gamma colour exactly; the shadows
         /// are deepened the same way, so a shadow keeps the darkness it had. Linear's softer fall-off would leave the faces turned
-        /// away from the sun lighter than in gamma, so part of the ambient is handed to the sun (<see cref="LinearAmbientShare"/>).
+        /// away from the sun lighter than in gamma, so part of the ambient is handed to the sun (<see cref="LinearAmbientShare"/>) and the whole light is set a little
+        /// under the exact match (<see cref="LinearGain"/>).
         /// </summary>
         public static LightRig LinearRig(in DayLight light)
         {
@@ -108,7 +109,7 @@ namespace Lazpoly.Presentation.Tabletop
             float fillUp = Mathf.Sin(FillPitch * Mathf.Deg2Rad);
             Color fill = light.FillColor * light.FillIntensity;
             Color top = light.Ambient + light.SunColor * (light.SunIntensity * sunUp) + fill * fillUp;
-            Color lift = new Color(Lift(top.r), Lift(top.g), Lift(top.b), 1f);
+            Color lift = new Color(Lift(top.r), Lift(top.g), Lift(top.b), 1f) * LinearGain;
 
             // Part of the ambient moves into the sun, which lights the board's top just as much but the sides less.
             Color ambientLeft = light.Ambient * LinearAmbientShare;
@@ -136,10 +137,18 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// How much of the ambient stays ambient in linear colour space. With all of it, faces turned from the sun (the
-        /// board's sides, the safe's front) came out about a tenth lighter than in gamma; the rest goes into the sun.
+        /// How much of the ambient stays ambient in linear colour space; the rest goes into the sun, which lights the board's
+        /// top just as much but the faces turned from it less. With all of it ambient, the tiles' sides came out up to a fifth
+        /// lighter than in gamma and the cities looked lit from inside (the owner's note); 0.2 with <see cref="LinearGain"/>
+        /// gave the closest match over the tops, the sides and the shadows of the close and the far table views.
         /// </summary>
-        public const float LinearAmbientShare = 0.35f;
+        public const float LinearAmbientShare = 0.2f;
+
+        /// <summary>
+        /// The whole linear light against the exact gamma match of the board's top: a little under it (tops about 3% darker),
+        /// so the faces between the top and the sides, which linear's softer fall-off still leaves lighter, are not as bright.
+        /// </summary>
+        public const float LinearGain = 0.92f;
 
         private static float Lift(float topLight) => Mathf.Pow(Mathf.Max(topLight, 0.0001f), Gamma - 1f);
 
