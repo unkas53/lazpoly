@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Tabletop
@@ -31,11 +30,6 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>0 by day, 1 at dusk: the sky warms along it.</summary>
         public float Evening { get; }
 
-        public static DayLight Lerp(in DayLight a, in DayLight b, float t) => new DayLight(
-            Color.Lerp(a.SunColor, b.SunColor, t), Mathf.Lerp(a.SunIntensity, b.SunIntensity, t),
-            Mathf.Lerp(a.SunPitch, b.SunPitch, t), Mathf.Lerp(a.SunYaw, b.SunYaw, t),
-            Color.Lerp(a.FillColor, b.FillColor, t), Mathf.Lerp(a.FillIntensity, b.FillIntensity, t),
-            Color.Lerp(a.Ambient, b.Ambient, t), Mathf.Lerp(a.Evening, b.Evening, t));
     }
 
     /// <summary>
@@ -63,20 +57,13 @@ namespace Lazpoly.Presentation.Tabletop
     }
 
     /// <summary>
-    /// The day over the board follows the game: it starts at noon and slides into evening as the
-    /// rounds go by, reaching dusk at the round limit (or after <see cref="RoundsToEvening"/> rounds
-    /// when there is none) and at the end of the game. Pure arithmetic; the scene applies the result.
+    /// The light over the board: a fixed noon sun all game long (the owner's wish, Faz 28; it used to slide into evening as
+    /// the rounds went by), and how it is set up in gamma and in linear colour space. Pure arithmetic; the scene applies it.
     /// </summary>
     public static class DayCycle
     {
-        /// <summary>Rounds from noon to dusk when the table has no round limit (a typical game ends sooner).</summary>
-        public const int RoundsToEvening = 24;
-
         public static readonly DayLight Noon = new DayLight(
             new Color(1f, 0.93f, 0.82f), 1.1f, 52f, -35f, new Color(0.55f, 0.70f, 0.90f), 0.35f, new Color(0.36f, 0.38f, 0.44f), 0f);
-
-        public static readonly DayLight Dusk = new DayLight(
-            new Color(1f, 0.62f, 0.38f), 0.9f, 21f, -78f, new Color(0.32f, 0.42f, 0.74f), 0.5f, new Color(0.30f, 0.25f, 0.33f), 1f);
 
         /// <summary>How dark the sun's shadows were tuned in gamma colour space (the look the owner approved).</summary>
         public const float GammaShadowStrength = 0.45f;
@@ -162,23 +149,6 @@ namespace Lazpoly.Presentation.Tabletop
             float intensity = Mathf.Max(linear.r, Mathf.Max(linear.g, linear.b));
             if (intensity <= 0f) return (Color.black, 0f);
             return (new Color(linear.r / intensity, linear.g / intensity, linear.b / intensity, 1f).gamma, intensity);
-        }
-
-        /// <summary>How far the day has gone, 0 (noon) to 1 (dusk).</summary>
-        public static float Progress(int round, int roundLimit, bool gameOver)
-        {
-            if (gameOver) return 1f;
-            int span = Math.Max((roundLimit > 0 ? roundLimit : RoundsToEvening) - 1, 1);
-            return Mathf.Clamp01((round - 1) / (float)span);
-        }
-
-        /// <summary>The light at <paramref name="progress"/>; the evening itself only sets in during the second half.</summary>
-        public static DayLight At(float progress)
-        {
-            float t = Mathf.Clamp01(progress);
-            DayLight light = DayLight.Lerp(Noon, Dusk, t);
-            float evening = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.45f, 1f, t));
-            return new DayLight(light.SunColor, light.SunIntensity, light.SunPitch, light.SunYaw, light.FillColor, light.FillIntensity, light.Ambient, evening);
         }
     }
 }

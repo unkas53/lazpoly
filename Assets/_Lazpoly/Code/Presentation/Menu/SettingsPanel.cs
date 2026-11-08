@@ -105,7 +105,6 @@ namespace Lazpoly.Presentation.Menu
                     style: current.UiScale == scale ? UiButtonStyle.Selected : UiButtonStyle.Secondary, height: UiTheme.SmallButtonHeight);
             }
 
-            ui.Toggle(L("Gün ışığı akışı (tur ilerledikçe akşam olur)"), current.DayCycle, on => Change(_settings.Current.WithDayCycle(on)));
             ui.Toggle(L("Tam ekran"), current.Fullscreen, on => Change(_settings.Current.WithFullscreen(on)));
             ui.Toggle(L("Dikey eşitleme (VSync)"), current.VSync, on => Change(_settings.Current.WithVSync(on)));
             RenderResolution(ui, current);

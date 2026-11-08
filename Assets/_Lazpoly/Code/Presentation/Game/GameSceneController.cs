@@ -41,9 +41,6 @@ namespace Lazpoly.Presentation.Game
     {
         private const int MaxLogLines = 40;
 
-        /// <summary>Seconds the light takes to slide from noon all the way to dusk; a single round's step is a fraction of it.</summary>
-        private const float DaySeconds = 4f;
-
         /// <summary>Pause after a card is drawn so it can be read before it acts.</summary>
         public const float CardReadSeconds = 1.6f;
 
@@ -111,8 +108,6 @@ namespace Lazpoly.Presentation.Game
         private float _framedBottom;
         private float _labelYaw = BoardCameraRig.BaseYaw;
         private GameHud _hud;
-        private float _dayShown = -1f;
-        private float _dayApplied = -1f;
         private int _screenshotPreset = -1;
 
         /// <summary>Unanswered knocks on the host's door after which a guest leaves and re-enters the room, in case the room dropped it too.</summary>
@@ -173,9 +168,6 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Zoom and turn of the board view; the HUD's reset button uses it.</summary>
         public BoardCameraRig CameraRig { get; private set; }
-
-        /// <summary>How far the shown day has gone, 0 (noon) to 1 (dusk); -1 before the board is up.</summary>
-        public float DayProgress => _dayShown;
 
         /// <summary>Frame rate and memory watcher; the HUD's F3 strip reads it.</summary>
         public PerfProbe Probe { get; private set; }
@@ -391,7 +383,6 @@ namespace Lazpoly.Presentation.Game
             }
 
             if (Faces != null && Faces.Update(Time.unscaledTime)) Revision++; // A Steam profile picture arrived.
-            UpdateDayLight();
             ShowNextBubble();
             if (_bubble != null && _hud != null) _bubble.TopClearPixels = _hud.ReservedTopPixels;
             AnnounceDraw();
@@ -428,23 +419,6 @@ namespace Lazpoly.Presentation.Game
             }
 
             return GameState.NoOwner;
-        }
-
-        /// <summary>
-        /// Slides the light towards where the game's round puts it (see <see cref="DayCycle"/>), a little
-        /// each frame so a new round is felt rather than seen. With the setting off the day stays at noon.
-        /// </summary>
-        private void UpdateDayLight()
-        {
-            GameState state = _session.State;
-            if (_board == null || state == null) return;
-            bool over = state.Phase == GamePhase.GameOver || EndReason.HasValue;
-            float target = Settings.DayCycle ? DayCycle.Progress(state.Round, _session.Rules.RoundLimit, over) : 0f;
-            _dayShown = _dayShown < 0f ? target : Mathf.MoveTowards(_dayShown, target, Time.deltaTime / DaySeconds);
-            if (Mathf.Approximately(_dayShown, _dayApplied)) return;
-            _dayApplied = _dayShown;
-            DayLight light = DayCycle.At(_dayShown);
-            RoomDressing.ApplyDayLight(light);
         }
 
         private void LateUpdate()

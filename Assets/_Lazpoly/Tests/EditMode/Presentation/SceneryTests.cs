@@ -321,40 +321,6 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheDayRunsFromNoonToDuskOverTheGame()
-        {
-            Assert.AreEqual(0f, DayCycle.Progress(1, 25, gameOver: false));
-            Assert.AreEqual(1f, DayCycle.Progress(25, 25, gameOver: false));
-            Assert.AreEqual(1f, DayCycle.Progress(40, 25, gameOver: false), "past the limit it stays dusk");
-            Assert.AreEqual(1f, DayCycle.Progress(3, 25, gameOver: true), "the end of the game is evening whatever the round");
-            Assert.AreEqual(0f, DayCycle.Progress(1, 0, gameOver: false));
-            Assert.AreEqual(1f, DayCycle.Progress(DayCycle.RoundsToEvening, 0, gameOver: false), "with no limit a long game reaches dusk on its own");
-
-            float last = -1f;
-            for (int round = 1; round <= 30; round++)
-            {
-                float progress = DayCycle.Progress(round, 0, gameOver: false);
-                Assert.GreaterOrEqual(progress, last, "the day never runs backwards");
-                Assert.That(progress, Is.InRange(0f, 1f));
-                last = progress;
-            }
-        }
-
-        [Test]
-        public void EveningLightIsWarmerLowerAndDimmer()
-        {
-            DayLight noon = DayCycle.At(0f);
-            DayLight dusk = DayCycle.At(1f);
-            Assert.AreEqual(0f, noon.Evening);
-            Assert.AreEqual(1f, dusk.Evening, 1e-4f);
-            Assert.Less(dusk.SunPitch, noon.SunPitch, "the sun is lower in the evening");
-            Assert.Less(dusk.SunIntensity, noon.SunIntensity);
-            Assert.Greater(dusk.SunColor.r - dusk.SunColor.b, noon.SunColor.r - noon.SunColor.b, "the evening sun is redder");
-            Assert.AreEqual(0f, DayCycle.At(0.3f).Evening, 1e-4f, "the first half of the day is still daylight");
-            Assert.Greater(DayCycle.At(0.8f).Evening, 0.5f);
-        }
-
-        [Test]
         public void TheLawnIsPlainGrass()
         {
             BoardData data = BoardDataLoader.LoadFromResources();

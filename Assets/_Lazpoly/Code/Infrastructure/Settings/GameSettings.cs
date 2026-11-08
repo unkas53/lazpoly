@@ -42,13 +42,12 @@ namespace Lazpoly.Infra.Settings
         private const float DefaultMusic = 0.6f;
 
         public static readonly GameSettings Default = new GameSettings(DefaultMaster, DefaultEffects, DefaultMusic, fullscreen: true, vSync: true,
-            AiSpeed.Normal, fastAnimations: false, GraphicsQuality.High, screenWidth: 0, screenHeight: 0, Language.Auto, UiScale.Normal, dayCycle: true);
+            AiSpeed.Normal, fastAnimations: false, GraphicsQuality.High, screenWidth: 0, screenHeight: 0, Language.Auto, UiScale.Normal);
 
         public GameSettings(float masterVolume, float effectsVolume, float musicVolume, bool fullscreen, bool vSync, AiSpeed aiSpeed,
-            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight, Language language, UiScale uiScale, bool dayCycle = true,
+            bool fastAnimations, GraphicsQuality quality, int screenWidth, int screenHeight, Language language, UiScale uiScale,
             bool colorBlind = false)
         {
-            DayCycle = dayCycle;
             ColorBlind = colorBlind;
             Language = Enum.IsDefined(typeof(Language), language) ? language : Language.Auto;
             UiScale = Enum.IsDefined(typeof(UiScale), uiScale) ? uiScale : UiScale.Normal;
@@ -88,9 +87,6 @@ namespace Lazpoly.Infra.Settings
 
         public UiScale UiScale { get; }
 
-        /// <summary>The light over the board slides from noon to evening as the rounds go by; off keeps it at noon.</summary>
-        public bool DayCycle { get; }
-
         /// <summary>Colour-blind friendly palettes for the colour groups and the players, with a letter on every group mark; takes effect at the next table.</summary>
         public bool ColorBlind { get; }
 
@@ -122,7 +118,6 @@ namespace Lazpoly.Infra.Settings
         public GameSettings WithScreenSize(int width, int height) => Copy(width: width, height: height);
         public GameSettings WithLanguage(Language value) => Copy(language: value);
         public GameSettings WithUiScale(UiScale value) => Copy(uiScale: value);
-        public GameSettings WithDayCycle(bool value) => Copy(dayCycle: value);
         public GameSettings WithColorBlind(bool value) => Copy(colorBlind: value);
 
         public bool SameAs(GameSettings other) =>
@@ -130,14 +125,14 @@ namespace Lazpoly.Infra.Settings
             MusicVolume.Equals(other.MusicVolume) && Fullscreen == other.Fullscreen && VSync == other.VSync &&
             AiSpeed == other.AiSpeed && FastAnimations == other.FastAnimations && Quality == other.Quality &&
             ScreenWidth == other.ScreenWidth && ScreenHeight == other.ScreenHeight && Language == other.Language && UiScale == other.UiScale &&
-            DayCycle == other.DayCycle && ColorBlind == other.ColorBlind;
+            ColorBlind == other.ColorBlind;
 
         private GameSettings Copy(float? master = null, float? effects = null, float? music = null, bool? fullscreen = null, bool? vSync = null,
             AiSpeed? aiSpeed = null, bool? fastAnimations = null, GraphicsQuality? quality = null, int? width = null, int? height = null,
-            Language? language = null, UiScale? uiScale = null, bool? dayCycle = null, bool? colorBlind = null) =>
+            Language? language = null, UiScale? uiScale = null, bool? colorBlind = null) =>
             new GameSettings(master ?? MasterVolume, effects ?? EffectsVolume, music ?? MusicVolume, fullscreen ?? Fullscreen, vSync ?? VSync,
                 aiSpeed ?? AiSpeed, fastAnimations ?? FastAnimations, quality ?? Quality, width ?? ScreenWidth, height ?? ScreenHeight,
-                language ?? Language, uiScale ?? UiScale, dayCycle ?? DayCycle, colorBlind ?? ColorBlind);
+                language ?? Language, uiScale ?? UiScale, colorBlind ?? ColorBlind);
 
         private static float Volume(float value, float fallback) => float.IsNaN(value) ? fallback : Math.Max(0f, Math.Min(1f, value));
     }

@@ -376,7 +376,6 @@
   "Kayıtlı oyun okunamadı": "The saved game could not be read",
   "Dosya bozuk ya da eski bir sürümden; silip yeni oyun kurabilirsin.": "The file is damaged or from an old version; delete it to set up a new game.",
   "Tur {0} · {1} oyuncu": "Round {0} · {1} players",
-  "Gün ışığı akışı (tur ilerledikçe akşam olur)": "Passing day (evening falls as the rounds go by)",
   "kare hızı, ekran görüntüsü açısı, ekran görüntüsü": "frame rate, screenshot view, screenshot",
   "Ekran görüntüsü açısı: {0}": "Screenshot view: {0}",
   "Ekran görüntüsü kaydedildi (Screenshots klasörü).": "Screenshot saved (Screenshots folder).",
