@@ -235,6 +235,10 @@ namespace Lazpoly.Core.Engine
         /// <summary>Whether the square carries houses or a hotel; such a town cannot be traded.</summary>
         public static bool HasBuildings(GameState state, int squareIndex) => state.GetBuildingLevel(squareIndex) > 0;
 
+        /// <summary>Whether the table's game time has run out (never at a table without a game clock).</summary>
+        public static bool TimeIsUp(RulesConfig rules, GameState state) =>
+            rules.TimeLimitMinutes > 0 && state.PlayedSeconds >= rules.TimeLimitSeconds;
+
         /// <summary>
         /// Whether a player whose turn starts now picks a ride before rolling (the owner's rule, Faz 27): they stand at a bus
         /// stop they came to on an earlier turn, are not in jail and can pay its fare. Otherwise they simply roll from there.

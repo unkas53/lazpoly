@@ -76,6 +76,11 @@ namespace Lazpoly.Core.State
                     RequirePlayer(state, e.PlayerId);
                     break;
 
+                case GameClockEvent e:
+                    if (e.PlayedSeconds < 0) throw new InvalidOperationException("Game time cannot be negative.");
+                    state.PlayedSeconds = Math.Max(state.PlayedSeconds, e.PlayedSeconds);
+                    break;
+
                 case PlayerMovedEvent e:
                 {
                     PlayerState mover = RequirePlayer(state, e.PlayerId);

@@ -70,5 +70,12 @@ namespace Lazpoly.App.Session
 
         /// <summary>Processes network traffic. Call once per frame.</summary>
         void Tick();
+
+        /// <summary>
+        /// Counts <paramref name="seconds"/> of play on the game clock (the owner's rule, Faz 28) where the rules run; the
+        /// game hears of it every few seconds. Call each frame while the game runs (not while a local game is paused).
+        /// A client does nothing: the host's clock reaches it as events.
+        /// </summary>
+        void AddPlayTime(double seconds);
     }
 }

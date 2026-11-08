@@ -20,7 +20,8 @@ namespace Lazpoly.Core.Rules
             int buildingSellbackPercent,
             int roundLimit = 0,
             int turnSeconds = TableRules.DefaultTurnSeconds,
-            int jailTurns = 0)
+            int jailTurns = 0,
+            int timeLimitMinutes = 0)
         {
             if (startingMoney <= 0) throw new ArgumentOutOfRangeException(nameof(startingMoney));
             if (passStartBonus < 0) throw new ArgumentOutOfRangeException(nameof(passStartBonus));
@@ -31,6 +32,7 @@ namespace Lazpoly.Core.Rules
             if (roundLimit < 0) throw new ArgumentOutOfRangeException(nameof(roundLimit));
             if (turnSeconds < 0) throw new ArgumentOutOfRangeException(nameof(turnSeconds));
             if (jailTurns < 0) throw new ArgumentOutOfRangeException(nameof(jailTurns));
+            if (timeLimitMinutes < 0) throw new ArgumentOutOfRangeException(nameof(timeLimitMinutes));
 
             StartingMoney = startingMoney;
             PassStartBonus = passStartBonus;
@@ -41,6 +43,7 @@ namespace Lazpoly.Core.Rules
             RoundLimit = roundLimit;
             TurnSeconds = turnSeconds;
             JailTurns = jailTurns;
+            TimeLimitMinutes = timeLimitMinutes;
         }
 
         public int StartingMoney { get; }
@@ -72,8 +75,17 @@ namespace Lazpoly.Core.Rules
         /// <summary>How many of their turns a jailed player waits before walking out free (they may pay to leave sooner).</summary>
         public int JailTurns { get; }
 
+        /// <summary>
+        /// Minutes of game time after which the game ends when the turn on play is over, the richest player winning (the
+        /// owner's rule, Faz 28); 0 plays without a game clock.
+        /// </summary>
+        public int TimeLimitMinutes { get; }
+
+        /// <summary>The game time limit in seconds; 0 without one.</summary>
+        public int TimeLimitSeconds => TimeLimitMinutes * 60;
+
         /// <summary>The choices made at the table for this game.</summary>
-        public TableRules Table => new TableRules(StartingMoney, RoundLimit, TurnSeconds);
+        public TableRules Table => new TableRules(StartingMoney, RoundLimit, TurnSeconds, TimeLimitMinutes);
 
         /// <summary>These rules with the table's choices applied; a table value of 0 keeps the board's starting money.</summary>
         public RulesConfig WithTable(TableRules table)
@@ -81,7 +93,7 @@ namespace Lazpoly.Core.Rules
             if (table == null) throw new ArgumentNullException(nameof(table));
             return new RulesConfig(table.StartingMoney > 0 ? table.StartingMoney : StartingMoney, PassStartBonus, DiceSides,
                 MaxConsecutiveDoubles, FullGroupRentMultiplier, BuildingSellbackPercent,
-                table.RoundLimit, table.TurnSeconds, JailTurns);
+                table.RoundLimit, table.TurnSeconds, JailTurns, table.TimeLimitMinutes);
         }
 
         /// <summary>What the bank pays for one building level that cost <paramref name="buildingCost"/>.</summary>

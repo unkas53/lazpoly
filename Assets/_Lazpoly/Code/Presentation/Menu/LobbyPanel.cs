@@ -109,7 +109,7 @@ namespace Lazpoly.Presentation.Menu
                 if (!IsAvailable) return 0;
                 TableRules table = _lobby.Table;
                 int key = HashCode.Combine(_lobby.Status, _lobby.IsOwner, _message, _problem, _friends.Count);
-                key = HashCode.Combine(key, table.StartingMoney, table.RoundLimit, table.TurnSeconds);
+                key = HashCode.Combine(key, table.StartingMoney, table.RoundLimit, table.TurnSeconds, table.TimeLimitMinutes);
                 key = HashCode.Combine(key, _lobby.RoomProtocolVersion, _lobby.IsOverlayAvailable);
                 foreach (LobbyMember member in _lobby.Members) key = HashCode.Combine(key, member.Id, member.Name, member.IsReady, member.ProtocolVersion, member.Figure);
                 return key;

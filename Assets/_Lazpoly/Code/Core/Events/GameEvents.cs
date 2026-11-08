@@ -64,6 +64,9 @@ namespace Lazpoly.Core.Events
 
         /// <summary>The table's round limit was reached; the richest player won.</summary>
         RoundLimit = 1,
+
+        /// <summary>The table's game time ran out; the richest player won when the turn on play ended (Faz 28).</summary>
+        TimeLimit = 2,
     }
 
     public sealed class TurnStartedEvent : GameEvent
@@ -209,6 +212,20 @@ namespace Lazpoly.Core.Events
 
         public int PlayerId { get; }
         public bool StandInTookOver { get; }
+    }
+
+    /// <summary>
+    /// How much game time has been played, in whole seconds, as counted where the rules run (the game clock, Faz 28);
+    /// sent every few seconds so saves and the other machines keep it. A table with a time limit ends when it runs out.
+    /// </summary>
+    public sealed class GameClockEvent : GameEvent
+    {
+        public GameClockEvent(int playedSeconds)
+        {
+            PlayedSeconds = playedSeconds;
+        }
+
+        public int PlayedSeconds { get; }
     }
 
     /// <summary>A player went to jail (<see cref="Turns"/> to wait), waited a turn there, or left (<see cref="Turns"/> 0).</summary>

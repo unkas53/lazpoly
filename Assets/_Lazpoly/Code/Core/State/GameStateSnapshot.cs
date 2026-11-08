@@ -45,6 +45,9 @@ namespace Lazpoly.Core.State
         public int CupPercent;
         public int CupPicks;
 
+        /// <summary>Game time played so far, in whole seconds (the game clock, Faz 28).</summary>
+        public int PlayedSeconds;
+
         /// <summary>Null unless a lookout's two rolls wait for a choice.</summary>
         public int[] DiceOptions;
         public List<PlayerEntry> Players = new List<PlayerEntry>();
@@ -74,6 +77,7 @@ namespace Lazpoly.Core.State
                 CupSquare = state.CupSquare,
                 CupPercent = state.CupPercent,
                 CupPicks = state.CupPicks,
+                PlayedSeconds = state.PlayedSeconds,
                 DiceOptions = state.DiceOptions == null ? null : (int[])state.DiceOptions.Clone(),
                 Owners = new int[state.SquareCount],
                 BuildingLevels = new int[state.SquareCount],

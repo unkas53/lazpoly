@@ -21,6 +21,9 @@ namespace Lazpoly.Presentation.Setup
         /// <summary>Decision time choices in seconds (selling and trade answers get twice as long); 0 runs no clock.</summary>
         public static readonly int[] TurnSecondsChoices = { 10, 15, 25, 0 };
 
+        /// <summary>Game time choices in minutes (the owner's rule, Faz 28): a standard table plays 30.</summary>
+        public static readonly int[] TimeLimitChoices = { 15, 30, 60 };
+
         public static TableRules Chosen { get; set; } = TableRules.Default;
 
         /// <summary>"Sınırsız", "Kısa (25 tur)"...</summary>
@@ -32,10 +35,13 @@ namespace Lazpoly.Presentation.Setup
         /// <summary>"10 sn", "15 sn"... or "Süresiz".</summary>
         public static string TurnSecondsText(int seconds) => seconds == 0 ? L("Süresiz") : F($"{seconds} sn");
 
-        /// <summary>One line for the menu, e.g. "1500 para · sınırsız · 15 sn karar".</summary>
+        /// <summary>"15 dk", "30 dk", "60 dk"; "Süresiz" for a table without a game clock.</summary>
+        public static string TimeLimitText(int minutes) => minutes == 0 ? L("Süresiz") : F($"{minutes} dk");
+
+        /// <summary>One line for the menu, e.g. "2M para · 30 dk · sınırsız · 15 sn karar".</summary>
         public static string Summary(TableRules table, int boardMoney)
         {
-            string line = F($"{(table.StartingMoney == 0 ? boardMoney : table.StartingMoney)} para · {RoundLimitText(table.RoundLimit).ToLowerInvariant()}");
+            string line = F($"{(table.StartingMoney == 0 ? boardMoney : table.StartingMoney)} para · {TimeLimitText(table.TimeLimitMinutes).ToLowerInvariant()} · {RoundLimitText(table.RoundLimit).ToLowerInvariant()}");
             line += " · " + (table.TurnSeconds == 0 ? L("süresiz") : F($"{System.Math.Min(table.TurnSeconds, TurnClock.MaxDecisionSeconds)} sn karar"));
             return line;
         }

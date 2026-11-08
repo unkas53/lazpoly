@@ -63,6 +63,9 @@ namespace Lazpoly.Core.State
         /// <summary>Money waiting in the pot for the next player who lands on the pot square.</summary>
         public int Pot { get; internal set; }
 
+        /// <summary>Game time played so far in whole seconds, as last reported by the game clock (<see cref="Events.GameClockEvent"/>).</summary>
+        public int PlayedSeconds { get; internal set; }
+
         /// <summary>Value of <see cref="BuiltThisVisit"/> while the current player has not moved this turn.</summary>
         public const int NotArrived = -1;
 
@@ -183,7 +186,10 @@ namespace Lazpoly.Core.State
                 CupSquare = snapshot.CupSquare,
                 CupPercent = snapshot.CupPercent,
                 CupPicks = snapshot.CupPicks,
+                PlayedSeconds = snapshot.PlayedSeconds,
             };
+
+            if (snapshot.PlayedSeconds < 0) throw new ArgumentException("Snapshot game time is negative.", nameof(snapshot));
 
             bool noCup = snapshot.CupSquare == NoCup;
             if (snapshot.CupPicks < 0 || (noCup ? snapshot.CupPercent != 0 || snapshot.CupPicks != 0
@@ -338,6 +344,7 @@ namespace Lazpoly.Core.State
             Mix(CupSquare);
             Mix(CupPercent);
             Mix(CupPicks);
+            Mix(PlayedSeconds);
             Mix(DiceOptions == null ? 0 : 1);
             if (DiceOptions != null)
             {

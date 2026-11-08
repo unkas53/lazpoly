@@ -18,6 +18,7 @@ namespace Lazpoly.App.Session
     {
         private readonly GameEngine _engine;
         private readonly AiRoster _ai;
+        private GameTimer _timer;
 
         /// <param name="ai">Computer players; null or empty when everyone is a person.</param>
         public LocalGameSession(GameEngine engine, AiRoster ai = null)
@@ -89,6 +90,15 @@ namespace Lazpoly.App.Session
 
         public void Tick()
         {
+        }
+
+        public void AddPlayTime(double seconds)
+        {
+            if (_timer == null) _timer = new GameTimer(State.PlayedSeconds);
+            int played = _timer.Add(seconds, Rules.TimeLimitSeconds);
+            if (played < 0) return;
+            CommandResult result = _engine.AdvanceClock(played);
+            if (result.Events.Count > 0) EventsPublished?.Invoke(result.Events);
         }
     }
 }

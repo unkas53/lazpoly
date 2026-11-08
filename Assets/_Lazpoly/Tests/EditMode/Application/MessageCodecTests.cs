@@ -101,6 +101,8 @@ namespace Lazpoly.App.Tests
                 new CupHostedEvent(1, 4, 70),
                 new MoneyChangedEvent(1, -50, MoneyReason.Cup),
                 new PhaseChangedEvent(GamePhase.AwaitingCupChoice),
+                new GameClockEvent(95),
+                new GameEndedEvent(1, GameEndReason.TimeLimit),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -180,6 +182,35 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
+        public void TheGameClockTravelsInTheTableAndTheSnapshot()
+        {
+            // Faz 28: the table carries the game time limit, the snapshot the time played; older layouts get the standard 30 minutes and no time.
+            var table = new Lazpoly.Core.Rules.TableRules(0, 0, 15, 60);
+            var w = new NetWriter();
+            MessageCodec.WriteTable(w, table);
+            Assert.AreEqual(60, MessageCodec.ReadTable(new NetReader(w.ToArray())).TimeLimitMinutes);
+
+            var plain = new NetWriter();
+            plain.WriteInt(0);
+            plain.WriteInt(0);
+            plain.WriteInt(15);
+            Lazpoly.Core.Rules.TableRules old = MessageCodec.ReadTable(new NetReader(plain.ToArray()), MessageCodec.PlainTableVersion);
+            Assert.AreEqual(Lazpoly.Core.Rules.TableRules.DefaultTimeLimitMinutes, old.TimeLimitMinutes);
+            Assert.AreEqual(30, Lazpoly.Core.Rules.TableRules.Default.TimeLimitMinutes, "A standard table plays 30 minutes.");
+
+            GameStateSnapshot snapshot = SampleSnapshot();
+            snapshot.PlayedSeconds = 1234;
+            var s = new NetWriter();
+            MessageCodec.WriteSnapshot(s, snapshot);
+            byte[] bytes = s.ToArray();
+            Assert.AreEqual(1234, MessageCodec.ReadSnapshot(new NetReader(bytes)).PlayedSeconds);
+
+            var cupLayout = new byte[bytes.Length - 4];
+            System.Array.Copy(bytes, cupLayout, cupLayout.Length);
+            Assert.AreEqual(0, MessageCodec.ReadSnapshot(new NetReader(cupLayout), MessageCodec.CupSnapshotVersion).PlayedSeconds);
+        }
+
+        [Test]
         public void TheCupTravelsAndAJailLayoutReadsWithoutIt()
         {
             GameStateSnapshot snapshot = SampleSnapshot();
@@ -193,8 +224,8 @@ namespace Lazpoly.App.Tests
             GameStateSnapshot read = MessageCodec.ReadSnapshot(new NetReader(bytes));
             Assert.AreEqual(new[] { 4, 70, 3 }, new[] { read.CupSquare, read.CupPercent, read.CupPicks });
 
-            // Layout 9 ended where the cup's three numbers begin.
-            var old = new byte[bytes.Length - 12];
+            // Layout 9 ended where the cup's three numbers begin (the game time, layout 11, comes after them).
+            var old = new byte[bytes.Length - 16];
             System.Array.Copy(bytes, old, old.Length);
             GameStateSnapshot jail = MessageCodec.ReadSnapshot(new NetReader(old), MessageCodec.JailSnapshotVersion);
             Assert.AreEqual(GameState.NoCup, jail.CupSquare);

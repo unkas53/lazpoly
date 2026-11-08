@@ -38,7 +38,7 @@ namespace Lazpoly.Net.Messages
             BuildingLevel = 9,
             TradeProposed = 15, TradeResolved = 16, DebtIncurred = 17, DebtCleared = 18,
             PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22, TimedOut = 23,
-            Jail = 24, CupHosted = 25,
+            Jail = 24, CupHosted = 25, Clock = 26,
         }
 
         public static byte[] Encode(NetMessage message)
@@ -341,6 +341,9 @@ namespace Lazpoly.Net.Messages
                 case PlayerTimedOutEvent e:
                     w.WriteByte((byte)EventTag.TimedOut); w.WriteInt(e.PlayerId); w.WriteBool(e.StandInTookOver);
                     break;
+                case GameClockEvent e:
+                    w.WriteByte((byte)EventTag.Clock); w.WriteInt(e.PlayedSeconds);
+                    break;
                 default:
                     throw new ArgumentException($"Cannot encode event {gameEvent?.GetType().Name}.");
             }
@@ -371,6 +374,12 @@ namespace Lazpoly.Net.Messages
                 case EventTag.CupHosted: return new CupHostedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.DiceOptions: return new DiceOptionsEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.TimedOut: return new PlayerTimedOutEvent(r.ReadInt(), r.ReadBool());
+                case EventTag.Clock:
+                {
+                    int played = r.ReadInt();
+                    if (played < 0) throw new FormatException("Negative game time.");
+                    return new GameClockEvent(played);
+                }
                 default: throw new FormatException($"Unknown event tag {(byte)tag}.");
             }
         }
@@ -437,10 +446,14 @@ namespace Lazpoly.Net.Messages
             w.WriteInt(s.CupSquare);
             w.WriteInt(s.CupPercent);
             w.WriteInt(s.CupPicks);
+            w.WriteInt(s.PlayedSeconds);
         }
 
         /// <summary>The snapshot layout written today.</summary>
-        public const int SnapshotVersion = CupSnapshotVersion;
+        public const int SnapshotVersion = ClockSnapshotVersion;
+
+        /// <summary>Layout 11 (Faz 28) added the game time played (the game clock).</summary>
+        public const int ClockSnapshotVersion = 11;
 
         /// <summary>Layout 10 (Faz 24) added the champions' cup: its town, its raise and the game's pick count.</summary>
         public const int CupSnapshotVersion = 10;
@@ -569,11 +582,23 @@ namespace Lazpoly.Net.Messages
                 s.CupPicks = r.ReadInt();
             }
 
+            if (version >= ClockSnapshotVersion)
+            {
+                s.PlayedSeconds = r.ReadInt();
+                if (s.PlayedSeconds < 0) throw new FormatException("Negative game time.");
+            }
+
             return s;
         }
 
-        /// <summary>The table layout written today (Faz 13b): starting money, round limit, turn time.</summary>
-        public const int TableVersion = 3;
+        /// <summary>The table layout written today (Faz 28): starting money, round limit, turn time, game time.</summary>
+        public const int TableVersion = ClockTableVersion;
+
+        /// <summary>Layout 4 (Faz 28) added the game time limit in minutes.</summary>
+        public const int ClockTableVersion = 4;
+
+        /// <summary>Layout 3 (Faz 13b): starting money, round limit, turn time; it gets the standard game time.</summary>
+        public const int PlainTableVersion = 3;
 
         /// <summary>Layout 2 (Faz 10c-2) also carried the auction switch and the bankrupt-squares rule.</summary>
         public const int TimedTableVersion = 2;
@@ -587,6 +612,7 @@ namespace Lazpoly.Net.Messages
             w.WriteInt(table.StartingMoney);
             w.WriteInt(table.RoundLimit);
             w.WriteInt(table.TurnSeconds);
+            w.WriteInt(table.TimeLimitMinutes);
         }
 
         /// <summary>Reads the table as written today.</summary>
@@ -594,13 +620,13 @@ namespace Lazpoly.Net.Messages
 
         /// <summary>
         /// Reads a table in the given layout, so old saves still open: the auction switch and the bank
-        /// rule they carry are skipped, and layout 1 gets the default turn time.
+        /// rule they carry are skipped, layout 1 gets the default turn time and layouts before 4 the standard game time.
         /// </summary>
         public static TableRules ReadTable(NetReader r, int version)
         {
             if (version < LegacyTableVersion || version > TableVersion) throw new FormatException($"Table layout {version} is not supported.");
             int money = r.ReadInt();
-            if (version < TableVersion) r.ReadBool();
+            if (version < PlainTableVersion) r.ReadBool();
             int rounds = r.ReadInt();
             if (money < 0 || rounds < 0) throw new FormatException("Invalid table rules.");
             if (version == LegacyTableVersion) return new TableRules(money, rounds);
@@ -608,7 +634,9 @@ namespace Lazpoly.Net.Messages
             int turnSeconds = r.ReadInt();
             if (version == TimedTableVersion && r.ReadByte() > 1) throw new FormatException("Invalid table rules.");
             if (turnSeconds < 0) throw new FormatException("Invalid table rules.");
-            return new TableRules(money, rounds, turnSeconds);
+            int minutes = version >= ClockTableVersion ? r.ReadInt() : TableRules.DefaultTimeLimitMinutes;
+            if (minutes < 0) throw new FormatException("Invalid table rules.");
+            return new TableRules(money, rounds, turnSeconds, minutes);
         }
 
         /// <summary>Reads an int-backed enum and refuses values the enum does not define.</summary>

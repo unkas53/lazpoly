@@ -646,6 +646,15 @@ namespace Lazpoly.Presentation.Tabletop
             if (price != null && _animating.Add(price.transform)) StartCoroutine(Nudge(price.transform, false));
         }
 
+        /// <summary>How far up the screen from the lawn's middle the game clock stands, as a share of the lawn's inner width: near the top corner of the green (Faz 28).</summary>
+        public const float ClockOffset = 0.52f;
+
+        /// <summary>The lawn's inner width, which the pieces on it are sized by.</summary>
+        public float Inner => _inner;
+
+        /// <summary>Where the game clock stands on the lawn, in the board's frame, for a camera turned by <paramref name="yaw"/>.</summary>
+        public Vector3 ClockSpot(float yaw) => new Vector3(0f, LawnHeight, 0f) + ScreenUp(yaw) * (_inner * ClockOffset);
+
         /// <summary>The pot's label rocks when money drops in and swells when it is paid out.</summary>
         public void NudgePot(bool paidIn)
         {

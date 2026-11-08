@@ -6,6 +6,7 @@ using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
+using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.Audio;
@@ -1749,8 +1750,11 @@ namespace Lazpoly.Presentation.Game
                 PlayerState winner = state.FindPlayer(state.WinnerId);
                 ui.Title(UiIcon.Flag, L("Oyun bitti"));
                 ui.Label(F($"Kazanan: {winner?.Name}"), UiTextStyle.Title, winner != null ? _controller.ColorOf(winner.Id) : UiTheme.Accent, TextAnchor.MiddleCenter);
-                bool byLimit = _controller.Session.Rules.RoundLimit > 0 && state.ActivePlayerCount() > 1;
-                ui.Label(byLimit ? F($"Tur sınırı doldu ({state.Round} tur): en zengin oyuncu kazandı.") : F($"{state.Round} turda bitti."),
+                RulesConfig rules = _controller.Session.Rules;
+                bool byTime = GameRules.TimeIsUp(rules, state) && state.ActivePlayerCount() > 1;
+                bool byLimit = !byTime && rules.RoundLimit > 0 && state.ActivePlayerCount() > 1;
+                ui.Label(byTime ? F($"Süre doldu ({rules.TimeLimitMinutes} dk): en zengin oyuncu kazandı.")
+                        : byLimit ? F($"Tur sınırı doldu ({state.Round} tur): en zengin oyuncu kazandı.") : F($"{state.Round} turda bitti."),
                     UiTextStyle.Small, alignment: TextAnchor.MiddleCenter);
                 RenderStandings(ui, state);
             }

@@ -162,6 +162,23 @@ namespace Lazpoly.Core.Engine
             return CommandResult.Accepted(events);
         }
 
+        /// <summary>
+        /// Records the game time played, as counted where the rules run (the game clock, Faz 28). Not a player's command:
+        /// the session calls it every few seconds. Nothing happens once the game is over or when the time has not moved on.
+        /// When a table's time limit runs out, the game ends as the turn on play ends (<see cref="StartNextTurn"/>).
+        /// </summary>
+        public CommandResult AdvanceClock(int playedSeconds)
+        {
+            if (playedSeconds < 0) throw new ArgumentOutOfRangeException(nameof(playedSeconds));
+            if (State.Phase == GamePhase.GameOver || playedSeconds <= State.PlayedSeconds) return CommandResult.Accepted(Array.Empty<GameEvent>());
+
+            _pending = new List<GameEvent>();
+            Emit(new GameClockEvent(playedSeconds));
+            List<GameEvent> events = _pending;
+            _pending = null;
+            return CommandResult.Accepted(events);
+        }
+
         /// <summary>Checks a command against the current state without changing anything.</summary>
         public RejectionReason Validate(GameCommand command) => GameRules.Validate(Board, Rules, State, command);
 
@@ -558,6 +575,13 @@ namespace Lazpoly.Core.Engine
                     if (Rules.RoundLimit > 0 && index <= State.CurrentPlayerIndex && State.Round >= Rules.RoundLimit)
                     {
                         Emit(new GameEndedEvent(GameRules.Richest(Board, State), GameEndReason.RoundLimit));
+                        return;
+                    }
+
+                    // The game time is up: the turn on play has ended, the richest player wins (the owner's rule, Faz 28).
+                    if (GameRules.TimeIsUp(Rules, State))
+                    {
+                        Emit(new GameEndedEvent(GameRules.Richest(Board, State), GameEndReason.TimeLimit));
                         return;
                     }
 

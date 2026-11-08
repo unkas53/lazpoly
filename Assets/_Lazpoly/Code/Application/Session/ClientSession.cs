@@ -130,6 +130,11 @@ namespace Lazpoly.App.Session
             if (!Send(new CommandMessage { Command = command })) CommandRejected?.Invoke(RejectionReason.NotConnected);
         }
 
+        /// <summary>The host keeps the game clock; its time arrives with the events.</summary>
+        public void AddPlayTime(double seconds)
+        {
+        }
+
         public void Tick()
         {
             _transport.Poll();

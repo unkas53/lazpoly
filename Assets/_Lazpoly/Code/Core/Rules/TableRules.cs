@@ -11,20 +11,26 @@ namespace Lazpoly.Core.Rules
         /// <summary>The decision time a table gets when nobody picks one.</summary>
         public const int DefaultTurnSeconds = 15;
 
-        /// <summary>Board starting money, no round limit, 15 seconds a decision.</summary>
+        /// <summary>The game time of a standard table, in minutes (the owner's rule, Faz 28).</summary>
+        public const int DefaultTimeLimitMinutes = 30;
+
+        /// <summary>Board starting money, no round limit, 15 seconds a decision, 30 minutes of game time.</summary>
         public static readonly TableRules Default = new TableRules(0, 0);
 
         /// <param name="startingMoney">0 keeps the board's starting money.</param>
         /// <param name="roundLimit">0 plays until one player is left.</param>
         /// <param name="turnSeconds">Seconds a player has for a decision (roll, buy, build) before the game makes it for them; 0 means no clock.</param>
-        public TableRules(int startingMoney, int roundLimit, int turnSeconds = DefaultTurnSeconds)
+        /// <param name="timeLimitMinutes">Minutes of game time before the richest player wins; 0 plays without a game clock.</param>
+        public TableRules(int startingMoney, int roundLimit, int turnSeconds = DefaultTurnSeconds, int timeLimitMinutes = DefaultTimeLimitMinutes)
         {
             if (startingMoney < 0) throw new ArgumentOutOfRangeException(nameof(startingMoney));
             if (roundLimit < 0) throw new ArgumentOutOfRangeException(nameof(roundLimit));
             if (turnSeconds < 0) throw new ArgumentOutOfRangeException(nameof(turnSeconds));
+            if (timeLimitMinutes < 0) throw new ArgumentOutOfRangeException(nameof(timeLimitMinutes));
             StartingMoney = startingMoney;
             RoundLimit = roundLimit;
             TurnSeconds = turnSeconds;
+            TimeLimitMinutes = timeLimitMinutes;
         }
 
         public int StartingMoney { get; }
@@ -37,11 +43,16 @@ namespace Lazpoly.Core.Rules
         /// </summary>
         public int TurnSeconds { get; }
 
-        public TableRules WithStartingMoney(int value) => new TableRules(value, RoundLimit, TurnSeconds);
-        public TableRules WithRoundLimit(int value) => new TableRules(StartingMoney, value, TurnSeconds);
-        public TableRules WithTurnSeconds(int value) => new TableRules(StartingMoney, RoundLimit, value);
+        /// <summary>Minutes of game time before the game ends and the richest player wins; 0 means no game clock.</summary>
+        public int TimeLimitMinutes { get; }
+
+        public TableRules WithStartingMoney(int value) => new TableRules(value, RoundLimit, TurnSeconds, TimeLimitMinutes);
+        public TableRules WithRoundLimit(int value) => new TableRules(StartingMoney, value, TurnSeconds, TimeLimitMinutes);
+        public TableRules WithTurnSeconds(int value) => new TableRules(StartingMoney, RoundLimit, value, TimeLimitMinutes);
+        public TableRules WithTimeLimit(int minutes) => new TableRules(StartingMoney, RoundLimit, TurnSeconds, minutes);
 
         public bool SameAs(TableRules other) =>
-            other != null && StartingMoney == other.StartingMoney && RoundLimit == other.RoundLimit && TurnSeconds == other.TurnSeconds;
+            other != null && StartingMoney == other.StartingMoney && RoundLimit == other.RoundLimit && TurnSeconds == other.TurnSeconds &&
+            TimeLimitMinutes == other.TimeLimitMinutes;
     }
 }

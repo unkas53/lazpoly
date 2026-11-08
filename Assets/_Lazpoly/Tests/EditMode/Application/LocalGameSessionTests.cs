@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
 using Lazpoly.Core.Commands;
@@ -25,6 +26,38 @@ namespace Lazpoly.App.Tests
             var rules = new RulesConfig(1000, 100, 6, 3, 2, 50);
             var seats = new[] { new PlayerSeat(1, "Bir"), new PlayerSeat(2, "İki") };
             return new LocalGameSession(new GameEngine(board, rules, seats, new Pcg32Random(5UL)));
+        }
+
+        [Test]
+        public void TheGameTimerReportsEveryTenSecondsAndAtTheLimit()
+        {
+            var timer = new GameTimer(0);
+            Assert.AreEqual(-1, timer.Add(0.5, 0));
+            for (int i = 0; i < 18; i++) Assert.AreEqual(-1, timer.Add(0.5, 0), "Under ten seconds nothing is due.");
+            Assert.AreEqual(10, timer.Add(0.5, 0));
+            Assert.AreEqual(-1, timer.Add(30, 0), "A long hitch adds at most a second.");
+            Assert.AreEqual(11, (int)timer.Played);
+
+            var nearTheEnd = new GameTimer(55);
+            Assert.AreEqual(-1, nearTheEnd.Add(1, 60));
+            for (int i = 0; i < 3; i++) nearTheEnd.Add(1, 60);
+            Assert.AreEqual(60, nearTheEnd.Add(1, 60), "The limit is reported the moment it is reached.");
+            Assert.AreEqual(-1, nearTheEnd.Add(1, 60));
+            Assert.AreEqual(-1, timer.Add(-1, 0));
+            Assert.AreEqual(-1, timer.Add(double.NaN, 0));
+        }
+
+        [Test]
+        public void PlayTimeReachesTheStateAsClockEvents()
+        {
+            LocalGameSession session = NewSession();
+            var published = new List<IReadOnlyList<GameEvent>>();
+            session.EventsPublished += events => published.Add(events);
+
+            for (int i = 0; i < 25; i++) session.AddPlayTime(0.5);
+            Assert.AreEqual(1, published.Count);
+            Assert.IsInstanceOf<GameClockEvent>(published[0].Single());
+            Assert.AreEqual(GameTimer.ReportSeconds, session.State.PlayedSeconds);
         }
 
         [Test]

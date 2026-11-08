@@ -29,6 +29,19 @@ namespace Lazpoly.Presentation.Menu
             }
 
             ui.Eyebrow(L("Oyun süresi"), UiTheme.Muted);
+            UiBuilder minutes = ui.Row();
+            foreach (int choice in TableSetup.TimeLimitChoices)
+            {
+                int value = choice;
+                Choice(minutes, TableSetup.TimeLimitText(value), table.TimeLimitMinutes == value, canEdit, () => changed(table.WithTimeLimit(value)));
+            }
+
+            if (explain && table.TimeLimitMinutes > 0)
+            {
+                ui.Label(L("Süre dolunca o anki oyuncunun sırası biter; parası, mülkleri ve binaları en değerli olan kazanır."), UiTextStyle.Small, UiTheme.Muted);
+            }
+
+            ui.Eyebrow(L("Tur sınırı"), UiTheme.Muted);
             UiBuilder rounds = ui.Row();
             foreach (int choice in TableSetup.RoundLimitChoices)
             {

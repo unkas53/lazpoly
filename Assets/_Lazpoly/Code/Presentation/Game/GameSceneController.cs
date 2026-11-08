@@ -378,6 +378,7 @@ namespace Lazpoly.Presentation.Game
         {
             if (_session == null) return;
             _session.Tick();
+            RunGameClock();
             ShowMoneyPiles();
             if (_client != null) RejoinRoomIfNeeded();
             if (_isOnline && Time.unscaledTime >= _nextPresenceRefresh)
@@ -1045,9 +1046,53 @@ namespace Lazpoly.Presentation.Game
             Application.Quit();
         }
 
+        /// <summary>The game time played as shown: the state's, carried on smoothly between the clock's reports.</summary>
+        private double _shownPlayed;
+
+        private GameClockSign _clockSign;
+
+        /// <summary>Seconds of game time left at a table with a time limit, as the lawn's clock shows them; infinite without one.</summary>
+        public double GameSecondsLeft =>
+            _session?.Rules == null || _session.Rules.TimeLimitMinutes <= 0 ? double.PositiveInfinity : Math.Max(0, _session.Rules.TimeLimitSeconds - _shownPlayed);
+
+        /// <summary>True for a batch that only moves the game clock on.</summary>
+        public static bool OnlyClock(IReadOnlyList<GameEvent> events)
+        {
+            if (events == null || events.Count == 0) return false;
+            foreach (GameEvent gameEvent in events)
+            {
+                if (!(gameEvent is GameClockEvent)) return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// The game clock (the owner's rule, Faz 28): play time goes to the session while the game runs (not while a local
+        /// game is paused or after it ended), and the lawn's board counts down from the table's limit. Between the clock's
+        /// reports the shown time runs on by itself, never more than a report ahead of the state.
+        /// </summary>
+        private void RunGameClock()
+        {
+            GameState state = _session.State;
+            if (state == null || _board == null) return;
+            bool running = !Paused && !EndReason.HasValue && state.Phase != GamePhase.GameOver;
+            if (running) _session.AddPlayTime(Time.unscaledDeltaTime);
+            double carried = running ? _shownPlayed + Time.unscaledDeltaTime : _shownPlayed;
+            _shownPlayed = Math.Min(Math.Max(carried, state.PlayedSeconds), state.PlayedSeconds + GameTimer.ReportSeconds + 1);
+            if (state.Phase == GamePhase.GameOver && _session.Rules.TimeLimitMinutes > 0 && GameRules.TimeIsUp(_session.Rules, state))
+                _shownPlayed = Math.Max(_shownPlayed, _session.Rules.TimeLimitSeconds);
+
+            if (_session.Rules.TimeLimitMinutes <= 0) return;
+            if (_clockSign == null) _clockSign = GameClockSign.Create(_board.transform, _board.Inner);
+            _clockSign.Place(_board.ClockSpot(_board.Yaw), _board.Yaw);
+            _clockSign.Show(GameSecondsLeft);
+        }
+
         /// <summary>Puts every pawn and owner marker where the state says, without animation.</summary>
         private void SyncViewsToState()
         {
+            _shownPlayed = _session.State.PlayedSeconds;
             GameState state = _session.State;
             foreach (PlayerState player in state.Players)
             {
@@ -1097,6 +1142,13 @@ namespace Lazpoly.Presentation.Game
 
         private void OnEventsPublished(IReadOnlyList<GameEvent> events)
         {
+            if (OnlyClock(events))
+            {
+                // The game clock moved on: kept in the save, but no move to play and no decision clock to restart.
+                SaveLocalGame();
+                return;
+            }
+
             _lastProgressTime = Time.unscaledTime;
             Revision++;
             _trail.Events(events);

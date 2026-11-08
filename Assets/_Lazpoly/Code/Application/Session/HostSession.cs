@@ -35,6 +35,7 @@ namespace Lazpoly.App.Session
         private readonly ulong _boardChecksum;
         private readonly AiRoster _standIns;
         private readonly TurnClock _clock;
+        private GameTimer _timer;
         private readonly Dictionary<int, int> _strikes = new Dictionary<int, int>();
         private readonly HashSet<int> _idle = new HashSet<int>();
         private int _sequence;
@@ -212,6 +213,17 @@ namespace Lazpoly.App.Session
             if (_started && _clock.Now >= _nextPresenceAt) BroadcastPresence();
         }
 
+        public void AddPlayTime(double seconds)
+        {
+            if (!_started) return;
+            if (_timer == null) _timer = new GameTimer(_engine.State.PlayedSeconds);
+            int played = _timer.Add(seconds, _engine.Rules.TimeLimitSeconds);
+            if (played < 0) return;
+            CommandResult result = _engine.AdvanceClock(played);
+            // The game clock moving on is no move: the wait for the player on turn goes on.
+            if (result.Events.Count > 0) Broadcast(result.Events, restartTurnClock: false);
+        }
+
         /// <summary>Once the grace time after the start is over, the computer takes every seat whose player never arrived.</summary>
         private void SeatNoShows()
         {
@@ -382,9 +394,9 @@ namespace Lazpoly.App.Session
             foreach (ulong peer in _connected) _transport.Send(peer, payload);
         }
 
-        private void Broadcast(IReadOnlyList<GameEvent> events)
+        private void Broadcast(IReadOnlyList<GameEvent> events, bool restartTurnClock = true)
         {
-            _clock.Restart();
+            if (restartTurnClock) _clock.Restart();
             _sequence++;
             var message = new EventsMessage { Sequence = _sequence, StateHash = _engine.State.ComputeHash() };
             message.Events.AddRange(events);

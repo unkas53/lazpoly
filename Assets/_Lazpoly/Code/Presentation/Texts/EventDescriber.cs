@@ -96,7 +96,9 @@ namespace Lazpoly.Presentation.Texts
                 case GameEndedEvent e:
                     return e.Reason == GameEndReason.RoundLimit
                         ? F($"Tur sınırı doldu! En zengin oyuncu kazandı: {NameOf(state, e.WinnerId)}")
-                        : F($"Oyun bitti! Kazanan: {NameOf(state, e.WinnerId)}");
+                        : e.Reason == GameEndReason.TimeLimit
+                            ? F($"Süre doldu! En zengin oyuncu kazandı: {NameOf(state, e.WinnerId)}")
+                            : F($"Oyun bitti! Kazanan: {NameOf(state, e.WinnerId)}");
                 case BuildingLevelChangedEvent e:
                     return $"{L(board[e.SquareIndex].Name)}: {LevelText(e.Level)}";
                 case TradeProposedEvent e:

@@ -20,9 +20,12 @@ namespace Lazpoly.Presentation.Texts
 
             var sections = new List<KeyValuePair<string, string>>
             {
-                Section(L("Amaç"), rules.RoundLimit > 0
+                Section(L("Amaç"), (rules.RoundLimit > 0
                     ? F($"Mülk topla, kira al. {rules.RoundLimit} tur sonunda parası, mülkleri ve binaları en değerli olan kazanır; ondan önce herkes iflas ederse son kalan kazanır.")
-                    : L("Mülk topla, kira al ve diğerlerini iflas ettir. Son kalan oyuncu kazanır.")),
+                    : L("Mülk topla, kira al ve diğerlerini iflas ettir. Son kalan oyuncu kazanır."))
+                    + (rules.TimeLimitMinutes > 0
+                        ? " " + F($"Oyun {rules.TimeLimitMinutes} dakika sürer; çimdeki saat kalan süreyi gösterir. Süre dolunca o anki oyuncunun sırası biter ve parası, mülkleri ve binaları en değerli olan kazanır.")
+                        : "")),
                 Section(L("Sıra"), board.HasJail
                     ? F($"Zar at, piyonun o kadar ilerler. Başlangıçtan her geçişte {rules.PassStartBonus} alırsın. Çift atarsan bir kez daha atarsın; üst üste {rules.MaxConsecutiveDoubles} çift atarsan hapse düşersin. Yapacak bir şey kalmayınca sıra kendiliğinden geçer.")
                     : F($"Zar at, piyonun o kadar ilerler. Başlangıçtan her geçişte {rules.PassStartBonus} alırsın. Çift atarsan bir kez daha atarsın; üst üste {rules.MaxConsecutiveDoubles} çift atarsan hamlen yanar. Yapacak bir şey kalmayınca sıra kendiliğinden geçer.")),

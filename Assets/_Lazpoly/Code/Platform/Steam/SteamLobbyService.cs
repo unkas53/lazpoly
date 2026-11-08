@@ -187,18 +187,19 @@ namespace Lazpoly.Platform.Steam
             if (InLobby) SteamMatchmaking.SetLobbyMemberData(_lobby, FigureKey, figure ?? "");
         }
 
-        /// <summary>"money,rounds,turnSeconds" as lobby data; anything unreadable means the default rules.</summary>
-        public static string FormatTable(TableRules table) => $"{table.StartingMoney},{table.RoundLimit},{table.TurnSeconds}";
+        /// <summary>"money,rounds,turnSeconds,minutes" as lobby data; anything unreadable means the default rules.</summary>
+        public static string FormatTable(TableRules table) => $"{table.StartingMoney},{table.RoundLimit},{table.TurnSeconds},{table.TimeLimitMinutes}";
 
         /// <summary>Reads the lobby's rules. A room run by an older build (other layout) shows the default rules; it cannot be joined anyway, the protocol differs.</summary>
         public static TableRules ParseTable(string text)
         {
             if (string.IsNullOrEmpty(text)) return TableRules.Default;
             string[] parts = text.Split(',');
-            if (parts.Length != 3 || !int.TryParse(parts[0], out int money) || !int.TryParse(parts[1], out int rounds) ||
-                !int.TryParse(parts[2], out int turnSeconds) || money < 0 || rounds < 0 || turnSeconds < 0)
+            if (parts.Length != 4 || !int.TryParse(parts[0], out int money) || !int.TryParse(parts[1], out int rounds) ||
+                !int.TryParse(parts[2], out int turnSeconds) || !int.TryParse(parts[3], out int minutes) ||
+                money < 0 || rounds < 0 || turnSeconds < 0 || minutes < 0)
                 return TableRules.Default;
-            return new TableRules(money, rounds, turnSeconds);
+            return new TableRules(money, rounds, turnSeconds, minutes);
         }
 
         public void Leave()
