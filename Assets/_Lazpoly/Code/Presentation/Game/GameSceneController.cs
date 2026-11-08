@@ -1342,9 +1342,10 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>
-        /// Money seen moving (the owner's wish, Faz 25): the owner's notes and coins rise out of the payer's figure, gather in the
-        /// middle of the table and go on to the figure of the player who gets them, or into the bank's safe. It takes
-        /// <see cref="MoneyFlight.Seconds"/> at normal speed and the game waits for it. Houses bought together fly as one payment.
+        /// Money seen moving (the owner's wish, Faz 25): the money leaves the payer's case at its size and turned its way, goes
+        /// down through the payer's hatch at their corner, and for another player comes up through theirs and into their case;
+        /// money for the bank ends under the table and the safe gives a nudge. The game waits for it
+        /// (<see cref="MoneyFlight.Seconds"/>). Houses bought together fly as one payment.
         /// </summary>
         private IEnumerator ShowPayment(MoneyChangedEvent money)
         {
@@ -1364,14 +1365,11 @@ namespace Lazpoly.Presentation.Game
                 }
             }
 
-            // From the payer's money at the table's edge to the middle, then on to the other player's money or the safe.
-            Vector3 to = toBank ? _board.SafeSlot : _board.SeatMoneySpot(receiver);
-            Quaternion rest = Quaternion.LookRotation(BoardView.ScreenUp(_labelYaw));
-            float seconds = MoneyFlight.Fly(transform, _board.SeatMoneySpot(payer), _board.MoneyMiddle, to, amount, rest, Speed);
-            float sink = MoneyFlight.SinkSeconds / Speed;
-            yield return new WaitForSeconds(seconds - sink);
-            if (toBank) _board.NudgeSafe();
-            yield return new WaitForSeconds(sink);
+            // Out of the payer's case, down their hatch; up the other player's hatch into their case, or to the bank.
+            float seconds = MoneyFlight.Fly(transform, amount, _board.MoneyPileOf(payer), _board.HatchOf(payer),
+                toBank ? null : _board.MoneyPileOf(receiver), toBank ? null : _board.HatchOf(receiver), Speed);
+            yield return new WaitForSeconds(seconds);
+            if (toBank && seconds > 0f) _board.NudgeSafe();
         }
 
         /// <summary>

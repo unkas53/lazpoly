@@ -74,16 +74,6 @@ namespace Lazpoly.Presentation.Tabletop
         public const float SafeSize = 1.5f;
 
         /// <summary>
-        /// Where paid money gathers before it goes on to whoever gets it: in the middle of the table, below the dice (this
-        /// many board units down the screen from the lawn's middle, centred across) and only this high over the lawn, so the
-        /// row of stacks and gold bars stays clear of the dice and of the score above them; far enough down that even from
-        /// the low camera (35 degrees) the tops of the waiting stacks stay below the dice in the picture.
-        /// </summary>
-        public const float MoneySide = 0f;
-        public const float MoneyBack = 4.5f;
-        public const float MoneyHover = 0.3f;
-
-        /// <summary>
         /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
         /// corner each, 5-8 share them), its money case along the edge: the case's bottom half's middle this far out from the
         /// plate's edge (past the gap and the shelf's margin), and when two share an edge, this far either side of its middle
@@ -539,19 +529,26 @@ namespace Lazpoly.Presentation.Tabletop
 
         private readonly List<MoneyPile> _moneyPiles = new List<MoneyPile>();
         private readonly List<Transform> _shelves = new List<Transform>();
+        private readonly List<MoneyHatch> _hatches = new List<MoneyHatch>();
 
-        /// <summary>Lays an open money case on a shelf at the table's edge for each seat, in the seat's colour, in seat order.</summary>
+        /// <summary>
+        /// Lays an open money case on a shelf at the table's edge for each seat, in the seat's colour, in seat order, and puts
+        /// the seat's money hatch on the corner square at its end of that edge.
+        /// </summary>
         public void CreateMoneyPiles(IReadOnlyList<Color> seatColors)
         {
             foreach (MoneyPile pile in _moneyPiles) Discard(pile.Root.gameObject);
             foreach (Transform shelf in _shelves) Discard(shelf.gameObject);
+            foreach (MoneyHatch hatch in _hatches) Discard(hatch.gameObject);
             _moneyPiles.Clear();
             _shelves.Clear();
+            _hatches.Clear();
             Mesh shelfMesh = MeshFactory.RoundedBox(ShelfSize, 0.08f, 2);
             for (int seat = 0; seat < seatColors.Count; seat++)
             {
                 _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
                 _shelves.Add(ModelParts.Create($"Money shelf of seat {seat + 1}", transform, shelfMesh, PlateColor, 0.25f).transform);
+                if (Layout.HasCorners) _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}", seatColors[seat]));
             }
 
             PlaceMoneyPiles(_yaw);
@@ -580,9 +577,6 @@ namespace Lazpoly.Presentation.Tabletop
         {
             if (seat >= 0 && seat < _moneyPiles.Count) _moneyPiles[seat].Show(money);
         }
-
-        /// <summary>Where a seat's payments leave and arrive (world space); the table's middle when the seat has no case.</summary>
-        public Vector3 SeatMoneySpot(int seat) => seat >= 0 && seat < _moneyPiles.Count ? _moneyPiles[seat].Top : MoneyMiddle;
 
         /// <summary>
         /// Where a seat's money lies, in the board's frame: outside the middle of the board's edge that faces the seat's
@@ -633,16 +627,40 @@ namespace Lazpoly.Presentation.Tabletop
                 _shelves[seat].localPosition = outward * (HalfExtent + ShelfGapAt(seat, yaw) + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
                     - Vector3.up * (ShelfDrop + shelf.y / 2f);
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);
+                if (seat >= _hatches.Count) continue;
+                _hatches[seat].transform.localPosition = HatchSpot(seat, Layout.HalfSize, Layout.Depth, yaw) + Vector3.up * SurfaceY;
+                _hatches[seat].transform.localRotation = MoneyPileTurn(seat, yaw);
             }
         }
 
-        /// <summary>Where paid money gathers in the middle of the table, over the lawn (world space).</summary>
-        public Vector3 MoneyMiddle => transform.TransformPoint(new Vector3(0f, LawnHeight + MoneyHover, 0f) - ScreenUp(_yaw) * MoneyBack + ScreenRight(_yaw) * MoneySide);
+        /// <summary>The seats' money hatches on the corner squares, in seat order (none on a board without corners).</summary>
+        public IReadOnlyList<MoneyHatch> MoneyHatches => _hatches;
 
-        /// <summary>The slot on the safe's top that money paid to the bank drops into (world space).</summary>
-        public Vector3 SafeSlot => _safe != null ? _safe.TransformPoint(LawnParts.SafeSlot) : MoneyMiddle;
+        /// <summary>A seat's money case, or null.</summary>
+        public MoneyPile MoneyPileOf(int seat) => seat >= 0 && seat < _moneyPiles.Count ? _moneyPiles[seat] : null;
 
-        /// <summary>The safe swells for a moment as money drops in.</summary>
+        /// <summary>A seat's money hatch, or null.</summary>
+        public MoneyHatch HatchOf(int seat) => seat >= 0 && seat < _hatches.Count ? _hatches[seat] : null;
+
+        /// <summary>How far a hatch keeps from the corner square's outer side and from the edge's next square.</summary>
+        public const float HatchInset = 0.1f;
+
+        /// <summary>
+        /// Where a seat's money hatch lies, in the board's frame at the squares' foot: on the corner square at the end of the
+        /// seat's edge nearest its case (seats 1-4 one end, 5-8 the other, so each corner holds at most two), in the quarter
+        /// by that edge's outer side and its next square; a corner's other seat takes the quarter by its own edge.
+        /// </summary>
+        public static Vector3 HatchSpot(int seat, float halfSize, float depth, float yaw)
+        {
+            Vector3 outward = MoneyEdgeOutward(seat, yaw);
+            Vector3 along = Vector3.Cross(Vector3.up, outward);
+            Vector3 end = seat < 4 ? -along : along;
+            Vector3 corner = (outward + end) * halfSize;
+            Vector3 size = MoneyHatch.Size;
+            return corner + outward * (depth / 2f - HatchInset - size.z / 2f) - end * (depth / 2f - HatchInset - size.x / 2f);
+        }
+
+        /// <summary>The safe swells for a moment as money paid to the bank arrives under the table.</summary>
         public void NudgeSafe()
         {
             if (_safe != null && _animating.Add(_safe)) StartCoroutine(Nudge(_safe, rock: false));

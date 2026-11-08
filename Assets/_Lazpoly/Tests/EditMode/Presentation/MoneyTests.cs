@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Tests
 {
-    /// <summary>Faz 25: the owner's dollar stack, the bank's safe on the lawn and the three-second payment flight.</summary>
+    /// <summary>Faz 25: the owner's money pieces, the players' money cases and hatches, the bank's safe on the lawn and the payment's way.</summary>
     public class MoneyTests
     {
         [Test]
@@ -30,27 +30,6 @@ namespace Lazpoly.Presentation.Tests
             {
                 Assert.GreaterOrEqual(MoneyBundle.Height(piece), 0.25f * MoneyBundle.Width(piece), $"{piece}: thick, not a single note");
             }
-        }
-
-        [Test]
-        public void ThePiecesFlyInOneNeatRow()
-        {
-            MoneyPiece[] row = MoneyFlight.Pieces(5000);
-            float previousEnd = float.NegativeInfinity;
-            for (int i = 0; i < row.Length; i++)
-            {
-                Vector3 at = MoneyFlight.RowOffset(i, row);
-                Assert.AreEqual(0f, at.y, 1e-5f, "all on one level, none piled");
-                Assert.AreEqual(0f, at.z, 1e-5f, "on one straight line");
-                float start = at.x - MoneyBundle.Length(row[i]) / 2f;
-                if (i > 0) Assert.AreEqual(MoneyFlight.RowGap, start - previousEnd, 1e-4f, "even gaps, side by side");
-                previousEnd = at.x + MoneyBundle.Length(row[i]) / 2f;
-            }
-
-            Assert.AreEqual(0f, MoneyFlight.RowOffset(0, row).x + MoneyFlight.RowOffset(row.Length - 1, row).x
-                + (MoneyBundle.Length(row[row.Length - 1]) - MoneyBundle.Length(row[0])) / 2f, 1e-4f, "the row is centred");
-            Assert.AreEqual(0f, MoneyFlight.RowOffset(0, new[] { MoneyPiece.Gold }).x, 1e-5f, "a lone piece in the middle");
-            Assert.LessOrEqual(MoneyFlight.RowLength(row) / 2f, 3.2f, "the longest row fits the lawn below the dice");
         }
 
         [Test]
@@ -98,7 +77,8 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(3, board.MoneyPiles.Count);
                 board.ShowSeatMoney(1, 1500);
                 CollectionAssert.AreEqual(MoneyPile.Pieces(1500), board.MoneyPiles[1].Shown);
-                Assert.Greater(board.SeatMoneySpot(1).y, 0f, "money leaves from over the tray");
+                Assert.AreSame(board.MoneyPiles[1], board.MoneyPileOf(1));
+                Assert.IsNull(board.MoneyPileOf(3), "no case for a seat nobody sits in");
                 Assert.AreEqual(3, board.MoneyShelves.Count, "every tray stands on a shelf");
                 for (int seat = 0; seat < 3; seat++)
                 {
@@ -166,34 +146,114 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ThePaymentGoesStraightThroughTheMiddleAndEndsInThreeSeconds()
+        public void PaidMoneyGoesDownThePayersHatchAndUpTheReceiversOneByOne()
         {
-            Vector3 from = new Vector3(-4f, 1f, 0f), middle = new Vector3(0f, 1.6f, 0f), to = new Vector3(4f, 1f, 2f);
-            Assert.AreEqual(3f, MoneyFlight.Seconds, "the owner's three seconds");
-            Assert.LessOrEqual(MoneyFlight.ArriveAt + MoneyFlight.SinkSeconds, MoneyFlight.Seconds + 1e-4f, "gone in time");
-            Assert.AreEqual(from, MoneyFlight.PositionAt(0f, from, middle, to));
-            Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.GatherAt, from, middle, to), middle), Is.LessThan(1e-4f), "it waits in the middle");
-            Assert.AreEqual(to, MoneyFlight.PositionAt(MoneyFlight.ArriveAt, from, middle, to));
-            Vector3 halfway = MoneyFlight.PositionAt((MoneyFlight.LeaveAt + MoneyFlight.ArriveAt) / 2f, from, middle, to);
-            Assert.That(Vector3.Distance(halfway, (middle + to) / 2f), Is.LessThan(1e-3f), "straight on, no arc (the owner's wish)");
-            Assert.AreEqual(0f, MoneyFlight.ScaleAt(0f));
-            Assert.AreEqual(1f, MoneyFlight.ScaleAt(MoneyFlight.GatherAt));
-            Assert.AreEqual(0f, MoneyFlight.ScaleAt(MoneyFlight.Seconds), 1e-4f, "it sinks into whoever gets it");
+            Vector3 from = new Vector3(-4f, 0f, 0f), overA = new Vector3(-6f, 0.6f, 6f), underA = new Vector3(-6f, -0.4f, 6f);
+            Vector3 underB = new Vector3(6f, -0.4f, 6f), overB = new Vector3(6f, 0.6f, 6f), to = new Vector3(4f, 0f, 0f);
+            const int count = 3;
+            for (int i = 0; i < count; i++)
+            {
+                Assert.AreEqual(from, MoneyFlight.PositionAt(0f, i, count, true, from, overA, underA, underB, overB, to), "it leaves from its place in the case");
+                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.SinkAt(i), i, count, true, from, overA, underA, underB, overB, to), overA), Is.LessThan(1e-3f), "over the payer's hatch");
+                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.GoneAt(i) - 1e-4f, i, count, true, from, overA, underA, underB, overB, to), underA), Is.LessThan(1e-2f), "down into it");
+                Assert.IsTrue(MoneyFlight.Hidden((MoneyFlight.GoneAt(i) + MoneyFlight.RiseAt(i, count)) / 2f, i, count, true), "out of sight under the table");
+                Assert.IsFalse(MoneyFlight.Hidden(MoneyFlight.SinkAt(i), i, count, true));
+                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.UpAt(i, count), i, count, true, from, overA, underA, underB, overB, to), overB), Is.LessThan(1e-3f), "up out of the other hatch");
+                Assert.AreEqual(to, MoneyFlight.PositionAt(MoneyFlight.LandAt(i, count), i, count, true, from, overA, underA, underB, overB, to), "into the other case");
+                Assert.IsTrue(MoneyFlight.Hidden(MoneyFlight.Seconds(count, false), i, count, false), "money for the bank stays under the table");
+                if (i > 0) Assert.Greater(MoneyFlight.SinkAt(i), MoneyFlight.SinkAt(i - 1), "one after another");
+                if (i > 0) Assert.Greater(MoneyFlight.RiseAt(i, count), MoneyFlight.RiseAt(i - 1, count));
 
-            var root = new GameObject("Table");
+                // The payer's hatch is open while each piece goes down, the other one while each comes up.
+                for (float t = MoneyFlight.SinkAt(i); t <= MoneyFlight.GoneAt(i); t += 0.05f)
+                    Assert.AreEqual(1f, MoneyHatch.OpennessAt(t, MoneyFlight.PayerOpensAt, MoneyFlight.PayerShutsAt(count)), 1e-4f, $"piece {i} goes down an open hatch");
+                for (float t = MoneyFlight.RiseAt(i, count); t <= MoneyFlight.UpAt(i, count); t += 0.05f)
+                    Assert.AreEqual(1f, MoneyHatch.OpennessAt(t, MoneyFlight.ReceiverOpensAt(count), MoneyFlight.ReceiverShutsAt(count)), 1e-4f, $"piece {i} comes up an open hatch");
+            }
+
+            Assert.AreEqual(0f, MoneyHatch.OpennessAt(0f, MoneyFlight.PayerOpensAt, MoneyFlight.PayerShutsAt(count)), "shut at first");
+            Assert.AreEqual(0f, MoneyHatch.OpennessAt(MoneyFlight.Seconds(count, false), MoneyFlight.PayerOpensAt, MoneyFlight.PayerShutsAt(count)), 1e-4f, "and shut again at the end");
+            Assert.AreEqual(0f, MoneyHatch.OpennessAt(MoneyFlight.RiseAt(0, count) - MoneyHatch.SwingSeconds, MoneyFlight.ReceiverOpensAt(count), MoneyFlight.ReceiverShutsAt(count)), 1e-4f,
+                "the other hatch opens only after the payer's has shut");
+            Assert.Greater(MoneyFlight.ReceiverOpensAt(count), MoneyFlight.PayerShutsAt(count));
+            Assert.LessOrEqual(MoneyFlight.Seconds(MoneyFlight.MaxPieces, true), 4.5f, "a payment never drags");
+
+            var holder = new GameObject("Board Test");
             try
             {
-                float seconds = MoneyFlight.Fly(root.transform, from, middle, to, 260, Quaternion.identity, 2f);
-                Assert.AreEqual(1.5f, seconds, 1e-4f, "the animation speed setting shortens it");
-                MoneyFlight[] pieces = root.GetComponentsInChildren<MoneyFlight>();
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                board.CreateMoneyPiles(new[] { Color.red, Color.blue, Color.green });
+                float seconds = MoneyFlight.Fly(holder.transform, 260, board.MoneyPileOf(0), board.HatchOf(0), board.MoneyPileOf(1), board.HatchOf(1), 2f);
+                Assert.AreEqual(MoneyFlight.Seconds(3, true) / 2f, seconds, 1e-4f, "the animation speed setting shortens it");
+                MoneyFlight[] pieces = holder.GetComponentsInChildren<MoneyFlight>();
                 Assert.AreEqual(3, pieces.Length, "three stacks for 260");
-                Assert.AreEqual(pieces[0].transform.position.y, pieces[2].transform.position.y, 1e-4f, "the bundles leave side by side, none piled");
-                Assert.AreEqual(2f * (MoneyBundle.Length(MoneyPiece.Stack) + MoneyFlight.RowGap),
-                    Vector3.Distance(pieces[0].transform.position, pieces[2].transform.position), 1e-3f, "in one neat row with even gaps");
+                for (int i = 0; i < pieces.Length; i++)
+                {
+                    Transform piece = pieces[i].transform;
+                    Assert.That(piece.lossyScale.x, Is.EqualTo(MoneyPile.PieceScale).Within(1e-4f), "its size in the case, never bigger");
+                    Assert.That(Quaternion.Angle(piece.rotation, board.MoneyPileOf(0).Root.rotation), Is.LessThan(0.01f), "turned as it lies in the case");
+                    Vector3 slot = board.MoneyPileOf(0).Root.TransformPoint(MoneyPile.SlotOffset(i, 3));
+                    Assert.That(Vector3.Distance(piece.position, slot), Is.LessThan(1e-3f), "leaving from its place in the case");
+                }
+
+                Assert.AreEqual(0f, MoneyFlight.Fly(holder.transform, 0, board.MoneyPileOf(0), board.HatchOf(0), null, null, 1f), "nothing to pay, nothing flies");
+                Assert.Greater(MoneyFlight.Fly(holder.transform, 100, board.MoneyPileOf(2), board.HatchOf(2), null, null, 1f), 0f, "to the bank");
             }
             finally
             {
-                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void EachSeatsHatchLiesOnACornerSquareAtItsEndOfTheEdge()
+        {
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                float yaw = BoardCameraRig.BaseYaw, half = board.Layout.HalfSize, depth = board.Layout.Depth;
+                var colors = new Color[8];
+                for (int i = 0; i < colors.Length; i++) colors[i] = Color.HSVToRGB(i / 8f, 0.7f, 0.9f);
+                board.CreateMoneyPiles(colors);
+                Assert.AreEqual(8, board.MoneyHatches.Count, "a hatch for every seat");
+                Vector3 size = MoneyHatch.Size;
+                for (int seat = 0; seat < 8; seat++)
+                {
+                    MoneyHatch hatch = board.HatchOf(seat);
+                    Vector3 spot = hatch.transform.localPosition;
+                    Assert.AreEqual(board.SurfaceY, spot.y, 1e-4f, $"seat {seat + 1}: on the squares");
+                    Vector3 corner = new Vector3(Mathf.Sign(spot.x) * half, 0f, Mathf.Sign(spot.z) * half);
+                    Vector3 outward = BoardView.MoneyEdgeOutward(seat, yaw);
+                    Vector3 along = Vector3.Cross(Vector3.up, outward);
+                    Vector3 off = new Vector3(spot.x - corner.x, 0f, spot.z - corner.z);
+                    Assert.LessOrEqual(Mathf.Abs(Vector3.Dot(off, outward)) + size.z / 2f, depth / 2f + 1e-3f, $"seat {seat + 1}: inside the corner square");
+                    Assert.LessOrEqual(Mathf.Abs(Vector3.Dot(off, along)) + size.x / 2f, depth / 2f + 1e-3f, $"seat {seat + 1}: inside the corner square");
+                    Assert.AreEqual(half, Vector3.Dot(corner, outward), 1e-3f, $"seat {seat + 1}: a corner of its own edge");
+                    Vector3 pile = BoardView.MoneyPileSpot(seat, 8, board.HalfExtent, yaw);
+                    Assert.AreEqual(Mathf.Sign(Vector3.Dot(pile, along)), Mathf.Sign(Vector3.Dot(spot, along)), $"seat {seat + 1}: the end nearest its case");
+                    Assert.That(Quaternion.Angle(hatch.transform.localRotation, BoardView.MoneyPileTurn(seat, yaw)), Is.LessThan(0.01f), $"seat {seat + 1}: turned as its case, so the money fits");
+                    for (int other = 0; other < seat; other++)
+                    {
+                        Vector3 gap = spot - board.HatchOf(other).transform.localPosition;
+                        Assert.Greater(Mathf.Max(Mathf.Abs(gap.x), Mathf.Abs(gap.z)), size.z, $"seats {other + 1} and {seat + 1}: their hatches lie apart");
+                    }
+                }
+
+                MoneyHatch first = board.HatchOf(0);
+                Assert.Greater(MoneyHatch.HoleLength, MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale, "a stack fits the hole lengthwise");
+                Assert.Greater(MoneyHatch.HoleWidth, MoneyBundle.Width(MoneyPiece.Stack) * MoneyPile.PieceScale, "and across");
+                first.Show(0f);
+                Bounds shut = first.Lid.GetComponentInChildren<Renderer>().bounds;
+                Assert.Less(shut.max.y, first.Mouth.y + MoneyHatch.LidThickness + 0.01f, "shut, the lid lies flat over the hole");
+                first.Show(1f);
+                Bounds open = first.Lid.GetComponentInChildren<Renderer>().bounds;
+                Assert.Greater(open.max.y, first.Mouth.y + MoneyHatch.HoleWidth * 0.8f, "open, it stands up");
+                Assert.Greater(Vector3.Dot(open.center - first.Mouth, BoardView.ScreenUp(yaw)), 0f, "behind the hole, away from the camera");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
             }
         }
 
@@ -245,20 +305,6 @@ namespace Lazpoly.Presentation.Tests
                 Vector3 place = board.Safe.localPosition;
                 Assert.Less(Vector3.Dot(place, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), -2f, "to the screen's left of the middle");
                 Assert.That(Vector3.Dot(place, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(0f).Within(0.01f), "level with the middle, clear of the dice below it and the score above");
-                Assert.Greater(board.SafeSlot.y, board.Safe.position.y + BoardView.SafeSize * 0.9f, "money goes in at the top");
-                Assert.Greater(board.MoneyMiddle.y, BoardView.LawnHeight + 0.2f, "money gathers in the air over the lawn");
-                Vector3 middle = new Vector3(board.MoneyMiddle.x, 0f, board.MoneyMiddle.z);
-                Assert.That(Vector3.Dot(middle, BoardView.ScreenUp(BoardCameraRig.BaseYaw)), Is.EqualTo(-BoardView.MoneyBack).Within(0.01f), "below the dice");
-                Assert.Greater(BoardView.MoneyBack, 1.5f + 0.35f + MoneyBundle.Width(MoneyPiece.Stack), "clear of the dice, which lie 1.5 units down");
-                // From the 35 degree camera a stack's top shows this far up the picture from its foot; the waiting row's
-                // nearest tops still stay below the dice's front (1.5 down, a turned die reaching half its 0.7 diagonal).
-                float tops = (BoardView.MoneyHover + MoneyBundle.Height(MoneyPiece.Stack)) / Mathf.Tan(BoardCameraRig.Pitch * Mathf.Deg2Rad);
-                Assert.Greater(BoardView.MoneyBack - MoneyBundle.Width(MoneyPiece.Stack) / 2f - tops, 1.5f + 0.7f * 0.71f + 0.3f, "the waiting row never hides the dice");
-                MoneyPiece[] longest = MoneyFlight.Pieces(5000);
-                float lawnCorner = board.Layout.HalfSize * 2f - board.Layout.Depth * 1.05f;
-                Assert.Less(MoneyFlight.RowLength(longest) / 2f + BoardView.MoneyBack + MoneyBundle.Width(MoneyPiece.Stack) / 2f,
-                    lawnCorner / 2f * Mathf.Sqrt(2f) - 0.5f, "the longest row stays over the lawn");
-                Assert.That(Vector3.Dot(middle, BoardView.ScreenRight(BoardCameraRig.BaseYaw)), Is.EqualTo(0f).Within(0.01f), "in the middle of the table");
                 Assert.Greater(board.Safe.GetComponentsInChildren<MeshRenderer>().Length, 8, "feet, body, door, dial, handle, hinges and slot");
             }
             finally

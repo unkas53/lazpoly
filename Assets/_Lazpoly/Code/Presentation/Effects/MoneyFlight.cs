@@ -1,37 +1,20 @@
-using System.Collections.Generic;
 using Lazpoly.Presentation.Models;
+using Lazpoly.Presentation.Tabletop;
 using UnityEngine;
 
 namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
     /// One piece of paid money on its way, the owner's wish (Faz 25): a payment travels as the owner's banded money stacks
-    /// and, for the big sums, gold bars (<see cref="MoneyBundle"/>), all side by side in one neat row. It leaves the
-    /// payer's money at the table's edge (MoneyPile), goes straight to the middle of the table, waits
-    /// there a moment, then goes straight on to whoever gets it (their money at the edge, or the bank's safe) and sinks
-    /// into it. It lies flat and never turns on the way. The whole payment takes <see cref="Seconds"/> at normal speed,
-    /// and the game waits for it. The timeline and the row are pure (<see cref="PositionAt"/>, <see cref="ScaleAt"/>,
-    /// <see cref="RowOffset"/>) so they can be checked without a scene.
+    /// and, for the big sums, gold bars (<see cref="MoneyBundle"/>). The pieces leave the payer's money case exactly as they
+    /// lie in it, at its size and turned its way, and never grow or turn on the way (the owner's note). One after another they
+    /// go to the payer's hatch at their corner of the table (<see cref="MoneyHatch"/>), which opens, and sink into it; the
+    /// hatch shuts. Money for the bank ends there. Money for another player comes up through that player's hatch, which opens
+    /// in turn, and goes on to their case, turned as their case is; their hatch shuts behind it. The game waits for it all.
+    /// The timeline is pure (<see cref="PositionAt"/>, <see cref="Seconds"/>) so it can be checked without a scene.
     /// </summary>
     public sealed class MoneyFlight : MonoBehaviour
     {
-        /// <summary>The whole payment, from the bundle leaving to it being gone, at normal speed (the owner's three seconds).</summary>
-        public const float Seconds = 3f;
-
-        /// <summary>When the bundle reaches the middle and when it leaves it again, at normal speed.</summary>
-        public const float GatherAt = 1.0f;
-        public const float LeaveAt = 1.5f;
-
-        /// <summary>How long the way from the middle to whoever gets the money takes, and the shrink into them at the end.</summary>
-        public const float LegSeconds = 1.2f;
-        public const float SinkSeconds = 0.3f;
-
-        /// <summary>When the bundle reaches whoever gets it.</summary>
-        public const float ArriveAt = LeaveAt + LegSeconds;
-
-        /// <summary>How long the bundle takes to grow to its size as it leaves the payer.</summary>
-        public const float PopSeconds = 0.15f;
-
         /// <summary>
         /// A gold bar for every full <see cref="GoldValue"/> (at most <see cref="MaxGold"/>), a money stack for every hundred
         /// started of the rest; at least one piece and at most <see cref="MaxPieces"/>.
@@ -41,16 +24,37 @@ namespace Lazpoly.Presentation.Effects
         public const int BundleValue = 100;
         public const int MaxPieces = 4;
 
-        /// <summary>The gap between neighbouring pieces in the row, in board units.</summary>
-        public const float RowGap = 0.08f;
+        /// <summary>From the case to over the hatch (and from over the other hatch to the other case), at normal speed.</summary>
+        public const float TravelSeconds = 0.8f;
+
+        /// <summary>Going down into a hatch or coming up out of one.</summary>
+        public const float DropSeconds = 0.35f;
+
+        /// <summary>Each piece sets off this long after the one before it, so they go into the hatch one by one.</summary>
+        public const float Stagger = 0.15f;
+
+        /// <summary>The short wait under the table between the payer's hatch shutting and the other one opening.</summary>
+        public const float PassSeconds = 0.15f;
+
+        /// <summary>How high over the hatch a piece comes before it goes down, how deep it goes, and how high its way arcs.</summary>
+        public const float Hover = 0.35f;
+        public const float SinkDepth = 0.6f;
+        public const float Arc = 0.5f;
 
         private Vector3 _from;
-        private Vector3 _middle;
+        private Vector3 _overA;
+        private Vector3 _underA;
+        private Vector3 _underB;
+        private Vector3 _overB;
         private Vector3 _to;
-        private Quaternion _rest;
+        private Quaternion _restA;
+        private Quaternion _restB;
+        private Vector3 _size;
+        private int _index;
+        private int _count;
+        private bool _toPlayer;
         private float _speed;
         private float _age;
-        private Vector3 _size;
 
         /// <summary>The pieces that show a payment of <paramref name="amount"/>, the stacks first and then the gold bars: none for nothing.</summary>
         public static MoneyPiece[] Pieces(int amount)
@@ -65,85 +69,120 @@ namespace Lazpoly.Presentation.Effects
             return pieces;
         }
 
+        /// <summary>When the <paramref name="index"/>th piece is over the payer's hatch and starts down.</summary>
+        public static float SinkAt(int index) => index * Stagger + TravelSeconds;
+
+        /// <summary>When it is gone under the table.</summary>
+        public static float GoneAt(int index) => SinkAt(index) + DropSeconds;
+
+        /// <summary>The payer's hatch is open just as the first piece gets there, and shuts once the last is gone.</summary>
+        public static float PayerOpensAt => TravelSeconds - MoneyHatch.SwingSeconds;
+        public static float PayerShutsAt(int count) => GoneAt(count - 1);
+
+        /// <summary>The other player's hatch opens after a short pass under the table.</summary>
+        public static float ReceiverOpensAt(int count) => PayerShutsAt(count) + PassSeconds;
+
+        /// <summary>When the <paramref name="index"/>th piece starts up out of the other hatch, is over it, and lands in the case.</summary>
+        public static float RiseAt(int index, int count) => ReceiverOpensAt(count) + MoneyHatch.SwingSeconds + index * Stagger;
+        public static float UpAt(int index, int count) => RiseAt(index, count) + DropSeconds;
+        public static float LandAt(int index, int count) => UpAt(index, count) + TravelSeconds;
+
+        /// <summary>The other hatch shuts once the last piece is out of it.</summary>
+        public static float ReceiverShutsAt(int count) => UpAt(count - 1, count);
+
+        /// <summary>The whole payment of <paramref name="count"/> pieces at normal speed: to the bank it ends as the payer's hatch shuts.</summary>
+        public static float Seconds(int count, bool toPlayer) =>
+            count <= 0 ? 0f : toPlayer ? LandAt(count - 1, count) : PayerShutsAt(count) + MoneyHatch.SwingSeconds;
+
+        /// <summary>Whether the piece is under the table at <paramref name="t"/>, between going down one hatch and coming up the other (or for good).</summary>
+        public static bool Hidden(float t, int index, int count, bool toPlayer) =>
+            t >= GoneAt(index) && (!toPlayer || t < RiseAt(index, count));
+
         /// <summary>
-        /// Where the <paramref name="index"/>th of the <paramref name="pieces"/> lies, in the row's own frame (x along the
-        /// pieces, y up, z across): all side by side in one straight row along x, squared up on one line with even gaps,
-        /// the row centred on its middle (the owner's wish: neatly in a row).
+        /// Where the <paramref name="index"/>th of <paramref name="count"/> pieces is <paramref name="t"/> seconds in (normal
+        /// speed): from its place in the payer's case <paramref name="from"/> in an arc to <paramref name="overA"/> over the
+        /// payer's hatch, straight down to <paramref name="underA"/>; then, for a player, from <paramref name="underB"/> straight
+        /// up to <paramref name="overB"/> over their hatch and in an arc to its place in their case <paramref name="to"/>.
         /// </summary>
-        public static Vector3 RowOffset(int index, IReadOnlyList<MoneyPiece> pieces)
+        public static Vector3 PositionAt(float t, int index, int count, bool toPlayer,
+            Vector3 from, Vector3 overA, Vector3 underA, Vector3 underB, Vector3 overB, Vector3 to)
         {
-            float total = RowLength(pieces);
-            float x = -total / 2f;
-            for (int i = 0; i < index; i++) x += MoneyBundle.Length(pieces[i]) + RowGap;
-            return new Vector3(x + MoneyBundle.Length(pieces[index]) / 2f, 0f, 0f);
+            float start = index * Stagger;
+            if (t <= start) return from;
+            if (t < SinkAt(index)) return Arced(from, overA, (t - start) / TravelSeconds);
+            if (t < GoneAt(index)) return Vector3.Lerp(overA, underA, Ease.InOutCubic((t - SinkAt(index)) / DropSeconds));
+            if (!toPlayer || t < RiseAt(index, count)) return underA;
+            if (t < UpAt(index, count)) return Vector3.Lerp(underB, overB, Ease.InOutCubic((t - RiseAt(index, count)) / DropSeconds));
+            if (t < LandAt(index, count)) return Arced(overB, to, (t - UpAt(index, count)) / TravelSeconds);
+            return to;
         }
 
-        /// <summary>The whole row's length: the pieces end to end with the gaps between them.</summary>
-        public static float RowLength(IReadOnlyList<MoneyPiece> pieces)
+        private static Vector3 Arced(Vector3 a, Vector3 b, float share)
         {
-            float total = 0f;
-            for (int i = 0; i < pieces.Count; i++) total += MoneyBundle.Length(pieces[i]) + (i > 0 ? RowGap : 0f);
-            return total;
+            float s = Mathf.Clamp01(share);
+            return Vector3.Lerp(a, b, Ease.InOutCubic(s)) + Vector3.up * (Arc * Mathf.Sin(Mathf.PI * s));
         }
 
         /// <summary>
-        /// Starts a payment of <paramref name="amount"/> from <paramref name="from"/> through <paramref name="middle"/> to
-        /// <paramref name="to"/> as thick bundles, lying turned by <paramref name="rest"/> (its lettering to the camera).
-        /// Returns how long it takes at <paramref name="speed"/>, for the game to wait on.
+        /// Starts a payment of <paramref name="amount"/> out of <paramref name="payer"/>'s case down through
+        /// <paramref name="payerHatch"/>; for a player, up through <paramref name="receiverHatch"/> into
+        /// <paramref name="receiver"/>'s case (both null for the bank). Returns how long it takes at
+        /// <paramref name="speed"/>, for the game to wait on.
         /// </summary>
-        public static float Fly(Transform parent, Vector3 from, Vector3 middle, Vector3 to, int amount, Quaternion rest, float speed)
+        public static float Fly(Transform parent, int amount, MoneyPile payer, MoneyHatch payerHatch,
+            MoneyPile receiver, MoneyHatch receiverHatch, float speed)
         {
             MoneyPiece[] pieces = Pieces(amount);
-            for (int i = 0; i < pieces.Length; i++)
+            if (pieces.Length == 0 || payer == null || payerHatch == null) return 0f;
+            bool toPlayer = receiver != null && receiverHatch != null;
+            speed = Mathf.Max(speed, 0.1f);
+            int count = pieces.Length;
+            payerHatch.Swing(PayerOpensAt, PayerShutsAt(count), speed);
+            if (toPlayer) receiverHatch.Swing(ReceiverOpensAt(count), ReceiverShutsAt(count), speed);
+
+            for (int i = 0; i < count; i++)
             {
                 GameObject piece = MoneyBundle.Create(pieces[i], $"Money {pieces[i]}", parent);
-                Vector3 offset = rest * RowOffset(i, pieces);
                 var flight = piece.AddComponent<MoneyFlight>();
-                flight._from = from + offset;
-                flight._middle = middle + offset;
-                flight._to = to + offset;
-                flight._rest = rest;
-                flight._speed = Mathf.Max(speed, 0.1f);
-                flight._size = piece.transform.localScale;
+                flight._index = i;
+                flight._count = count;
+                flight._toPlayer = toPlayer;
+                flight._speed = speed;
+                flight._from = payer.Root.TransformPoint(MoneyPile.SlotOffset(i, count));
+                flight._overA = payerHatch.Mouth + Vector3.up * Hover;
+                flight._underA = payerHatch.Mouth - Vector3.up * SinkDepth;
+                flight._restA = payer.Root.rotation;
+                flight._restB = toPlayer ? receiver.Root.rotation : payer.Root.rotation;
+                if (toPlayer)
+                {
+                    flight._underB = receiverHatch.Mouth - Vector3.up * SinkDepth;
+                    flight._overB = receiverHatch.Mouth + Vector3.up * Hover;
+                    flight._to = receiver.Root.TransformPoint(MoneyPile.SlotOffset(i, count));
+                }
+
+                // Its size in the case, whatever the parent's scale.
+                float scale = MoneyPile.PieceScale * payer.Root.lossyScale.x / Mathf.Max(parent.lossyScale.x, 1e-4f);
+                flight._size = Vector3.one * scale;
+                piece.transform.localScale = flight._size;
                 piece.transform.position = flight._from;
-                piece.transform.rotation = flight._rest;
-                piece.transform.localScale = Vector3.zero;
+                piece.transform.rotation = flight._restA;
             }
 
-            return Seconds / Mathf.Max(speed, 0.1f);
-        }
-
-        /// <summary>Where a bundle is <paramref name="t"/> seconds into the payment (normal speed): straight lines, a stop in the middle.</summary>
-        public static Vector3 PositionAt(float t, Vector3 from, Vector3 middle, Vector3 to)
-        {
-            if (t <= 0f) return from;
-            if (t < GatherAt) return Vector3.Lerp(from, middle, Ease.InOutCubic(t / GatherAt));
-            if (t < LeaveAt) return middle;
-            if (t >= ArriveAt) return to;
-            return Vector3.Lerp(middle, to, Ease.InOutCubic((t - LeaveAt) / LegSeconds));
-        }
-
-        /// <summary>A bundle's size as a share of its own: it pops up as it leaves and shrinks into whoever gets it.</summary>
-        public static float ScaleAt(float t)
-        {
-            if (t <= 0f) return 0f;
-            float grow = Mathf.Clamp01(t / PopSeconds);
-            float sink = 1f - Mathf.Clamp01((t - ArriveAt) / SinkSeconds);
-            return Mathf.Min(grow, sink);
+            return Seconds(count, toPlayer) / speed;
         }
 
         private void Update()
         {
             _age += Time.deltaTime * _speed;
-            if (_age >= ArriveAt + SinkSeconds)
+            if (_age >= Seconds(_count, _toPlayer))
             {
                 Destroy(gameObject);
                 return;
             }
 
-            transform.position = PositionAt(_age, _from, _middle, _to);
-            transform.localScale = _size * ScaleAt(_age);
-            transform.rotation = _rest;
+            transform.position = PositionAt(_age, _index, _count, _toPlayer, _from, _overA, _underA, _underB, _overB, _to);
+            transform.rotation = _toPlayer && _age >= RiseAt(_index, _count) ? _restB : _restA;
+            transform.localScale = Hidden(_age, _index, _count, _toPlayer) ? Vector3.zero : _size;
         }
     }
 }

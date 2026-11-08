@@ -100,9 +100,6 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The room one piece takes in the row: a stack's length and the gap.</summary>
         private static float Slot => MoneyBundle.Length(MoneyPiece.Stack) * PieceScale + Gap;
 
-        /// <summary>Where money leaves the pile and arrives in it: just over the case's middle (world space).</summary>
-        public Vector3 Top => Root.TransformPoint(new Vector3(0f, MoneyFloor + MoneyBundle.Height(MoneyPiece.Stack) * PieceScale, 0f));
-
         /// <summary>The pieces that show <paramref name="money"/>: the gold bars first, then the stacks; none for nothing.</summary>
         public static MoneyPiece[] Pieces(int money)
         {
