@@ -38,16 +38,15 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ShadowDistance = 40f;
 
         /// <summary>
-        /// Temporal anti-aliasing (the owner asked for it) stays off: the project draws in gamma colour space, and URP's TAA
-        /// there brightens every colour once more (the measured sky went from A2D7F7 to CFEBFB, the grass from 467249 to
-        /// 8EB18F), which washed the table out. Only a switch to linear colour space would let it run, and that changes the
-        /// look the owner approved. So High keeps 4x MSAA with SMAA, Medium 2x MSAA with FXAA, Low none.
+        /// Temporal anti-aliasing on High (the owner's wish): it blends each frame with the last ones at jittered sample
+        /// positions, so thin lines, far edges and fine texture detail stop crawling. It needs linear colour space (in gamma
+        /// URP's TAA brightened every colour once more: the sky went from A2D7F7 to CFEBFB), which the project uses since
+        /// Faz 25. URP's TAA cannot run with MSAA, so High draws without it; Medium keeps 2x MSAA with FXAA, Low has none.
         /// </summary>
-        public static bool UsesTemporalAntiAliasing(GraphicsQuality quality) => false;
+        public static bool UsesTemporalAntiAliasing(GraphicsQuality quality) => quality == GraphicsQuality.High;
 
-        /// <summary>MSAA samples per quality: four on High, two on Medium, none on Low.</summary>
-        public static int MsaaFor(GraphicsQuality quality) =>
-            quality == GraphicsQuality.High ? 4 : quality == GraphicsQuality.Medium ? 2 : 1;
+        /// <summary>MSAA samples per quality: none with TAA (High) or on Low, two on Medium.</summary>
+        public static int MsaaFor(GraphicsQuality quality) => quality == GraphicsQuality.Medium ? 2 : 1;
 
         /// <summary>
         /// Anisotropic filtering per quality: forced on every texture on High and Medium (the tiles lie at a slant to the
@@ -55,6 +54,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public static AnisotropicFiltering AnisotropicFor(GraphicsQuality quality) =>
             quality == GraphicsQuality.Low ? AnisotropicFiltering.Enable : AnisotropicFiltering.ForceEnable;
+
+        /// <summary>How hard TAA sharpens what its blending softens (URP's contrast adaptive sharpening, 0-1).</summary>
+        public const float TaaSharpening = 0.4f;
 
         /// <summary>Re-applies a quality level to the scene that is up now: the main camera, the sun and the pipeline.</summary>
         public static void ApplyQuality(GraphicsQuality quality)
@@ -95,14 +97,14 @@ namespace Lazpoly.Presentation.Tabletop
         /// Whether the colour effects (grading, tonemapping, vignette, bloom) draw. Built games never had them (the URP
         /// renderer lacked its post-processing resources until Faz 25), so the bright, pastel look the owner approved is the
         /// look without them; switched on, the table turned darker and greyer. Post-processing itself stays on for the
-        /// anti-aliasing (SMAA on High, FXAA on Medium).
+        /// anti-aliasing (TAA on High, FXAA on Medium).
         /// </summary>
         public static readonly bool LookEffectsOn = false;
 
         /// <summary>Whether the camera runs URP's post-processing (the edge smoothing needs it).</summary>
         public static bool RunsPostProcessing(Camera camera) => camera.GetUniversalAdditionalCameraData().renderPostProcessing;
 
-        /// <summary>Whether the camera smooths edges after drawing (SMAA or FXAA).</summary>
+        /// <summary>Whether the camera smooths edges after drawing (TAA or FXAA).</summary>
         public static bool SmoothsEdges(Camera camera) => camera.GetUniversalAdditionalCameraData().antialiasing != AntialiasingMode.None;
 
         /// <summary>Whether the camera smooths edges over time (TAA).</summary>
@@ -128,7 +130,7 @@ namespace Lazpoly.Presentation.Tabletop
             sun.name = "Sun";
             sun.type = LightType.Directional;
             sun.shadows = ShadowsFor(quality);
-            sun.shadowStrength = 0.45f;
+            sun.shadowStrength = DayCycle.GammaShadowStrength;
 
             Light fill = new GameObject("Fill Light").AddComponent<Light>();
             fill.type = LightType.Directional;
@@ -140,27 +142,36 @@ namespace Lazpoly.Presentation.Tabletop
             ApplyDayLight(DayCycle.Noon);
         }
 
+        /// <summary>
+        /// The lights for one moment of the day in the colour space the project draws in: linear since Faz 25 (for TAA),
+        /// with the lights re-tuned so the table keeps the look the owner approved in gamma (see <see cref="DayCycle.LinearRig"/>).
+        /// </summary>
+        public static LightRig RigFor(in DayLight light) =>
+            QualitySettings.activeColorSpace == ColorSpace.Linear ? DayCycle.LinearRig(light) : DayCycle.GammaRig(light);
+
         /// <summary>Sets the sun, the fill, the ambient and the sky to one moment of the day (see <see cref="DayCycle"/>).</summary>
         public static void ApplyDayLight(in DayLight light)
         {
             if (_sun == null) _sun = GameObject.Find("Sun")?.GetComponent<Light>();
             if (_fill == null) _fill = GameObject.Find("Fill Light")?.GetComponent<Light>();
+            LightRig rig = RigFor(light);
             if (_sun != null)
             {
-                _sun.color = light.SunColor;
-                _sun.intensity = light.SunIntensity;
+                _sun.color = rig.SunColor;
+                _sun.intensity = rig.SunIntensity;
+                _sun.shadowStrength = rig.ShadowStrength;
                 _sun.transform.rotation = Quaternion.Euler(light.SunPitch, light.SunYaw, 0f);
             }
 
             if (_fill != null)
             {
-                _fill.color = light.FillColor;
-                _fill.intensity = light.FillIntensity;
+                _fill.color = rig.FillColor;
+                _fill.intensity = rig.FillIntensity;
                 // The fill comes from behind the sun's far side, so the evening shadows keep some blue in them.
-                _fill.transform.rotation = Quaternion.Euler(35f, light.SunYaw + 185f, 0f);
+                _fill.transform.rotation = Quaternion.Euler(DayCycle.FillPitch, light.SunYaw + 185f, 0f);
             }
 
-            RenderSettings.ambientLight = light.Ambient;
+            RenderSettings.ambientLight = rig.Ambient;
             Camera camera = Camera.main;
             if (camera != null) camera.backgroundColor = SkyAt(light.Evening);
         }
@@ -181,9 +192,13 @@ namespace Lazpoly.Presentation.Tabletop
             UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
             data.renderPostProcessing = postProcessing;
             data.antialiasing = UsesTemporalAntiAliasing(quality) ? AntialiasingMode.TemporalAntiAliasing
-                : quality == GraphicsQuality.High ? AntialiasingMode.SubpixelMorphologicalAntiAliasing
                 : quality == GraphicsQuality.Medium ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.None;
-            if (quality == GraphicsQuality.High) data.antialiasingQuality = AntialiasingQuality.High;
+            if (UsesTemporalAntiAliasing(quality))
+            {
+                data.antialiasingQuality = AntialiasingQuality.High;
+                data.taaSettings.quality = TemporalAAQuality.High;
+                data.taaSettings.contrastAdaptiveSharpening = TaaSharpening;
+            }
 
             Volume volume = camera.GetComponent<Volume>();
             if (volume == null)

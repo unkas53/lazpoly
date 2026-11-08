@@ -1,3 +1,4 @@
+using Lazpoly.Presentation.UI;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -102,7 +103,7 @@ namespace Lazpoly.Presentation.Effects
             mesh.fontSize = 96;
             mesh.fontStyle = FontStyle.Normal;
             mesh.characterSize = 0.045f;
-            mesh.color = color;
+            mesh.color = UiBlend.ForVertices(color);
             mesh.font = UI.UiTheme.BoldFont;
             parent.GetComponent<MeshRenderer>().sharedMaterial = mesh.font.material;
             return mesh;
@@ -124,10 +125,10 @@ namespace Lazpoly.Presentation.Effects
             float alpha = 1f - Mathf.Clamp01((t - 0.5f) * 2f);
             Color color = _color;
             color.a = alpha;
-            _text.color = color;
+            _text.color = UiBlend.ForVertices(color);
             Color shade = ShadowInk;
             shade.a *= alpha;
-            _shadow.color = shade;
+            _shadow.color = UiBlend.ForVertices(shade);
             Face();
         }
 

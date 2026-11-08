@@ -30,7 +30,7 @@ namespace Lazpoly.Presentation.Menu
         public static readonly Color LightBrass = Hex(0xF5DEAA);
 
         /// <summary>The dimmed layer under the kit's windows.</summary>
-        public static readonly Color Dim = new Color(0x14 / 255f, 0x37 / 255f, 0x47 / 255f, 0xB8 / 255f);
+        public static Color Dim => UiBlend.AsTunedLayer(new Color(0x14 / 255f, 0x37 / 255f, 0x47 / 255f, 0xB8 / 255f));
 
         /// <summary>Every picture the menu uses, so a test can check they are all in the build.</summary>
         public static readonly string[] Pictures =

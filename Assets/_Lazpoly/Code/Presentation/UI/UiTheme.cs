@@ -42,8 +42,8 @@ namespace Lazpoly.Presentation.UI
         public static void Use(UiPalette palette) => _palette = palette ?? throw new System.ArgumentNullException(nameof(palette));
 
         public static Color Backdrop => _palette.Backdrop;
-        public static Color Dim => _palette.Dim;
-        public static Color Veil => _palette.Veil;
+        public static Color Dim => UiBlend.AsTunedLayer(_palette.Dim);
+        public static Color Veil => UiBlend.AsTuned(_palette.Veil);
         public static Color Panel => _palette.Panel;
         public static Color Card => _palette.Card;
         public static Color Field => _palette.Field;
@@ -53,9 +53,9 @@ namespace Lazpoly.Presentation.UI
         public static Color Warning => _palette.Warning;
         public static Color Gain => _palette.Gain;
         public static Color Money => _palette.Money;
-        public static Color ShadowColor => _palette.ShadowColor;
+        public static Color ShadowColor => UiBlend.AsTuned(_palette.ShadowColor);
         public static Color NoticeFill => _palette.NoticeFill;
-        public static Color ScrollTrack => _palette.ScrollTrack;
+        public static Color ScrollTrack => UiBlend.AsTuned(_palette.ScrollTrack);
 
         /// <summary>A disc that cannot be pressed right now: a step up from the panel, so the button keeps its shape.</summary>
         public static Color RestingFill => _palette.RestingFill;

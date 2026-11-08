@@ -63,7 +63,7 @@ namespace Lazpoly.Presentation.Tests
                 RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.High);
                 Assert.IsTrue(RoomDressing.RunsPostProcessing(camera), "post-processing runs for the edge smoothing");
                 Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "edges smoothed on High");
-                Assert.IsFalse(RoomDressing.SmoothsOverTime(camera), "no TAA: in gamma colour space it washes the colours out");
+                Assert.IsTrue(RoomDressing.SmoothsOverTime(camera), "TAA on High, now that the project draws in linear colour space");
                 RoomDressing.DressCamera(camera, Lazpoly.Infra.Settings.GraphicsQuality.Medium);
                 Assert.IsTrue(RoomDressing.SmoothsEdges(camera), "FXAA on Medium");
                 Assert.IsFalse(RoomDressing.SmoothsOverTime(camera));
@@ -79,17 +79,39 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void EdgesAreSmoothedWithMsaaAndTexturesFilterAtASlant()
         {
-            // The project draws in gamma colour space, where URP's TAA brightens every colour once more; MSAA does the work.
-            Assert.AreEqual(ColorSpace.Gamma, QualitySettings.activeColorSpace, "in linear colour space TAA could be tried again");
-            foreach (Lazpoly.Infra.Settings.GraphicsQuality quality in System.Enum.GetValues(typeof(Lazpoly.Infra.Settings.GraphicsQuality)))
-                Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(quality), $"{quality} would wash the colours out");
-            Assert.AreEqual(4, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            // In gamma colour space URP's TAA brightened every colour once more; linear lets it run on High.
+            Assert.AreEqual(ColorSpace.Linear, QualitySettings.activeColorSpace, "TAA washes the colours out in gamma colour space");
+            Assert.IsTrue(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.High));
+            Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
+            Assert.IsFalse(RoomDressing.UsesTemporalAntiAliasing(Lazpoly.Infra.Settings.GraphicsQuality.Low));
+            Assert.AreEqual(1, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.High), "URP's TAA cannot run with MSAA");
             Assert.AreEqual(2, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
             Assert.AreEqual(1, RoomDressing.MsaaFor(Lazpoly.Infra.Settings.GraphicsQuality.Low));
             Assert.AreEqual(AnisotropicFiltering.ForceEnable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.High));
             Assert.AreEqual(AnisotropicFiltering.ForceEnable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.Medium));
             Assert.AreEqual(AnisotropicFiltering.Enable, RoomDressing.AnisotropicFor(Lazpoly.Infra.Settings.GraphicsQuality.Low));
         }
+
+        [Test]
+        public void LinearLightsGiveTheBoardTopItsGammaColour()
+        {
+            foreach (DayLight light in new[] { DayCycle.Noon, DayCycle.At(0.5f), DayCycle.Dusk })
+            {
+                LightRig gamma = DayCycle.GammaRig(light);
+                LightRig linear = DayCycle.LinearRig(light);
+                Color gammaTop = TopLight(light.SunPitch, gamma.SunColor, gamma.SunIntensity, gamma.FillColor, gamma.FillIntensity, gamma.Ambient);
+                Color linearTop = TopLight(light.SunPitch, linear.SunColor.linear, linear.SunIntensity, linear.FillColor.linear,
+                    linear.FillIntensity, linear.Ambient.linear);
+                Assert.AreEqual(Mathf.Pow(gammaTop.r, DayCycle.Gamma), linearTop.r, 0.01f);
+                Assert.AreEqual(Mathf.Pow(gammaTop.g, DayCycle.Gamma), linearTop.g, 0.01f);
+                Assert.AreEqual(Mathf.Pow(gammaTop.b, DayCycle.Gamma), linearTop.b, 0.01f);
+                Assert.Greater(linear.ShadowStrength, gamma.ShadowStrength, "linear needs deeper shadows to look as dark");
+                Assert.LessOrEqual(linear.ShadowStrength, 1f);
+            }
+        }
+
+        private static Color TopLight(float sunPitch, Color sun, float sunIntensity, Color fill, float fillIntensity, Color ambient) =>
+            ambient + sun * (sunIntensity * Mathf.Sin(sunPitch * Mathf.Deg2Rad)) + fill * (fillIntensity * Mathf.Sin(DayCycle.FillPitch * Mathf.Deg2Rad));
 
         [Test]
         public void ThePaintedShaderTellsTemporalSmoothingHowFiguresMove()

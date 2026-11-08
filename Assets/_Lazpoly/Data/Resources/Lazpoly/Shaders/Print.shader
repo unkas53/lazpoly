@@ -5,6 +5,7 @@
 // single texels: jagged edges that crawl, worst on the far rows seen at a slant. Each pixel therefore averages a
 // 4x4 grid of samples spread over its own footprint on the atlas (a box filter along both screen directions),
 // which gives clean, steady edges at any size and angle.
+// The text's vertex colour is sRGB and is turned linear in linear colour space, like the painted figures' colours.
 Shader "Lazpoly/Print"
 {
     Properties
@@ -49,7 +50,13 @@ Shader "Lazpoly/Print"
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.color = v.color * _Color;
+                // A TextMesh's colour reaches the shader as stored (sRGB); in linear colour space it must be made linear
+                // here, or the dark ink comes out a washed grey. _Color is a material colour, which Unity converts itself.
+                o.color = v.color;
+                #if !defined(UNITY_COLORSPACE_GAMMA)
+                o.color.rgb = GammaToLinearSpace(o.color.rgb);
+                #endif
+                o.color *= _Color;
                 o.texcoord = TRANSFORM_TEX(v.texcoord, _MainTex);
                 return o;
             }
