@@ -89,7 +89,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// reached in under the plate), this far round the open case and this thick.
         /// </summary>
         public const float ShelfDrop = 0.03f;
-        public const float ShelfGap = 0.3f;
+        public const float ShelfGap = 0.5f;
         public const float ShelfMargin = 0.15f;
         public const float ShelfThickness = 0.3f;
 
