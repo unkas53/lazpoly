@@ -177,7 +177,12 @@ namespace Lazpoly.Presentation.Tabletop
 
             RenderSettings.ambientLight = rig.Ambient;
             Camera camera = Camera.main;
-            if (camera != null) camera.backgroundColor = SkyAt(light.Evening);
+            if (camera != null)
+            {
+                camera.backgroundColor = SkyAt(light.Evening);
+                SkyBackdrop backdrop = camera.GetComponentInChildren<SkyBackdrop>();
+                if (backdrop != null) backdrop.SetEvening(light.Evening);
+            }
         }
 
         /// <summary>
@@ -191,6 +196,7 @@ namespace Lazpoly.Presentation.Tabletop
             bool postProcessing = PostProcessingOn(quality);
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = SkyDay;
+            SkyBackdrop.Attach(camera); // The soft backdrop in front of the flat sky colour (Faz 25).
             camera.allowHDR = postProcessing;
 
             UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();

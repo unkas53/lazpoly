@@ -93,6 +93,32 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheBackdropGlowsBehindTheBoardAndFillsTheView()
+        {
+            Color middle = SkyBackdrop.ColourAt(SkyBackdrop.GlowCentre.x, SkyBackdrop.GlowCentre.y);
+            Color corner = SkyBackdrop.ColourAt(0f, 0f);
+            Assert.Greater(middle.grayscale, corner.grayscale + 0.1f, "light behind the board, deeper at the edges");
+            Assert.Greater(corner.b, corner.r + 0.2f, "still a sky blue");
+
+            var holder = new GameObject("Backdrop Camera");
+            try
+            {
+                Camera camera = holder.AddComponent<Camera>();
+                camera.orthographic = true;
+                camera.orthographicSize = 5f;
+                SkyBackdrop backdrop = SkyBackdrop.Attach(camera);
+                Assert.IsNotNull(backdrop, "the picture shader is missing from Resources");
+                Assert.AreSame(backdrop, SkyBackdrop.Attach(camera), "one backdrop per camera");
+                Assert.GreaterOrEqual(backdrop.transform.localScale.y, 10f, "it fills the view's height");
+                Assert.Less(backdrop.transform.localPosition.z, camera.farClipPlane, "inside the far end, so it is drawn");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void LinearLightsGiveTheBoardTopItsGammaColour()
         {
             foreach (DayLight light in new[] { DayCycle.Noon, DayCycle.At(0.5f), DayCycle.Dusk })
