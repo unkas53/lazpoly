@@ -639,6 +639,13 @@ namespace Lazpoly.Presentation.Tabletop
         public static Vector3 HatchSpot(int seat, int seats, float lawnHalf, float yaw) =>
             MoneyEdgeOutward(seat, yaw) * (lawnHalf - HatchInset) + MoneyEdgeAlong(seat, seats, yaw) * (HatchSpread / MoneyPileSpread);
 
+        /// <summary>A town's price line swells once, as its rent changes after a trade agreement's fireworks (Faz 27).</summary>
+        public void PopPrice(int squareIndex)
+        {
+            TextMesh price = _prices != null && squareIndex >= 0 && squareIndex < _prices.Length ? _prices[squareIndex] : null;
+            if (price != null && _animating.Add(price.transform)) StartCoroutine(Nudge(price.transform, false));
+        }
+
         /// <summary>The pot's label rocks when money drops in and swells when it is paid out.</summary>
         public void NudgePot(bool paidIn)
         {

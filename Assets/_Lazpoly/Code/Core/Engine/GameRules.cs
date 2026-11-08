@@ -137,9 +137,16 @@ namespace Lazpoly.Core.Engine
         /// <summary>Rent the owner would collect on a property right now, the cup's raise included (rounded down).</summary>
         public static int CalculateRent(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex)
         {
-            int rent = RentWithoutCup(board, rules, state, squareIndex);
-            return squareIndex == state.CupSquare ? rent * (100 + state.CupPercent) / 100 : rent;
+            return WithCup(state, squareIndex, RentWithoutCup(board, rules, state, squareIndex));
         }
+
+        /// <summary><paramref name="rent"/> with the cup's raise when the cup stands on the square (rounded down).</summary>
+        public static int WithCup(GameState state, int squareIndex, int rent) =>
+            squareIndex == state.CupSquare ? rent * (100 + state.CupPercent) / 100 : rent;
+
+        /// <summary>A town's printed rent at a building level: the land's at 0, then each house's and the hotel's.</summary>
+        public static int LevelRent(SquareDefinition square, int level) =>
+            level > 0 ? square.DevelopedRents[level - 1] : square.BaseRent;
 
         /// <summary>Rent the owner would collect on a property right now if the cup were not there.</summary>
         public static int RentWithoutCup(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex)
@@ -153,8 +160,7 @@ namespace Lazpoly.Core.Engine
             if (square.IsResort) return ResortRent(square.BaseRent, ResortsOwned(board, state, ownerId));
 
             // The whole colour group in one hand multiplies the rent at every level, houses and hotel too (the owner's wish, Faz 26).
-            int level = state.GetBuildingLevel(squareIndex);
-            int rent = level > 0 ? square.DevelopedRents[level - 1] : square.BaseRent;
+            int rent = LevelRent(square, state.GetBuildingLevel(squareIndex));
             return OwnsWholeGroup(board, state, ownerId, square.GroupId) ? rent * rules.FullGroupRentMultiplier : rent;
         }
 

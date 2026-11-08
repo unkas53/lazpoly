@@ -26,6 +26,7 @@ namespace Lazpoly.Presentation.Audio
         PropertySale,
         Hotel,
         TurnPass,
+        Firework,
     }
 
     /// <summary>Which sound goes with which game event, and where each clip lives. No engine calls, so it is tested directly.</summary>
@@ -164,6 +165,7 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.UiClick: return 0.4f;
                 case SoundCue.UiOpen: return 0.4f;
                 case SoundCue.TurnPass: return 0.45f;
+                case SoundCue.Firework: return 0.55f; // Several go off together over a group.
                 default: return 0.75f;
             }
         }

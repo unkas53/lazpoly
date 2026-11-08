@@ -282,6 +282,12 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Groups just completed, (player, group), waiting for their card once the change that completed them is shown.</summary>
         private readonly List<KeyValuePair<int, int>> _groupDealsToShow = new List<KeyValuePair<int, int>>();
 
+        /// <summary>Groups whose towns still show the rent from before their trade agreement, until its fireworks are over (the owner's wish, Faz 27).</summary>
+        private readonly HashSet<int> _heldRentGroups = new HashSet<int>();
+
+        /// <summary>The game time the last trade agreement's fireworks went up; -infinity before any.</summary>
+        public float ShownFireworksTime { get; private set; } = float.NegativeInfinity;
+
         /// <summary>The last roll shown on the table (0 before the first), and real time it settled, for the HUD's result popup.</summary>
         public int ShownDie1 { get; private set; }
         public int ShownDie2 { get; private set; }
@@ -995,6 +1001,11 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 0.5f);
                 yield return ScreenTour.Take("ticaret-anlasmasi");
                 yield return ScreenTour.Until(() => !CenterNotice.Showing(Time.time - ShownGroupDealTime, GroupDeal.Seconds), GroupDeal.Seconds + 1f);
+                // Then the fireworks over its towns (Faz 27), taken while the first bursts are open.
+                float burst = FireworkShow.BurstAt(0, 0) + 0.35f;
+                yield return ScreenTour.Until(() => ShownFireworksTime >= ShownGroupDealTime && Time.time - ShownFireworksTime >= burst, burst + 2f);
+                yield return ScreenTour.Take("havai-fisek");
+                yield return ScreenTour.Until(() => Time.time - ShownFireworksTime >= FireworkShow.Seconds(_session.Board.CountInGroup(staged)), FireworkShow.Seconds(4) + 1f);
             }
 
             foreach ((HudWindow window, string name) in new[]
@@ -1059,13 +1070,15 @@ namespace Lazpoly.Presentation.Game
             }
 
             _board.SetCup(state.CupSquare);
+            _heldRentGroups.Clear(); // A table set straight from the state shows the rents as they are.
             ShowRents(animate: false);
         }
 
         /// <summary>
         /// Prints on every owned town the rent a visitor pays now (it changes with buildings and with a whole
         /// group, so every town is asked again); towns for sale show their price. Each owned resort's beach
-        /// shows the stage of the resorts its owner holds, which is what its rent counts too.
+        /// shows the stage of the resorts its owner holds, which is what its rent counts too. The towns of a group whose
+        /// trade agreement is still being celebrated keep the rent from before it until the fireworks are over (Faz 27).
         /// </summary>
         private void ShowRents(bool animate = true)
         {
@@ -1073,8 +1086,11 @@ namespace Lazpoly.Presentation.Game
             for (int i = 0; i < state.SquareCount; i++)
             {
                 int owner = state.GetOwner(i);
-                bool owned = _session.Board[i].Type == SquareType.Property && owner != GameState.NoOwner;
-                _board.SetRent(i, owned ? GameRules.CalculateRent(_session.Board, _session.Rules, state, i) : (int?)null);
+                SquareDefinition square = _session.Board[i];
+                bool owned = square.Type == SquareType.Property && owner != GameState.NoOwner;
+                bool held = owned && !square.IsResort && _heldRentGroups.Contains(square.GroupId);
+                int rent = held ? GroupDeal.RentBefore(_session.Board, state, i) : GameRules.CalculateRent(_session.Board, _session.Rules, state, i);
+                _board.SetRent(i, owned ? rent : (int?)null);
                 if (owned && _session.Board[i].IsResort) _board.SetResortStage(i, GameRules.ResortsOwned(_session.Board, state, owner), animate);
             }
         }
@@ -1275,6 +1291,7 @@ namespace Lazpoly.Presentation.Game
                         if (GroupDeal.Completes(_session.Board, _shownOwners, owner.SquareIndex, owner.NewOwnerId))
                         {
                             _groupDealsToShow.Add(new KeyValuePair<int, int>(owner.NewOwnerId, _session.Board[owner.SquareIndex].GroupId));
+                            _heldRentGroups.Add(_session.Board[owner.SquareIndex].GroupId); // The new rents show after the fireworks.
                         }
 
                         _shownOwners[owner.SquareIndex] = owner.NewOwnerId;
@@ -1397,7 +1414,11 @@ namespace Lazpoly.Presentation.Game
         public static bool GroupDealWaits(GameEvent next) =>
             next is PropertyOwnerChangedEvent || next is TradeResolvedEvent || next is BuildingLevelChangedEvent;
 
-        /// <summary>The trade agreement card for each group just completed, one after another; the table waits <see cref="GroupDeal.Seconds"/> for each (the owner's wish, Faz 26).</summary>
+        /// <summary>
+        /// The trade agreement card for each group just completed, one after another; the table waits <see cref="GroupDeal.Seconds"/>
+        /// for each (the owner's wish, Faz 26). When the card is gone, fireworks go up over the group's towns and, once they
+        /// are over, the towns' rents on the board change to the new ones (Faz 27).
+        /// </summary>
         private IEnumerator ShowGroupDeals()
         {
             while (_groupDealsToShow.Count > 0)
@@ -1413,7 +1434,25 @@ namespace Lazpoly.Presentation.Game
                 Pawn(deal.Key)?.Cheer();
                 Revision++;
                 yield return new WaitForSeconds(GroupDeal.Seconds);
+                yield return CelebrateGroup(deal.Value);
             }
+        }
+
+        /// <summary>Fireworks over the towns of <paramref name="groupId"/>, in the group's colour; then their new rents show, each with a swell.</summary>
+        private IEnumerator CelebrateGroup(int groupId)
+        {
+            var towns = new List<int>(GameRules.GroupSquares(_session.Board, groupId));
+            var tiles = new List<Vector3>(towns.Count);
+            foreach (int town in towns) tiles.Add(_board.SquarePosition(town));
+            ShownFireworksTime = Time.time;
+            Revision++;
+            Fireworks.Launch(transform, tiles, _board.transform.position + Vector3.up * _board.SurfaceY, _data.GroupColor(groupId));
+            yield return new WaitForSeconds(FireworkShow.Seconds(towns.Count));
+
+            _heldRentGroups.Remove(groupId);
+            ShowRents();
+            foreach (int town in towns) _board.PopPrice(town);
+            Revision++;
         }
 
         /// <summary>

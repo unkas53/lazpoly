@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Lazpoly.Core.Board;
+using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
+using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 using Lazpoly.Presentation.Game;
 using NUnit.Framework;
@@ -41,6 +43,25 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsTrue(CenterNotice.Showing(3.99f, GroupDeal.Seconds));
             Assert.IsFalse(CenterNotice.Showing(4f, GroupDeal.Seconds), "Gone at four seconds, when the table goes on.");
             Assert.AreEqual(1f, CenterNotice.Alpha(4.5f), 1e-4f, "The other cards still stay five seconds.");
+        }
+
+        [Test]
+        public void UntilTheFireworksAreOverTheTownsShowTheRentFromBeforeTheDeal()
+        {
+            // The owner's wish (Faz 27): the board changes to the doubled rents only once the fireworks are over.
+            var rules = new RulesConfig(1000, 200, 6, 3, 2, 50);
+            GameState state = GameState.CreateInitial(Board, rules, new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
+            foreach (int town in new[] { 1, 2, 3 }) GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(town, None, 1));
+            GameStateReducer.Apply(state, new BuildingLevelChangedEvent(2, 2));
+
+            Assert.AreEqual(16, GameRules.CalculateRent(Board, rules, state, 1), "The whole group: the land's rent doubled.");
+            Assert.AreEqual(8, GroupDeal.RentBefore(Board, state, 1), "Before the fireworks: the land's own rent.");
+            Assert.AreEqual(300, GameRules.CalculateRent(Board, rules, state, 2));
+            Assert.AreEqual(150, GroupDeal.RentBefore(Board, state, 2), "Two houses, not yet doubled.");
+
+            GameStateReducer.Apply(state, new CupHostedEvent(1, 3, 50));
+            Assert.AreEqual(GameRules.WithCup(state, 3, 10), GroupDeal.RentBefore(Board, state, 3), "The cup's raise still counts.");
+            Assert.AreEqual(15, GroupDeal.RentBefore(Board, state, 3));
         }
 
         [Test]

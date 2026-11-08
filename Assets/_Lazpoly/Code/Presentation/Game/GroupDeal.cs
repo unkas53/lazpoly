@@ -11,6 +11,8 @@ namespace Lazpoly.Presentation.Game
     /// bir mesai harcayarak A, B ve C arasında ticaret anlaşması imzaladı", up for <see cref="Seconds"/> while the table
     /// waits. Whether a change of owner completes a group is worked out from the owners as shown on the table, so a trade
     /// that hands over a whole group shows the card once, on its last town. Holiday resorts have their own rule and no card.
+    /// When the card is gone, fireworks go up over the group's towns (<see cref="Lazpoly.Presentation.Effects.FireworkShow"/>) and only then
+    /// do the towns' rents on the board change to the new ones (Faz 27); until then they show <see cref="RentBefore"/>.
     /// Pure, so it is tested without a scene.
     /// </summary>
     public static class GroupDeal
@@ -63,6 +65,13 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>The line under it: the towns' rent, houses and hotel too, is now <paramref name="multiplier"/> times.</summary>
         public static string RentText(int multiplier) => F($"Bu şehirlerin kiraları artık {multiplier} katı.");
+
+        /// <summary>
+        /// The rent a town of a just completed group shows until the fireworks over it are over (the owner's wish, Faz 27):
+        /// its level's rent without the group's multiplier, the cup's raise included. The board then changes to the new rent.
+        /// </summary>
+        public static int RentBefore(BoardDefinition board, GameState state, int square) =>
+            GameRules.WithCup(state, square, GameRules.LevelRent(board[square], state.GetBuildingLevel(square)));
 
         private static IEnumerable<string> ListHead(IReadOnlyList<string> names)
         {

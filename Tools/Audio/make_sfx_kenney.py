@@ -10,6 +10,7 @@ the game's own mix (SoundCues.Volume) decides what sits under what. The musical 
 pizzicato set, so the table sounds like one instrument; only the win gets the bigger steel-drum phrase.
 
     python Tools/Audio/make_sfx_kenney.py        (needs numpy and ffmpeg on PATH)
+    python Tools/Audio/make_sfx_kenney.py firework    (only the cues named)
 """
 import os
 import subprocess
@@ -78,10 +79,15 @@ RECIPES = {
     "achievement": ([pizzi(10)], None, 0.1),
     "win": ([layer(JINGLE, "jingles_STEEL02.ogg")], None, 0.15),
     "bankrupt": ([pizzi(1), layer(IMPACT, "impactSoft_heavy_000.ogg", 0.85, -4)], None, 0.15),
+    # A firework over a trade agreement's towns: a dull thump, then the sparks crackling as they spread (Faz 27).
+    "firework": ([layer(IMPACT, "impactPunch_heavy_000.ogg"),
+                  layer(IMPACT, "impactGlass_light_000.ogg", 0.10, -9), layer(IMPACT, "impactMetal_light_000.ogg", 0.16, -14),
+                  layer(IMPACT, "impactGlass_light_002.ogg", 0.21, -11), layer(IMPACT, "impactGlass_light_003.ogg", 0.30, -13),
+                  layer(IMPACT, "impactMetal_light_001.ogg", 0.38, -16), layer(IMPACT, "impactGlass_light_004.ogg", 0.47, -16)], 0.9, 0.25),
 }
 
 # Small, frequent sounds sit under the big moments already in the files, not only in the game's mix.
-QUIET = {"pawn_step": 0.5, "ui_click": 0.45, "ui_open": 0.5, "turn_pass": 0.5, "dice_shake": 0.7, "dice_land": 0.8}
+QUIET = {"firework": 0.7, "pawn_step": 0.5, "ui_click": 0.45, "ui_open": 0.5, "turn_pass": 0.5, "dice_shake": 0.7, "dice_land": 0.8}
 
 FOLDERS = {JINGLE: ["8-Bit jingles", "Hit jingles", "Pizzicato jingles", "Sax jingles", "Steel jingles"]}
 
@@ -146,8 +152,10 @@ def write(path, x):
         w.writeframes(data.tobytes())
 
 
-def main():
+def main(only=None):
     for cue, (layers, longest, fade) in RECIPES.items():
+        if only and cue not in only:
+            continue
         x = build(layers, longest, fade)
         base = cue.rsplit("_", 1)[0] if cue[-1].isdigit() else cue
         x = level(x, QUIET.get(base, 1.0))
@@ -156,4 +164,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1:])
