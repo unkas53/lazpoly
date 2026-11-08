@@ -208,7 +208,22 @@ namespace Lazpoly.Presentation.Tabletop
         /// grow by this much, and its line sits between a corner's name line and its second line.
         /// </summary>
         public const float JailNameScale = 1.6f;
-        public const float JailNameOffset = 0.26f;
+
+        /// <summary>
+        /// The jail corner as the owner laid it out (Faz 28), in shares of the tile's side measured on the screen: the cell
+        /// towards the tile's left tip, the "HAPİS" lettering towards its lower right edge (no wider than
+        /// <see cref="JailNameFill"/>), the pawns towards its top tip.
+        /// </summary>
+        public const float JailSceneShift = 0.3f;
+        public const float JailNameShift = 0.26f;
+        public const float JailNameFill = 0.6f;
+        public const float JailPawnShift = 0.22f;
+
+        /// <summary>From a tile's middle towards its left tip on the screen (the diamond's left corner), for the table's camera.</summary>
+        public static Vector3 ScreenLeftTip => -DiagonalLine(BoardCameraRig.BaseYaw);
+
+        /// <summary>From a tile's middle towards the middle of its lower right edge on the screen.</summary>
+        public static Vector3 ScreenLowerRight => (DiagonalLine(BoardCameraRig.BaseYaw) - DiagonalTops(BoardCameraRig.BaseYaw)).normalized;
 
         /// <summary>
         /// The cup's long name runs across its corner, along the tile's diagonal that lies left to right on the screen (the
@@ -357,7 +372,12 @@ namespace Lazpoly.Presentation.Tabletop
             Vector3 center = Layout.SquareCenter(index);
             Vector3 outward = Outward(center);
             Vector3 spot = center + ScreenDown(outward) * (_depth * PawnOffset);
-            if (Layout.IsCorner(index))
+            if (Layout.IsCorner(index) && _data.Board[index].Type == SquareType.Jail)
+            {
+                // The jail's pawns wait towards the tile's top tip, clear of the cell on the left and the lettering lower right (Faz 28).
+                spot = center + DiagonalTops(BoardCameraRig.BaseYaw) * (Layout.SquareSize(index).y * JailPawnShift);
+            }
+            else if (Layout.IsCorner(index))
             {
                 bool far = FacesAway(outward);
                 float back = index == _stationCorner ? StationPawnOffset : CornerPawnOffset;
@@ -1004,7 +1024,8 @@ namespace Lazpoly.Presentation.Tabletop
                 // clear of its scene and pawns.
                 Vector3 namePlace = corner
                     ? DiagonalName(i) ? center - DiagonalTops(BoardCameraRig.BaseYaw) * (_depth * CupNameShift)
-                    : center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * (square.Type == SquareType.Jail ? JailNameOffset : CornerNameOffset))
+                    : square.Type == SquareType.Jail ? center + ScreenLowerRight * (size.y * JailNameShift)
+                    : center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
                     : center + down * (_depth * (IsChance(i) || DocumentUnderName(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkColor);
@@ -1130,6 +1151,12 @@ namespace Lazpoly.Presentation.Tabletop
             scene.transform.localPosition = center + SceneSide(index, far) * (side * SceneOffset)
                 + outward * (side * (cup ? CupSceneInset : SceneInset) * (far ? 1f : -1f)) + Vector3.up * TileHeight;
             scene.transform.localScale = Vector3.one * (side * (cup ? CupSceneSize : SceneSize));
+            if (type == SquareType.Jail)
+            {
+                // The cell stands towards the tile's left tip (the owner's wish, Faz 28).
+                scene.transform.localPosition = center + ScreenLeftTip * (side * JailSceneShift) + Vector3.up * TileHeight;
+            }
+
             if (!CornerParts.ShowsFront(scene))
             {
                 scene.transform.localRotation = Quaternion.LookRotation(outward);
@@ -1316,6 +1343,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Vector2 NameRoom(int index, Vector2 size)
         {
             if (DiagonalName(index)) return new Vector2(_depth * CupNameLength, _depth * CupNameDepth);
+            if (Layout.IsCorner(index) && _data.Board[index].Type == SquareType.Jail) return new Vector2(size.x * JailNameFill, _depth * CornerNameDepth * NameScale(index));
             if (Layout.IsCorner(index)) return new Vector2(size.x * NameFill, _depth * CornerNameDepth * NameScale(index));
             SquareDefinition square = _data.Board[index];
             bool marked = square.Type == SquareType.Property && _data.GroupMark(square.GroupId) != null;

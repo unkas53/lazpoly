@@ -173,7 +173,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TownsTheJailTaxAndChanceArePrintedInCapitalsTheOtherSquaresAsWritten()
+        public void TownsCornersTaxAndChanceArePrintedInCapitalsTheResortsAsWritten()
         {
             Texts.Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
             BoardData data = BoardDataLoader.LoadFromResources();
@@ -185,7 +185,7 @@ namespace Lazpoly.Presentation.Tests
                 {
                     SquareDefinition square = data.Board[i];
                     bool chance = square.Type == SquareType.Card && !board.Layout.IsCorner(i);
-                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup || chance;
+                    bool capitals = square.Type == SquareType.Property || square.Type == SquareType.Start || square.Type == SquareType.Travel || square.Type == SquareType.Jail || square.Type == SquareType.Tax || square.Type == SquareType.Cup || chance;
                     string expected = square.Type == SquareType.Cup ? BoardView.TwoLines(Texts.Lang.Upper(square.Name))
                         : capitals ? Texts.Lang.Upper(square.Name) : square.Name;
                     Assert.AreEqual(expected, board.NameLabel(i).text, $"square {i}");
@@ -578,6 +578,39 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("BAŞLANGIÇ", BoardView.PrintedName(SquareDefinition.Start("Başlangıç"), corner: true));
             Assert.AreEqual("OTOGAR", BoardView.PrintedName(SquareDefinition.Travel("Otogar", 50000), corner: true));
             Assert.IsNull(BoardView.Subtitle(SquareDefinition.Travel("Otogar", 50000)), "No \"bilet 50K\" under the bus station.");
+        }
+
+        [Test]
+        public void TheJailCellStandsOnTheLeftAndHapisLowerRight()
+        {
+            // The owner's wish (Faz 28): the cell towards the tile's left corner, the lettering towards its lower right.
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, data);
+                int jail = data.Board.JailIndex;
+                Vector3 center = board.Layout.SquareCenter(jail);
+                Vector3 right = BoardView.ScreenRight(BoardCameraRig.BaseYaw), up = BoardView.ScreenUp(BoardCameraRig.BaseYaw);
+
+                Transform cell = board.transform.Find("Scene Jail");
+                Assert.IsNotNull(cell);
+                Vector3 toCell = Vector3.ProjectOnPlane(cell.localPosition - center, Vector3.up);
+                Assert.Greater(Vector3.Dot(toCell.normalized, -right), 0.9f, "the cell stands towards the left corner");
+
+                Vector3 toName = Vector3.ProjectOnPlane(board.NameLabel(jail).transform.localPosition - center, Vector3.up);
+                Assert.Greater(Vector3.Dot(toName, right), 0f, "HAPİS lies to the right");
+                Assert.Less(Vector3.Dot(toName, up), 0f, "and low on the tile");
+
+                Vector3 toPawns = Vector3.ProjectOnPlane(board.transform.InverseTransformPoint(board.PawnSpot(jail)) - center, Vector3.up);
+                Assert.Greater(Vector3.Dot(toPawns, up), 0f, "the pawns wait towards the top corner, clear of both");
+                Assert.Greater(Vector3.Distance(toPawns, toName), board.Layout.SquareSize(jail).y * 0.3f);
+                Assert.Greater(Vector3.Distance(toPawns, toCell), board.Layout.SquareSize(jail).y * 0.3f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
         }
     }
 }
