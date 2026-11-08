@@ -658,6 +658,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How far up the screen from the lawn's middle the game clock stands, as a share of the lawn's inner width: near the top corner of the green (Faz 28).</summary>
         public const float ClockOffset = 0.52f;
 
+        /// <summary>The camera turn the board's writing last faced (<see cref="FaceCamera"/>).</summary>
+        public float Yaw => _yaw;
+
         /// <summary>The lawn's inner width, which the pieces on it are sized by.</summary>
         public float Inner => _inner;
 
