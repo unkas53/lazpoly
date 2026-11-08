@@ -38,6 +38,23 @@ namespace Lazpoly.Presentation.Models
             return material;
         }
 
+        private static readonly Dictionary<Texture, Material> Pictures = new Dictionary<Texture, Material>();
+
+        /// <summary>
+        /// The print material for a picture whose alpha is the shape (the tax document's ink), coloured by the mesh's
+        /// vertices; null when the shader is missing, so the caller can draw the shape another way.
+        /// </summary>
+        public static Material ForPicture(Texture picture)
+        {
+            if (picture == null) return null;
+            if (Pictures.TryGetValue(picture, out Material material) && material != null) return material;
+            Shader shader = PrintShader();
+            if (shader == null) return null;
+            material = new Material(shader) { name = $"Print {picture.name}", mainTexture = picture };
+            Pictures[picture] = material;
+            return material;
+        }
+
         /// <summary>Whether printed text tests depth here, or falls back to the font's own draw-through material.</summary>
         public static bool IsPrinting(Font font) => For(font) != null && For(font).shader == PrintShader();
 

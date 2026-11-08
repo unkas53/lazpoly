@@ -55,8 +55,12 @@ namespace Lazpoly.Presentation.Tabletop
         public static AnisotropicFiltering AnisotropicFor(GraphicsQuality quality) =>
             quality == GraphicsQuality.Low ? AnisotropicFiltering.Enable : AnisotropicFiltering.ForceEnable;
 
-        /// <summary>How hard TAA sharpens what its blending softens (URP's contrast adaptive sharpening, 0-1).</summary>
-        public const float TaaSharpening = 0.4f;
+        /// <summary>
+        /// How hard TAA sharpens what its blending softens (URP's contrast adaptive sharpening, 0-1). Off: at 0.4 it made
+        /// every edge of a still table shimmer from frame to frame (measured on captured frames; worst on the tax document's
+        /// black lines on white), and without it the edges stay as still as with MSAA.
+        /// </summary>
+        public const float TaaSharpening = 0f;
 
         /// <summary>Re-applies a quality level to the scene that is up now: the main camera, the sun and the pipeline.</summary>
         public static void ApplyQuality(GraphicsQuality quality)

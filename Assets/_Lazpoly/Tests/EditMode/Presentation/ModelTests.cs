@@ -280,10 +280,18 @@ namespace Lazpoly.Presentation.Tests
             Assert.That(arrow.bounds.center.x, Is.EqualTo(0f).Within(0.005f), "straight, not lopsided");
         }
 
+        /// <summary>The ink picture's alpha at the page point (x across, z up the page).</summary>
+        private static byte AlphaAt(Texture2D picture, Color32[] pixels, float x, float z)
+        {
+            int column = Mathf.FloorToInt((x / FloorPrint.DocumentSize.x + 0.5f) * picture.width);
+            int row = Mathf.FloorToInt((z / FloorPrint.DocumentSize.y + 0.5f) * picture.height);
+            return pixels[row * picture.width + column].a;
+        }
+
         [Test]
         public void TheTaxDocumentIsAFlatPrintOfPaperAndInk()
         {
-            foreach (Mesh print in new[] { FloorPrint.DocumentPaper(), FloorPrint.DocumentInk() })
+            foreach (Mesh print in new[] { FloorPrint.DocumentPaper(), FloorPrint.DocumentInk(Color.black), FloorPrint.DocumentInkBars() })
             {
                 Assert.Greater(print.triangles.Length, 0);
                 Assert.That(print.bounds.min.y, Is.InRange(-0.001f, 0.005f), "it lies on the tile, the ink on the paper");
@@ -300,6 +308,25 @@ namespace Lazpoly.Presentation.Tests
                 {
                     Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, renderer.shadowCastingMode, "a print casts no shadow");
                 }
+
+                // The ink is a picture drawn with the print shader, so its thin lines hold still under TAA.
+                MeshRenderer ink = document.transform.Find("Ink").GetComponent<MeshRenderer>();
+                Assert.AreEqual(PrintMaterial.ShaderName, ink.sharedMaterial.shader.name, "the ink is printed like the names");
+                Texture2D picture = FloorPrint.DocumentInkPicture();
+                Assert.AreSame(picture, ink.sharedMaterial.mainTexture);
+                Color32[] pixels = picture.GetPixels32();
+                int inked = 0, soft = 0;
+                foreach (Color32 pixel in pixels)
+                {
+                    if (pixel.a > 0) inked++;
+                    if (pixel.a > 0 && pixel.a < 255) soft++;
+                }
+
+                Assert.That(inked, Is.InRange(pixels.Length / 10, pixels.Length / 2), "outline and writing, not a filled sheet");
+                Assert.Greater(soft, 0, "the edges are soft");
+                Assert.AreEqual(0, AlphaAt(picture, pixels, 0.25f, 0.01f), "no ink on the sheet right of the writing");
+                Assert.AreEqual(255, AlphaAt(picture, pixels, 0f, 0.08f), "a line of writing");
+                Assert.AreEqual(255, AlphaAt(picture, pixels, -FloorPrint.DocumentSize.x / 2f + 0.02f, 0f), "the left edge of the outline");
             }
             finally
             {
