@@ -59,7 +59,7 @@ namespace Lazpoly.Presentation.Texts
             return Offer(TipId.Debt, myTurn && state.Phase == GamePhase.AwaitingDebtPayment,
                        L("Borcunu ödeyecek kadar paran yok. Satacağın şehirleri haritada işaretleyip Sat'a bas; yetmezse iflas edersin."))
                    ?? Offer(TipId.Travel, myTurn && state.Phase == GamePhase.AwaitingTravelDecision,
-                       F($"Otogardasın. Tahtada parlayan karelerden birine tıkla ve {board[me.Position].Fee} ödeyerek oraya yürü. İstemezsen \"Burada kal\"."))
+                       F($"Otogardasın. Tahtada parlayan karelerden birine tıkla ve {board[me.Position].Fee} ödeyerek oraya yürü. İstemezsen \"Burada kal\". Sonra zarını atarsın."))
                    ?? Offer(TipId.Cup, myTurn && state.Phase == GamePhase.AwaitingCupChoice,
                        F($"Şampiyonlar Kupası! Tahtada parlayan şehirlerinden birine tıkla; {board[me.Position].Fee} ödersen kupa oraya gider ve kirası %{GameRules.NextCupPercent(board, state, me.Position)} artar. İstemezsen \"Geç\"."))
                    ?? Offer(TipId.Jail, myTurn && state.Phase == GamePhase.AwaitingJailDecision && board.HasJail,

@@ -225,13 +225,60 @@ namespace Lazpoly.Core.Tests
 
         // ---- Rides ----
 
-        [Test]
-        public void ARidePaysTheFareAndWalksToTheChosenSquare()
+        /// <summary>
+        /// Alice comes to the bus stop (3+4) and her turn ends there; Bob takes his turn (2+3, to the empty pot); Alice's next
+        /// turn starts at the stop, where she picks a ride before rolling (the owner's rule, Faz 27). <paramref name="more"/> are her later dice.
+        /// </summary>
+        private static GameEngine AliceBackAtTheStop(RulesConfig rules, params int[] more)
         {
-            GameEngine engine = NewGame(Board(), 3, 4);
+            var dice = new System.Collections.Generic.List<int> { 3, 4, 2, 3 };
+            dice.AddRange(more);
+            GameEngine engine = NewGame(Board(), rules, dice.ToArray());
             Accept(engine, new RollDiceCommand(Alice));
             Assert.AreEqual(Ride, Player(engine, Alice).Position);
-            Assert.AreEqual(GamePhase.AwaitingTravelDecision, engine.State.Phase);
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "Coming to the stop ends the turn: the ride waits for the next one.");
+            Accept(engine, new EndTurnCommand(Alice));
+            Accept(engine, new RollDiceCommand(Bob));
+            Accept(engine, new EndTurnCommand(Bob));
+            return engine;
+        }
+
+        private static GameEngine AliceBackAtTheStop(params int[] more) => AliceBackAtTheStop(TestRules(), more);
+
+        [Test]
+        public void TheRideWaitsForThePlayersNextTurn()
+        {
+            GameEngine engine = NewGame(Board(), 3, 4);
+            CommandResult result = Accept(engine, new RollDiceCommand(Alice));
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
+            Assert.IsFalse(result.Events.OfType<PhaseChangedEvent>().Any(e => e.Phase == GamePhase.AwaitingTravelDecision), "No ride on arriving.");
+            Assert.AreEqual(1000, Player(engine, Alice).Money);
+
+            engine = AliceBackAtTheStop();
+            Assert.AreEqual(Alice, engine.State.CurrentPlayer.Id);
+            Assert.AreEqual(GamePhase.AwaitingTravelDecision, engine.State.Phase, "Her next turn starts with the ride.");
+            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new RollDiceCommand(Alice)), "The ride comes before the roll.");
+        }
+
+        [Test]
+        public void ADoubleToTheBusStopEarnsNoSecondRoll()
+        {
+            var board = new BoardDefinition(new[]
+            {
+                SquareDefinition.Start("Start"), SquareDefinition.Rest("R1"), SquareDefinition.Rest("R2"), SquareDefinition.Rest("R3"),
+                SquareDefinition.Travel("Bus", 50), SquareDefinition.Rest("R5"), SquareDefinition.Rest("R6"), SquareDefinition.Rest("R7"),
+            });
+            GameEngine engine = NewGame(board, TestRules(), 2, 2);
+            Accept(engine, new RollDiceCommand(Alice));
+            Assert.IsTrue(engine.State.LastRollWasDouble);
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "A double that brings the player to the stop ends the turn all the same.");
+            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new RollDiceCommand(Alice)));
+        }
+
+        [Test]
+        public void ARidePaysTheFareAndWalksThenTheTurnsRollFollows()
+        {
+            GameEngine engine = AliceBackAtTheStop(1, 2);
 
             Assert.AreEqual(RejectionReason.InvalidSquare, Reason(engine, new TravelCommand(Alice, Ride)));
             Assert.AreEqual(RejectionReason.InvalidSquare, Reason(engine, new TravelCommand(Alice, 99)));
@@ -246,13 +293,18 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(950, Player(engine, Alice).Money);
             Assert.AreEqual(P3, Player(engine, Alice).Position);
             Assert.AreEqual(GamePhase.AwaitingBuyDecision, engine.State.Phase);
+
+            Accept(engine, new DeclinePurchaseCommand(Alice));
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "Then she rolls, as on any turn.");
+            Accept(engine, new RollDiceCommand(Alice));
+            Assert.AreEqual((P3 + 3) % engine.Board.Count, Player(engine, Alice).Position);
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "Not a double: the turn can end.");
         }
 
         [Test]
         public void ARideRoundPastStartCollectsTheBonus()
         {
-            GameEngine engine = NewGame(Board(), 3, 4);
-            Accept(engine, new RollDiceCommand(Alice));
+            GameEngine engine = AliceBackAtTheStop();
 
             CommandResult result = Accept(engine, new TravelCommand(Alice, P1));
             Assert.IsTrue(result.Events.OfType<PlayerMovedEvent>().Single().PassedStart);
@@ -263,35 +315,35 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void ARideNeverEndsOnAnotherPlayersTown()
         {
-            GameEngine engine = NewGame(Board(), 3, 4);
+            GameEngine engine = AliceBackAtTheStop();
             GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(P3, GameState.NoOwner, Bob));
             GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(P2, GameState.NoOwner, Alice));
-            Accept(engine, new RollDiceCommand(Alice));
 
             Assert.AreEqual(RejectionReason.InvalidSquare, Reason(engine, new TravelCommand(Alice, P3)), "Bob's town is off the ride map.");
             Assert.IsTrue(GameRules.IsRideDestination(engine.Board, engine.State, Player(engine, Alice), P2), "Her own town is fine.");
             Assert.IsTrue(GameRules.IsRideDestination(engine.Board, engine.State, Player(engine, Alice), PotSquare), "So are the special squares.");
             Assert.IsTrue(GameRules.IsRideDestination(engine.Board, engine.State, Player(engine, Alice), P1), "And free towns.");
             Accept(engine, new TravelCommand(Alice, P2));
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "Her own town asks nothing; the roll follows.");
         }
 
         [Test]
-        public void StayingOnTheTravelSquareEndsTheMove()
+        public void StayingAtTheStopRollsFromThere()
         {
-            GameEngine engine = NewGame(Board(), 3, 4);
-            Accept(engine, new RollDiceCommand(Alice));
+            GameEngine engine = AliceBackAtTheStop(1, 1);
             Accept(engine, new DeclineTravelCommand(Alice));
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);
             Assert.AreEqual(1000, Player(engine, Alice).Money);
+            Accept(engine, new RollDiceCommand(Alice));
+            Assert.AreEqual(Ride + 2, Player(engine, Alice).Position);
         }
 
         [Test]
         public void NoRideIsOfferedToAPlayerWhoCannotPayTheFare()
         {
-            GameEngine engine = NewGame(Board(), TestRules(startingMoney: 40), 3, 4);
-            Accept(engine, new RollDiceCommand(Alice));
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
+            GameEngine engine = AliceBackAtTheStop(TestRules(startingMoney: 40));
+            Assert.AreEqual(Alice, engine.State.CurrentPlayer.Id);
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "She simply rolls from the stop.");
         }
 
         // ---- Lookout ----

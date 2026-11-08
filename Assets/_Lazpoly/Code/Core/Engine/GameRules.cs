@@ -236,6 +236,13 @@ namespace Lazpoly.Core.Engine
         public static bool HasBuildings(GameState state, int squareIndex) => state.GetBuildingLevel(squareIndex) > 0;
 
         /// <summary>
+        /// Whether a player whose turn starts now picks a ride before rolling (the owner's rule, Faz 27): they stand at a bus
+        /// stop they came to on an earlier turn, are not in jail and can pay its fare. Otherwise they simply roll from there.
+        /// </summary>
+        public static bool WaitsForRide(BoardDefinition board, PlayerState player) =>
+            player != null && !player.InJail && board[player.Position].Type == SquareType.Travel && player.Money >= board[player.Position].Fee;
+
+        /// <summary>
         /// Where a ride from the bus station may go: any other square on the board but a town another
         /// player owns (the ride is not a way to pay someone's rent on purpose, nor to land on their
         /// buildings). Free towns, one's own towns and the special squares are all fine.

@@ -18,7 +18,7 @@ namespace Lazpoly.Net.Messages
         /// not end on another player's town. 10: the engine
         /// ends an insolvent player's game at once and the turn ends by itself. Mixed builds must not share a table.
         /// </summary>
-        public const int ProtocolVersion = 18;
+        public const int ProtocolVersion = 19;
 
         private enum CommandTag : byte
         {

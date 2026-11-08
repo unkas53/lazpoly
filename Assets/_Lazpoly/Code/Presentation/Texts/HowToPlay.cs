@@ -46,7 +46,7 @@ namespace Lazpoly.Presentation.Texts
                 sections.Add(Section(L(board[board.JailIndex].Name), F($"Hapse gelen, üst üste {rules.MaxConsecutiveDoubles} çift atan ya da hapse gönderen kartı çeken, {rules.JailTurns} kez sırası gelene kadar orada bekler. Sırası gelince isterse {board[board.JailIndex].Fee} ödeyip hemen çıkar ve zar atar; ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler (bir daha atmaz), gelmezse sıra geçer. Hapisteyken kira almak sürer.")));
             }
 
-            if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelen isterse {fare} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine gidilemez.")));
+            if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelenin sırası orada biter, çift atmış olsa da. Bir sonraki sırasında isterse {fare} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider, sonra zarını atar; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine gidilemez.")));
             int taxPercent = TaxPercent(board);
             if (taxPercent > 0)
             {

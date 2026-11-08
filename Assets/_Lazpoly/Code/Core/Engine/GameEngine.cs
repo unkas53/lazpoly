@@ -274,9 +274,9 @@ namespace Lazpoly.Core.Engine
                     return false;
 
                 case SquareType.Travel:
-                    // Offered only when the player can pay the fare.
-                    if (player.Money < square.Fee) return false;
-                    Emit(new PhaseChangedEvent(GamePhase.AwaitingTravelDecision));
+                    // The ride waits for the player's next turn (the owner's rule, Faz 27): the turn ends here, even after a
+                    // double. Next turn they pick where to go before rolling (StartNextTurn).
+                    Emit(new PhaseChangedEvent(GamePhase.TurnEnd));
                     return true;
 
                 case SquareType.Cup:
@@ -385,8 +385,8 @@ namespace Lazpoly.Core.Engine
         }
 
         /// <summary>
-        /// Pays the fare and walks forward to the chosen square as after a roll (passing Start pays the
-        /// bonus), then lands there.
+        /// At the start of a turn spent at the bus stop: pays the fare and walks forward to the chosen square as after a roll
+        /// (passing Start pays the bonus), then lands there; the turn's roll still comes after it (<see cref="FinishMove"/>).
         /// </summary>
         private void Travel(PlayerState player, int target)
         {
@@ -406,10 +406,14 @@ namespace Lazpoly.Core.Engine
             FinishMove();
         }
 
-        /// <summary>After landing is resolved: a double earns another roll (not the one that got the player out of jail), otherwise the turn can end.</summary>
+        /// <summary>
+        /// After landing is resolved: a double earns another roll (not the one that got the player out of jail), otherwise the
+        /// turn can end. A ride taken (or declined) at the start of a turn comes before the turn's roll, so the roll follows it.
+        /// </summary>
         private void FinishMove()
         {
-            bool again = State.LastRollWasDouble && !State.RolledOutOfJail;
+            bool notRolledYet = State.LastDie1 == 0;
+            bool again = notRolledYet || (State.LastRollWasDouble && !State.RolledOutOfJail);
             Emit(new PhaseChangedEvent(again ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
         }
 
@@ -557,9 +561,10 @@ namespace Lazpoly.Core.Engine
                         return;
                     }
 
-                    // A jailed player first chooses between paying to leave and waiting.
+                    // A jailed player first chooses between paying to leave and waiting; one at the bus stop picks a ride first.
                     Emit(new TurnStartedEvent(next.Id));
-                    Emit(new PhaseChangedEvent(next.InJail ? GamePhase.AwaitingJailDecision : GamePhase.WaitingForRoll));
+                    Emit(new PhaseChangedEvent(next.InJail ? GamePhase.AwaitingJailDecision
+                        : GameRules.WaitsForRide(Board, next) ? GamePhase.AwaitingTravelDecision : GamePhase.WaitingForRoll));
                     return;
                 }
             }
