@@ -76,15 +76,15 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
-        /// corner each, 5-8 share them), its tray along the edge: the tray's middle this far out from the plate's edge, and
+        /// corner each, 5-8 share them), its money case along the edge: the case's bottom half's middle this far out from the plate's edge, and
         /// when two share an edge, this far either side of its middle along it.
         /// </summary>
         public const float MoneyPileOut = 0.85f;
         public const float MoneyPileSpread = 2.4f;
 
         /// <summary>
-        /// The shelf each tray stands on, so the money lies on the table and not in the air: in the plate's wood, a little
-        /// lower than the plate's top, reaching this far in under the plate, this far round the tray and this thick.
+        /// The shelf each money case stands on, so the money lies on the table and not in the air: in the plate's wood, a little
+        /// lower than the plate's top, reaching this far in under the plate, this far round the open case and this thick.
         /// </summary>
         public const float ShelfDrop = 0.03f;
         public const float ShelfTuck = 0.3f;
@@ -519,7 +519,7 @@ namespace Lazpoly.Presentation.Tabletop
         private readonly List<MoneyPile> _moneyPiles = new List<MoneyPile>();
         private readonly List<Transform> _shelves = new List<Transform>();
 
-        /// <summary>Lays a money tray on a shelf at the table's edge for each seat, in the seat's colour, in seat order.</summary>
+        /// <summary>Lays an open money case on a shelf at the table's edge for each seat, in the seat's colour, in seat order.</summary>
         public void CreateMoneyPiles(IReadOnlyList<Color> seatColors)
         {
             foreach (MoneyPile pile in _moneyPiles) Discard(pile.Root.gameObject);
@@ -542,11 +542,11 @@ namespace Lazpoly.Presentation.Tabletop
             else DestroyImmediate(thing);
         }
 
-        /// <summary>A shelf's size: along the edge round the tray, across from under the plate to past the tray, and its thickness.</summary>
+        /// <summary>A shelf's size: along the edge round the case, across from under the plate to past the open lid, and its thickness.</summary>
         public static Vector3 ShelfSize => new Vector3(
-            MoneyPile.TraySize.x + 2f * ShelfMargin,
+            MoneyPile.CaseSize.x + 2f * ShelfMargin,
             ShelfThickness,
-            ShelfTuck + MoneyPileOut + MoneyPile.TraySize.z / 2f + ShelfMargin);
+            ShelfTuck + MoneyPileOut + MoneyPile.CaseSize.z / 2f + MoneyPile.CaseDepth + ShelfMargin);
 
         /// <summary>The seats' shelves at the table's edge, in seat order.</summary>
         public IReadOnlyList<Transform> MoneyShelves => _shelves;
@@ -554,13 +554,13 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The seats' money at the table's edge, in seat order.</summary>
         public IReadOnlyList<MoneyPile> MoneyPiles => _moneyPiles;
 
-        /// <summary>Shows a seat's money on its tray.</summary>
+        /// <summary>Shows a seat's money in its case.</summary>
         public void ShowSeatMoney(int seat, int money)
         {
             if (seat >= 0 && seat < _moneyPiles.Count) _moneyPiles[seat].Show(money);
         }
 
-        /// <summary>Where a seat's payments leave and arrive (world space); the table's middle when the seat has no tray.</summary>
+        /// <summary>Where a seat's payments leave and arrive (world space); the table's middle when the seat has no case.</summary>
         public Vector3 SeatMoneySpot(int seat) => seat >= 0 && seat < _moneyPiles.Count ? _moneyPiles[seat].Top : MoneyMiddle;
 
         /// <summary>
@@ -589,7 +589,7 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// How a seat's tray lies: its row along the board's edge, turned whichever way of the two lets the money's print read
+        /// How a seat's money lies: its row along the board's edge, turned whichever way of the two lets the money's print read
         /// to the camera (away from it for the far edges, towards the board for the near ones).
         /// </summary>
         public static Quaternion MoneyPileTurn(int seat, float yaw)
@@ -606,8 +606,9 @@ namespace Lazpoly.Presentation.Tabletop
                 Transform root = _moneyPiles[seat].Root;
                 root.localPosition = MoneyPileSpot(seat, _moneyPiles.Count, HalfExtent, yaw);
                 root.localRotation = MoneyPileTurn(seat, yaw);
-                if (seat >= _shelves.Count) continue;
                 Vector3 outward = MoneyEdgeOutward(seat, yaw);
+                _moneyPiles[seat].OpenAway(outward);
+                if (seat >= _shelves.Count) continue;
                 _shelves[seat].localPosition = outward * (HalfExtent - ShelfTuck + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
                     - Vector3.up * (ShelfDrop + shelf.y / 2f);
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);

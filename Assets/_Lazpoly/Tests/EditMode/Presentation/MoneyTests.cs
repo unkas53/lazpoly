@@ -65,7 +65,7 @@ namespace Lazpoly.Presentation.Tests
             {
                 Vector3 slot = MoneyPile.SlotOffset(i, MoneyPile.MaxPieces);
                 Assert.AreEqual(0f, slot.z, 1e-5f, "one row, none behind another");
-                Assert.LessOrEqual(Mathf.Abs(slot.x) + MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale / 2f, MoneyPile.TraySize.x / 2f + 1e-4f, "on the tray");
+                Assert.LessOrEqual(Mathf.Abs(slot.x) + MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale / 2f, MoneyPile.CaseSize.x / 2f - MoneyPile.CaseWall + 1e-4f, "inside the case's walls");
                 if (i > 0) Assert.AreEqual(MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale + MoneyPile.Gap, slot.x - MoneyPile.SlotOffset(i - 1, MoneyPile.MaxPieces).x, 1e-4f, "side by side, even gaps");
             }
 
@@ -106,20 +106,25 @@ namespace Lazpoly.Presentation.Tests
                     Transform tray = board.MoneyPiles[seat].Root;
                     Assert.AreEqual(tray.position.y, shelf.max.y, 1e-3f, $"seat {seat + 1}: the tray lies on its shelf");
                     Assert.Less(shelf.max.y, 0f, $"seat {seat + 1}: the shelf a little under the plate's top");
+                    foreach (Transform half in new[] { board.MoneyPiles[seat].Case, board.MoneyPiles[seat].Lid })
                     foreach (float x in new[] { -0.5f, 0.5f })
                     foreach (float z in new[] { -0.5f, 0.5f })
                     {
-                        Vector3 corner = tray.TransformPoint(Vector3.Scale(MoneyPile.TraySize, new Vector3(x, 0f, z)));
+                        Vector3 corner = half.TransformPoint(Vector3.Scale(MoneyPile.CaseSize, new Vector3(x, 0f, z)));
                         Assert.IsTrue(shelf.min.x - 1e-3f <= corner.x && corner.x <= shelf.max.x + 1e-3f && shelf.min.z - 1e-3f <= corner.z && corner.z <= shelf.max.z + 1e-3f,
-                            $"seat {seat + 1}: the tray's corners on the shelf");
+                            $"seat {seat + 1}: the {half.name}'s corners on the shelf");
                     }
+
+                    Vector3 lidWay = board.transform.InverseTransformDirection(board.MoneyPiles[seat].Lid.position - tray.position);
+                    Assert.Greater(Vector3.Dot(lidWay, BoardView.MoneyEdgeOutward(seat, yaw)), MoneyPile.CaseDepth - 1e-3f, $"seat {seat + 1}: the lid lies open away from the board");
+                    Assert.AreEqual(0f, Vector3.Dot(lidWay, Vector3.up), 1e-3f, $"seat {seat + 1}: flat on the shelf");
 
                     Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSize.z / 2f);
                     Assert.Less(Vector3.Dot(inner, BoardView.MoneyEdgeOutward(seat, yaw)), board.HalfExtent, $"seat {seat + 1}: the shelf comes out from under the plate");
                 }
 
                 board.ShowSeatMoney(1, 0);
-                CollectionAssert.IsEmpty(board.MoneyPiles[1].Shown, "a player with nothing has an empty tray");
+                CollectionAssert.IsEmpty(board.MoneyPiles[1].Shown, "a player with nothing has an empty case");
             }
             finally
             {
