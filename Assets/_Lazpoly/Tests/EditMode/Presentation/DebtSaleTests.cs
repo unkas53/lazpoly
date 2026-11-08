@@ -78,7 +78,7 @@ namespace Lazpoly.Presentation.Tests
             int cheap = GameRules.PropertySaleProceeds(engine.Board, engine.Rules, engine.State, Cheap);
             Assert.AreEqual(cheap, sale.Proceeds(engine.Board, engine.Rules, engine.State, me));
             IReadOnlyList<GameCommand> commands = sale.Commands(engine.Board, engine.Rules, engine.State, me);
-            Assert.AreEqual(1, commands.Count, "30 more is not enough for 100: only the sale, no payment");
+            Assert.AreEqual(1, commands.Count, "60 more is not enough for 100: only the sale, no payment");
             Assert.IsInstanceOf<SellPropertyCommand>(commands[0]);
 
             sale.Toggle(Dear);

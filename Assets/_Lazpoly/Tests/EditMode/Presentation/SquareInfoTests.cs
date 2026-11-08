@@ -45,7 +45,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(7, info.Rows.Count(row => row.Rent), "land, whole colour, four houses and the hotel make the rent table");
             Assert.IsFalse(info.Rows.Single(row => row.Label == "Fiyat").Rent);
             Assert.AreEqual("50", ValueOf(info, "Ev maliyeti"));
-            Assert.AreEqual("30", ValueOf(info, "Satış değeri"), "The bank pays half the price.");
+            Assert.AreEqual("60", ValueOf(info, "Satış değeri"), "The bank pays the whole price (Faz 27).");
             Assert.IsFalse(info.Rows.Any(row => row.Current));
             CollectionAssert.Contains(info.Notes, "Bu renk: 2 kare; sahipsiz 2.");
         }

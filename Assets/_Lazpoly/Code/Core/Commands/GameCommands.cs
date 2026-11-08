@@ -77,7 +77,7 @@ namespace Lazpoly.Core.Commands
         public SellBuildingCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }
     }
 
-    /// <summary>Sells a property back to the bank for half its price, its buildings at their sell-back value; it becomes unowned.</summary>
+    /// <summary>Sells a property back to the bank for its whole price, its buildings at their sell-back value (all of their cost on the shipped board); it becomes unowned.</summary>
     public sealed class SellPropertyCommand : SquareCommand
     {
         public SellPropertyCommand(int playerId, int squareIndex) : base(playerId, squareIndex) { }

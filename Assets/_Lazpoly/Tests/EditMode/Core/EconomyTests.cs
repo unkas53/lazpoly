@@ -287,7 +287,7 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new SellPropertyCommand(Alice, A1));
 
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
-            Assert.AreEqual(10 + 30, Money(engine, Alice), "The bank pays half the price.");
+            Assert.AreEqual(10 + 60, Money(engine, Alice), "The bank pays the whole price.");
             Assert.AreEqual(RejectionReason.NotOwner, Reason(engine, new SellPropertyCommand(Alice, A1)));
             Assert.AreEqual(GamePhase.AwaitingDebtPayment, engine.State.Phase, "The debt is still to be paid.");
         }
@@ -299,7 +299,7 @@ namespace Lazpoly.Core.Tests
             Give(engine, A1, Alice);
             Stand(engine, Alice, A1);
             Accept(engine, new BuildCommand(Alice, A1));
-            Assert.AreEqual(30 + 25, GameRules.PropertySaleProceeds(engine.Board, engine.Rules, engine.State, A1));
+            Assert.AreEqual(60 + 25, GameRules.PropertySaleProceeds(engine.Board, engine.Rules, engine.State, A1));
             Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new SellPropertyCommand(Alice, A1)));
 
             // Alice owes Bob more than she holds.
@@ -308,7 +308,7 @@ namespace Lazpoly.Core.Tests
             int before = Money(engine, Alice);
             CommandResult result = Accept(engine, new SellPropertyCommand(Alice, A1));
 
-            Assert.AreEqual(before + 55, Money(engine, Alice), "Half the price plus the buildings' sellback value.");
+            Assert.AreEqual(before + 85, Money(engine, Alice), "The whole price plus the buildings' sellback value.");
             Assert.AreEqual(0, engine.State.GetBuildingLevel(A1));
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1));
             Assert.IsTrue(result.Events.Any(e => e is BuildingLevelChangedEvent b && b.Level == 0), "The buildings come down before the town changes hands.");
@@ -402,10 +402,10 @@ namespace Lazpoly.Core.Tests
             Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new RollDiceCommand(Alice)));
             Assert.AreEqual(RejectionReason.InsufficientFunds, Reason(engine, new PayDebtCommand(Alice)));
 
-            Accept(engine, new SellPropertyCommand(Alice, Solo)); // +50
+            Accept(engine, new SellPropertyCommand(Alice, Solo)); // +100, its whole price
             Accept(engine, new PayDebtCommand(Alice));
 
-            Assert.AreEqual(40, Money(engine, Alice));
+            Assert.AreEqual(90, Money(engine, Alice));
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(Solo));
             Assert.AreEqual(1050, Money(engine, Bob));
             Assert.IsNull(engine.State.Debt);
@@ -437,7 +437,7 @@ namespace Lazpoly.Core.Tests
 
             Assert.IsTrue(engine.State.FindPlayer(Alice).IsBankrupt);
             Assert.AreEqual(0, Money(engine, Alice));
-            Assert.AreEqual(1000 + 10 + 4 * 25 + 30 + 40, Money(engine, Cem), "Cash, the buildings' sell-back value and the towns' sale value.");
+            Assert.AreEqual(1000 + 10 + 4 * 25 + 60 + 80, Money(engine, Cem), "Cash, the buildings' sell-back value and the towns' sale value.");
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1), "The towns are sold to the bank, not handed over.");
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A2));
             Assert.AreEqual(0, engine.State.GetBuildingLevel(A1));

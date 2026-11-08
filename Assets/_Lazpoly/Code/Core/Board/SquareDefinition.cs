@@ -80,9 +80,8 @@ namespace Lazpoly.Core.Board
         /// <summary>Rent at building levels 1..<see cref="MaxBuildingLevel"/>; empty when not developable.</summary>
         public IReadOnlyList<int> DevelopedRents => _developedRents;
 
-        /// <summary>What the bank lends against the property: half its price.</summary>
-        /// <summary>What the bank pays when the owner sells the property back: half its price.</summary>
-        public int SaleValue => Price / 2;
+        /// <summary>What the bank pays when the owner sells the property back: its whole price, no loss between buying and selling (the owner's wish, Faz 27).</summary>
+        public int SaleValue => Price;
 
         public static SquareDefinition Start(string name) => new SquareDefinition(name, SquareType.Start, 0, 0, 0, 0, 0, null);
 

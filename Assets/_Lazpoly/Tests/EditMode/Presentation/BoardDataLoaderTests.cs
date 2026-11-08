@@ -94,6 +94,9 @@ namespace Lazpoly.Presentation.Tests
 
                 Assert.Less(square.DevelopedRents[square.DevelopedRents.Count - 1] * data.Rules.FullGroupRentMultiplier, data.Rules.StartingMoney * 5,
                     $"{square.Name}: even the doubled hotel stays within five starting purses");
+                // The owner's rule (Faz 27): no loss between buying and selling, land, houses and hotel alike.
+                Assert.AreEqual(square.Price, square.SaleValue, $"{square.Name}: the bank pays the whole price");
+                Assert.AreEqual(square.BuildingCost, data.Rules.SellbackValue(square.BuildingCost), $"{square.Name}: a building sells for what it cost");
             }
 
             foreach (CardDefinition card in data.Board.Cards)

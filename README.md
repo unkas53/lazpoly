@@ -915,6 +915,7 @@ Masa da menünün kağıt görünümüne geçti (`GameSceneController.Start` →
 - Denge: 1000'er bilgisayar oyunuyla ölçüldü (`Reports/Balance`, konteynerde Core+App derlenerek). %40 kuralıyla oyunlar uzar: 4 oyuncuda ortalama 79 tur (önceki tahtada 20,5), 2 oyuncuda 70, 6 oyuncuda 139; takılan oyun yok. (Fiyatın payına göre kurulan ilk tabloda 4 oyuncu 20,8 turdu.)
 - Para kısa yazılır (`Lang.M`): binin altı olduğu gibi, sonra 300K, 12,5K, 2M, 1,25M; ondalık kesilir, yukarı yuvarlanmaz. Metinlerdeki bütün tam sayılar bu biçimle yazılır (`Lang.F`), çünkü oyunda bine varan tek sayı paradır. Kare üstü kiralar, kartlar, oyuncu kartları, uçan "+300K" yazıları, olay satırları aynı biçimdedir.
 - Ölçeğe göre güncellenenler: para destesi ve külçe eşikleri (uçuşta 100K başına deste, 500K başına külçe; çantada 300K başına deste, 1M başına külçe), figürlerin sevinme/üzülme eşikleri (300K/200K), "paran azaldı" ipucu (başlangıç parasının %10'u), bilgisayarın otogarda grup tamamlayan şehre verdiği öncelik. Eski kayıtlar tahta verisi değiştiği için açılmaz; ağ protokolü 17.
+- Alış ile satış arasında fark yoktur (sahibin isteği): borç için satılan şehre banka fiyatının tamamını öder (`SquareDefinition.SaleValue`), evler ve otel de maliyetlerinin tamamına geri satılır (`buildingSellbackPercent` 100). Önceden şehir fiyatın yarısına, binalar maliyetin yarısına satılıyordu. Satış kayıpsız olunca borca düşen oyuncu daha uzun ayakta kalır: 4 oyuncuda ortalama 185 tur (önceden 79), 2 oyuncuda 107, 6 oyuncuda 311; takılan oyun yok. Ağ protokolü 18.
 
 ## Kurallar
 

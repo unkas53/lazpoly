@@ -221,7 +221,7 @@ namespace Lazpoly.App.Tests
             SetMoney(state, Me, 100);
 
             Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Normal), "Normal waits until it can pay from its spare money.");
-            Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Hard), "Selling at half price to build never pays off.");
+            Assert.IsInstanceOf<RollDiceCommand>(Decide(state, Me, AiDifficulty.Hard), "Towns are sold only to pay a debt, never to build.");
         }
 
         [Test]

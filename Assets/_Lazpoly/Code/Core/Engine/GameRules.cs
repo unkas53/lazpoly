@@ -324,7 +324,7 @@ namespace Lazpoly.Core.Engine
             return total;
         }
 
-        /// <summary>What the bank pays for a property sold back with everything on it: half its price plus each building at its sell-back value.</summary>
+        /// <summary>What the bank pays for a property sold back with everything on it: its whole price plus each building at its sell-back value.</summary>
         public static int PropertySaleProceeds(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex) =>
             board[squareIndex].SaleValue + state.GetBuildingLevel(squareIndex) * rules.SellbackValue(board[squareIndex].BuildingCost);
 
