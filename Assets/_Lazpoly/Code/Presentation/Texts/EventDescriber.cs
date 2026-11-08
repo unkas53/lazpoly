@@ -86,7 +86,7 @@ namespace Lazpoly.Presentation.Texts
                 case PlayerMovedEvent e:
                     return $"{NameOf(state, e.PlayerId)} → {L(board[e.ToSquare].Name)}";
                 case MoneyChangedEvent e:
-                    return $"{NameOf(state, e.PlayerId)}: {(e.Delta > 0 ? "+" : string.Empty)}{e.Delta} ({L(ReasonText(e.Reason))})";
+                    return $"{NameOf(state, e.PlayerId)}: {(e.Delta > 0 ? "+" : string.Empty)}{M(e.Delta)} ({L(ReasonText(e.Reason))})";
                 case PropertyOwnerChangedEvent e:
                     return e.NewOwnerId == GameState.NoOwner
                         ? F($"{L(board[e.SquareIndex].Name)} bankaya döndü")

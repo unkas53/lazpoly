@@ -208,7 +208,7 @@ namespace Lazpoly.Presentation.Game
             if (money > 0)
             {
                 if (text.Length > 0) text.Append(", ");
-                text.Append(money);
+                text.Append(M(money));
             }
 
             return text.Length > 0 ? text.ToString() : L("hiçbir şey");
