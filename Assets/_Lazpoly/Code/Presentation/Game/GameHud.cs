@@ -474,21 +474,20 @@ namespace Lazpoly.Presentation.Game
         private void BuildRollTotal()
         {
             RectTransform total = UiRoot.Rect(_canvas.transform, "Roll Total", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(-200f, UiLayout.RollTotalRise - 120f), new Vector2(200f, UiLayout.RollTotalRise + 120f));
+                new Vector2(-200f, UiLayout.RollTotalRise - 70f), new Vector2(200f, UiLayout.RollTotalRise + 70f));
             _totalGroup = total.gameObject.AddComponent<CanvasGroup>();
             _totalGroup.blocksRaycasts = false;
             _totalGroup.interactable = false;
             _totalGroup.alpha = 0f;
             _totalRect = total;
-            // The pivot sits in the figures' middle, which stand on the lawn's roll spot (UpdateRollTotal).
-            total.pivot = new Vector2(0.5f, RollTotalPivot);
-            _totalText = TotalLabel(total, "Figures", new Vector2(0f, 0.28f), Vector2.one, 150);
-            _totalNote = TotalLabel(total, "Double", new Vector2(0f, 0.12f), new Vector2(1f, 0.44f), 50);
+            // The figures fill the box, whose middle stands on the lawn's roll spot (PlaceRollTotal); ÇİFT stands beside
+            // them on the same line, since the gap between the title and the dice holds only one line (measured, Faz 28).
+            _totalText = TotalLabel(total, "Figures", Vector2.zero, Vector2.one, UiLayout.RollTotalSize);
+            _totalNote = TotalLabel(total, "Double", new Vector2(0.5f, 0f), Vector2.one, UiLayout.RollTotalNoteSize);
+            ((RectTransform)_totalNote.transform).offsetMin = new Vector2(UiLayout.RollTotalNoteGap, 0f);
+            _totalNote.alignment = TextAnchor.MiddleLeft;
             _totalNote.color = UiPalette.Ink.Gold;
         }
-
-        /// <summary>The middle of the total's figures as a share of its box's height, from the bottom.</summary>
-        private const float RollTotalPivot = 0.64f;
 
         private static Text TotalLabel(RectTransform parent, string name, Vector2 min, Vector2 max, int size)
         {
@@ -522,7 +521,7 @@ namespace Lazpoly.Presentation.Game
             Vector3 screen = camera.WorldToScreenPoint(board.RollTotalSpot);
             if (screen.z <= 0f) return;
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)_canvas.transform, screen, null, out Vector2 local))
-                _totalRect.anchoredPosition = local;
+                _totalRect.anchoredPosition = local + Vector2.down * UiLayout.RollTotalDrop;
         }
 
         private void UpdateRollTotal()

@@ -47,6 +47,16 @@ namespace Lazpoly.Presentation.UI
         public const float RollTotalRise = 150f;
 
         /// <summary>
+        /// The roll's total (Faz 28): its figures' and ÇİFT's font sizes, how far right of the middle ÇİFT starts, and how
+        /// far below the lawn's roll spot the figures stand. Measured at 1920x1080: the gap between the LAZPOLY title's
+        /// ribbon and the dice is about 100 px, so one line of about 85 px figures fits with ÇİFT beside it.
+        /// </summary>
+        public const int RollTotalSize = 110;
+        public const int RollTotalNoteSize = 46;
+        public const float RollTotalNoteGap = 76f;
+        public const float RollTotalDrop = 12f;
+
+        /// <summary>
         /// Screen pixels kept clear of the board at each side edge (<see cref="SideReserve"/>). The corner
         /// cards sit in the empty triangles beside the diamond-shaped board, so they reserve nothing more.
         /// </summary>
