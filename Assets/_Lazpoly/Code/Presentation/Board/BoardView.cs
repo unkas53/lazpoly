@@ -34,8 +34,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How much deeper than wide an edge square is; the corners are squares of that depth.</summary>
         public const float DepthRatio = 1.4f;
 
-        /// <summary>The gap between neighbouring tiles.</summary>
-        public const float Gap = 0.12f;
+        /// <summary>The gap between neighbouring tiles: none since Faz 25 (the owner wanted the squares side by side; their rounded edges still mark the seam).</summary>
+        public const float Gap = 0f;
         private const float TileHeight = 0.2f;
 
         /// <summary>How far the plate hangs below the squares; its edge shows in the isometric view.</summary>
