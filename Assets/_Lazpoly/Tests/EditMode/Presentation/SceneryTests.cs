@@ -569,5 +569,15 @@ namespace Lazpoly.Presentation.Tests
             Assert.Greater(DiceView.ShadowScale(0f), DiceView.ShadowScale(1f));
             Assert.Greater(DiceView.ShadowScale(1f), 0f);
         }
+
+        [Test]
+        public void TheStartAndTheBusStationAreInCapitalsAndTheFareIsNotPrinted()
+        {
+            // The owner's wish (Faz 28).
+            Lazpoly.Presentation.Texts.Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
+            Assert.AreEqual("BAŞLANGIÇ", BoardView.PrintedName(SquareDefinition.Start("Başlangıç"), corner: true));
+            Assert.AreEqual("OTOGAR", BoardView.PrintedName(SquareDefinition.Travel("Otogar", 50000), corner: true));
+            Assert.IsNull(BoardView.Subtitle(SquareDefinition.Travel("Otogar", 50000)), "No \"bilet 50K\" under the bus station.");
+        }
     }
 }

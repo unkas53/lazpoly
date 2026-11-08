@@ -1489,14 +1489,14 @@ namespace Lazpoly.Presentation.Tabletop
         public static float FitCharacterSize(float characterSize, Vector2 size, Vector2 maxSize) =>
             Mathf.Min(FitCharacterSize(characterSize, size.x, maxSize.x), FitCharacterSize(characterSize, size.y, maxSize.y));
 
-        /// <summary>The line under a square's name: the tax it takes or the fare; null when the square has none (a town for sale shows no figure).</summary>
+        /// <summary>The line under a square's name: the tax it takes; null when the square has none (a town for sale shows no figure, the bus station no fare).</summary>
         public static string Subtitle(SquareDefinition square)
         {
             switch (square.Type)
             {
                 case SquareType.Property: return null; // For sale a town shows no figure; owned, its rent (the owner's wish, Faz 22).
                 case SquareType.Tax: return square.TaxPercent > 0 ? null : F($"-{square.TaxAmount}"); // A share prints a document instead (Faz 24).
-                case SquareType.Travel: return F($"bilet {square.Fee}");
+                case SquareType.Travel: return null; // The fare is no longer printed under the bus station (the owner's wish, Faz 28).
                 default: return null;
             }
         }
@@ -1531,15 +1531,16 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// A square's name as printed on the board: a town's, the jail's, a tax's, the cup's and a Şans square's (a card square
-        /// off the corners) and the cup's in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", "ŞAMPİYONLAR KUPASI", Turkish capitals
-        /// in Turkish), the others as written.
+        /// A square's name as printed on the board: a town's, the jail's, a tax's, the cup's, a Şans square's (a card square
+        /// off the corners), the start's and the bus station's in capitals ("İSTANBUL", "HAPİS", "VERGİ", "ŞANS", "ŞAMPİYONLAR
+        /// KUPASI", "BAŞLANGIÇ", "OTOGAR", Turkish capitals in Turkish; the last two the owner's wish, Faz 28), the others as written.
         /// </summary>
         /// The cup's corner breaks its name onto two lines (<see cref="TwoLines"/>).
         public static string PrintedName(SquareDefinition square, bool corner)
         {
             if (square.Type == SquareType.Cup) return corner ? TwoLines(Upper(L(square.Name))) : Upper(L(square.Name));
             return square.Type == SquareType.Property || square.Type == SquareType.Jail || square.Type == SquareType.Tax || (square.Type == SquareType.Card && !corner)
+                || square.Type == SquareType.Start || square.Type == SquareType.Travel
                 ? Upper(L(square.Name)) : L(square.Name);
         }
 
