@@ -207,17 +207,17 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void ACardFineNothingCouldCoverBankruptsThePlayerToThePot()
         {
-            GameEngine engine = NewGame(Board(CardDefinition.Pay("Big fine", 300)), TestRules(startingMoney: 100), 1, 3, 0);
-            // 100 in hand and P3 (the bank pays 100 for it) cannot make 300.
+            GameEngine engine = NewGame(Board(CardDefinition.Pay("Big fine", 400)), TestRules(startingMoney: 100), 1, 3, 0);
+            // 100 in hand and P3 (the bank pays its whole price, 200) cannot make 400.
             GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(P3, GameState.NoOwner, Alice));
             CommandResult result = Accept(engine, new RollDiceCommand(Alice));
 
-            // Going bankrupt to the pot at once: P3 is sold to the bank and all the money (100 + 100) goes into the pot.
+            // Going bankrupt to the pot at once: P3 is sold to the bank and all the money (100 + 200) goes into the pot.
             DebtIncurredEvent debt = result.Events.OfType<DebtIncurredEvent>().Single();
             Assert.AreEqual(GameState.PotId, debt.CreditorId);
             Assert.AreEqual(MoneyReason.Card, debt.Reason);
             Assert.IsTrue(Player(engine, Alice).IsBankrupt);
-            Assert.AreEqual(200, engine.State.Pot);
+            Assert.AreEqual(300, engine.State.Pot);
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(P3));
             Assert.AreEqual(GamePhase.GameOver, engine.State.Phase);
             Assert.AreEqual(Bob, engine.State.WinnerId);

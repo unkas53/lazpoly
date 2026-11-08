@@ -483,7 +483,7 @@ namespace Lazpoly.Core.Tests
 
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1), "The creditor no longer inherits the towns (the owner's rule, Faz 23).");
             Assert.IsFalse(result.Events.OfType<PropertyOwnerChangedEvent>().Any(e => e.NewOwnerId == Cem));
-            Assert.AreEqual(1000 + 10 + 30, Money(engine, Cem), "All she had: 10 in hand and the 30 the bank paid for A1.");
+            Assert.AreEqual(1000 + 10 + 60, Money(engine, Cem), "All she had: 10 in hand and the 60 the bank paid for A1.");
             Assert.AreEqual(0, Money(engine, Alice));
         }
 
@@ -516,15 +516,15 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void TheAutomaticSaleSellsTheCheapestTownThatCoversTheDebt()
         {
-            // Missing 35: A1 brings 30 (too little), A2 brings 40, Solo 50.
-            GameEngine engine = AliceOwesTheBank(0, 35, (A1, 0), (A2, 0), (Solo, 0));
+            // Missing 70: A1 brings 60 (too little), A2 brings 80, Solo 100 (the whole price, Faz 27).
+            GameEngine engine = AliceOwesTheBank(0, 70, (A1, 0), (A2, 0), (Solo, 0));
             IReadOnlyList<GameCommand> plan = Plan(engine);
 
             CollectionAssert.AreEqual(new[] { A2 }, DebtSettlement.SquaresSold(plan));
             Assert.IsInstanceOf<PayDebtCommand>(plan.Last(), "The plan ends by paying.");
             Run(engine, plan);
             Assert.IsNull(engine.State.Debt);
-            Assert.AreEqual(5, Money(engine, Alice));
+            Assert.AreEqual(10, Money(engine, Alice));
             Assert.AreEqual(Alice, engine.State.GetOwner(A1));
             Assert.AreEqual(Alice, engine.State.GetOwner(Solo));
         }
@@ -532,8 +532,8 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void WhenNoSingleTownCoversItTheSmallestGoFirst()
         {
-            // Missing 80: nothing covers it alone, so A1 (30) goes, then Solo (50) covers the remaining 50.
-            GameEngine engine = AliceOwesTheBank(0, 80, (A1, 0), (A2, 0), (Solo, 0));
+            // Missing 160: nothing covers it alone, so A1 (60) goes, then Solo (100) covers the remaining 100.
+            GameEngine engine = AliceOwesTheBank(0, 160, (A1, 0), (A2, 0), (Solo, 0));
             IReadOnlyList<GameCommand> plan = Plan(engine);
 
             CollectionAssert.AreEqual(new[] { A1, Solo }, DebtSettlement.SquaresSold(plan));
@@ -546,7 +546,7 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void TheAutomaticSaleKeepsTheTownsWithBuildings()
         {
-            // A1 with a house brings 55, Solo brings 50; both cover 50, the unbuilt one goes.
+            // A1 with a house brings 85, Solo brings 100; both cover 50, the unbuilt one goes.
             GameEngine engine = AliceOwesTheBank(0, 50, (A1, 1), (Solo, 0));
             CollectionAssert.AreEqual(new[] { Solo }, DebtSettlement.SquaresSold(Plan(engine)));
             Run(engine, Plan(engine));

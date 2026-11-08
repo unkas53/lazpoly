@@ -263,10 +263,10 @@ namespace Lazpoly.Core.Tests
             Accept(engine, new EndTurnCommand(Cem));
             Accept(engine, new RollDiceCommand(Alice));      // 2+4 -> back to Rest 3
             Accept(engine, new EndTurnCommand(Alice));
-            Accept(engine, new RollDiceCommand(Bob));        // 1+3 -> Pricey, rent 500: 60 and Cheap (20) cannot cover it
+            Accept(engine, new RollDiceCommand(Bob));        // 1+3 -> Pricey, rent 500: 60 and Cheap (40) cannot cover it
 
             Assert.IsTrue(P(engine, Bob).IsBankrupt);
-            Assert.AreEqual(50 + 60 + 20, P(engine, Alice).Money, "Bob's 60 and the 20 the bank paid for Cheap, short of the rent.");
+            Assert.AreEqual(50 + 60 + 40, P(engine, Alice).Money, "Bob's 60 and the 40 the bank paid for Cheap (its whole price), short of the rent.");
             Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(4), "Bob's property is sold to the bank, not handed to his creditor.");
             Assert.AreEqual(Cem, engine.State.CurrentPlayer.Id, "Play continues with the next solvent player.");
             Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase);

@@ -208,7 +208,7 @@ namespace Lazpoly.Presentation.Tests
         {
             BoardData data = BoardDataLoader.LoadFromResources();
 
-            Assert.AreEqual(50, data.Rules.BuildingSellbackPercent);
+            Assert.AreEqual(100, data.Rules.BuildingSellbackPercent, "Buildings sell back for all they cost (Faz 27).");
             for (int i = 0; i < data.Board.Count; i++)
             {
                 SquareDefinition square = data.Board[i];
