@@ -206,37 +206,45 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void EachSeatsHatchLiesOnACornerSquareAtItsEndOfTheEdge()
+        public void EachSeatsHatchLiesOnTheLawnOnItsSide()
         {
             var holder = new GameObject("Board Test");
             try
             {
                 BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
-                float yaw = BoardCameraRig.BaseYaw, half = board.Layout.HalfSize, depth = board.Layout.Depth;
+                float yaw = BoardCameraRig.BaseYaw;
+                float inner = board.Layout.HalfSize * 2f - board.Layout.Depth * 1.05f, lawnHalf = inner * BoardView.LawnShare / 2f;
+                Vector3 up = BoardView.ScreenUp(yaw), right = BoardView.ScreenRight(yaw);
                 var colors = new Color[8];
                 for (int i = 0; i < colors.Length; i++) colors[i] = Color.HSVToRGB(i / 8f, 0.7f, 0.9f);
                 board.CreateMoneyPiles(colors);
                 Assert.AreEqual(8, board.MoneyHatches.Count, "a hatch for every seat");
                 Vector3 size = MoneyHatch.Size;
+                float reach = (size.x + size.z) / 2f * Mathf.Sqrt(0.5f);
                 for (int seat = 0; seat < 8; seat++)
                 {
                     MoneyHatch hatch = board.HatchOf(seat);
                     Vector3 spot = hatch.transform.localPosition;
-                    Assert.AreEqual(board.SurfaceY, spot.y, 1e-4f, $"seat {seat + 1}: on the squares");
-                    Vector3 corner = new Vector3(Mathf.Sign(spot.x) * half, 0f, Mathf.Sign(spot.z) * half);
+                    Assert.AreEqual(BoardView.LawnHeight, spot.y, 1e-4f, $"seat {seat + 1}: on the grass");
                     Vector3 outward = BoardView.MoneyEdgeOutward(seat, yaw);
                     Vector3 along = Vector3.Cross(Vector3.up, outward);
-                    Vector3 off = new Vector3(spot.x - corner.x, 0f, spot.z - corner.z);
-                    Assert.LessOrEqual(Mathf.Abs(Vector3.Dot(off, outward)) + size.z / 2f, depth / 2f + 1e-3f, $"seat {seat + 1}: inside the corner square");
-                    Assert.LessOrEqual(Mathf.Abs(Vector3.Dot(off, along)) + size.x / 2f, depth / 2f + 1e-3f, $"seat {seat + 1}: inside the corner square");
-                    Assert.AreEqual(half, Vector3.Dot(corner, outward), 1e-3f, $"seat {seat + 1}: a corner of its own edge");
+                    Assert.LessOrEqual(Vector3.Dot(spot, outward) + size.z / 2f, lawnHalf - 0.15f, $"seat {seat + 1}: inside the lawn's edge");
+                    Assert.LessOrEqual(Mathf.Abs(Vector3.Dot(spot, along)) + size.x / 2f, lawnHalf - 0.15f, $"seat {seat + 1}: inside the lawn");
+                    Assert.Greater(Vector3.Dot(spot, outward), lawnHalf * 0.75f, $"seat {seat + 1}: on its own side of the lawn");
                     Vector3 pile = BoardView.MoneyPileSpot(seat, 8, board.HalfExtent, yaw);
-                    Assert.AreEqual(Mathf.Sign(Vector3.Dot(pile, along)), Mathf.Sign(Vector3.Dot(spot, along)), $"seat {seat + 1}: the end nearest its case");
+                    Assert.AreEqual(Mathf.Sign(Vector3.Dot(pile, along)), Mathf.Sign(Vector3.Dot(spot, along)), $"seat {seat + 1}: beside its case's way");
                     Assert.That(Quaternion.Angle(hatch.transform.localRotation, BoardView.MoneyPileTurn(seat, yaw)), Is.LessThan(0.01f), $"seat {seat + 1}: turned as its case, so the money fits");
+
+                    // Clear of the logo above the middle and of the safe at the left.
+                    float logoHalf = inner * BoardView.TitleSize / 2f, logoUp = inner * BoardView.TitleOffset;
+                    bool onLogo = Mathf.Abs(Vector3.Dot(spot, right)) - reach < logoHalf && Mathf.Abs(Vector3.Dot(spot, up) - logoUp) - reach < logoHalf;
+                    Assert.IsFalse(onLogo, $"seat {seat + 1}: clear of the logo");
+                    Vector3 safe = board.Safe.localPosition;
+                    Assert.Greater(Vector3.Distance(new Vector3(spot.x, 0f, spot.z), new Vector3(safe.x, 0f, safe.z)), BoardView.SafeSize / 2f + reach, $"seat {seat + 1}: clear of the safe");
                     for (int other = 0; other < seat; other++)
                     {
                         Vector3 gap = spot - board.HatchOf(other).transform.localPosition;
-                        Assert.Greater(Mathf.Max(Mathf.Abs(gap.x), Mathf.Abs(gap.z)), size.z, $"seats {other + 1} and {seat + 1}: their hatches lie apart");
+                        Assert.Greater(gap.magnitude, size.x, $"seats {other + 1} and {seat + 1}: their hatches lie apart");
                     }
                 }
 

@@ -533,7 +533,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Lays an open money case on a shelf at the table's edge for each seat, in the seat's colour, in seat order, and puts
-        /// the seat's money hatch on the corner square at its end of that edge.
+        /// the seat's money hatch on the lawn on that edge's side.
         /// </summary>
         public void CreateMoneyPiles(IReadOnlyList<Color> seatColors)
         {
@@ -548,7 +548,7 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
                 _shelves.Add(ModelParts.Create($"Money shelf of seat {seat + 1}", transform, shelfMesh, PlateColor, 0.25f).transform);
-                if (Layout.HasCorners) _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}", seatColors[seat]));
+                _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}", seatColors[seat]));
             }
 
             PlaceMoneyPiles(_yaw);
@@ -628,12 +628,12 @@ namespace Lazpoly.Presentation.Tabletop
                     - Vector3.up * (ShelfDrop + shelf.y / 2f);
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);
                 if (seat >= _hatches.Count) continue;
-                _hatches[seat].transform.localPosition = HatchSpot(seat, Layout.HalfSize, Layout.Depth, yaw) + Vector3.up * SurfaceY;
+                _hatches[seat].transform.localPosition = HatchSpot(seat, _moneyPiles.Count, _inner * LawnShare / 2f, yaw) + Vector3.up * LawnHeight;
                 _hatches[seat].transform.localRotation = MoneyPileTurn(seat, yaw);
             }
         }
 
-        /// <summary>The seats' money hatches on the corner squares, in seat order (none on a board without corners).</summary>
+        /// <summary>The seats' money hatches on the lawn, in seat order.</summary>
         public IReadOnlyList<MoneyHatch> MoneyHatches => _hatches;
 
         /// <summary>A seat's money case, or null.</summary>
@@ -642,23 +642,20 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>A seat's money hatch, or null.</summary>
         public MoneyHatch HatchOf(int seat) => seat >= 0 && seat < _hatches.Count ? _hatches[seat] : null;
 
-        /// <summary>How far a hatch keeps from the corner square's outer side and from the edge's next square.</summary>
-        public const float HatchInset = 0.1f;
+        /// <summary>
+        /// How far a hatch's middle lies in from the lawn's edge, and how far either side of the edge's middle when two seats
+        /// share the edge: the top ones stay clear of the logo, the side ones of the safe and the pot.
+        /// </summary>
+        public const float HatchInset = 0.61f;
+        public const float HatchSpread = 1.25f;
 
         /// <summary>
-        /// Where a seat's money hatch lies, in the board's frame at the squares' foot: on the corner square at the end of the
-        /// seat's edge nearest its case (seats 1-4 one end, 5-8 the other, so each corner holds at most two), in the quarter
-        /// by that edge's outer side and its next square; a corner's other seat takes the quarter by its own edge.
+        /// Where a seat's money hatch lies on the lawn, in the board's frame at the lawn's foot (the owner's wish: in the green
+        /// middle, on the player's side): near the middle of the lawn's edge that faces the seat's case, beside it the way its
+        /// case lies when two seats share the edge.
         /// </summary>
-        public static Vector3 HatchSpot(int seat, float halfSize, float depth, float yaw)
-        {
-            Vector3 outward = MoneyEdgeOutward(seat, yaw);
-            Vector3 along = Vector3.Cross(Vector3.up, outward);
-            Vector3 end = seat < 4 ? -along : along;
-            Vector3 corner = (outward + end) * halfSize;
-            Vector3 size = MoneyHatch.Size;
-            return corner + outward * (depth / 2f - HatchInset - size.z / 2f) - end * (depth / 2f - HatchInset - size.x / 2f);
-        }
+        public static Vector3 HatchSpot(int seat, int seats, float lawnHalf, float yaw) =>
+            MoneyEdgeOutward(seat, yaw) * (lawnHalf - HatchInset) + MoneyEdgeAlong(seat, seats, yaw) * (HatchSpread / MoneyPileSpread);
 
         /// <summary>The safe swells for a moment as money paid to the bank arrives under the table.</summary>
         public void NudgeSafe()
