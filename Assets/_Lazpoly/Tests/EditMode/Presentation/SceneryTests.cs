@@ -373,7 +373,16 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsNotNull(lawn);
                 var names = new List<string>();
                 foreach (Transform child in lawn) names.Add(child.name);
-                CollectionAssert.AreEquivalent(new[] { "Gravel", "Grass" }, names, "no trees, bushes, bunting, paths or patches: the owner wants plain grass");
+                CollectionAssert.AreEquivalent(new[] { "Road", "Grass" }, names, "no trees, bushes, bunting, paths or patches: the owner wants plain grass");
+
+                // Round the lawn an asphalt road with a dashed middle line (Faz 25).
+                var road = (Texture2D)lawn.Find("Road").GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
+                Assert.IsNotNull(road, "the road has its asphalt texture");
+                float strip = (1f - BoardView.LawnShare) / 2f, middle = strip / 2f, halfLine = strip * RoadSkin.LineShare / 2f;
+                Assert.IsTrue(RoadSkin.OnLine(middle, (14f + RoadSkin.DashShare / 2f) / RoadSkin.DashesPerSide, middle, halfLine), "a dash on the strip's middle");
+                Assert.IsFalse(RoadSkin.OnLine(middle, (14f + (1f + RoadSkin.DashShare) / 2f) / RoadSkin.DashesPerSide, middle, halfLine), "a gap between dashes");
+                Assert.IsFalse(RoadSkin.OnLine(0.5f, 0.5f, middle, halfLine), "no line under the lawn");
+                Assert.Less(RoadSkin.Asphalt.grayscale, 0.35f, "the road is dark asphalt");
             }
             finally
             {

@@ -53,6 +53,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Top of the lawn in the middle of the board, where the dice land.</summary>
         public const float LawnHeight = 0.08f;
 
+        /// <summary>How much of the inner square the lawn covers; the road shows round it.</summary>
+        public const float LawnShare = 0.9f;
+
         /// <summary>Where the dice score stands on the lawn, towards the top of the screen from the middle, in lawn widths.</summary>
         public const float ScoreOffset = 0.17f;
 
@@ -124,7 +127,6 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
-        private static readonly Color RoadColor = new Color(0.72f, 0.68f, 0.60f);
         private static readonly Color GrassColor = new Color(0.47f, 0.70f, 0.36f);
         /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
         public static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
@@ -1153,10 +1155,12 @@ namespace Lazpoly.Presentation.Tabletop
             lawn.transform.SetParent(transform, false);
             Transform root = lawn.transform;
 
-            GameObject road = ModelParts.Create("Gravel", root, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f, 2), RoadColor, 0.1f);
+            // An asphalt road with a dashed middle line round the lawn (Faz 25, the owner's wish; it was plain gravel).
+            float grass = inner * LawnShare;
+            GameObject road = ModelParts.Create("Road", root, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f, 2), Color.white, 0.15f);
+            ModelParts.Skin(road, RoadSkin.Create((1f - LawnShare) / 2f));
             road.transform.localPosition = new Vector3(0f, 0.02f, 0f);
 
-            float grass = inner * 0.9f;
             GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), GrassColor, 0.05f);
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
         }
