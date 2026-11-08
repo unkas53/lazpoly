@@ -385,12 +385,11 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void DebtBlocksTheTurnUntilPaidAfterSellingAProperty()
         {
-            // Alice starts on square 5 and rolls 1+1 to land on Bob's A1 (one house: rent 50). She holds 40 and Solo.
+            // Alice starts on square 5 and rolls 1+1 to land on Bob's A1 (one house, without the rest of the colour: rent 50).
+            // She holds 40 and Solo.
             var engine = NewGame(money: 1000, dice: new[] { 1, 1 });
             Give(engine, A1, Bob);
-            Give(engine, A2, Bob);
             GameStateReducer.Apply(engine.State, new BuildingLevelChangedEvent(A1, 1));
-            GameStateReducer.Apply(engine.State, new BuildingLevelChangedEvent(A2, 1));
             Give(engine, Solo, Alice);
             GameStateReducer.Apply(engine.State, new MoneyChangedEvent(Alice, -960, MoneyReason.Tax));
             GameStateReducer.Apply(engine.State, new PlayerMovedEvent(Alice, 0, 5, false));
