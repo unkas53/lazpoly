@@ -106,13 +106,13 @@ namespace Lazpoly.Presentation.Tests
                     Transform tray = board.MoneyPiles[seat].Root;
                     Assert.AreEqual(tray.position.y, shelf.max.y, 1e-3f, $"seat {seat + 1}: the tray lies on its shelf");
                     Assert.Less(shelf.max.y, 0f, $"seat {seat + 1}: the shelf a little under the plate's top");
-                    foreach (Transform half in new[] { board.MoneyPiles[seat].Case, board.MoneyPiles[seat].Lid })
+                    foreach (Transform part in new[] { board.MoneyPiles[seat].Case, board.MoneyPiles[seat].Lid })
                     foreach (float x in new[] { -0.5f, 0.5f })
                     foreach (float z in new[] { -0.5f, 0.5f })
                     {
-                        Vector3 corner = half.TransformPoint(Vector3.Scale(MoneyPile.CaseSize, new Vector3(x, 0f, z)));
+                        Vector3 corner = part.TransformPoint(Vector3.Scale(MoneyPile.CaseSize, new Vector3(x, 0f, z)));
                         Assert.IsTrue(shelf.min.x - 1e-3f <= corner.x && corner.x <= shelf.max.x + 1e-3f && shelf.min.z - 1e-3f <= corner.z && corner.z <= shelf.max.z + 1e-3f,
-                            $"seat {seat + 1}: the {half.name}'s corners on the shelf");
+                            $"seat {seat + 1}: the {part.name}'s corners on the shelf");
                     }
 
                     Vector3 lidWay = board.transform.InverseTransformDirection(board.MoneyPiles[seat].Lid.position - tray.position);
