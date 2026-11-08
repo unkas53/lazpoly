@@ -150,7 +150,7 @@ namespace Lazpoly.Core.Engine
             int ownerId = state.GetOwner(squareIndex);
             if (ownerId == GameState.NoOwner) return 0;
 
-            if (square.IsResort) return square.BaseRent * ResortsOwned(board, state, ownerId);
+            if (square.IsResort) return ResortRent(square.BaseRent, ResortsOwned(board, state, ownerId));
 
             // The whole colour group in one hand multiplies the rent at every level, houses and hotel too (the owner's wish, Faz 26).
             int level = state.GetBuildingLevel(squareIndex);
@@ -184,7 +184,13 @@ namespace Lazpoly.Core.Engine
             return false;
         }
 
-        /// <summary>How many holiday resorts <paramref name="ownerId"/> holds; each one's rent is its base rent times this.</summary>
+        /// <summary>
+        /// A holiday resort's rent when its owner holds <paramref name="held"/> of them: its base rent, doubled for every
+        /// further resort (25K, 50K, 100K, 200K; the owner's wish, Faz 27). 0 when none is held.
+        /// </summary>
+        public static int ResortRent(int baseRent, int held) => held <= 0 ? 0 : baseRent << Math.Min(held - 1, 20);
+
+        /// <summary>How many holiday resorts <paramref name="ownerId"/> holds; each one's rent doubles with every further one (<see cref="ResortRent"/>).</summary>
         public static int ResortsOwned(BoardDefinition board, GameState state, int ownerId)
         {
             int owned = 0;

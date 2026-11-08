@@ -19,13 +19,13 @@ namespace Lazpoly.Presentation.Tests
         public void APaymentIsShownInMoneyStacksAndGoldBars()
         {
             CollectionAssert.IsEmpty(MoneyFlight.Pieces(0));
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(10), "even a small payment goes as a stack");
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(100));
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(260));
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold }, MoneyFlight.Pieces(500), "a gold bar for every full 500");
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold }, MoneyFlight.Pieces(650), "the gold last, at the row's end");
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold, MoneyPiece.Gold }, MoneyFlight.Pieces(5000));
-            Assert.LessOrEqual(MoneyFlight.Pieces(499).Length, MoneyFlight.MaxPieces);
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(10000), "even a small payment goes as a stack");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyFlight.Pieces(100000));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyFlight.Pieces(260000));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold }, MoneyFlight.Pieces(500000), "a gold bar for every full 500K");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold }, MoneyFlight.Pieces(650000), "the gold last, at the row's end");
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack, MoneyPiece.Stack, MoneyPiece.Gold, MoneyPiece.Gold }, MoneyFlight.Pieces(5000000));
+            Assert.LessOrEqual(MoneyFlight.Pieces(499000).Length, MoneyFlight.MaxPieces);
             foreach (MoneyPiece piece in new[] { MoneyPiece.Stack, MoneyPiece.Gold })
             {
                 Assert.GreaterOrEqual(MoneyBundle.Height(piece), 0.25f * MoneyBundle.Width(piece), $"{piece}: thick, not a single note");
@@ -36,9 +36,9 @@ namespace Lazpoly.Presentation.Tests
         public void EachPlayersMoneyLiesAtTheTablesEdgeFacingTheirCorner()
         {
             CollectionAssert.IsEmpty(MoneyPile.Pieces(0));
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyPile.Pieces(50));
-            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyPile.Pieces(1500));
-            Assert.AreEqual(MoneyPile.MaxPieces, MoneyPile.Pieces(100000).Length);
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyPile.Pieces(50000));
+            CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyPile.Pieces(1500000));
+            Assert.AreEqual(MoneyPile.MaxPieces, MoneyPile.Pieces(100000000).Length);
             Assert.AreEqual(0f, MoneyPile.SlotOffset(0, 1).x, 1e-5f, "a lone piece in the middle");
             for (int i = 0; i < MoneyPile.MaxPieces; i++)
             {
@@ -75,8 +75,8 @@ namespace Lazpoly.Presentation.Tests
                 BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
                 board.CreateMoneyPiles(new[] { Color.red, Color.blue, Color.green });
                 Assert.AreEqual(3, board.MoneyPiles.Count);
-                board.ShowSeatMoney(1, 1500);
-                CollectionAssert.AreEqual(MoneyPile.Pieces(1500), board.MoneyPiles[1].Shown);
+                board.ShowSeatMoney(1, 1500000);
+                CollectionAssert.AreEqual(MoneyPile.Pieces(1500000), board.MoneyPiles[1].Shown);
                 Assert.AreSame(board.MoneyPiles[1], board.MoneyPileOf(1));
                 Assert.IsNull(board.MoneyPileOf(3), "no case for a seat nobody sits in");
                 Assert.AreEqual(3, board.MoneyShelves.Count, "every tray stands on a shelf");
@@ -183,10 +183,10 @@ namespace Lazpoly.Presentation.Tests
             {
                 BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
                 board.CreateMoneyPiles(new[] { Color.red, Color.blue, Color.green });
-                float seconds = MoneyFlight.Fly(holder.transform, 260, board.MoneyPileOf(0), board.HatchOf(0), board.MoneyPileOf(1), board.HatchOf(1), 2f);
+                float seconds = MoneyFlight.Fly(holder.transform, 260000, board.MoneyPileOf(0), board.HatchOf(0), board.MoneyPileOf(1), board.HatchOf(1), 2f);
                 Assert.AreEqual(MoneyFlight.Seconds(3, true) / 2f, seconds, 1e-4f, "the animation speed setting shortens it");
                 MoneyFlight[] pieces = holder.GetComponentsInChildren<MoneyFlight>();
-                Assert.AreEqual(3, pieces.Length, "three stacks for 260");
+                Assert.AreEqual(3, pieces.Length, "three stacks for 260K");
                 for (int i = 0; i < pieces.Length; i++)
                 {
                     Transform piece = pieces[i].transform;
@@ -197,7 +197,7 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 Assert.AreEqual(0f, MoneyFlight.Fly(holder.transform, 0, board.MoneyPileOf(0), board.HatchOf(0), null, null, 1f), "nothing to pay, nothing flies");
-                Assert.Greater(MoneyFlight.Fly(holder.transform, 100, board.MoneyPileOf(2), board.HatchOf(2), null, null, 1f), 0f, "to the bank");
+                Assert.Greater(MoneyFlight.Fly(holder.transform, 100000, board.MoneyPileOf(2), board.HatchOf(2), null, null, 1f), 0f, "to the bank");
             }
             finally
             {
@@ -226,10 +226,10 @@ namespace Lazpoly.Presentation.Tests
             {
                 BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
                 board.CreateMoneyPiles(new[] { Color.red, Color.blue });
-                float seconds = MoneyFlight.Deal(holder.transform, 1500, board.MoneyPileOf(1), board.HatchOf(1), 1f);
+                float seconds = MoneyFlight.Deal(holder.transform, 1500000, board.MoneyPileOf(1), board.HatchOf(1), 1f);
                 Assert.AreEqual(MoneyFlight.Seconds(count, true) - start, seconds, 1e-4f);
                 MoneyFlight[] pieces = holder.GetComponentsInChildren<MoneyFlight>();
-                Assert.AreEqual(MoneyFlight.Pieces(1500).Length, pieces.Length);
+                Assert.AreEqual(MoneyFlight.Pieces(1500000).Length, pieces.Length);
                 foreach (MoneyFlight piece in pieces)
                 {
                     Assert.AreEqual(Vector3.zero, piece.transform.localScale, "out of sight under the hatch at first");

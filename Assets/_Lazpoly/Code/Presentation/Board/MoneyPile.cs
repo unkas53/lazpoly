@@ -16,9 +16,9 @@ namespace Lazpoly.Presentation.Tabletop
     /// </summary>
     public sealed class MoneyPile
     {
-        public const int GoldValue = 1000;
+        public const int GoldValue = 1000000;
         public const int MaxGold = 2;
-        public const int StackValue = 300;
+        public const int StackValue = 300000;
         public const int MaxPieces = 4;
 
         /// <summary>The pieces lie at this share of their flying size, side by side in one row with this gap between them.</summary>

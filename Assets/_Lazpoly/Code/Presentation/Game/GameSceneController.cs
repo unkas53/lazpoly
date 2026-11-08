@@ -1574,8 +1574,8 @@ namespace Lazpoly.Presentation.Game
         }
 
         /// <summary>A sum worth reacting to: from this much on a figure cheers at money coming in or sulks at money going out.</summary>
-        public const int CheerFrom = 150;
-        public const int SulkFrom = 100;
+        public const int CheerFrom = 300000;
+        public const int SulkFrom = 200000;
 
         /// <summary>The figure's reaction to a change of money: a cheer for a good sum coming in, a sulk for rent or tax going out.</summary>
         public static int Reaction(int delta) => delta >= CheerFrom ? 1 : delta <= -SulkFrom ? -1 : 0;
@@ -1599,7 +1599,7 @@ namespace Lazpoly.Presentation.Game
         private void ShowMoney(MoneyChangedEvent money)
         {
             if (money.Delta == 0 || !_pawns.TryGetValue(money.PlayerId, out PawnView pawn) || !pawn.gameObject.activeInHierarchy) return;
-            string text = money.Delta > 0 ? "+" + Lang.N(money.Delta) : Lang.N(money.Delta);
+            string text = money.Delta > 0 ? "+" + Lang.M(money.Delta) : Lang.M(money.Delta);
             Color color = money.Delta > 0 ? MoneyGain : MoneyLoss;
             FloatingText.Spawn(transform, MoneySpot(pawn), text, color);
         }

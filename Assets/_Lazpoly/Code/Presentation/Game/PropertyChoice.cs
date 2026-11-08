@@ -59,7 +59,7 @@ namespace Lazpoly.Presentation.Game
                 // A resort's rent is its base times the resorts its owner holds, this one counted when buying it.
                 int held = GameRules.ResortsOwned(board, state, player.Id) + (buying && state.GetOwner(squareIndex) != player.Id ? 1 : 0);
                 return new PropertyChoice(squareIndex, buying, level, 0, buying ? square.Price : 0, 0, player.Money, player.Laps,
-                    false, false, square.BaseRent * Math.Max(1, held), square.DevelopedRents, 1) { Resort = true, ResortStage = Math.Max(1, held) };
+                    false, false, GameRules.ResortRent(square.BaseRent, Math.Max(1, held)), square.DevelopedRents, 1) { Resort = true, ResortStage = Math.Max(1, held) };
             }
 
             return new PropertyChoice(squareIndex, buying, level, allowed, buying ? square.Price : 0, square.BuildingCost, player.Money, player.Laps,

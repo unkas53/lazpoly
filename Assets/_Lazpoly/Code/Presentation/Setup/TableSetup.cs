@@ -13,7 +13,7 @@ namespace Lazpoly.Presentation.Setup
     public static class TableSetup
     {
         /// <summary>Starting money choices; 0 means the board's own amount.</summary>
-        public static readonly int[] StartingMoneyChoices = { 0, 1000, 2000 };
+        public static readonly int[] StartingMoneyChoices = { 0, 1000000, 3000000 };
 
         /// <summary>Round limit choices: unlimited, a normal short game and a quick one.</summary>
         public static readonly int[] RoundLimitChoices = { 0, 25, 15 };
@@ -27,7 +27,7 @@ namespace Lazpoly.Presentation.Setup
         public static string RoundLimitText(int limit) =>
             limit == 0 ? L("Sınırsız") : limit == RoundLimitChoices[1] ? F($"Kısa ({limit} tur)") : F($"Çok kısa ({limit} tur)");
 
-        public static string StartingMoneyText(int money, int boardMoney) => money == 0 ? F($"{boardMoney} (normal)") : N(money);
+        public static string StartingMoneyText(int money, int boardMoney) => money == 0 ? F($"{boardMoney} (normal)") : M(money);
 
         /// <summary>"10 sn", "15 sn"... or "Süresiz".</summary>
         public static string TurnSecondsText(int seconds) => seconds == 0 ? L("Süresiz") : F($"{seconds} sn");

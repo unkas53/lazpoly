@@ -83,7 +83,7 @@ namespace Lazpoly.Presentation.Tests
                 ai.Add(i + 1, AiDifficulty.Normal);
             }
 
-            var table = new Core.Rules.TableRules(2000, roundLimit: 8);
+            var table = new Core.Rules.TableRules(3000000, roundLimit: 8);
             LocalGame game = LocalGame.Create(data.Board, data.Rules.WithTable(table), seats, ai, 7UL);
             LocalGameSession session = game.Session;
             GameEndedEvent ended = null;
@@ -95,7 +95,7 @@ namespace Lazpoly.Presentation.Tests
                 }
             };
 
-            Assert.AreEqual(2000, session.State.Players[0].Money);
+            Assert.AreEqual(3000000, session.State.Players[0].Money);
             for (int commands = 0; session.State.Phase != GamePhase.GameOver; commands++)
             {
                 Assert.Less(commands, CommandLimit, "The short game did not end.");

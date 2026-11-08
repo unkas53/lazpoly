@@ -57,11 +57,45 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.IsFalse(data.Board.HasPot, "the tea break gave way to the jail; taxes and fines go to the bank");
             Assert.AreEqual(8, data.Board.JailIndex, "the jail stands on the first corner after the start");
-            Assert.AreEqual(50, data.Board[data.Board.JailIndex].Fee);
+            Assert.AreEqual(200000, data.Board[data.Board.JailIndex].Fee, "200K to leave at once (the owner's wish, Faz 27)");
             Assert.AreEqual(3, data.Rules.JailTurns);
             Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == CardKind.GoToJail), "the card that led to the tea break now leads to jail");
             Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
             foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
+        }
+
+        [Test]
+        public void TheShippedBoardCountsInThousandsAndMillions()
+        {
+            // The owner's numbers (Faz 27): 2M to start, 300K for passing the start, 50K for the bus and the cup.
+            BoardData data = BoardDataLoader.LoadFromResources();
+            Assert.AreEqual(2000000, data.Rules.StartingMoney);
+            Assert.AreEqual(300000, data.Rules.PassStartBonus);
+            int previous = 0;
+            for (int i = 0; i < data.Board.Count; i++)
+            {
+                SquareDefinition square = data.Board[i];
+                if (square.Type == SquareType.Travel || square.Type == SquareType.Cup) Assert.AreEqual(50000, square.Fee, square.Name);
+                if (square.Type != SquareType.Property || square.IsResort) continue;
+                Assert.That(square.Price, Is.GreaterThanOrEqualTo(previous), $"{square.Name}: towns get dearer along the lap");
+                previous = square.Price;
+                Assert.AreEqual(0, square.Price % 10000, $"{square.Name}: a tidy price");
+                Assert.That(square.BuildingCost, Is.InRange(square.Price / 3, square.Price), $"{square.Name}: a house costs a share of the town");
+                int rent = square.BaseRent;
+                foreach (int next in square.DevelopedRents)
+                {
+                    Assert.Greater(next, rent, $"{square.Name}: every building raises the rent");
+                    rent = next;
+                }
+
+                Assert.Less(square.DevelopedRents[square.DevelopedRents.Count - 1] * data.Rules.FullGroupRentMultiplier, data.Rules.StartingMoney * 5,
+                    $"{square.Name}: even the doubled hotel stays within five starting purses");
+            }
+
+            foreach (CardDefinition card in data.Board.Cards)
+            {
+                if (card.Kind == CardKind.Collect || card.Kind == CardKind.Pay) Assert.That(card.Amount, Is.InRange(10000, 300000), card.Text);
+            }
         }
 
         [Test]
@@ -182,8 +216,8 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsFalse(sides[i / side], $"{square.Name} shares its side with another resort");
                 sides[i / side] = true;
                 Assert.IsFalse(square.IsDevelopable, $"{square.Name} takes no buildings");
-                Assert.AreEqual(50, square.BaseRent);
-                Assert.AreEqual(200, square.Price);
+                Assert.AreEqual(25000, square.BaseRent);
+                Assert.AreEqual(200000, square.Price);
                 Assert.IsFalse(string.IsNullOrWhiteSpace(data.GroupName(square.GroupId)));
             }
 

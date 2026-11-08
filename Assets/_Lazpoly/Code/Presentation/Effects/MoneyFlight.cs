@@ -16,12 +16,12 @@ namespace Lazpoly.Presentation.Effects
     public sealed class MoneyFlight : MonoBehaviour
     {
         /// <summary>
-        /// A gold bar for every full <see cref="GoldValue"/> (at most <see cref="MaxGold"/>), a money stack for every hundred
-        /// started of the rest; at least one piece and at most <see cref="MaxPieces"/>.
+        /// A gold bar for every full <see cref="GoldValue"/> (at most <see cref="MaxGold"/>), a money stack for every
+        /// <see cref="BundleValue"/> started of the rest; at least one piece and at most <see cref="MaxPieces"/>.
         /// </summary>
-        public const int GoldValue = 500;
+        public const int GoldValue = 500000;
         public const int MaxGold = 2;
-        public const int BundleValue = 100;
+        public const int BundleValue = 100000;
         public const int MaxPieces = 4;
 
         /// <summary>From the case to over the hatch (and from over the other hatch to the other case), at normal speed.</summary>

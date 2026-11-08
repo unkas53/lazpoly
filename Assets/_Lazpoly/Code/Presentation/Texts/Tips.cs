@@ -42,7 +42,8 @@ namespace Lazpoly.Presentation.Texts
     /// </summary>
     public static class Tips
     {
-        public const int LowMoney = 150;
+        /// <summary>Money below this share of the starting money (in percent) counts as running short.</summary>
+        public const int LowMoneyPercent = 10;
 
         /// <summary>The most useful unseen hint for this player now, or null.</summary>
         public static Tip? Next(BoardDefinition board, RulesConfig rules, GameState state, int playerId, Func<TipId, bool> seen)
@@ -73,7 +74,7 @@ namespace Lazpoly.Presentation.Texts
                        L("Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır."))
                    ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
                        F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
-                   ?? Offer(TipId.ShortOfMoney, me.Money < LowMoney && HasSellable(board, state, playerId),
+                   ?? Offer(TipId.ShortOfMoney, me.Money < rules.StartingMoney * LowMoneyPercent / 100 && HasSellable(board, state, playerId),
                        L("Paran azaldı. Bir ödemeye yetmezse şehirlerin haritada halkalanır: tıkladığını bankaya satarsın, banka fiyatın yarısını öder."))
                    ?? Offer(TipId.Pot, board.HasPot && state.Pot >= 100,
                        F($"Çay kumbarasında {state.Pot} birikti. Vergiler ve kart cezaları buraya girer; Çay Molası'na gelen hepsini alır."))

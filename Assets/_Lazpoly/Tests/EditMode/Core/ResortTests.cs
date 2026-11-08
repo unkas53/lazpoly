@@ -31,11 +31,11 @@ namespace Lazpoly.Core.Tests
             GameStateReducer.Apply(engine.State, new PropertyOwnerChangedEvent(square, engine.State.GetOwner(square), playerId));
 
         [Test]
-        public void EachResortsRentIsFiftyTimesTheResortsItsOwnerHolds()
+        public void EachResortsRentDoublesWithEveryFurtherResortItsOwnerHolds()
         {
             GameEngine engine = NewGame();
             Assert.AreEqual(0, engine.CalculateRent(1), "nobody owns it yet");
-            int[] expected = { 50, 100, 150, 200 };
+            int[] expected = { 50, 100, 200, 400 }; // 25K, 50K, 100K, 200K on the shipped board (the owner's wish, Faz 27)
             for (int held = 1; held <= Resorts.Length; held++)
             {
                 Give(engine, Resorts[held - 1], Bob);

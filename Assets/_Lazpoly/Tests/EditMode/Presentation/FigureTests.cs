@@ -86,9 +86,9 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual((0f, 0f), CharacterMotion.WalkPose(0f, 1.3f), "no lean when standing");
             Assert.That(CharacterMotion.WalkPose(1f, 0f).Lean, Is.EqualTo(CharacterMotion.WalkLeanDegrees));
 
-            Assert.AreEqual(1, GameSceneController.Reaction(200), "passing start is worth a cheer");
-            Assert.AreEqual(-1, GameSceneController.Reaction(-120), "rent is worth a sulk");
-            Assert.AreEqual(0, GameSceneController.Reaction(-20), "small change is not");
+            Assert.AreEqual(1, GameSceneController.Reaction(300000), "passing start is worth a cheer");
+            Assert.AreEqual(-1, GameSceneController.Reaction(-250000), "rent is worth a sulk");
+            Assert.AreEqual(0, GameSceneController.Reaction(-20000), "small change is not");
         }
 
         [TestCase(BoardCameraRig.BaseYaw)]

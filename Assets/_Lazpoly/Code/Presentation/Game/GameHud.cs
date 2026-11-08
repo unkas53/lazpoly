@@ -763,7 +763,7 @@ namespace Lazpoly.Presentation.Game
 
         private static void ShowMoney(Text label, RollingNumber money)
         {
-            label.text = Lang.N(money.Shown);
+            label.text = Lang.M(money.Shown);
             label.color = money.Direction > 0 ? UiTheme.Gain : money.Direction < 0 ? UiTheme.Warning : UiTheme.Text; // At rest in the kit's ink.
         }
 
@@ -1514,9 +1514,9 @@ namespace Lazpoly.Presentation.Game
                     continue;
                 }
 
-                UiBuilder.Fix(row.Label(Lang.N(player.Money), color: color, alignment: TextAnchor.MiddleRight), width: 80f);
+                UiBuilder.Fix(row.Label(Lang.M(player.Money), color: color, alignment: TextAnchor.MiddleRight), width: 80f);
                 UiBuilder.Fix(row.Label(OwnedCount(state, player.Id).ToString(), color: color, alignment: TextAnchor.MiddleRight), width: 60f);
-                UiBuilder.Fix(row.Label(Lang.N(GameRules.NetWorth(board, state, player.Id)), color: UiTheme.Money, alignment: TextAnchor.MiddleRight), width: 90f);
+                UiBuilder.Fix(row.Label(Lang.M(GameRules.NetWorth(board, state, player.Id)), color: UiTheme.Money, alignment: TextAnchor.MiddleRight), width: 90f);
             }
         }
 

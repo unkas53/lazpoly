@@ -68,12 +68,31 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("1.500", Lang.N(1500));
             Assert.AreEqual("-2.000.000", Lang.N(-2000000));
             Assert.AreEqual("999", Lang.N(999));
-            Assert.AreEqual("Kira 1.500 ödendi, tur 12", Lang.F($"Kira {1500} ödendi, tur {12}"), "whole numbers in texts are grouped too");
+            Assert.AreEqual("Kira 1,5K ödendi, tur 12", Lang.F($"Kira {1500} ödendi, tur {12}"), "whole numbers in texts are money, written short");
             Assert.AreEqual("0.5", Lang.F($"{0.5f}"), "only whole numbers; the rest keeps the invariant form");
 
             Lang.Set(Language.English);
             Assert.AreEqual("1,500", Lang.N(1500));
-            Assert.AreEqual("1,500 (standard)", Lang.F($"{1500} (normal)"), "the text is translated and the number grouped");
+            Assert.AreEqual("2M (standard)", Lang.F($"{2000000} (normal)"), "the text is translated and the money written short");
+        }
+
+        [Test]
+        public void MoneyIsWrittenInThousandsAndMillions()
+        {
+            Assert.AreEqual("950", Lang.M(950));
+            Assert.AreEqual("0", Lang.M(0));
+            Assert.AreEqual("1K", Lang.M(1000));
+            Assert.AreEqual("12,5K", Lang.M(12500));
+            Assert.AreEqual("300K", Lang.M(300000));
+            Assert.AreEqual("999,9K", Lang.M(999999), "cut, never rounded up to a million");
+            Assert.AreEqual("2M", Lang.M(2000000));
+            Assert.AreEqual("1,25M", Lang.M(1250000));
+            Assert.AreEqual("1,99M", Lang.M(1999999));
+            Assert.AreEqual("-200K", Lang.M(-200000));
+            Assert.AreEqual("+300K", "+" + Lang.M(300000));
+
+            Lang.Set(Language.English);
+            Assert.AreEqual("1.25M", Lang.M(1250000), "the decimal mark follows the language");
         }
 
         [Test]

@@ -112,7 +112,7 @@ namespace Lazpoly.App.AI
                 if (definition.Type == SquareType.Property && view.State.GetOwner(square) == GameState.NoOwner &&
                     view.Me.Money - fee - definition.Price >= view.Reserve)
                 {
-                    score = definition.Price + (view.CompletesGroup(square, PlayerId) ? 10000 : 0);
+                    score = definition.Price + (view.CompletesGroup(square, PlayerId) ? CompletesGroupBonus : 0);
                 }
                 else if (definition.Type == SquareType.Pot && view.State.Pot > fee * 2)
                 {
@@ -215,6 +215,9 @@ namespace Lazpoly.App.AI
         }
 
         /// <summary>Rounds after which offers grow each round, so a table where nobody sells never plays on forever.</summary>
+        /// <summary>How much a ride's target that completes a colour group outscores any price (prices run to half a million).</summary>
+        public const int CompletesGroupBonus = 100000000;
+
         public const int StalemateRound = 12;
         public const int StalemateBonusPercent = 15;
 

@@ -180,7 +180,7 @@ namespace Lazpoly.Presentation.Game
         {
             UiBuilder row = card.Row();
             row.Label(label, UiTextStyle.Body, alignment: TextAnchor.MiddleRight);
-            Text value = row.Label(Lang.N(amount), UiTextStyle.Heading, UiTheme.Money, TextAnchor.MiddleLeft);
+            Text value = row.Label(Lang.M(amount), UiTextStyle.Heading, UiTheme.Money, TextAnchor.MiddleLeft);
             value.font = UiTheme.BlackFont;
         }
 

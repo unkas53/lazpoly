@@ -66,7 +66,7 @@ namespace Lazpoly.Presentation.Texts
                     }
                     else
                     {
-                        info.Rows.Add(new SquareInfoRow(L("Ödenecek"), square.TaxAmount.ToString()));
+                        info.Rows.Add(new SquareInfoRow(L("Ödenecek"), M(square.TaxAmount)));
                     }
 
                     info.Notes.Add(board.HasPot ? L("Buraya gelen öder; para çay kumbarasına girer.") : L("Buraya gelen bankaya öder."));
@@ -84,7 +84,7 @@ namespace Lazpoly.Presentation.Texts
                 case SquareType.Pot:
                 {
                     var info = new SquareInfo(L(square.Name), L("Çay kumbarası"));
-                    info.Rows.Add(new SquareInfoRow(L("Kumbarada"), state.Pot.ToString(), state.Pot > 0));
+                    info.Rows.Add(new SquareInfoRow(L("Kumbarada"), M(state.Pot), state.Pot > 0));
                     info.Notes.Add(L("Vergiler ve kart cezaları kumbarada birikir; buraya gelen hepsini alır."));
                     return info;
                 }
@@ -93,7 +93,7 @@ namespace Lazpoly.Presentation.Texts
                 {
                     var info = new SquareInfo(L(square.Name), L("Hapis"));
                     info.Rows.Add(new SquareInfoRow(L("Bekleme"), F($"{rules.JailTurns} tur")));
-                    info.Rows.Add(new SquareInfoRow(L("Erken çıkış"), square.Fee.ToString()));
+                    info.Rows.Add(new SquareInfoRow(L("Erken çıkış"), M(square.Fee)));
                     info.Notes.Add(F($"Buraya gelen {rules.JailTurns} kez sırası gelene kadar burada bekler. Sırası gelince isterse {square.Fee} ödeyip hemen çıkar ve zar atar ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler."));
                     info.Notes.Add(F($"Üst üste {rules.MaxConsecutiveDoubles} çift atan ve hapse gönderen kartı çeken de buraya düşer; Başlangıç'tan geçmiş sayılmaz."));
                     return info;
@@ -102,7 +102,7 @@ namespace Lazpoly.Presentation.Texts
                 case SquareType.Travel:
                 {
                     var info = new SquareInfo(L(square.Name), L("Yolculuk"));
-                    info.Rows.Add(new SquareInfoRow(L("Bilet"), square.Fee.ToString()));
+                    info.Rows.Add(new SquareInfoRow(L("Bilet"), M(square.Fee)));
                     info.Notes.Add(L("Buraya gelen isterse bileti ödeyip başka oyuncuların şehirleri dışındaki bir kareye yürüyerek gider."));
                     info.Notes.Add(L("Başlangıçtan geçmiş sayılmaz."));
                     return info;
@@ -111,7 +111,7 @@ namespace Lazpoly.Presentation.Texts
                 case SquareType.Cup:
                 {
                     var info = new SquareInfo(L(square.Name), L("Kupa"));
-                    info.Rows.Add(new SquareInfoRow(L("Ücret"), square.Fee.ToString()));
+                    info.Rows.Add(new SquareInfoRow(L("Ücret"), M(square.Fee)));
                     info.Rows.Add(new SquareInfoRow(L("Sıradaki artış"), F($"%{GameRules.NextCupPercent(board, state, squareIndex)}")));
                     info.Rows.Add(new SquareInfoRow(L("Kupanın şehri"),
                         state.CupSquare == GameState.NoCup ? L("henüz yok") : F($"{L(board[state.CupSquare].Name)} (%{state.CupPercent})"), state.CupSquare != GameState.NoCup));
@@ -150,9 +150,9 @@ namespace Lazpoly.Presentation.Texts
             bool wholeGroup = owner != GameState.NoOwner && GameRules.OwnsWholeGroup(board, state, owner, square.GroupId);
             bool live = owner != GameState.NoOwner;
 
-            info.Rows.Add(new SquareInfoRow(L("Fiyat"), square.Price.ToString()));
-            info.Rows.Add(new SquareInfoRow(L("Arsa"), square.BaseRent.ToString(), live && level == 0 && !wholeGroup, rent: true));
-            info.Rows.Add(new SquareInfoRow(L("Rengin tamamı"), (square.BaseRent * rules.FullGroupRentMultiplier).ToString(), live && level == 0 && wholeGroup, rent: true));
+            info.Rows.Add(new SquareInfoRow(L("Fiyat"), M(square.Price)));
+            info.Rows.Add(new SquareInfoRow(L("Arsa"), M(square.BaseRent), live && level == 0 && !wholeGroup, rent: true));
+            info.Rows.Add(new SquareInfoRow(L("Rengin tamamı"), M(square.BaseRent * rules.FullGroupRentMultiplier), live && level == 0 && wholeGroup, rent: true));
 
             if (square.IsDevelopable)
             {
@@ -161,13 +161,13 @@ namespace Lazpoly.Presentation.Texts
                     string label = i + 1 == SquareDefinition.MaxBuildingLevel ? L("Otel") : F($"{i + 1} ev");
                     // With the whole colour in one hand every level's rent is multiplied too (Faz 26).
                     int rent = square.DevelopedRents[i] * (wholeGroup ? rules.FullGroupRentMultiplier : 1);
-                    info.Rows.Add(new SquareInfoRow(label, rent.ToString(), live && level == i + 1, rent: true));
+                    info.Rows.Add(new SquareInfoRow(label, M(rent), live && level == i + 1, rent: true));
                 }
 
-                info.Rows.Add(new SquareInfoRow(L("Ev maliyeti"), square.BuildingCost.ToString()));
+                info.Rows.Add(new SquareInfoRow(L("Ev maliyeti"), M(square.BuildingCost)));
             }
 
-            info.Rows.Add(new SquareInfoRow(L("Satış değeri"), square.SaleValue.ToString()));
+            info.Rows.Add(new SquareInfoRow(L("Satış değeri"), M(square.SaleValue)));
             bool cup = state.CupSquare == squareIndex;
             if (cup) info.Rows.Add(new SquareInfoRow(L("Kupa"), F($"kira +%{state.CupPercent}"), live, rent: true));
 
@@ -188,16 +188,16 @@ namespace Lazpoly.Presentation.Texts
             int held = owner == GameState.NoOwner ? 0 : GameRules.ResortsOwned(board, state, owner);
             int resorts = ResortCount(board);
 
-            info.Rows.Add(new SquareInfoRow(L("Fiyat"), square.Price.ToString()));
+            info.Rows.Add(new SquareInfoRow(L("Fiyat"), M(square.Price)));
             for (int count = 1; count <= resorts; count++)
             {
-                info.Rows.Add(new SquareInfoRow(F($"{count} tatil yeri"), (square.BaseRent * count).ToString(), held == count, rent: true));
+                info.Rows.Add(new SquareInfoRow(F($"{count} tatil yeri"), M(GameRules.ResortRent(square.BaseRent, count)), held == count, rent: true));
             }
 
-            info.Rows.Add(new SquareInfoRow(L("Satış değeri"), square.SaleValue.ToString()));
+            info.Rows.Add(new SquareInfoRow(L("Satış değeri"), M(square.SaleValue)));
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
             info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
-            info.Notes.Add(L("Tatil yerine bina kurulmaz. Kirası sahibinin elindeki tatil yeri sayısıyla artar: her biri için bir, iki, üç ya da dört kat."));
+            info.Notes.Add(L("Tatil yerine bina kurulmaz. Sahibinin elindeki her yeni tatil yeriyle kirası iki katına çıkar: bir, iki, dört ya da sekiz kat."));
             return info;
         }
 

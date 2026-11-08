@@ -52,6 +52,26 @@ namespace Lazpoly.Presentation.Texts
         /// <summary>A whole number with its thousands grouped the way the current language writes them.</summary>
         public static string N(int value) => value.ToString("N0", _numbers);
 
+        /// <summary>
+        /// An amount of money the short way (the owner's wish, Faz 27: the game counts in thousands and millions): under a
+        /// thousand as it is, then thousands with up to one decimal (300K, 12,5K) and millions with up to two (2M, 1,25M), the
+        /// decimals cut rather than rounded so an amount never reads as more than it is.
+        /// </summary>
+        public static string M(int value)
+        {
+            long amount = Math.Abs((long)value);
+            string sign = value < 0 ? "-" : "";
+            if (amount < Thousand) return sign + amount.ToString(CultureInfo.InvariantCulture);
+            return amount < Million
+                ? sign + Cut(amount, Thousand, 10).ToString("0.#", _numbers) + "K"
+                : sign + Cut(amount, Million, 100).ToString("0.##", _numbers) + "M";
+        }
+
+        private const long Thousand = 1000;
+        private const long Million = 1000000;
+
+        private static decimal Cut(long amount, long unit, long parts) => (decimal)(amount * parts / unit) / parts;
+
         public static string N(long value) => value.ToString("N0", _numbers);
 
         /// <summary>A text in capitals the way the current language writes them: Turkish keeps the dot on a capital İ.</summary>
@@ -79,14 +99,15 @@ namespace Lazpoly.Presentation.Texts
             return _table.TryGetValue(turkish, out string translated) ? translated : turkish;
         }
 
-        /// <summary>Translates the template of an interpolated string, then fills in its values; whole numbers get the language's thousands separator (<see cref="N(int)"/>).</summary>
+        /// <summary>Translates the template of an interpolated string, then fills in its values; whole numbers are written as money (<see cref="M(int)"/>: 2M, 300K, below a thousand as they are).</summary>
         public static string F(FormattableString text)
         {
             if (text == null) return null;
             object[] arguments = text.GetArguments();
             for (int i = 0; i < arguments.Length; i++)
             {
-                if (arguments[i] is int number) arguments[i] = N(number);
+                // A whole number in a text is money once it reaches a thousand: no count, turn or percent comes near it.
+                if (arguments[i] is int number) arguments[i] = M(number);
             }
 
             return string.Format(CultureInfo.InvariantCulture, L(text.Format), arguments);
