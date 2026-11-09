@@ -1175,13 +1175,15 @@ namespace Lazpoly.Presentation.Tabletop
                 return;
             }
 
-            if (mark == null)
+            bool created = mark == null;
+            if (created)
             {
                 mark = create();
                 marks[squareIndex] = mark;
             }
 
-            if (mark.gameObject.activeSelf && !animate) return;
+            // A mark already standing stays as it is; a new one is sized and placed first (it is made active).
+            if (!created && mark.gameObject.activeSelf && !animate) return;
             mark.gameObject.SetActive(true);
             mark.localScale = Vector3.one * (_width * CardMarkSize);
             PlaceCardMarks();
