@@ -7,14 +7,14 @@
     "fullGroupRentMultiplier": 2,
     "buildingSellbackPercent": 100,
     "groups": [
-        { "id": 1, "name": "Kuzey Afrika", "color": "#DE7D5B" },
-        { "id": 2, "name": "Güney Amerika", "color": "#F1AA57" },
-        { "id": 3, "name": "Güneydoğu Asya", "color": "#ECD065" },
-        { "id": 4, "name": "Orta Avrupa", "color": "#8AC875" },
-        { "id": 5, "name": "Akdeniz", "color": "#4DB2DB" },
-        { "id": 6, "name": "Doğu Asya", "color": "#7895E3" },
-        { "id": 7, "name": "Batı Avrupa", "color": "#A87FD5" },
-        { "id": 8, "name": "Metropoller", "color": "#C65B93" },
+        { "id": 1, "name": "Kuzey Afrika", "color": "#E87A69" },
+        { "id": 2, "name": "Güney Amerika", "color": "#F5B25A" },
+        { "id": 3, "name": "Güneydoğu Asya", "color": "#E8D66B" },
+        { "id": 4, "name": "Orta Avrupa", "color": "#82C97B" },
+        { "id": 5, "name": "Akdeniz", "color": "#41B9D3" },
+        { "id": 6, "name": "Doğu Asya", "color": "#6894E5" },
+        { "id": 7, "name": "Batı Avrupa", "color": "#BC7FD6" },
+        { "id": 8, "name": "Metropoller", "color": "#C1558A" },
         { "id": 9, "name": "Tatil Yerleri", "color": "#52BFB9" }
     ],
     "squares": [
