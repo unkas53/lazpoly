@@ -58,7 +58,7 @@ namespace Lazpoly.App.AI
             switch (state.Phase)
             {
                 case GamePhase.WaitingForRoll:
-                    return Manage(view) ?? ProposeTrade(view) ?? new RollDiceCommand(PlayerId);
+                    return PlayCard(view) ?? Manage(view) ?? ProposeTrade(view) ?? new RollDiceCommand(PlayerId);
                 case GamePhase.TurnEnd:
                     return Manage(view) ?? new EndTurnCommand(PlayerId);
                 case GamePhase.AwaitingBuyDecision:
@@ -70,9 +70,13 @@ namespace Lazpoly.App.AI
                 case GamePhase.AwaitingDiceChoice:
                     return ChooseDice(view);
                 case GamePhase.AwaitingJailDecision:
-                    return DecideJail(view);
+                    return PlayCard(view) ?? DecideJail(view);
                 case GamePhase.AwaitingCupChoice:
                     return DecideCup(view);
+                case GamePhase.AwaitingCardDiscard:
+                    return AiCards.Discard(board, me);
+                case GamePhase.AwaitingRentShield:
+                    return AiCards.AnswerRent(board, rules, state, me);
                 default:
                     return null;
             }
@@ -150,6 +154,14 @@ namespace Lazpoly.App.AI
 
             var host = new HostCupCommand(PlayerId, best);
             return best >= 0 && view.Legal(host) ? host : (GameCommand)pass;
+        }
+
+        /// <summary>A strategic card from the hand (Faz 30) when one is worth playing now; a player prone to mistakes sometimes forgets.</summary>
+        private GameCommand PlayCard(View view)
+        {
+            if (view.State.CardPlayedThisTurn || view.Me.Hand.Count == 0) return null;
+            PlayCardCommand play = AiCards.Choose(view.Board, view.Rules, view.State, view.Me, view.Reserve);
+            return play == null || view.MakesMistake() ? null : play;
         }
 
         /// <summary>Pays its way out of jail when the fee leaves its reserve whole; otherwise rolls for a double.</summary>

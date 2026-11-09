@@ -59,9 +59,32 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(8, data.Board.JailIndex, "the jail stands on the first corner after the start");
             Assert.AreEqual(200000, data.Board[data.Board.JailIndex].Fee, "200K to leave at once (the owner's wish, Faz 27)");
             Assert.AreEqual(3, data.Rules.JailTurns);
-            Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == CardKind.GoToJail), "the card that led to the tea break now leads to jail");
+            Assert.AreEqual(2, data.Board.Cards.Count(card => card.Kind == CardKind.GoToJail), "the old jail card and the new one (Faz 30)");
             Assert.That(data.Board.Cards.Count, Is.GreaterThanOrEqualTo(20));
             foreach (CardDefinition card in data.Board.Cards) Assert.IsFalse(string.IsNullOrWhiteSpace(card.Text));
+        }
+
+        [Test]
+        public void TheShippedDeckHoldsTheOldCardsAndTheFifteenStrategicOnes()
+        {
+            // The owner's plan (Faz 30): the 24 cards stay, 15 strategic cards join them; the old spyglass is kept in hand now.
+            BoardData data = BoardDataLoader.LoadFromResources();
+            Assert.AreEqual(39, data.Board.Cards.Count);
+            Assert.AreEqual(2, data.Board.Cards.Count(card => card.Kind == CardKind.Lookout));
+            foreach (CardKind kind in new[]
+                     {
+                         CardKind.Lawyer, CardKind.RentShield, CardKind.Chauffeur, CardKind.CupTransfer, CardKind.LandDeal, CardKind.Renewal,
+                         CardKind.Fund, CardKind.Shield, CardKind.Strike, CardKind.Audit, CardKind.Demolish, CardKind.IllegalFloor, CardKind.ForceSale,
+                     })
+            {
+                Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == kind), kind.ToString());
+            }
+
+            Assert.AreEqual(15, data.Board.Cards.Count(card => card.IsKept), "the 14 strategic cards kept in hand and the old spyglass");
+            Assert.AreEqual(3, data.Board.Cards.Single(card => card.Kind == CardKind.Strike).Amount, "three of the player's turns");
+            Assert.AreEqual(5, data.Board.Cards.Single(card => card.Kind == CardKind.Audit).Amount, "5% of the worth");
+            CardDefinition fund = data.Board.Cards.Single(card => card.Kind == CardKind.Fund);
+            Assert.AreEqual(new[] { 150000, 200000, 500000 }, new[] { fund.Amount, fund.Cost, fund.Payout });
         }
 
         [Test]

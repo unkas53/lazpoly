@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Lazpoly.Core.Commands;
 using Lazpoly.Core.Engine;
 using Lazpoly.Core.Events;
@@ -14,11 +15,12 @@ namespace Lazpoly.Net.Messages
     public static class MessageCodec
     {
         /// <summary>
-        /// 20: the cup's raise grows by its step up to a limit (Faz 29). 15: a build or buy command carries how many levels go up at once. 14: the champions' cup (its commands, event and the cup's town, raise and picks in the state). 13: the jail (its commands, event and each player's turns to wait). 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
+        /// 21: the strategic cards (Faz 30): playing, letting go and the rent shield's choice; cards kept in hand, shields,
+        /// strikes, funds and the waiting rent in the state. 20: the cup's raise grows by its step up to a limit (Faz 29). 15: a build or buy command carries how many levels go up at once. 14: the champions' cup (its commands, event and the cup's town, raise and picks in the state). 13: the jail (its commands, event and each player's turns to wait). 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
         /// not end on another player's town. 10: the engine
         /// ends an insolvent player's game at once and the turn ends by itself. Mixed builds must not share a table.
         /// </summary>
-        public const int ProtocolVersion = 20;
+        public const int ProtocolVersion = 21;
 
         private enum CommandTag : byte
         {
@@ -29,6 +31,7 @@ namespace Lazpoly.Net.Messages
             Travel = 17, DeclineTravel = 18, ChooseDice = 19,
             PayJailFee = 20, RollInJail = 21,
             HostCup = 22, DeclineCup = 23,
+            PlayCard = 24, DiscardCard = 25, PayRent = 26,
         }
 
         private enum EventTag : byte
@@ -39,6 +42,7 @@ namespace Lazpoly.Net.Messages
             TradeProposed = 15, TradeResolved = 16, DebtIncurred = 17, DebtCleared = 18,
             PotChanged = 19, CardDrawn = 20, Lookout = 21, DiceOptions = 22, TimedOut = 23,
             Jail = 24, CupHosted = 25, Clock = 26,
+            CardPlayed = 27, CardDiscarded = 28, Shield = 29, Strike = 30, Fund = 31, RentDue = 32, RentDueCleared = 33,
         }
 
         public static byte[] Encode(NetMessage message)
@@ -191,6 +195,9 @@ namespace Lazpoly.Net.Messages
                 case RollInJailCommand _: w.WriteByte((byte)CommandTag.RollInJail); break;
                 case HostCupCommand _: w.WriteByte((byte)CommandTag.HostCup); break;
                 case DeclineCupCommand _: w.WriteByte((byte)CommandTag.DeclineCup); break;
+                case PlayCardCommand _: w.WriteByte((byte)CommandTag.PlayCard); break;
+                case DiscardCardCommand _: w.WriteByte((byte)CommandTag.DiscardCard); break;
+                case PayRentCommand _: w.WriteByte((byte)CommandTag.PayRent); break;
                 default: throw new ArgumentException($"Cannot encode command {command?.GetType().Name}.");
             }
 
@@ -205,6 +212,12 @@ namespace Lazpoly.Net.Messages
                 case SquareCommand c: w.WriteInt(c.SquareIndex); break;
                 case ChooseDiceCommand c: w.WriteInt(c.Option); break;
                 case ProposeTradeCommand c: WriteOffer(w, c.Offer); break;
+                case PlayCardCommand c:
+                    w.WriteInt(c.Card);
+                    w.WriteInt(c.Target);
+                    w.WriteInt(c.Option);
+                    break;
+                case DiscardCardCommand c: w.WriteInt(c.Card); break;
             }
         }
 
@@ -269,6 +282,9 @@ namespace Lazpoly.Net.Messages
                 case CommandTag.RollInJail: return new RollInJailCommand(playerId);
                 case CommandTag.HostCup: return new HostCupCommand(playerId, r.ReadInt());
                 case CommandTag.DeclineCup: return new DeclineCupCommand(playerId);
+                case CommandTag.PlayCard: return new PlayCardCommand(playerId, r.ReadInt(), r.ReadInt(), r.ReadInt());
+                case CommandTag.DiscardCard: return new DiscardCardCommand(playerId, r.ReadInt());
+                case CommandTag.PayRent: return new PayRentCommand(playerId);
                 default: throw new FormatException($"Unknown command tag {(byte)tag}.");
             }
         }
@@ -323,7 +339,7 @@ namespace Lazpoly.Net.Messages
                     w.WriteByte((byte)EventTag.PotChanged); w.WriteInt(e.Delta);
                     break;
                 case CardDrawnEvent e:
-                    w.WriteByte((byte)EventTag.CardDrawn); w.WriteInt(e.PlayerId); w.WriteInt(e.CardIndex);
+                    w.WriteByte((byte)EventTag.CardDrawn); w.WriteInt(e.PlayerId); w.WriteInt(e.CardIndex); w.WriteBool(e.Kept);
                     break;
                 case LookoutChangedEvent e:
                     w.WriteByte((byte)EventTag.Lookout); w.WriteInt(e.PlayerId); w.WriteBool(e.HasLookout);
@@ -332,7 +348,7 @@ namespace Lazpoly.Net.Messages
                     w.WriteByte((byte)EventTag.Jail); w.WriteInt(e.PlayerId); w.WriteInt(e.Turns); w.WriteBool(e.RolledOut);
                     break;
                 case CupHostedEvent e:
-                    w.WriteByte((byte)EventTag.CupHosted); w.WriteInt(e.PlayerId); w.WriteInt(e.SquareIndex); w.WriteInt(e.Percent);
+                    w.WriteByte((byte)EventTag.CupHosted); w.WriteInt(e.PlayerId); w.WriteInt(e.SquareIndex); w.WriteInt(e.Percent); w.WriteBool(e.Moved);
                     break;
                 case DiceOptionsEvent e:
                     w.WriteByte((byte)EventTag.DiceOptions); w.WriteInt(e.PlayerId);
@@ -343,6 +359,28 @@ namespace Lazpoly.Net.Messages
                     break;
                 case GameClockEvent e:
                     w.WriteByte((byte)EventTag.Clock); w.WriteInt(e.PlayedSeconds);
+                    break;
+                case CardPlayedEvent e:
+                    w.WriteByte((byte)EventTag.CardPlayed); w.WriteInt(e.PlayerId); w.WriteInt(e.CardIndex);
+                    w.WriteInt(e.Target); w.WriteInt(e.Option); w.WriteBool(e.Ride);
+                    break;
+                case CardDiscardedEvent e:
+                    w.WriteByte((byte)EventTag.CardDiscarded); w.WriteInt(e.PlayerId); w.WriteInt(e.CardIndex);
+                    break;
+                case ShieldChangedEvent e:
+                    w.WriteByte((byte)EventTag.Shield); w.WriteInt(e.SquareIndex); w.WriteBool(e.Raised); w.WriteBool(e.Blocked);
+                    break;
+                case StrikeChangedEvent e:
+                    w.WriteByte((byte)EventTag.Strike); w.WriteInt(e.SquareIndex); w.WriteInt(e.StrikerId); w.WriteInt(e.Turns);
+                    break;
+                case FundChangedEvent e:
+                    w.WriteByte((byte)EventTag.Fund); w.WriteInt(e.PlayerId); w.WriteInt(e.Payout);
+                    break;
+                case RentDueEvent e:
+                    w.WriteByte((byte)EventTag.RentDue); w.WriteInt(e.PlayerId); w.WriteInt(e.OwnerId); w.WriteInt(e.Amount);
+                    break;
+                case RentDueClearedEvent e:
+                    w.WriteByte((byte)EventTag.RentDueCleared); w.WriteInt(e.PlayerId);
                     break;
                 default:
                     throw new ArgumentException($"Cannot encode event {gameEvent?.GetType().Name}.");
@@ -368,10 +406,17 @@ namespace Lazpoly.Net.Messages
                 case EventTag.DebtIncurred: return new DebtIncurredEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), ReadEnum<MoneyReason>(r));
                 case EventTag.DebtCleared: return new DebtClearedEvent(r.ReadInt());
                 case EventTag.PotChanged: return new PotChangedEvent(r.ReadInt());
-                case EventTag.CardDrawn: return new CardDrawnEvent(r.ReadInt(), r.ReadInt());
+                case EventTag.CardDrawn: return new CardDrawnEvent(r.ReadInt(), r.ReadInt(), r.ReadBool());
                 case EventTag.Lookout: return new LookoutChangedEvent(r.ReadInt(), r.ReadBool());
                 case EventTag.Jail: return new JailChangedEvent(r.ReadInt(), r.ReadInt(), r.ReadBool());
-                case EventTag.CupHosted: return new CupHostedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt());
+                case EventTag.CupHosted: return new CupHostedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadBool());
+                case EventTag.CardPlayed: return new CardPlayedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadBool());
+                case EventTag.CardDiscarded: return new CardDiscardedEvent(r.ReadInt(), r.ReadInt());
+                case EventTag.Shield: return new ShieldChangedEvent(r.ReadInt(), r.ReadBool(), r.ReadBool());
+                case EventTag.Strike: return new StrikeChangedEvent(r.ReadInt(), r.ReadInt(), r.ReadInt());
+                case EventTag.Fund: return new FundChangedEvent(r.ReadInt(), r.ReadInt());
+                case EventTag.RentDue: return new RentDueEvent(r.ReadInt(), r.ReadInt(), r.ReadInt());
+                case EventTag.RentDueCleared: return new RentDueClearedEvent(r.ReadInt());
                 case EventTag.DiceOptions: return new DiceOptionsEvent(r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case EventTag.TimedOut: return new PlayerTimedOutEvent(r.ReadInt(), r.ReadBool());
                 case EventTag.Clock:
@@ -447,10 +492,41 @@ namespace Lazpoly.Net.Messages
             w.WriteInt(s.CupPercent);
             w.WriteInt(s.CupPicks);
             w.WriteInt(s.PlayedSeconds);
+
+            // Layout 12 (Faz 30): the strategic cards.
+            foreach (GameStateSnapshot.PlayerEntry p in s.Players)
+            {
+                List<int> hand = p.Hand ?? new List<int>();
+                w.WriteInt(hand.Count);
+                foreach (int card in hand) w.WriteInt(card);
+                w.WriteInt(p.FundPayout);
+            }
+
+            int marks = s.Shields == null ? 0 : s.Owners.Length;
+            w.WriteInt(marks);
+            for (int i = 0; i < marks; i++)
+            {
+                w.WriteBool(s.Shields[i]);
+                w.WriteInt(s.Strikers[i]);
+                w.WriteInt(s.StrikeTurns[i]);
+            }
+
+            w.WriteBool(s.CardPlayedThisTurn);
+            w.WriteBool(s.RodeThisTurn);
+            w.WriteBool(s.RentDue != null);
+            if (s.RentDue != null)
+            {
+                w.WriteInt(s.RentDue.PlayerId);
+                w.WriteInt(s.RentDue.CreditorId);
+                w.WriteInt(s.RentDue.Amount);
+            }
         }
 
         /// <summary>The snapshot layout written today.</summary>
-        public const int SnapshotVersion = ClockSnapshotVersion;
+        public const int SnapshotVersion = CardSnapshotVersion;
+
+        /// <summary>Layout 12 (Faz 30) added the strategic cards: hands, funds, shields, strikes, the turn's card and the waiting rent.</summary>
+        public const int CardSnapshotVersion = 12;
 
         /// <summary>Layout 11 (Faz 28) added the game time played (the game clock).</summary>
         public const int ClockSnapshotVersion = 11;
@@ -586,6 +662,35 @@ namespace Lazpoly.Net.Messages
             {
                 s.PlayedSeconds = r.ReadInt();
                 if (s.PlayedSeconds < 0) throw new FormatException("Negative game time.");
+            }
+
+            if (version >= CardSnapshotVersion)
+            {
+                foreach (GameStateSnapshot.PlayerEntry p in s.Players)
+                {
+                    int held = r.ReadCount();
+                    for (int i = 0; i < held; i++) p.Hand.Add(r.ReadInt());
+                    p.FundPayout = r.ReadInt();
+                }
+
+                int marks = r.ReadCount();
+                if (marks != 0 && marks != squares) throw new FormatException("Card marks do not match the board.");
+                if (marks > 0)
+                {
+                    s.Shields = new bool[marks];
+                    s.Strikers = new int[marks];
+                    s.StrikeTurns = new int[marks];
+                    for (int i = 0; i < marks; i++)
+                    {
+                        s.Shields[i] = r.ReadBool();
+                        s.Strikers[i] = r.ReadInt();
+                        s.StrikeTurns[i] = r.ReadInt();
+                    }
+                }
+
+                s.CardPlayedThisTurn = r.ReadBool();
+                s.RodeThisTurn = r.ReadBool();
+                if (r.ReadBool()) s.RentDue = new DebtState(r.ReadInt(), r.ReadInt(), r.ReadInt(), MoneyReason.Rent);
             }
 
             return s;

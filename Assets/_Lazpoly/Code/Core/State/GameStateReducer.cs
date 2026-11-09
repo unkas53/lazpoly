@@ -28,6 +28,8 @@ namespace Lazpoly.Core.State
                     state.ConsecutiveDoubles = 0;
                     state.DiceOptions = null;
                     state.BuiltThisVisit = GameState.NotArrived;
+                    state.CardPlayedThisTurn = false;
+                    state.RodeThisTurn = false;
                     break;
                 }
 
@@ -59,7 +61,7 @@ namespace Lazpoly.Core.State
                     if (e.Percent <= 0) throw new InvalidOperationException("The cup must raise the rent.");
                     state.CupSquare = e.SquareIndex;
                     state.CupPercent = e.Percent;
-                    state.CupPicks++;
+                    if (!e.Moved) state.CupPicks++;
                     break;
 
                 case PotChangedEvent e:
@@ -68,8 +70,49 @@ namespace Lazpoly.Core.State
                     break;
 
                 case CardDrawnEvent e:
-                    // Only announces the card; its effect arrives as the events that follow.
+                {
+                    // Announces the card; its effect arrives as the events that follow, or it goes into the hand.
+                    PlayerState drawer = RequirePlayer(state, e.PlayerId);
+                    if (e.Kept) drawer.HandCards.Add(e.CardIndex);
+                    break;
+                }
+                case CardPlayedEvent e:
+                {
+                    PlayerState holder = RequirePlayer(state, e.PlayerId);
+                    if (!holder.HandCards.Remove(e.CardIndex)) throw new InvalidOperationException($"Player {e.PlayerId} does not hold card {e.CardIndex}.");
+                    state.CardPlayedThisTurn = true;
+                    if (e.Ride) state.RodeThisTurn = true;
+                    break;
+                }
+                case CardDiscardedEvent e:
+                    if (!RequirePlayer(state, e.PlayerId).HandCards.Remove(e.CardIndex))
+                    {
+                        throw new InvalidOperationException($"Player {e.PlayerId} does not hold card {e.CardIndex}.");
+                    }
+
+                    break;
+                case ShieldChangedEvent e:
+                    RequireSquare(state, e.SquareIndex);
+                    state.SetShield(e.SquareIndex, e.Raised);
+                    break;
+                case StrikeChangedEvent e:
+                    RequireSquare(state, e.SquareIndex);
+                    if (e.StrikerId != GameState.NoOwner) RequirePlayer(state, e.StrikerId);
+                    if (e.Turns < 0) throw new InvalidOperationException("A strike cannot last negative turns.");
+                    state.SetStrike(e.SquareIndex, e.StrikerId, e.Turns);
+                    break;
+                case FundChangedEvent e:
+                    if (e.Payout < 0) throw new InvalidOperationException("A fund cannot pay a negative amount.");
+                    RequirePlayer(state, e.PlayerId).FundPayout = e.Payout;
+                    break;
+                case RentDueEvent e:
                     RequirePlayer(state, e.PlayerId);
+                    RequirePlayer(state, e.OwnerId);
+                    state.RentDue = new DebtState(e.PlayerId, e.OwnerId, e.Amount, MoneyReason.Rent);
+                    break;
+                case RentDueClearedEvent _:
+                    if (state.RentDue == null) throw new InvalidOperationException("No rent is waiting.");
+                    state.RentDue = null;
                     break;
 
                 case PlayerTimedOutEvent e:
@@ -96,11 +139,19 @@ namespace Lazpoly.Core.State
 
                 case PropertyOwnerChangedEvent e:
                     state.SetOwner(e.SquareIndex, e.NewOwnerId);
+                    // A shield and a strike belong to the town's owner: a new owner (or the bank) starts without them.
+                    state.SetShield(e.SquareIndex, false);
+                    state.SetStrike(e.SquareIndex, GameState.NoOwner, 0);
                     break;
 
                 case PlayerBankruptedEvent e:
-                    RequirePlayer(state, e.PlayerId).IsBankrupt = true;
+                {
+                    PlayerState bankrupt = RequirePlayer(state, e.PlayerId);
+                    bankrupt.IsBankrupt = true;
+                    bankrupt.HandCards.Clear();
+                    bankrupt.FundPayout = 0;
                     break;
+                }
 
                 case PhaseChangedEvent e:
                     state.Phase = e.Phase;

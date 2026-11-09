@@ -21,13 +21,24 @@ namespace Lazpoly.Core.State
         private readonly List<PlayerState> _players;
         private readonly int[] _owners;
         private readonly int[] _buildingLevels;
+        private readonly bool[] _shields;
+        private readonly int[] _strikers;
+        private readonly int[] _strikeTurns;
 
         private GameState(List<PlayerState> players, int squareCount)
         {
             _players = players;
             _owners = new int[squareCount];
             _buildingLevels = new int[squareCount];
-            for (int i = 0; i < _owners.Length; i++) _owners[i] = NoOwner;
+            _shields = new bool[squareCount];
+            _strikers = new int[squareCount];
+            _strikeTurns = new int[squareCount];
+            for (int i = 0; i < _owners.Length; i++)
+            {
+                _owners[i] = NoOwner;
+                _strikers[i] = NoOwner;
+            }
+
             WinnerId = NoWinner;
         }
 
@@ -99,6 +110,38 @@ namespace Lazpoly.Core.State
         /// <summary>The unpaid debt; null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingDebtPayment"/>.</summary>
         public DebtState Debt { get; internal set; }
 
+        /// <summary>The rent waiting while the current player decides on their rent shield; null unless <see cref="Phase"/> is <see cref="GamePhase.AwaitingRentShield"/>.</summary>
+        public DebtState RentDue { get; internal set; }
+
+        /// <summary>The current player has played a card from their hand this turn; one card a turn (the owner's rule, Faz 30).</summary>
+        public bool CardPlayedThisTurn { get; internal set; }
+
+        /// <summary>The current player's move this turn was a chauffeur's ride instead of a roll, so no roll follows it.</summary>
+        public bool RodeThisTurn { get; internal set; }
+
+        /// <summary>Whether a shield (Faz 30) stands on the town: the next attack card played on it is stopped.</summary>
+        public bool HasShield(int squareIndex) => _shields[squareIndex];
+
+        internal void SetShield(int squareIndex, bool raised) => _shields[squareIndex] = raised;
+
+        /// <summary>The player whose strike keeps the town from collecting rent, or <see cref="NoOwner"/> when no strike is on.</summary>
+        public int StrikerOf(int squareIndex) => _strikers[squareIndex];
+
+        /// <summary>Whether a strike is on at the town: it collects no rent.</summary>
+        public bool IsStruck(int squareIndex) => _strikers[squareIndex] != NoOwner;
+
+        /// <summary>
+        /// How many more turns of the striker start before the strike's last one; the strike ends when the striker's turn
+        /// ends with this at 0.
+        /// </summary>
+        public int StrikeTurnsLeft(int squareIndex) => _strikeTurns[squareIndex];
+
+        internal void SetStrike(int squareIndex, int strikerId, int turns)
+        {
+            _strikers[squareIndex] = strikerId;
+            _strikeTurns[squareIndex] = strikerId == NoOwner ? 0 : turns;
+        }
+
         public static GameState CreateInitial(BoardDefinition board, RulesConfig rules, IReadOnlyList<PlayerSeat> seats)
         {
             if (board == null) throw new ArgumentNullException(nameof(board));
@@ -167,7 +210,17 @@ namespace Lazpoly.Core.State
                     HasLookout = entry.HasLookout,
                     Laps = entry.Laps,
                     JailTurns = entry.JailTurns,
+                    FundPayout = entry.FundPayout,
                 });
+                if (entry.FundPayout < 0) throw new ArgumentException($"Player {entry.Id} has a negative fund.", nameof(snapshot));
+                if (entry.Hand != null)
+                {
+                    foreach (int card in entry.Hand)
+                    {
+                        if (card < 0) throw new ArgumentException($"Player {entry.Id} holds an impossible card.", nameof(snapshot));
+                        players[players.Count - 1].HandCards.Add(card);
+                    }
+                }
             }
 
             var state = new GameState(players, snapshot.Owners.Length)
@@ -187,6 +240,8 @@ namespace Lazpoly.Core.State
                 CupPercent = snapshot.CupPercent,
                 CupPicks = snapshot.CupPicks,
                 PlayedSeconds = snapshot.PlayedSeconds,
+                CardPlayedThisTurn = snapshot.CardPlayedThisTurn,
+                RodeThisTurn = snapshot.RodeThisTurn,
             };
 
             if (snapshot.PlayedSeconds < 0) throw new ArgumentException("Snapshot game time is negative.", nameof(snapshot));
@@ -236,6 +291,42 @@ namespace Lazpoly.Core.State
                 }
 
                 state.SetBuildingLevel(i, level);
+            }
+
+            if (snapshot.Shields != null)
+            {
+                if (snapshot.Shields.Length != snapshot.Owners.Length) throw new ArgumentException("Snapshot shields do not match the board.", nameof(snapshot));
+                for (int i = 0; i < snapshot.Shields.Length; i++) state.SetShield(i, snapshot.Shields[i]);
+            }
+
+            if (snapshot.Strikers != null)
+            {
+                if (snapshot.Strikers.Length != snapshot.Owners.Length || snapshot.StrikeTurns == null || snapshot.StrikeTurns.Length != snapshot.Owners.Length)
+                {
+                    throw new ArgumentException("Snapshot strikes do not match the board.", nameof(snapshot));
+                }
+
+                for (int i = 0; i < snapshot.Strikers.Length; i++)
+                {
+                    int striker = snapshot.Strikers[i];
+                    if (striker != NoOwner && (!ids.Contains(striker) || snapshot.StrikeTurns[i] < 0))
+                    {
+                        throw new ArgumentException($"Square {i} has an impossible strike.", nameof(snapshot));
+                    }
+
+                    state.SetStrike(i, striker, snapshot.StrikeTurns[i]);
+                }
+            }
+
+            if (snapshot.RentDue != null)
+            {
+                DebtState due = snapshot.RentDue;
+                if (!ids.Contains(due.PlayerId) || !ids.Contains(due.CreditorId) || due.Amount <= 0)
+                {
+                    throw new ArgumentException("Snapshot rent due is inconsistent.", nameof(snapshot));
+                }
+
+                state.RentDue = due;
             }
 
             if (snapshot.PendingTrade != null)
@@ -345,6 +436,8 @@ namespace Lazpoly.Core.State
             Mix(CupPercent);
             Mix(CupPicks);
             Mix(PlayedSeconds);
+            Mix(CardPlayedThisTurn ? 1 : 0);
+            Mix(RodeThisTurn ? 1 : 0);
             Mix(DiceOptions == null ? 0 : 1);
             if (DiceOptions != null)
             {
@@ -360,6 +453,9 @@ namespace Lazpoly.Core.State
                 Mix(player.HasLookout ? 1 : 0);
                 Mix(player.Laps);
                 Mix(player.JailTurns);
+                Mix(player.FundPayout);
+                Mix(player.HandCards.Count);
+                foreach (int card in player.HandCards) Mix(card);
             }
 
             foreach (int owner in _owners)
@@ -368,6 +464,12 @@ namespace Lazpoly.Core.State
             }
 
             foreach (int level in _buildingLevels) Mix(level);
+            foreach (bool shield in _shields) Mix(shield ? 1 : 0);
+            for (int i = 0; i < _strikers.Length; i++)
+            {
+                Mix(_strikers[i]);
+                Mix(_strikeTurns[i]);
+            }
 
             Mix(PendingTrade == null ? 0 : 1);
             if (PendingTrade != null)
@@ -390,6 +492,14 @@ namespace Lazpoly.Core.State
                 Mix(Debt.CreditorId);
                 Mix(Debt.Amount);
                 Mix((int)Debt.Reason);
+            }
+
+            Mix(RentDue == null ? 0 : 1);
+            if (RentDue != null)
+            {
+                Mix(RentDue.PlayerId);
+                Mix(RentDue.CreditorId);
+                Mix(RentDue.Amount);
             }
 
             return hash;

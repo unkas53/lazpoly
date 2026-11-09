@@ -71,6 +71,9 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new RollInJailCommand(2) };
             yield return new CommandMessage { Command = new HostCupCommand(1, 4) };
             yield return new CommandMessage { Command = new DeclineCupCommand(2) };
+            yield return new CommandMessage { Command = new PlayCardCommand(1, 30, 6, 1) };
+            yield return new CommandMessage { Command = new DiscardCardCommand(2, 31) };
+            yield return new CommandMessage { Command = new PayRentCommand(2) };
             var events = new EventsMessage { Sequence = 9, StateHash = 0xDEADBEEFUL };
             events.Events.AddRange(new GameEvent[]
             {
@@ -103,6 +106,17 @@ namespace Lazpoly.App.Tests
                 new PhaseChangedEvent(GamePhase.AwaitingCupChoice),
                 new GameClockEvent(95),
                 new GameEndedEvent(1, GameEndReason.TimeLimit),
+                new CardDrawnEvent(2, 33, kept: true),
+                new CardPlayedEvent(1, 30, 6, 1, ride: true),
+                new CardDiscardedEvent(2, 31),
+                new ShieldChangedEvent(4, false, blocked: true),
+                new StrikeChangedEvent(4, 2, 3),
+                new FundChangedEvent(1, 500000),
+                new RentDueEvent(1, 2, 70000),
+                new RentDueClearedEvent(1),
+                new CupHostedEvent(2, 4, 150, moved: true),
+                new PhaseChangedEvent(GamePhase.AwaitingRentShield),
+                new MoneyChangedEvent(2, -60000, MoneyReason.Audit),
             });
             yield return events;
             yield return new RejectedMessage { Reason = RejectionReason.NotYourPlayer };
@@ -208,6 +222,43 @@ namespace Lazpoly.App.Tests
             var cupLayout = new byte[bytes.Length - 4];
             System.Array.Copy(bytes, cupLayout, cupLayout.Length);
             Assert.AreEqual(0, MessageCodec.ReadSnapshot(new NetReader(cupLayout), MessageCodec.CupSnapshotVersion).PlayedSeconds);
+        }
+
+        [Test]
+        public void TheStrategicCardsTravelAndAClockLayoutReadsWithoutThem()
+        {
+            // Faz 30: hands, funds, shields, strikes, the turn's card and the waiting rent come after the game time.
+            GameStateSnapshot snapshot = SampleSnapshot();
+            snapshot.Players[0].Hand.AddRange(new[] { 30, 31 });
+            snapshot.Players[1].FundPayout = 500000;
+            int squares = snapshot.Owners.Length;
+            snapshot.Shields = new bool[squares];
+            snapshot.Strikers = new int[squares];
+            snapshot.StrikeTurns = new int[squares];
+            for (int i = 0; i < squares; i++) snapshot.Strikers[i] = GameState.NoOwner;
+            snapshot.Shields[1] = true;
+            snapshot.Strikers[2] = snapshot.Players[1].Id;
+            snapshot.StrikeTurns[2] = 2;
+            snapshot.CardPlayedThisTurn = true;
+            snapshot.RodeThisTurn = true;
+            snapshot.RentDue = new DebtState(snapshot.Players[0].Id, snapshot.Players[1].Id, 70000, MoneyReason.Rent);
+
+            var w = new NetWriter();
+            MessageCodec.WriteSnapshot(w, snapshot);
+            byte[] bytes = w.ToArray();
+            GameStateSnapshot read = MessageCodec.ReadSnapshot(new NetReader(bytes));
+            CollectionAssert.AreEqual(new[] { 30, 31 }, read.Players[0].Hand);
+            Assert.AreEqual(500000, read.Players[1].FundPayout);
+            Assert.IsTrue(read.Shields[1]);
+            Assert.AreEqual(snapshot.Players[1].Id, read.Strikers[2]);
+            Assert.AreEqual(2, read.StrikeTurns[2]);
+            Assert.IsTrue(read.CardPlayedThisTurn && read.RodeThisTurn);
+            Assert.AreEqual(70000, read.RentDue.Amount);
+
+            GameStateSnapshot clock = MessageCodec.ReadSnapshot(new NetReader(bytes), MessageCodec.ClockSnapshotVersion);
+            Assert.AreEqual(0, clock.Players[0].Hand.Count, "layout 11 knows no cards");
+            Assert.IsNull(clock.Shields);
+            Assert.IsNull(clock.RentDue);
         }
 
         [Test]

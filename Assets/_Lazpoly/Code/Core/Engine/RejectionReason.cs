@@ -34,5 +34,14 @@ namespace Lazpoly.Core.Engine
 
         /// <summary>A choice that is not one of those offered (for example a third roll).</summary>
         InvalidChoice = 16,
+
+        /// <summary>The player does not hold that card, or it is not one to play from the hand (Faz 30).</summary>
+        CardNotHeld = 17,
+
+        /// <summary>A card was already played this turn: one a turn (the owner's rule, Faz 30).</summary>
+        CardAlreadyPlayed = 18,
+
+        /// <summary>The card cannot be played at that square or player.</summary>
+        InvalidTarget = 19,
     }
 }

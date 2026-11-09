@@ -73,6 +73,8 @@ namespace Lazpoly.Core.Board
                 Mix(card.Amount);
                 Mix(card.Target);
                 Mix(card.HotelAmount);
+                Mix(card.Cost);
+                Mix(card.Payout);
             }
 
             return hash;

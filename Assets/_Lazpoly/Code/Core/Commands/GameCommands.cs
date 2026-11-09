@@ -172,4 +172,40 @@ namespace Lazpoly.Core.Commands
     {
         public DeclareBankruptcyCommand(int playerId) : base(playerId) { }
     }
+
+    /// <summary>
+    /// Plays a card from the player's hand (Faz 30): <see cref="Card"/> is its deck index, <see cref="Target"/> the square
+    /// or player it aims at (-1 when it aims at nothing) and <see cref="Option"/> the choice it offers (the fund: 0 takes the
+    /// cash, 1 invests). One card a turn, at the turn's start; the rent shield when rent is due.
+    /// </summary>
+    public sealed class PlayCardCommand : GameCommand
+    {
+        public PlayCardCommand(int playerId, int card, int target = -1, int option = 0) : base(playerId)
+        {
+            Card = card;
+            Target = target;
+            Option = option;
+        }
+
+        public int Card { get; }
+        public int Target { get; }
+        public int Option { get; }
+    }
+
+    /// <summary>Lets a card of a full hand go (the one just drawn or an older one); it goes back into the deck.</summary>
+    public sealed class DiscardCardCommand : GameCommand
+    {
+        public DiscardCardCommand(int playerId, int card) : base(playerId)
+        {
+            Card = card;
+        }
+
+        public int Card { get; }
+    }
+
+    /// <summary>Pays the rent that fell due instead of using the rent shield; the shield stays in hand.</summary>
+    public sealed class PayRentCommand : GameCommand
+    {
+        public PayRentCommand(int playerId) : base(playerId) { }
+    }
 }

@@ -31,5 +31,11 @@ namespace Lazpoly.Core.State
 
         /// <summary>The current player stands on the cup square and may pay to bring the cup to one of their towns, or pass.</summary>
         AwaitingCupChoice = 10,
+
+        /// <summary>The current player drew a card to keep with a full hand: they let one of the cards go (Faz 30).</summary>
+        AwaitingCardDiscard = 11,
+
+        /// <summary>Rent fell due and the current player holds a rent shield: they use it or pay (Faz 30).</summary>
+        AwaitingRentShield = 12,
     }
 }

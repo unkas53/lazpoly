@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Lazpoly.Core.State
 {
     /// <summary>One player's part of the game state. Changed only by <see cref="GameStateReducer"/>.</summary>
@@ -33,5 +35,13 @@ namespace Lazpoly.Core.State
         public int JailTurns { get; internal set; }
 
         public bool InJail => JailTurns > 0;
+
+        internal readonly List<int> HandCards = new List<int>();
+
+        /// <summary>The cards the player keeps to play later (Faz 30), as indexes into the board's deck, in the order drawn; open to all.</summary>
+        public IReadOnlyList<int> Hand => HandCards;
+
+        /// <summary>What the player's investment fund pays on their next pass of Start; 0 when they hold none (Faz 30).</summary>
+        public int FundPayout { get; internal set; }
     }
 }

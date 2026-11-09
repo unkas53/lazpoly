@@ -375,10 +375,16 @@ namespace Lazpoly.Core.Tests
         }
 
         [Test]
-        public void ALookoutCardWorksLikeTheSquare()
+        public void ALookoutCardIsKeptAndPlayedBeforeALaterRoll()
         {
-            GameEngine engine = NewGame(Board(CardDefinition.Lookout("Binoculars")), 1, 3, 0);
+            GameEngine engine = NewGame(Board(CardDefinition.Collect("Prize", 1), CardDefinition.Lookout("Binoculars")), 1, 3, 1, 1, 2);
             Accept(engine, new RollDiceCommand(Alice));
+            Assert.IsFalse(Player(engine, Alice).HasLookout, "kept in hand since Faz 30");
+            CollectionAssert.AreEqual(new[] { 1 }, Player(engine, Alice).Hand);
+            Accept(engine, new EndTurnCommand(Alice));
+            Accept(engine, new RollDiceCommand(Bob));
+            Accept(engine, new EndTurnCommand(Bob));
+            Accept(engine, new PlayCardCommand(Alice, 1));
             Assert.IsTrue(Player(engine, Alice).HasLookout);
         }
 

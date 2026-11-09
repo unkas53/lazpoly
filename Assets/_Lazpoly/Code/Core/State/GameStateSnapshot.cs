@@ -24,6 +24,12 @@ namespace Lazpoly.Core.State
 
             /// <summary>The character the player plays as; empty when none was picked (older games).</summary>
             public string Figure = string.Empty;
+
+            /// <summary>The cards kept in hand, as deck indexes (Faz 30); null or empty when none.</summary>
+            public List<int> Hand = new List<int>();
+
+            /// <summary>What the player's investment fund pays at Start; 0 when none (Faz 30).</summary>
+            public int FundPayout;
         }
 
         public GamePhase Phase;
@@ -57,6 +63,18 @@ namespace Lazpoly.Core.State
         public GamePhase TradeReturnPhase;
         public DebtState Debt;
 
+        /// <summary>The cards' marks on the board (Faz 30): shields, and each strike's player and turns left; null in older snapshots.</summary>
+        public bool[] Shields;
+        public int[] Strikers;
+        public int[] StrikeTurns;
+
+        /// <summary>One card a turn: the player on turn has played theirs; and their move was a chauffeur's ride.</summary>
+        public bool CardPlayedThisTurn;
+        public bool RodeThisTurn;
+
+        /// <summary>Null unless rent waits on the current player's rent-shield choice.</summary>
+        public DebtState RentDue;
+
         public static GameStateSnapshot Capture(GameState state)
         {
             if (state == null) throw new ArgumentNullException(nameof(state));
@@ -84,6 +102,12 @@ namespace Lazpoly.Core.State
                 PendingTrade = state.PendingTrade,
                 TradeReturnPhase = state.TradeReturnPhase,
                 Debt = state.Debt,
+                Shields = new bool[state.SquareCount],
+                Strikers = new int[state.SquareCount],
+                StrikeTurns = new int[state.SquareCount],
+                CardPlayedThisTurn = state.CardPlayedThisTurn,
+                RodeThisTurn = state.RodeThisTurn,
+                RentDue = state.RentDue,
             };
 
             foreach (PlayerState player in state.Players)
@@ -99,6 +123,8 @@ namespace Lazpoly.Core.State
                     Laps = player.Laps,
                     JailTurns = player.JailTurns,
                     Figure = player.Figure,
+                    Hand = new List<int>(player.Hand),
+                    FundPayout = player.FundPayout,
                 });
             }
 
@@ -106,7 +132,11 @@ namespace Lazpoly.Core.State
             {
                 snapshot.Owners[i] = state.GetOwner(i);
                 snapshot.BuildingLevels[i] = state.GetBuildingLevel(i);
+                snapshot.Shields[i] = state.HasShield(i);
+                snapshot.Strikers[i] = state.StrikerOf(i);
+                snapshot.StrikeTurns[i] = state.StrikeTurnsLeft(i);
             }
+
             return snapshot;
         }
 

@@ -40,6 +40,13 @@ namespace Lazpoly.App.Session
                 case GamePhase.AwaitingDiceChoice: return new ChooseDiceCommand(playerId, 0);
                 case GamePhase.AwaitingJailDecision: return new RollInJailCommand(playerId);
                 case GamePhase.AwaitingCupChoice: return new DeclineCupCommand(playerId);
+                case GamePhase.AwaitingRentShield: return new PayRentCommand(playerId);
+                case GamePhase.AwaitingCardDiscard:
+                {
+                    // The card just drawn goes back: the hand the player had stays as it was.
+                    PlayerState player = state.FindPlayer(playerId);
+                    return player == null || player.Hand.Count == 0 ? null : new DiscardCardCommand(playerId, player.Hand[player.Hand.Count - 1]);
+                }
                 default: return null;
             }
         }

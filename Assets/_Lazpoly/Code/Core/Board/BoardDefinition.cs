@@ -141,7 +141,29 @@ namespace Lazpoly.Core.Board
                 case CardKind.Lookout:
                     break;
                 case CardKind.GoToJail:
-                    if (JailIndex < 0) throw new ArgumentException($"{name}: the board has no jail to send a player to.");
+                case CardKind.Lawyer:
+                    if (JailIndex < 0) throw new ArgumentException($"{name}: the board has no jail.");
+                    break;
+                case CardKind.CupTransfer:
+                    if (!Array.Exists(_squares, square => square.Type == SquareType.Cup)) throw new ArgumentException($"{name}: the board has no cup.");
+                    break;
+                case CardKind.RentShield:
+                case CardKind.Chauffeur:
+                case CardKind.Shield:
+                case CardKind.Demolish:
+                case CardKind.IllegalFloor:
+                case CardKind.ForceSale:
+                    break;
+                case CardKind.LandDeal:
+                case CardKind.Renewal:
+                case CardKind.Audit:
+                    if (card.Amount <= 0 || card.Amount > 100) throw new ArgumentException($"{name}: the per cent must be 1 to 100.");
+                    break;
+                case CardKind.Strike:
+                    if (card.Amount <= 0) throw new ArgumentException($"{name}: the strike must last at least one turn.");
+                    break;
+                case CardKind.Fund:
+                    if (card.Amount <= 0 || card.Cost <= 0 || card.Payout <= 0) throw new ArgumentException($"{name}: cash, cost and payout must be positive.");
                     break;
                 default:
                     throw new ArgumentException($"{name}: unknown kind {card.Kind}.");

@@ -75,6 +75,21 @@
         { "kind": "moveBy", "amount": -2, "text": "Yanlış sokağa saptın, 2 kare geri git." },
         { "kind": "repairs", "amount": 30000, "hotel": 130000, "text": "Belediye cephe boyası istiyor: ev başına 30K, otel başına 130K." },
         { "kind": "repairs", "amount": 50000, "hotel": 150000, "text": "Fırtına çatılara zarar verdi: ev başına 50K, otel başına 150K." },
-        { "kind": "lookout", "text": "Bir dürbün buldun: sonraki zarında iki atıştan birini seç." }
+        { "kind": "lookout", "text": "Bir dürbün buldun: sakla, istediğin sırada iki atıştan birini seç." },
+        { "kind": "lawyer", "text": "Avukat: hapisteyken sıranda oyna, ücretsiz çık." },
+        { "kind": "rentShield", "text": "Kira Kalkanı: bir kirayı hiç ödeme." },
+        { "kind": "chauffeur", "text": "Özel Şoför: zar atmadan istediğin kareye git." },
+        { "kind": "cupTransfer", "text": "Kupa Transferi: Şampiyonlar Kupası'nı ücretsiz kendi şehrine taşı." },
+        { "kind": "lookout", "text": "Dürbün: istediğin sırada iki atıştan birini seç." },
+        { "kind": "landDeal", "amount": 25, "text": "Emlak Fırsatı: sahipsiz bir şehri ya da tatil yerini %25 indirimle al." },
+        { "kind": "renewal", "amount": 50, "text": "Kentsel Dönüşüm: kendi şehrine yarı fiyata bir bina kondur." },
+        { "kind": "fund", "amount": 150000, "cost": 200000, "payout": 500000, "text": "Yatırım Fonu: hemen 150K al ya da 200K yatır, Başlangıç'tan geçince 500K al." },
+        { "kind": "shield", "text": "Koruma: kendi şehrine kalkan koy, ilk saldırıyı durdursun." },
+        { "kind": "strike", "amount": 3, "text": "Kira Grevi: bir rakip şehirde 3 sıran boyunca kira alınmasın." },
+        { "kind": "audit", "amount": 5, "text": "Vergi Denetimi: seçtiğin rakip varlıklarının %5'ini bankaya ödesin." },
+        { "kind": "demolish", "text": "Bir şehirde imarsız yapı tespit edildi: rakip bir şehir seç, her şey yıkılsın." },
+        { "kind": "illegalFloor", "text": "Bir şehirde kaçak kat tespit edildi: rakip bir şehir seç, kaçak kat yıkılsın." },
+        { "kind": "forceSale", "text": "Satmaya Zorla: rakip bir şehri bankaya sattır, parası sahibine ödensin." },
+        { "kind": "goToJail", "text": "Kaçak inşaat soruşturması: doğrudan hapse gir, Başlangıç'tan geçme." }
     ]
 }

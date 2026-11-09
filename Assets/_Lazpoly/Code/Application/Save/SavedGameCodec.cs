@@ -12,7 +12,7 @@ namespace Lazpoly.App.Save
     /// </summary>
     public static class SavedGameCodec
     {
-        public const int FormatVersion = 11;
+        public const int FormatVersion = 12;
         public const int OldestReadableVersion = 1;
         private const ulong Magic = 0x4C415A504F4C5953UL; // "LAZPOLYS"
 
@@ -47,7 +47,8 @@ namespace Lazpoly.App.Save
 
         /// <summary>Save format 1 wrote the legacy snapshot, 2 the table-rules one, 3 the building-visit one, 4 the lap one, 5 the sale one, 6 the auction-queue one, 7 the one without auctions, 8 the one with characters, 9 the jail one, 10 the cup one, 11 the current one (the game clock).</summary>
         private static int SnapshotVersionOf(int saveVersion) =>
-            saveVersion >= 11 ? MessageCodec.SnapshotVersion
+            saveVersion >= 12 ? MessageCodec.SnapshotVersion
+            : saveVersion == 11 ? MessageCodec.ClockSnapshotVersion
             : saveVersion == 10 ? MessageCodec.CupSnapshotVersion
             : saveVersion == 9 ? MessageCodec.JailSnapshotVersion
             : saveVersion == 8 ? MessageCodec.FigureSnapshotVersion

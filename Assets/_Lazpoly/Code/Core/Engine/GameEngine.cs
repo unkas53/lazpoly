@@ -153,6 +153,20 @@ namespace Lazpoly.Core.Engine
                 case RollInJailCommand _:
                     RollInJail(player);
                     break;
+                case PlayCardCommand c:
+                    PlayCard(player, c);
+                    break;
+                case DiscardCardCommand c:
+                    Emit(new CardDiscardedEvent(player.Id, c.Card));
+                    FinishMove();
+                    break;
+                case PayRentCommand _:
+                {
+                    DebtState due = State.RentDue;
+                    Emit(new RentDueClearedEvent(player.Id));
+                    if (!Charge(player, due.CreditorId, due.Amount, MoneyReason.Rent)) FinishMove();
+                    break;
+                }
                 default:
                     throw new InvalidOperationException($"Validated command {command.GetType().Name} has no handler.");
             }
@@ -247,6 +261,13 @@ namespace Lazpoly.Core.Engine
             {
                 Emit(new MoneyChangedEvent(player.Id, Rules.PassStartBonus, MoneyReason.PassedStart));
             }
+
+            // An investment fund (Faz 30) pays out on the next pass of Start.
+            if (passedStart && player.FundPayout > 0)
+            {
+                Emit(new MoneyChangedEvent(player.Id, player.FundPayout, MoneyReason.Fund));
+                Emit(new FundChangedEvent(player.Id, 0));
+            }
         }
 
         private void MovePlayerBack(PlayerState player, int steps)
@@ -275,7 +296,18 @@ namespace Lazpoly.Core.Engine
                         return true;
                     }
 
-                    return ownerId != player.Id && Charge(player, ownerId, CalculateRent(player.Position), MoneyReason.Rent);
+                    if (ownerId == player.Id) return false;
+                    int rent = CalculateRent(player.Position);
+
+                    // A rent shield in hand (Faz 30) is offered first, unless the turn's card was already played.
+                    if (rent > 0 && !State.CardPlayedThisTurn && GameRules.HeldCard(Board, player, CardKind.RentShield) >= 0)
+                    {
+                        Emit(new RentDueEvent(player.Id, ownerId, rent));
+                        Emit(new PhaseChangedEvent(GamePhase.AwaitingRentShield));
+                        return true;
+                    }
+
+                    return Charge(player, ownerId, rent, MoneyReason.Rent);
 
                 case SquareType.Tax:
                     return Charge(player, GameRules.FineCollector(Board), GameRules.TaxDue(Board, State, player.Position, player.Id), MoneyReason.Tax);
@@ -355,8 +387,20 @@ namespace Lazpoly.Core.Engine
 
         private bool DrawCard(PlayerState player)
         {
-            int index = _random.NextInt(0, Board.Cards.Count);
+            // Cards kept in someone's hand are out of the deck until played (Faz 30).
+            List<int> drawable = GameRules.DrawableCards(Board, State);
+            if (drawable.Count == 0) return false;
+            int index = drawable[_random.NextInt(0, drawable.Count)];
             CardDefinition card = Board.Cards[index];
+            if (card.IsKept)
+            {
+                // Kept for later; a hand past its limit lets one card go before the move goes on.
+                Emit(new CardDrawnEvent(player.Id, index, kept: true));
+                if (player.Hand.Count <= GameRules.HandLimit) return false;
+                Emit(new PhaseChangedEvent(GamePhase.AwaitingCardDiscard));
+                return true;
+            }
+
             Emit(new CardDrawnEvent(player.Id, index));
 
             switch (card.Kind)
@@ -388,16 +432,125 @@ namespace Lazpoly.Core.Engine
 
                     return Charge(player, GameRules.FineCollector(Board), bill, MoneyReason.Card);
 
-                case CardKind.Lookout:
-                    if (!player.HasLookout) Emit(new LookoutChangedEvent(player.Id, true));
-                    return false;
-
                 case CardKind.GoToJail:
                     SendToJail(player);
                     return true;
 
                 default:
                     throw new InvalidOperationException($"Card kind {card.Kind} has no handler.");
+            }
+        }
+
+        /// <summary>
+        /// Plays a card from the hand (Faz 30). An attack on a shielded town only takes the shield down; otherwise the card
+        /// acts and the turn goes on where it was (before the roll, or in jail), but for the chauffeur, the lawyer and the
+        /// rent shield, which move the turn on themselves.
+        /// </summary>
+        private void PlayCard(PlayerState player, PlayCardCommand command)
+        {
+            CardDefinition card = Board.Cards[command.Card];
+            int target = command.Target;
+            Emit(new CardPlayedEvent(player.Id, command.Card, target, command.Option, ride: card.Kind == CardKind.Chauffeur));
+            if (card.IsAttack && State.HasShield(target))
+            {
+                Emit(new ShieldChangedEvent(target, false, blocked: true));
+                return;
+            }
+
+            switch (card.Kind)
+            {
+                case CardKind.Lawyer:
+                    Emit(new JailChangedEvent(player.Id, 0));
+                    Emit(new PhaseChangedEvent(GamePhase.WaitingForRoll));
+                    break;
+
+                case CardKind.RentShield:
+                    Emit(new RentDueClearedEvent(player.Id));
+                    FinishMove();
+                    break;
+
+                case CardKind.Chauffeur:
+                    // The ride is the turn's move: no roll comes after it (FinishMove).
+                    MovePlayer(player, (target - player.Position + Board.Count) % Board.Count);
+                    if (!ResolveLanding(player, drawCards: true)) FinishMove();
+                    break;
+
+                case CardKind.CupTransfer:
+                    if (State.CupSquare == GameState.NoCup)
+                    {
+                        Emit(new CupHostedEvent(player.Id, target, GameRules.NextCupPercent(Board, State, GameRules.CupCorner(Board))));
+                    }
+                    else
+                    {
+                        Emit(new CupHostedEvent(player.Id, target, State.CupPercent, moved: true));
+                    }
+
+                    break;
+
+                case CardKind.Lookout:
+                    Emit(new LookoutChangedEvent(player.Id, true));
+                    break;
+
+                case CardKind.LandDeal:
+                    Emit(new MoneyChangedEvent(player.Id, -GameRules.LandDealCost(Board, card, target), MoneyReason.PropertyPurchase));
+                    Emit(new PropertyOwnerChangedEvent(target, GameState.NoOwner, player.Id));
+                    break;
+
+                case CardKind.Renewal:
+                    Emit(new MoneyChangedEvent(player.Id, -GameRules.RenewalCost(Board, card, target), MoneyReason.Building));
+                    Emit(new BuildingLevelChangedEvent(target, State.GetBuildingLevel(target) + 1));
+                    break;
+
+                case CardKind.Fund:
+                    if (command.Option == 0)
+                    {
+                        Emit(new MoneyChangedEvent(player.Id, card.Amount, MoneyReason.Card));
+                    }
+                    else
+                    {
+                        Emit(new MoneyChangedEvent(player.Id, -card.Cost, MoneyReason.Fund));
+                        Emit(new FundChangedEvent(player.Id, card.Payout));
+                    }
+
+                    break;
+
+                case CardKind.Shield:
+                    Emit(new ShieldChangedEvent(target, true));
+                    break;
+
+                case CardKind.Strike:
+                    Emit(new StrikeChangedEvent(target, player.Id, card.Amount));
+                    break;
+
+                case CardKind.Audit:
+                    int due = GameRules.AuditDue(Board, State, card, target);
+                    if (due > 0) Emit(new MoneyChangedEvent(target, -due, MoneyReason.Audit));
+                    break;
+
+                case CardKind.Demolish:
+                {
+                    int owner = State.GetOwner(target);
+                    if (State.GetBuildingLevel(target) > 0) Emit(new BuildingLevelChangedEvent(target, 0));
+                    Emit(new PropertyOwnerChangedEvent(target, owner, GameState.NoOwner));
+                    break;
+                }
+
+                case CardKind.IllegalFloor:
+                    Emit(new BuildingLevelChangedEvent(target, State.GetBuildingLevel(target) - 1));
+                    break;
+
+                case CardKind.ForceSale:
+                {
+                    int owner = State.GetOwner(target);
+                    int proceeds = GameRules.PropertySaleProceeds(Board, Rules, State, target);
+                    if (State.GetBuildingLevel(target) > 0) Emit(new BuildingLevelChangedEvent(target, 0));
+                    Emit(new PropertyOwnerChangedEvent(target, owner, GameState.NoOwner));
+                    Emit(new MoneyChangedEvent(owner, proceeds, MoneyReason.PropertySale));
+                    break;
+                }
+
+                default:
+                    throw new InvalidOperationException($"Card kind {card.Kind} cannot be played from the hand.");
             }
         }
 
@@ -429,7 +582,7 @@ namespace Lazpoly.Core.Engine
         /// </summary>
         private void FinishMove()
         {
-            bool notRolledYet = State.LastDie1 == 0;
+            bool notRolledYet = State.LastDie1 == 0 && !State.RodeThisTurn;
             bool again = notRolledYet || (State.LastRollWasDouble && !State.RolledOutOfJail);
             Emit(new PhaseChangedEvent(again ? GamePhase.WaitingForRoll : GamePhase.TurnEnd));
         }
@@ -543,6 +696,14 @@ namespace Lazpoly.Core.Engine
             }
 
             if (State.Debt != null) Emit(new DebtClearedEvent(player.Id));
+            if (State.RentDue != null) Emit(new RentDueClearedEvent(player.Id));
+
+            // Strikes the player called end with them (their towns' marks went with the towns).
+            for (int square = 0; square < Board.Count; square++)
+            {
+                if (State.StrikerOf(square) == player.Id) Emit(new StrikeChangedEvent(square, GameState.NoOwner, 0));
+            }
+
             Emit(new PlayerBankruptedEvent(player.Id, creditorId));
 
             if (State.ActivePlayerCount() == 1)
@@ -564,6 +725,13 @@ namespace Lazpoly.Core.Engine
 
         private void StartNextTurn()
         {
+            // A strike ends when the turn of its player that it lasted to ends (Faz 30).
+            int ending = State.CurrentPlayer.Id;
+            for (int square = 0; square < Board.Count; square++)
+            {
+                if (State.StrikerOf(square) == ending && State.StrikeTurnsLeft(square) == 0) Emit(new StrikeChangedEvent(square, GameState.NoOwner, 0));
+            }
+
             int count = State.Players.Count;
             for (int step = 1; step <= count; step++)
             {
@@ -587,6 +755,14 @@ namespace Lazpoly.Core.Engine
 
                     // A jailed player first chooses between paying to leave and waiting; one at the bus stop picks a ride first.
                     Emit(new TurnStartedEvent(next.Id));
+                    for (int square = 0; square < Board.Count; square++)
+                    {
+                        if (State.StrikerOf(square) == next.Id && State.StrikeTurnsLeft(square) > 0)
+                        {
+                            Emit(new StrikeChangedEvent(square, next.Id, State.StrikeTurnsLeft(square) - 1));
+                        }
+                    }
+
                     Emit(new PhaseChangedEvent(next.InJail ? GamePhase.AwaitingJailDecision
                         : GameRules.WaitsForRide(Board, next) ? GamePhase.AwaitingTravelDecision : GamePhase.WaitingForRoll));
                     return;

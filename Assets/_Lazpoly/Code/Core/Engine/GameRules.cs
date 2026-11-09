@@ -129,9 +129,238 @@ namespace Lazpoly.Core.Engine
                     return c.Option == 0 || c.Option == 1 ? RejectionReason.None : RejectionReason.InvalidChoice;
                 }
 
+                case PlayCardCommand c:
+                    return CanPlayCard(board, state, player, c.Card, c.Target, c.Option);
+
+                case DiscardCardCommand c:
+                {
+                    RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingCardDiscard);
+                    if (turn != RejectionReason.None) return turn;
+                    return Holds(player, c.Card) ? RejectionReason.None : RejectionReason.CardNotHeld;
+                }
+
+                case PayRentCommand _:
+                    return OnTurn(state, player, GamePhase.AwaitingRentShield);
+
                 default:
                     return RejectionReason.UnknownCommand;
             }
+        }
+
+        /// <summary>How many cards a player may keep in hand (the owner's rule, Faz 30); one more drawn means letting one go.</summary>
+        public const int HandLimit = 4;
+
+        /// <summary>The first card of <paramref name="kind"/> in the player's hand, or -1.</summary>
+        public static int HeldCard(BoardDefinition board, PlayerState player, CardKind kind)
+        {
+            if (player == null) return -1;
+            foreach (int card in player.Hand)
+            {
+                if (card >= 0 && card < board.Cards.Count && board.Cards[card].Kind == kind) return card;
+            }
+
+            return -1;
+        }
+
+        /// <summary>The square of the board's champions' cup, or -1.</summary>
+        public static int CupCorner(BoardDefinition board)
+        {
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (board[i].Type == SquareType.Cup) return i;
+            }
+
+            return -1;
+        }
+
+        private static bool Holds(PlayerState player, int card) => card >= 0 && player.HandCards.Contains(card);
+
+        /// <summary>
+        /// The cards a card square may give now: every card of the deck but those kept in someone's hand, which come back
+        /// only once played or let go (Faz 30).
+        /// </summary>
+        public static List<int> DrawableCards(BoardDefinition board, GameState state)
+        {
+            var held = new HashSet<int>();
+            foreach (PlayerState player in state.Players) held.UnionWith(player.Hand);
+            var cards = new List<int>(board.Cards.Count);
+            for (int i = 0; i < board.Cards.Count; i++)
+            {
+                if (!held.Contains(i)) cards.Add(i);
+            }
+
+            return cards;
+        }
+
+        /// <summary>
+        /// Whether the player may play card <paramref name="card"/> of their hand now at <paramref name="target"/> with
+        /// <paramref name="option"/> (Faz 30). One card a turn, on the player's own turn: before the roll (in jail too, but
+        /// for the chauffeur and the lookout, which are about moving), the lawyer only in jail, the rent shield only when rent
+        /// waits on it.
+        /// </summary>
+        public static RejectionReason CanPlayCard(BoardDefinition board, GameState state, PlayerState player, int card, int target, int option)
+        {
+            if (state.CurrentPlayer.Id != player.Id) return RejectionReason.NotYourTurn;
+            if (!Holds(player, card) || card >= board.Cards.Count || !board.Cards[card].IsKept) return RejectionReason.CardNotHeld;
+            if (state.CardPlayedThisTurn) return RejectionReason.CardAlreadyPlayed;
+
+            CardDefinition definition = board.Cards[card];
+            bool beforeRoll = state.Phase == GamePhase.WaitingForRoll && state.LastDie1 == 0 && !state.RodeThisTurn;
+            bool inJail = state.Phase == GamePhase.AwaitingJailDecision;
+            switch (definition.Kind)
+            {
+                case CardKind.RentShield:
+                    if (state.Phase != GamePhase.AwaitingRentShield) return RejectionReason.WrongPhase;
+                    break;
+                case CardKind.Lawyer:
+                    if (!inJail) return RejectionReason.WrongPhase;
+                    break;
+                case CardKind.Chauffeur:
+                case CardKind.Lookout:
+                    if (!beforeRoll) return RejectionReason.WrongPhase;
+                    break;
+                default:
+                    if (!beforeRoll && !inJail) return RejectionReason.WrongPhase;
+                    break;
+            }
+
+            return CardTargetAllowed(board, state, player, definition, target, option);
+        }
+
+        /// <summary>Whether <paramref name="target"/> and <paramref name="option"/> fit the card, money included; the phase aside.</summary>
+        public static RejectionReason CardTargetAllowed(BoardDefinition board, GameState state, PlayerState player, CardDefinition card, int target, int option)
+        {
+            if (card.Kind == CardKind.Fund)
+            {
+                if (option == 0) return RejectionReason.None;
+                if (option != 1 || player.FundPayout > 0) return RejectionReason.InvalidChoice;
+                return player.Money >= card.Cost ? RejectionReason.None : RejectionReason.InsufficientFunds;
+            }
+
+            if (option != 0) return RejectionReason.InvalidChoice;
+            switch (card.Aim)
+            {
+                case CardTarget.None:
+                    if (target != -1) return RejectionReason.InvalidTarget;
+                    return card.Kind == CardKind.Lookout && player.HasLookout ? RejectionReason.InvalidChoice : RejectionReason.None;
+
+                case CardTarget.Square:
+                    if (target < 0 || target >= board.Count || target == player.Position) return RejectionReason.InvalidTarget;
+                    return board[target].Type == SquareType.Jail || board[target].Type == SquareType.Tax ? RejectionReason.InvalidTarget : RejectionReason.None;
+
+                case CardTarget.Rival:
+                {
+                    PlayerState rival = state.FindPlayer(target);
+                    return rival == null || rival.Id == player.Id || rival.IsBankrupt ? RejectionReason.InvalidTarget : RejectionReason.None;
+                }
+
+                case CardTarget.FreeProperty:
+                    if (target < 0 || target >= board.Count || board[target].Type != SquareType.Property || state.GetOwner(target) != GameState.NoOwner)
+                    {
+                        return RejectionReason.InvalidTarget;
+                    }
+
+                    return player.Money >= LandDealCost(board, card, target) ? RejectionReason.None : RejectionReason.InsufficientFunds;
+
+                case CardTarget.OwnTown:
+                    if (!CanHoldCup(board, target) || state.GetOwner(target) != player.Id) return RejectionReason.InvalidTarget;
+                    switch (card.Kind)
+                    {
+                        case CardKind.CupTransfer:
+                            return target == state.CupSquare ? RejectionReason.InvalidTarget : RejectionReason.None;
+                        case CardKind.Shield:
+                            return state.HasShield(target) ? RejectionReason.InvalidTarget : RejectionReason.None;
+                        case CardKind.Renewal:
+                            if (!CanRenew(board, state, player, target)) return RejectionReason.CannotBuild;
+                            return player.Money >= RenewalCost(board, card, target) ? RejectionReason.None : RejectionReason.InsufficientFunds;
+                        default:
+                            return RejectionReason.None;
+                    }
+
+                case CardTarget.RivalTown:
+                {
+                    if (!CanHoldCup(board, target)) return RejectionReason.InvalidTarget;
+                    int owner = state.GetOwner(target);
+                    if (owner == GameState.NoOwner || owner == player.Id) return RejectionReason.InvalidTarget;
+                    int level = state.GetBuildingLevel(target);
+                    switch (card.Kind)
+                    {
+                        case CardKind.Strike:
+                            return state.IsStruck(target) ? RejectionReason.InvalidTarget : RejectionReason.None;
+                        case CardKind.Demolish:
+                            return level >= SquareDefinition.MaxBuildingLevel ? RejectionReason.InvalidTarget : RejectionReason.None;
+                        case CardKind.IllegalFloor:
+                            return level < 1 || level >= SquareDefinition.MaxBuildingLevel ? RejectionReason.InvalidTarget : RejectionReason.None;
+                        default:
+                            return RejectionReason.None;
+                    }
+                }
+
+                default:
+                    return RejectionReason.InvalidTarget;
+            }
+        }
+
+        /// <summary>
+        /// Every target the card may be played at now, money included (squares or player ids), for the screens and the
+        /// computer players; a card that aims at nothing gives -1 when it may be played. Empty when it cannot be played.
+        /// </summary>
+        public static List<int> CardTargets(BoardDefinition board, GameState state, PlayerState player, int card, int option = 0)
+        {
+            var targets = new List<int>();
+            if (player == null || card < 0 || card >= board.Cards.Count) return targets;
+            CardDefinition definition = board.Cards[card];
+            switch (definition.Aim)
+            {
+                case CardTarget.None:
+                    if (CanPlayCard(board, state, player, card, -1, option) == RejectionReason.None) targets.Add(-1);
+                    break;
+                case CardTarget.Rival:
+                    foreach (PlayerState rival in state.Players)
+                    {
+                        if (CanPlayCard(board, state, player, card, rival.Id, option) == RejectionReason.None) targets.Add(rival.Id);
+                    }
+
+                    break;
+                default:
+                    for (int square = 0; square < board.Count; square++)
+                    {
+                        if (CanPlayCard(board, state, player, card, square, option) == RejectionReason.None) targets.Add(square);
+                    }
+
+                    break;
+            }
+
+            return targets;
+        }
+
+        /// <summary>What a land deal card makes a free town or resort cost: its price less the card's per cent (rounded down).</summary>
+        public static int LandDealCost(BoardDefinition board, CardDefinition card, int squareIndex) =>
+            (int)((long)board[squareIndex].Price * (100 - card.Amount) / 100);
+
+        /// <summary>What a renewal card makes the next building level of a town cost: the card's per cent of its cost.</summary>
+        public static int RenewalCost(BoardDefinition board, CardDefinition card, int squareIndex) =>
+            (int)((long)board[squareIndex].BuildingCost * card.Amount / 100);
+
+        /// <summary>
+        /// Whether a renewal card may add a level to the player's town wherever they stand: the usual limits hold (one house
+        /// until the first pass of Start, the hotel only on four houses), only the visit is not needed.
+        /// </summary>
+        public static bool CanRenew(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
+        {
+            if (!CanHoldCup(board, squareIndex) || !board[squareIndex].IsDevelopable || state.GetOwner(squareIndex) != player.Id) return false;
+            int level = state.GetBuildingLevel(squareIndex);
+            if (level >= SquareDefinition.MaxBuildingLevel) return false;
+            return level == MaxHouses || level < (player.Laps == 0 ? FirstLapHouseLimit : MaxHouses);
+        }
+
+        /// <summary>What a tax audit card takes from a player: the card's per cent of their net worth, at most the cash they hold.</summary>
+        public static int AuditDue(BoardDefinition board, GameState state, CardDefinition card, int playerId)
+        {
+            PlayerState player = state.FindPlayer(playerId);
+            if (player == null || player.IsBankrupt) return 0;
+            long due = (long)NetWorth(board, state, playerId) * card.Amount / 100;
+            return (int)Math.Max(0, Math.Min(due, player.Money));
         }
 
         /// <summary>Rent the owner would collect on a property right now, the cup's raise included (rounded down).</summary>
@@ -156,6 +385,9 @@ namespace Lazpoly.Core.Engine
 
             int ownerId = state.GetOwner(squareIndex);
             if (ownerId == GameState.NoOwner) return 0;
+
+            // A strike card (Faz 30): the town collects nothing while it lasts.
+            if (state.IsStruck(squareIndex)) return 0;
 
             if (square.IsResort) return ResortRent(square.BaseRent, ResortsOwned(board, state, ownerId));
 

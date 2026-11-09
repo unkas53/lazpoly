@@ -38,6 +38,12 @@ namespace Lazpoly.Core.Events
 
         /// <summary>The fee for bringing the champions' cup to a town.</summary>
         Cup = 15,
+
+        /// <summary>A tax audit card's share of the player's worth, paid to the bank (Faz 30).</summary>
+        Audit = 16,
+
+        /// <summary>Paid into an investment fund, or paid out by it at Start (Faz 30).</summary>
+        Fund = 17,
     }
 
     /// <summary>How a pawn gets to its new square, so every screen animates the move the same way.</summary>
@@ -182,19 +188,129 @@ namespace Lazpoly.Core.Events
         public int Delta { get; }
     }
 
-    /// <summary>A player drew a card; its effect follows as separate events.</summary>
+    /// <summary>A player drew a card; its effect follows as separate events, or it goes into their hand.</summary>
     public sealed class CardDrawnEvent : GameEvent
     {
-        public CardDrawnEvent(int playerId, int cardIndex)
+        public CardDrawnEvent(int playerId, int cardIndex, bool kept = false)
         {
             PlayerId = playerId;
             CardIndex = cardIndex;
+            Kept = kept;
         }
 
         public int PlayerId { get; }
 
         /// <summary>Index into <see cref="Board.BoardDefinition.Cards"/>.</summary>
         public int CardIndex { get; }
+
+        /// <summary>The card goes into the player's hand to be played later (Faz 30); nothing else happens now.</summary>
+        public bool Kept { get; }
+    }
+
+    /// <summary>
+    /// A player played a card from their hand (Faz 30) at <see cref="Target"/> (a square or a player, as the card aims;
+    /// -1 for none) with <see cref="Option"/>; it leaves the hand and counts as the turn's card. Its effect follows.
+    /// </summary>
+    public sealed class CardPlayedEvent : GameEvent
+    {
+        public CardPlayedEvent(int playerId, int cardIndex, int target = -1, int option = 0, bool ride = false)
+        {
+            PlayerId = playerId;
+            CardIndex = cardIndex;
+            Target = target;
+            Option = option;
+            Ride = ride;
+        }
+
+        public int PlayerId { get; }
+        public int CardIndex { get; }
+        public int Target { get; }
+        public int Option { get; }
+
+        /// <summary>A chauffeur card: the walk that follows is the turn's move, so no roll comes after it.</summary>
+        public bool Ride { get; }
+    }
+
+    /// <summary>A player with a full hand let a card go; it goes back into the deck.</summary>
+    public sealed class CardDiscardedEvent : GameEvent
+    {
+        public CardDiscardedEvent(int playerId, int cardIndex)
+        {
+            PlayerId = playerId;
+            CardIndex = cardIndex;
+        }
+
+        public int PlayerId { get; }
+        public int CardIndex { get; }
+    }
+
+    /// <summary>A shield went up on a town, or came down (<see cref="Blocked"/>: because it stopped an attack).</summary>
+    public sealed class ShieldChangedEvent : GameEvent
+    {
+        public ShieldChangedEvent(int squareIndex, bool raised, bool blocked = false)
+        {
+            SquareIndex = squareIndex;
+            Raised = raised;
+            Blocked = blocked;
+        }
+
+        public int SquareIndex { get; }
+        public bool Raised { get; }
+        public bool Blocked { get; }
+    }
+
+    /// <summary>A strike began at a town (<see cref="StrikerId"/>, lasting <see cref="Turns"/> more of their turns) or ended (striker -1).</summary>
+    public sealed class StrikeChangedEvent : GameEvent
+    {
+        public StrikeChangedEvent(int squareIndex, int strikerId, int turns)
+        {
+            SquareIndex = squareIndex;
+            StrikerId = strikerId;
+            Turns = turns;
+        }
+
+        public int SquareIndex { get; }
+        public int StrikerId { get; }
+        public int Turns { get; }
+    }
+
+    /// <summary>A player's investment fund now pays <see cref="Payout"/> at Start (0: none, as after it paid).</summary>
+    public sealed class FundChangedEvent : GameEvent
+    {
+        public FundChangedEvent(int playerId, int payout)
+        {
+            PlayerId = playerId;
+            Payout = payout;
+        }
+
+        public int PlayerId { get; }
+        public int Payout { get; }
+    }
+
+    /// <summary>Rent fell due while the payer holds a rent shield: it waits for their choice.</summary>
+    public sealed class RentDueEvent : GameEvent
+    {
+        public RentDueEvent(int playerId, int ownerId, int amount)
+        {
+            PlayerId = playerId;
+            OwnerId = ownerId;
+            Amount = amount;
+        }
+
+        public int PlayerId { get; }
+        public int OwnerId { get; }
+        public int Amount { get; }
+    }
+
+    /// <summary>The waiting rent was settled: shielded, or paid as the events that follow say.</summary>
+    public sealed class RentDueClearedEvent : GameEvent
+    {
+        public RentDueClearedEvent(int playerId)
+        {
+            PlayerId = playerId;
+        }
+
+        public int PlayerId { get; }
     }
 
     /// <summary>
@@ -264,16 +380,20 @@ namespace Lazpoly.Core.Events
     /// </summary>
     public sealed class CupHostedEvent : GameEvent
     {
-        public CupHostedEvent(int playerId, int squareIndex, int percent)
+        public CupHostedEvent(int playerId, int squareIndex, int percent, bool moved = false)
         {
             PlayerId = playerId;
             SquareIndex = squareIndex;
             Percent = percent;
+            Moved = moved;
         }
 
         public int PlayerId { get; }
         public int SquareIndex { get; }
         public int Percent { get; }
+
+        /// <summary>A cup transfer card moved the cup at its raise: it is no pick, so the pick count stays (Faz 30).</summary>
+        public bool Moved { get; }
     }
 
     /// <summary>A player with a lookout rolled twice; they pick one pair, which then counts as their roll.</summary>

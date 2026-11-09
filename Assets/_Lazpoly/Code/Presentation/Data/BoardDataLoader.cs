@@ -77,6 +77,19 @@ namespace Lazpoly.Presentation.Data
                 case "repairs": return CardDefinition.Repairs(entry.text, entry.amount, entry.hotel);
                 case "lookout": return CardDefinition.Lookout(entry.text);
                 case "goToJail": return CardDefinition.GoToJail(entry.text);
+                case "lawyer": return CardDefinition.Strategic(entry.text, CardKind.Lawyer);
+                case "rentShield": return CardDefinition.Strategic(entry.text, CardKind.RentShield);
+                case "chauffeur": return CardDefinition.Strategic(entry.text, CardKind.Chauffeur);
+                case "cupTransfer": return CardDefinition.Strategic(entry.text, CardKind.CupTransfer);
+                case "landDeal": return CardDefinition.Strategic(entry.text, CardKind.LandDeal, entry.amount);
+                case "renewal": return CardDefinition.Strategic(entry.text, CardKind.Renewal, entry.amount);
+                case "fund": return CardDefinition.Fund(entry.text, entry.amount, entry.cost, entry.payout);
+                case "shield": return CardDefinition.Strategic(entry.text, CardKind.Shield);
+                case "strike": return CardDefinition.Strategic(entry.text, CardKind.Strike, entry.amount);
+                case "audit": return CardDefinition.Strategic(entry.text, CardKind.Audit, entry.amount);
+                case "demolish": return CardDefinition.Strategic(entry.text, CardKind.Demolish);
+                case "illegalFloor": return CardDefinition.Strategic(entry.text, CardKind.IllegalFloor);
+                case "forceSale": return CardDefinition.Strategic(entry.text, CardKind.ForceSale);
                 case "moveTo":
                     int target = squares.FindIndex(square => square.Name == entry.to);
                     if (target < 0) throw new FormatException($"Card {index} '{entry.text}' goes to unknown square '{entry.to}'.");

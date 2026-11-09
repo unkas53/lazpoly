@@ -27,11 +27,23 @@ namespace Lazpoly.Presentation.Data
     {
         public string text;
 
-        /// <summary>collect, pay, moveTo, moveBy, repairs or lookout.</summary>
+        /// <summary>
+        /// collect, pay, moveTo, moveBy, repairs, lookout or goToJail; and the cards kept in hand (Faz 30): lawyer, rentShield,
+        /// chauffeur, cupTransfer, landDeal, renewal, fund, shield, strike, audit, demolish, illegalFloor, forceSale.
+        /// </summary>
         public string kind;
 
-        /// <summary>Money for collect and pay, steps for moveBy (negative = back), cost per house for repairs.</summary>
+        /// <summary>
+        /// Money for collect and pay, steps for moveBy (negative = back), cost per house for repairs; the per cent of landDeal,
+        /// renewal and audit, the turns of strike, the cash now of fund.
+        /// </summary>
         public int amount;
+
+        /// <summary>What investing costs on a fund card.</summary>
+        public int cost;
+
+        /// <summary>What a fund card's investment pays at Start.</summary>
+        public int payout;
 
         /// <summary>Cost per hotel for repairs.</summary>
         public int hotel;
