@@ -269,6 +269,13 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether the card shown in <see cref="ShownPlay"/> was an attack a protection card's shield stopped.</summary>
         public bool ShownPlayBlocked { get; private set; }
 
+        /// <summary>The last takeover of a rival's town (Faz 31), for its card in the middle; the square is -1 before any.</summary>
+        public int ShownTakeoverSquare { get; private set; } = -1;
+        public int ShownTakeoverBuyer { get; private set; } = GameState.NoOwner;
+        public int ShownTakeoverSeller { get; private set; } = GameState.NoOwner;
+        public int ShownTakeoverPrice { get; private set; }
+        public float ShownTakeoverTime { get; private set; } = float.NegativeInfinity;
+
         /// <summary>The cup's last move, while its card "Şampiyonlar Kupası maçları X şehrinde yapılıyor" is up (Faz 29).</summary>
         public CupHostedEvent ShownCup { get; private set; }
         public float ShownCupTime { get; private set; } = float.NegativeInfinity;
@@ -279,6 +286,18 @@ namespace Lazpoly.Presentation.Game
         /// </summary>
         public int ShownThirdDouble { get; private set; } = GameState.NoOwner;
         public float ShownThirdDoubleTime { get; private set; } = float.NegativeInfinity;
+
+        private IEnumerator ShowTakeover(PropertyOwnerChangedEvent taken, int price)
+        {
+            ShownTakeoverSquare = taken.SquareIndex;
+            ShownTakeoverBuyer = taken.NewOwnerId;
+            ShownTakeoverSeller = taken.PreviousOwnerId;
+            ShownTakeoverPrice = price;
+            ShownTakeoverTime = Time.time;
+            Revision++;
+            Say(taken.NewOwnerId, L("Bu şehir artık benim!"));
+            yield return new WaitForSeconds(CenterNotice.Seconds);
+        }
 
         /// <summary>Players already bankrupt in the state whose fall the table has not shown yet: their corner cards still look as before.</summary>
         private readonly HashSet<int> _bankruptPending = new HashSet<int>();
@@ -1081,6 +1100,32 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Take("borc-karti");
                 ShownDebt = null;
                 Revision++;
+
+                // A rival's town to take over (Faz 31): the person's card, then the card the whole table reads.
+                int taken = -1;
+                for (int i = 0; i < _session.Board.Count && taken < 0; i++)
+                {
+                    if (_session.State.GetOwner(i) == rival && _session.Board[i].IsDevelopable && !_session.Board[i].IsResort &&
+                        _session.State.GetBuildingLevel(i) < SquareDefinition.MaxBuildingLevel && !_session.State.HasShield(i)) taken = i;
+                }
+
+                if (taken >= 0)
+                {
+                    hud.StageTakeover(taken);
+                    yield return ScreenTour.Until(() => hud.TakeoverOpen, 3f);
+                    yield return ScreenTour.Take("devral-karti");
+                    hud.StageTakeover(-1);
+                    ShownTakeoverSquare = taken;
+                    ShownTakeoverBuyer = person;
+                    ShownTakeoverSeller = rival;
+                    ShownTakeoverPrice = (int)GameRules.TakeoverPrice(_session.Board, _session.State, taken);
+                    ShownTakeoverTime = Time.time;
+                    Revision++;
+                    yield return ScreenTour.Until(() => false, 0.4f);
+                    yield return ScreenTour.Take("devir-karti");
+                    ShownTakeoverTime = float.NegativeInfinity;
+                    Revision++;
+                }
             }
 
             // The roll's total in the middle of the screen (the owner's wish, Faz 28), staged as a double so ÇİFT shows too.
@@ -1129,7 +1174,7 @@ namespace Lazpoly.Presentation.Game
 
             foreach ((HudWindow window, string name) in new[]
             {
-                (HudWindow.Properties, "mulkler"), (HudWindow.Trade, "takas"), (HudWindow.Log, "olaylar"),
+                (HudWindow.Trade, "takas"), (HudWindow.Log, "olaylar"),
             })
             {
                 hud.Open(window);
@@ -1506,6 +1551,20 @@ namespace Lazpoly.Presentation.Game
                         yield return new WaitForSeconds(CardReadSeconds / Mathf.Max(Settings.AnimationSpeed, 0.1f));
                         break;
                     case MoneyChangedEvent money:
+                        // A takeover's card comes first, for the whole table; then the price flies to the owner and the town
+                        // changes colour (Faz 31, as with a trade).
+                        if (money.Reason == MoneyReason.Takeover && money.Delta < 0)
+                        {
+                            PropertyOwnerChangedEvent taken = null;
+                            foreach (GameEvent next in _pendingEvents)
+                            {
+                                taken = next as PropertyOwnerChangedEvent;
+                                if (taken != null) break;
+                            }
+
+                            if (taken != null) yield return ShowTakeover(taken, -money.Delta);
+                        }
+
                         // The payer's money drops as the notes leave; a player paid by them gains once the flight has landed
                         // (their event comes right after the payment's), and money from the bank shows at once.
                         _shownMoney[money.PlayerId] = ShownMoneyOf(money.PlayerId) + money.Delta;

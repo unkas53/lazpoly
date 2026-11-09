@@ -37,5 +37,8 @@ namespace Lazpoly.Core.State
 
         /// <summary>Rent fell due and the current player holds a rent shield: they use it or pay (Faz 30).</summary>
         AwaitingRentShield = 12,
+
+        /// <summary>The current player paid rent on a rival's town and may take it over at 150% of its worth, or move on (Faz 31).</summary>
+        AwaitingTakeoverDecision = 13,
     }
 }

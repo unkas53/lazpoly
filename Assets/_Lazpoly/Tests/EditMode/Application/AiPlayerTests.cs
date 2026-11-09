@@ -329,5 +329,35 @@ namespace Lazpoly.App.Tests
             Assert.IsInstanceOf<DeclineCupCommand>(new AiPlayer(1, AiDifficulty.Hard).Decide(board, Rules, state, new NoMistakes()),
                 "the fee would eat its reserve");
         }
+
+        [Test]
+        public void TakesOverARivalsTownThatCompletesItsGroupWhenTheReserveStays()
+        {
+            // Me owns A1 and stands on Other's A2 (worth 100 + 2 x 50 = 200, price 300) after paying its rent.
+            GameState state = NewState();
+            Own(state, A1, Me);
+            Own(state, A2, Other);
+            Apply(state, new BuildingLevelChangedEvent(A2, 2),
+                new PlayerMovedEvent(Me, 0, A2, false), new PhaseChangedEvent(GamePhase.AwaitingTakeoverDecision));
+            Assert.AreEqual(300, GameRules.TakeoverPrice(Board, state, A2));
+
+            Assert.IsInstanceOf<TakeOverCommand>(Decide(state, Me, AiDifficulty.Normal), "the group is worth it");
+
+            SetMoney(state, Me, 350);
+            Assert.IsInstanceOf<DeclineTakeoverCommand>(Decide(state, Me, AiDifficulty.Normal), "the price would eat its reserve");
+        }
+
+        [Test]
+        public void TakesOverAnOrdinaryTownOnlyWithTwiceItsReserveLeft()
+        {
+            GameState state = NewState();
+            Own(state, B1, Other);
+            Apply(state, new PlayerMovedEvent(Me, 0, B1, false), new PhaseChangedEvent(GamePhase.AwaitingTakeoverDecision));
+            Assert.AreEqual(300, GameRules.TakeoverPrice(Board, state, B1));
+
+            Assert.IsInstanceOf<TakeOverCommand>(Decide(state, Me, AiDifficulty.Normal));
+            SetMoney(state, Me, 300 + 100);
+            Assert.IsInstanceOf<DeclineTakeoverCommand>(Decide(state, Me, AiDifficulty.Normal), "100 left is under twice the reserve of 80");
+        }
     }
 }

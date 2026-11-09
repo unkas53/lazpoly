@@ -74,6 +74,8 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new PlayCardCommand(1, 30, 6, 1) };
             yield return new CommandMessage { Command = new DiscardCardCommand(2, 31) };
             yield return new CommandMessage { Command = new PayRentCommand(2) };
+            yield return new CommandMessage { Command = new TakeOverCommand(1) };
+            yield return new CommandMessage { Command = new DeclineTakeoverCommand(2) };
             var events = new EventsMessage { Sequence = 9, StateHash = 0xDEADBEEFUL };
             events.Events.AddRange(new GameEvent[]
             {

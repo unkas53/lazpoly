@@ -190,7 +190,8 @@ namespace Lazpoly.PlayTests
 
             Assert.IsNull(GameObject.Find("Dock"), "The round buttons at the right edge are gone.");
             AssertMouseReaches("Menü");
-            AssertMouseReaches("Mülkler");
+            AssertMouseReaches("Takas");
+            Assert.IsNull(Find(hud.transform, "Mülkler"), "The properties button is gone (the owner's wish, Faz 31).");
             Assert.IsNotNull(Find(hud.transform, "ZAR AT"), "Rolling keeps its big button.");
             Assert.IsNull(hud.BoardChoices(controller.Session.State), "Nothing is chosen on the board at the start of a turn.");
 

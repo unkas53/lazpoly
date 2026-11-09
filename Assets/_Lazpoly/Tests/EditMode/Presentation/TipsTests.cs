@@ -182,6 +182,15 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void HowToPlayExplainsTakeoversAndTheRidesLimit()
+        {
+            string takeover = HowToPlay.Sections(Board, Rules).Single(s => s.Key == "Şehir devralma").Value;
+            StringAssert.Contains("%150", takeover);
+            StringAssert.Contains("Otelli", takeover);
+            StringAssert.Contains("Şampiyonlar Kupası", HowToPlay.Sections(Board, Rules).Single(s => s.Key == "Otogar").Value);
+        }
+
+        [Test]
         public void HowToPlayNamesBothKindsOfCardSquareOnce()
         {
             var board = new BoardDefinition(new[]

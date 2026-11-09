@@ -208,4 +208,16 @@ namespace Lazpoly.Core.Commands
     {
         public PayRentCommand(int playerId) : base(playerId) { }
     }
+
+    /// <summary>Takes over the rival's town the player stands on, buildings and all, paying its owner the takeover price (Faz 31).</summary>
+    public sealed class TakeOverCommand : GameCommand
+    {
+        public TakeOverCommand(int playerId) : base(playerId) { }
+    }
+
+    /// <summary>Leaves the rival's town with its owner and moves on.</summary>
+    public sealed class DeclineTakeoverCommand : GameCommand
+    {
+        public DeclineTakeoverCommand(int playerId) : base(playerId) { }
+    }
 }

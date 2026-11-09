@@ -62,6 +62,7 @@ namespace Lazpoly.Presentation.Audio
             switch (e.Reason)
             {
                 case MoneyReason.PropertyPurchase: return SoundCue.Buy;
+                case MoneyReason.Takeover: return e.Delta < 0 ? SoundCue.Buy : SoundCue.MoneyIn;
                 case MoneyReason.Building: return SoundCue.Build;
                 case MoneyReason.BuildingSale: return SoundCue.Sell;
                 case MoneyReason.PropertySale: return SoundCue.PropertySale;

@@ -72,6 +72,7 @@ const PICTURES = {
   groupDeal: ['money', 'writing-sign', 'building-community', 'heart-handshake'],
   cup: ['cup', 'trophy', 'confetti', 'star'],
   shieldHeld: ['defence', 'shield-check', 'hand-stop', 'star'],
+  takeover: ['trade', 'key', 'building', 'arrows-exchange'],
 };
 
 /** The icon's inner SVG (its paths), with the empty frame path Tabler puts first left out. */

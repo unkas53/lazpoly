@@ -142,6 +142,13 @@ namespace Lazpoly.Core.Engine
                 case PayRentCommand _:
                     return OnTurn(state, player, GamePhase.AwaitingRentShield);
 
+                case TakeOverCommand _:
+                    return OnTurn(state, player, GamePhase.AwaitingTakeoverDecision)
+                        .Then(() => CanTakeOver(board, state, player) ? RejectionReason.None : RejectionReason.InvalidSquare);
+
+                case DeclineTakeoverCommand _:
+                    return OnTurn(state, player, GamePhase.AwaitingTakeoverDecision);
+
                 default:
                     return RejectionReason.UnknownCommand;
             }
@@ -490,8 +497,39 @@ namespace Lazpoly.Core.Engine
         public static bool IsRideDestination(BoardDefinition board, GameState state, PlayerState player, int squareIndex)
         {
             if (squareIndex < 0 || squareIndex >= board.Count || squareIndex == player.Position) return false;
+            // Nor does it go to the champions' cup (the owner's rule, Faz 31).
+            if (board[squareIndex].Type == SquareType.Cup) return false;
             int owner = state.GetOwner(squareIndex);
             return board[squareIndex].Type != SquareType.Property || owner == GameState.NoOwner || owner == player.Id;
+        }
+
+        /// <summary>A rival's town is taken over at this share of its worth (the owner's rule, Faz 31).</summary>
+        public const int TakeoverPercent = 150;
+
+        /// <summary>What a town is worth for a takeover: its price and each building level at its cost.</summary>
+        public static long TakeoverWorth(BoardDefinition board, GameState state, int squareIndex) =>
+            PurchaseCost(board, squareIndex, state.GetBuildingLevel(squareIndex));
+
+        /// <summary>What taking a town over costs: <see cref="TakeoverPercent"/> of <see cref="TakeoverWorth"/>, rounded down.</summary>
+        public static long TakeoverPrice(BoardDefinition board, GameState state, int squareIndex) =>
+            TakeoverWorth(board, state, squareIndex) * TakeoverPercent / 100;
+
+        /// <summary>
+        /// Whether the player may take over the town they stand on, right after paying its rent (Faz 31): a city (not a resort)
+        /// of another player, without a hotel or a protection shield, and the player holds the whole takeover price.
+        /// </summary>
+        public static bool CanTakeOver(BoardDefinition board, GameState state, PlayerState player)
+        {
+            if (player == null || player.IsBankrupt) return false;
+            int square = player.Position;
+            SquareDefinition definition = board[square];
+            if (definition.Type != SquareType.Property || definition.IsResort || !definition.IsDevelopable) return false;
+            int owner = state.GetOwner(square);
+            if (owner == GameState.NoOwner || owner == player.Id) return false;
+            PlayerState holder = state.FindPlayer(owner);
+            if (holder == null || holder.IsBankrupt) return false;
+            if (state.GetBuildingLevel(square) >= SquareDefinition.MaxBuildingLevel || state.HasShield(square)) return false;
+            return player.Money >= TakeoverPrice(board, state, square);
         }
 
         /// <summary>

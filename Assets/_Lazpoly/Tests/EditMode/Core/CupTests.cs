@@ -85,6 +85,15 @@ namespace Lazpoly.Core.Tests
         private static int Rent(GameEngine engine, int square) => GameRules.CalculateRent(engine.Board, engine.Rules, engine.State, square);
 
         [Test]
+        public void ABusRideNeverGoesToTheCup()
+        {
+            GameEngine engine = Game(s => { });
+            PlayerState alice = Player(engine, Alice);
+            Assert.IsFalse(GameRules.IsRideDestination(engine.Board, engine.State, alice, CupSquare), "the owner's rule, Faz 31");
+            Assert.IsTrue(GameRules.IsRideDestination(engine.Board, engine.State, alice, Rest), "other special squares still are");
+        }
+
+        [Test]
         public void TheFirstPickPaysTheFeeAndRaisesTheTownsRentByHalf()
         {
             GameEngine engine = AliceOnTheCup();

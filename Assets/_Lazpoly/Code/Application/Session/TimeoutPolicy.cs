@@ -41,6 +41,7 @@ namespace Lazpoly.App.Session
                 case GamePhase.AwaitingJailDecision: return new RollInJailCommand(playerId);
                 case GamePhase.AwaitingCupChoice: return new DeclineCupCommand(playerId);
                 case GamePhase.AwaitingRentShield: return new PayRentCommand(playerId);
+                case GamePhase.AwaitingTakeoverDecision: return new DeclineTakeoverCommand(playerId);
                 case GamePhase.AwaitingCardDiscard:
                 {
                     // The card just drawn goes back: the hand the player had stays as it was.

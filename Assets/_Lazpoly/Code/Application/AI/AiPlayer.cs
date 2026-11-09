@@ -77,6 +77,8 @@ namespace Lazpoly.App.AI
                     return AiCards.Discard(board, me);
                 case GamePhase.AwaitingRentShield:
                     return AiCards.AnswerRent(board, rules, state, me);
+                case GamePhase.AwaitingTakeoverDecision:
+                    return DecideTakeover(view);
                 default:
                     return null;
             }
@@ -154,6 +156,21 @@ namespace Lazpoly.App.AI
 
             var host = new HostCupCommand(PlayerId, best);
             return best >= 0 && view.Legal(host) ? host : (GameCommand)pass;
+        }
+
+        /// <summary>
+        /// Takes over a rival's town (Faz 31) when it completes one of its groups and the price leaves its reserve, or when the
+        /// price leaves twice the reserve; otherwise moves on.
+        /// </summary>
+        private GameCommand DecideTakeover(View view)
+        {
+            var take = new TakeOverCommand(PlayerId);
+            var pass = new DeclineTakeoverCommand(PlayerId);
+            if (!view.Legal(take) || view.MakesMistake()) return pass;
+            int square = view.Me.Position;
+            long left = view.Me.Money - GameRules.TakeoverPrice(view.Board, view.State, square);
+            bool completes = view.CompletesGroup(square, PlayerId);
+            return left >= (completes ? view.Reserve : view.Reserve * 2L) ? take : (GameCommand)pass;
         }
 
         /// <summary>A strategic card from the hand (Faz 30) when one is worth playing now; a player prone to mistakes sometimes forgets.</summary>

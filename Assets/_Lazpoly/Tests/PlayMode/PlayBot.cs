@@ -30,6 +30,8 @@ namespace Lazpoly.PlayTests
                     return new DeclineTravelCommand(me);
                 case GamePhase.AwaitingCupChoice:
                     return new DeclineCupCommand(me);
+                case GamePhase.AwaitingTakeoverDecision:
+                    return new DeclineTakeoverCommand(me);
                 case GamePhase.AwaitingDiceChoice:
                     return new ChooseDiceCommand(me, 1);
                 case GamePhase.AwaitingJailDecision:

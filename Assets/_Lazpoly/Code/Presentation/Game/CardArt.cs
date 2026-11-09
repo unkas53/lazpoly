@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Lazpoly.Core.Board;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
@@ -41,6 +42,7 @@ namespace Lazpoly.Presentation.Game
         public const string GroupDeal = "Card_groupDeal";
         public const string Cup = "Card_cup";
         public const string ShieldHeld = "Card_shieldHeld";
+        public const string Takeover = "Card_takeover";
 
         /// <summary>Every picture the game asks for, so a test can check each one ships.</summary>
         public static IEnumerable<string> All
@@ -55,6 +57,7 @@ namespace Lazpoly.Presentation.Game
                 yield return GroupDeal;
                 yield return Cup;
                 yield return ShieldHeld;
+                yield return Takeover;
             }
         }
 
@@ -159,6 +162,23 @@ namespace Lazpoly.Presentation.Game
                 case CardKind.GoToJail: return Upper(L("Hapse gir"));
                 default: return Upper(CardPlay.Name(kind));
             }
+        }
+
+        /// <summary>
+        /// Puts a card picture at the top of a window (the takeover card, Faz 31): <paramref name="width"/> wide in its 8:3 band;
+        /// nothing when the picture is not in the build.
+        /// </summary>
+        public static Image AddPicture(RectTransform parent, string name, float width)
+        {
+            Sprite sprite = Get(name);
+            if (sprite == null) return null;
+            RectTransform rect = UiRoot.Rect(parent, "Picture", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            var image = rect.gameObject.AddComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            UiBuilder.Fix(rect.gameObject, width, width * 3f / 8f);
+            return image;
         }
 
         private static Color Hex(int rgb) => new Color(((rgb >> 16) & 0xff) / 255f, ((rgb >> 8) & 0xff) / 255f, (rgb & 0xff) / 255f);

@@ -164,9 +164,21 @@ namespace Lazpoly.Core.Engine
                 {
                     DebtState due = State.RentDue;
                     Emit(new RentDueClearedEvent(player.Id));
-                    if (!Charge(player, due.CreditorId, due.Amount, MoneyReason.Rent)) FinishMove();
+                    if (!Charge(player, due.CreditorId, due.Amount, MoneyReason.Rent) && !OfferTakeover(player)) FinishMove();
                     break;
                 }
+                case TakeOverCommand _:
+                {
+                    int square = player.Position;
+                    int owner = State.GetOwner(square);
+                    Transfer(player.Id, owner, (int)GameRules.TakeoverPrice(Board, State, square), MoneyReason.Takeover);
+                    Emit(new PropertyOwnerChangedEvent(square, owner, player.Id));
+                    FinishMove();
+                    break;
+                }
+                case DeclineTakeoverCommand _:
+                    FinishMove();
+                    break;
                 default:
                     throw new InvalidOperationException($"Validated command {command.GetType().Name} has no handler.");
             }
@@ -307,7 +319,9 @@ namespace Lazpoly.Core.Engine
                         return true;
                     }
 
-                    return Charge(player, ownerId, rent, MoneyReason.Rent);
+                    // Once the rent is paid, the town may be taken over (Faz 31); a strike's free stay pays none and offers none.
+                    if (Charge(player, ownerId, rent, MoneyReason.Rent)) return true;
+                    return rent > 0 && OfferTakeover(player);
 
                 case SquareType.Tax:
                     return Charge(player, GameRules.FineCollector(Board), GameRules.TaxDue(Board, State, player.Position, player.Id), MoneyReason.Tax);
@@ -633,7 +647,20 @@ namespace Lazpoly.Core.Engine
             DebtState debt = State.Debt;
             Transfer(player.Id, debt.CreditorId, debt.Amount, debt.Reason);
             Emit(new DebtClearedEvent(player.Id));
-            FinishMove();
+            // Rent raised by selling is rent paid too: the town may be taken over when the money is still there.
+            bool rent = debt.Reason == MoneyReason.Rent && debt.CreditorId == State.GetOwner(player.Position);
+            if (!rent || !OfferTakeover(player)) FinishMove();
+        }
+
+        /// <summary>
+        /// After rent was paid on a rival's town: asks the player whether to take it over (Faz 31) when the rules allow it.
+        /// Returns true when the question is open; the decision then finishes the move.
+        /// </summary>
+        private bool OfferTakeover(PlayerState player)
+        {
+            if (!GameRules.CanTakeOver(Board, State, player)) return false;
+            Emit(new PhaseChangedEvent(GamePhase.AwaitingTakeoverDecision));
+            return true;
         }
 
         private void CompleteTrade()

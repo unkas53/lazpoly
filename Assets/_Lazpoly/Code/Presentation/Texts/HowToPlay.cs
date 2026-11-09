@@ -34,6 +34,7 @@ namespace Lazpoly.Presentation.Texts
                 Section(L("Şehirler ve evler"), F($"Satın aldığın şehre yeniden gelince ev kurabilirsin: başlangıçtan ilk geçişine kadar bir ev, sonra dörde kadar. Dört evli şehre bir daha gelince otel kurulur. Bir rengin bütün kareleri sendeyse o şehirlerin kirası, evli ve otelliyken de, {rules.FullGroupRentMultiplier} katına çıkar.")),
                 Section(L("Para sıkıntısı"), F($"Mülk yalnız bir ödemeye (çoğunlukla kiraya) para yetmediğinde satılır; o an şehirlerin haritada halkalanır ve tıkladığın şehir bankaya satılır. Banka şehrin fiyatının tamamını öder, şehir yeniden sahipsiz kalır. Binalar maliyetinin %{rules.BuildingSellbackPercent} değerine geri satılır. Otomatik Sat düğmesi borcu kapatacak kadar şehri, binasız ve ucuz olanlardan başlayarak satar. Her şeyini satsa da borcunu ödeyemeyen iflas eder: bütün şehirleri ve binaları bankaya satılır, eline geçen para ne kadarsa alacaklıya o kadar ödenir.")),
                 Section(L("Takas"), L("Kendi sıranda başka bir oyuncuya para ve mülk karşılığında takas teklif edebilirsin. Binalı şehirler takas edilemez.")),
+                Section(L("Şehir devralma"), F($"Rakibin şehrine gelip kirasını ödedikten sonra paran yetiyorsa şehri binalarıyla birlikte devralabilirsin. Devir bedeli arsa ve evlerin değerinin %{GameRules.TakeoverPercent} oranıdır ve şehrin sahibine ödenir. Otelli şehirler ve Koruma kalkanlı şehirler devralınamaz.")),
             };
 
             if (rules.TurnSeconds > 0)
@@ -55,7 +56,7 @@ namespace Lazpoly.Presentation.Texts
                 sections.Add(Section(L(board[board.JailIndex].Name), F($"Hapse gelen, üst üste {rules.MaxConsecutiveDoubles} çift atan ya da hapse gönderen kartı çeken, {rules.JailTurns} kez sırası gelene kadar orada bekler. Sırası gelince isterse {board[board.JailIndex].Fee} ödeyip hemen çıkar ve zar atar; ya da bedava zar atar: çift gelirse çıkıp o zarla ilerler (bir daha atmaz), gelmezse sıra geçer. Hapisteyken kira almak sürer.")));
             }
 
-            if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelenin sırası orada biter, çift atmış olsa da. Bir sonraki sırasında isterse {fare} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider, sonra zarını atar; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine gidilemez.")));
+            if (HasType(board, SquareType.Travel)) sections.Add(Section(L("Otogar"), F($"Otogara gelenin sırası orada biter, çift atmış olsa da. Bir sonraki sırasında isterse {fare} bilet parası ödeyip bir kareye zar atmış gibi yürüyerek gider, sonra zarını atar; Başlangıç'tan geçerse parasını alır. Başka bir oyuncunun şehrine ve Şampiyonlar Kupası'na gidilemez.")));
             int taxPercent = TaxPercent(board);
             if (taxPercent > 0)
             {

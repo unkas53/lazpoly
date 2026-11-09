@@ -266,8 +266,10 @@ namespace Lazpoly.Core.Tests
 
             Accept(engine, new PlayCardCommand(Alice, Fund));
             Accept(engine, new RollDiceCommand(Alice));
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "the rent was simply paid");
+            Assert.AreEqual(GamePhase.AwaitingTakeoverDecision, engine.State.Phase, "the rent was simply paid; the town may be taken over (Faz 31)");
             Assert.AreEqual(1030 + 200 - 10, Player(engine, Alice).Money);
+            Accept(engine, new DeclineTakeoverCommand(Alice));
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
         }
 
         [Test]

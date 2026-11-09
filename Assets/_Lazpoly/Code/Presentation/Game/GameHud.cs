@@ -24,7 +24,7 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>The windows of the game screen that a button or a key opens.</summary>
-    public enum HudWindow { Pause, Settings, HowToPlay, Properties, Log, Trade }
+    public enum HudWindow { Pause, Settings, HowToPlay, Log, Trade }
 
     /// <summary>
     /// The game screen's interface around the diamond-shaped board: a player card in each corner, the
@@ -52,8 +52,8 @@ namespace Lazpoly.Presentation.Game
         private UiView _ticker;
         private UiView _logWindow;
         private GameObject _logLayer;
-        private UiView _propertiesWindow;
-        private GameObject _propertiesLayer;
+        private UiView _takeoverWindow;
+        private GameObject _takeoverLayer;
         private UiView _tradeWindow;
         private UiView _settingsWindow;
         private UiView _endWindow;
@@ -122,6 +122,10 @@ namespace Lazpoly.Presentation.Game
         private UiView _rentWindow;
         private GameObject _rentLayer;
         private CenterNotice _playNotice;
+        private CenterNotice _takeoverNotice;
+
+        /// <summary>A town whose takeover card the screen tour shows without the game asking (-1: none).</summary>
+        private int _stagedTakeover = -1;
         private int _buildCardDismissed;
         private PropertyCard _propertyCard;
         private DebtSaleView _debtSale;
@@ -167,8 +171,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether the event log window is open.</summary>
         public bool LogOpen => _logLayer != null && _logLayer.activeSelf;
 
-        /// <summary>Whether the properties window (build and sell) is open.</summary>
-        public bool PropertiesOpen => _propertiesLayer != null && _propertiesLayer.activeSelf;
+        /// <summary>Whether the card offering a rival's town for takeover is open (Faz 31).</summary>
+        public bool TakeoverOpen => _takeoverLayer != null && _takeoverLayer.activeSelf;
 
         /// <summary>The square whose card is open: the one clicked on the board or in a player's card; or -1.</summary>
         public int ShownSquare => _pinnedSquare;
@@ -207,7 +211,6 @@ namespace Lazpoly.Presentation.Game
                 case HudWindow.Pause: OpenPause(); break;
                 case HudWindow.Settings: OpenSettings(); break;
                 case HudWindow.HowToPlay: OpenHowToPlay(); break;
-                case HudWindow.Properties: OpenProperties(); break;
                 case HudWindow.Log:
                     if (!_logLayer.activeSelf) ToggleLog();
                     break;
@@ -311,6 +314,7 @@ namespace Lazpoly.Presentation.Game
             _groupNotice = new CenterNotice(_canvas.transform, "Group Deal Popup", GroupDeal.Seconds);
             _cupNotice = new CenterNotice(_canvas.transform, "Cup Popup", CupNews.Seconds);
             _playNotice = new CenterNotice(_canvas.transform, "Card Play Popup", CardPlay.Seconds);
+            _takeoverNotice = new CenterNotice(_canvas.transform, "Takeover Popup");
             BuildRollPopup();
             BuildRollTotal();
             BuildRollPrompt();
@@ -347,9 +351,10 @@ namespace Lazpoly.Presentation.Game
                 ui => _cards.RenderDiscard(ui, _controller.Session.State));
             _rentWindow = new UiView(UiRoot.Modal(_canvas.transform, "Rent Shield", UiLayout.WindowWidth, out _rentLayer),
                 ui => _cards.RenderRentShield(ui, _controller.Session.State));
-            // The log and the properties open on request, over whatever card is up.
+            // A rival's town that may be taken over once its rent is paid (Faz 31), in the middle like the other decisions.
+            _takeoverWindow = new UiView(UiRoot.Modal(_canvas.transform, "Takeover Card", UiLayout.WindowWidth, out _takeoverLayer), RenderTakeoverCard);
+            // The log opens on request, over whatever card is up.
             _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
-            _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
             // The square card opens over everything on a click, in the middle of the screen; a click on the dimmed board closes it.
             _squareWindow = new UiView(UiRoot.Modal(_canvas.transform, "Square Card", UiLayout.WindowWidth, out _squareLayer), RenderSquareCard);
             var dim = _squareLayer.AddComponent<Button>();
@@ -357,7 +362,7 @@ namespace Lazpoly.Presentation.Game
             dim.onClick.AddListener(() => _pinnedSquare = NoSquare);
             _squareLayer.SetActive(false);
             _logLayer.SetActive(false);
-            _propertiesLayer.SetActive(false);
+            _takeoverLayer.SetActive(false);
             _pauseLayer.SetActive(false);
             _howToLayer.SetActive(false);
             _tradeLayer.SetActive(false);
@@ -889,6 +894,7 @@ namespace Lazpoly.Presentation.Game
             UpdateGroupDealPopup();
             UpdateCupPopup();
             UpdatePlayPopup();
+            UpdateTakeoverPopup();
             UpdateRollPopup();
             UpdateRollTotal();
             UpdateTip(state);
@@ -898,6 +904,8 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_tradeLayer, _tradeWindow, tradeOpen, revision);
             bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
             SetLayer(_cityLayer, _cityWindow, cityOpen, revision);
+            bool takeoverOpen = _stagedTakeover >= 0 || (!tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingTakeoverDecision));
+            SetLayer(_takeoverLayer, _takeoverWindow, takeoverOpen, HashCode.Combine(revision, _stagedTakeover));
             SetLayer(_offerLayer, _offerWindow, OffersAnswerHere(state), revision);
             // A card's town is picked on the board, so the jail card makes room while it is.
             bool aiming = _cards.Aiming(state) != CardHand.NoCard;
@@ -915,15 +923,15 @@ namespace Lazpoly.Presentation.Game
             bool ended = !_endDismissed && (_controller.EndReason.HasValue || (state != null && state.Phase == GamePhase.GameOver && !_controller.IsBusy));
             SetLayer(_endLayer, _endWindow, ended, revision);
             SetLayer(_logLayer, _logWindow, _logLayer.activeSelf, revision);
-            SetLayer(_propertiesLayer, _propertiesWindow, _propertiesLayer.activeSelf && CanOpenProperties(state), revision);
             bool windowOpen = tradeOpen || _pauseLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || ended || _logLayer.activeSelf ||
-                              _propertiesLayer.activeSelf || _squareLayer.activeSelf || _handLayer.activeSelf || aiming;
+                              _squareLayer.activeSelf || _handLayer.activeSelf || aiming;
             UpdateRollPrompt(state, windowOpen || CenterCardUp);
         }
 
         /// <summary>True while a card is open in the middle of the screen: the roll button waits until it closes, so it never covers the card's last lines.</summary>
         private bool CenterCardUp =>
-            Up(_drawNotice) || Up(_playNotice) || Up(_tradeNotice) || Up(_debtNotice) || Up(_jailNotice) || Up(_groupNotice) || Up(_cupNotice);
+            Up(_drawNotice) || Up(_playNotice) || Up(_tradeNotice) || Up(_debtNotice) || Up(_jailNotice) || Up(_groupNotice) || Up(_cupNotice) ||
+            Up(_takeoverNotice);
 
         private static bool Up(CenterNotice notice) => notice != null && notice.Shown;
 
@@ -1237,8 +1245,8 @@ namespace Lazpoly.Presentation.Game
         public const float CardsButtonWidth = 150f;
 
         /// <summary>
-        /// The few buttons the game screen keeps (the side dock is gone): the properties and a trade offer
-        /// while the turn is this person's to use, and the menu. Rolling has its own big button and Space;
+        /// The few buttons the game screen keeps (the side dock is gone): a trade offer while the turn is this person's to use,
+        /// the cards and the menu (the properties button went, the owner's wish, Faz 31). Rolling has its own big button and Space;
         /// the building card opens by itself and comes back with B.
         /// </summary>
         private void RenderToolbar(UiBuilder row, GameState state)
@@ -1246,8 +1254,6 @@ namespace Lazpoly.Presentation.Game
             bool over = state == null || state.Phase == GamePhase.GameOver || _controller.EndReason.HasValue;
             bool free = !over && WaitsOnPersonHere(state, state.Phase) && OffersExtras(state);
             int id = over ? GameState.NoOwner : state.CurrentPlayer.Id;
-            UiBuilder.Fix(row.IconButton(UiIcon.Flag, L("Mülkler"), OpenProperties, !over && CanOpenProperties(state), height: UiTheme.SmallButtonHeight),
-                ToolbarButtonWidth);
             UiBuilder.Fix(row.IconButton(UiIcon.People, L("Takas"), () => _trade.Open(id), free, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
             // The cards' button lights up while a card may be played (Faz 30); a panel over the board would push the board up
             // under the roll button.
@@ -1257,21 +1263,6 @@ namespace Lazpoly.Presentation.Game
             UiBuilder.Fix(row.IconButton(UiIcon.Bookmark, cards, () => _cards.Open = !_cards.Open, holder != null, look, UiTheme.SmallButtonHeight),
                 CardsButtonWidth);
             UiBuilder.Fix(row.IconButton(UiIcon.Pause, L("Menü"), OpenPause, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
-        }
-
-        /// <summary>The properties window (build and sell) is for the person on turn here, at any moment that is theirs to act in.</summary>
-        private bool CanOpenProperties(GameState state)
-        {
-            if (state == null || state.Phase == GamePhase.GameOver || _controller.IsBusy || _controller.EndReason.HasValue) return false;
-            if (state.Phase == GamePhase.AwaitingTradeResponse || state.Phase == GamePhase.AwaitingBuyDecision) return false;
-            int id = state.CurrentPlayer.Id;
-            return _controller.Session.CanControl(id) && !_controller.Session.IsAiPlaying(id);
-        }
-
-        private void OpenProperties()
-        {
-            _propertiesLayer.SetActive(true);
-            _propertiesWindow.Invalidate();
         }
 
         private void ToggleLog()
@@ -1440,7 +1431,7 @@ namespace Lazpoly.Presentation.Game
         private void AutoEndTurn(GameState state, bool tradeOpen)
         {
             bool due = WaitsOnPersonHere(state, GamePhase.TurnEnd) && !_controller.Paused && !tradeOpen && !OffersBuildCard(state) &&
-                       !_propertiesLayer.activeSelf && !_pauseLayer.activeSelf;
+                       !_pauseLayer.activeSelf;
             if (!due)
             {
                 _turnEndSince = -1f;
@@ -1605,6 +1596,68 @@ namespace Lazpoly.Presentation.Game
             });
         }
 
+        /// <summary>The takeover card's picture width, inside the window's margins.</summary>
+        private const float TakeoverPictureWidth = 440f;
+
+        /// <summary>Shows the takeover card for <paramref name="square"/> as if the game asked (the screen tour); -1 puts it away.</summary>
+        public void StageTakeover(int square) => _stagedTakeover = square;
+
+        /// <summary>
+        /// "Şehri devral" in the middle once rent is paid on a rival's town (the owner's rule, Faz 31): the town, whose it is,
+        /// what it is worth, the price at 150% and the money left; "take it over" or "move on". The clock moves on.
+        /// </summary>
+        private void RenderTakeoverCard(UiBuilder ui)
+        {
+            GameState state = _controller.Session.State;
+            if (state == null) return;
+            bool staged = _stagedTakeover >= 0;
+            if (!staged && state.Phase != GamePhase.AwaitingTakeoverDecision) return;
+            PlayerState player = state.CurrentPlayer;
+            BoardDefinition board = _controller.Session.Board;
+            int square = staged ? _stagedTakeover : player.Position;
+            string owner = state.FindPlayer(state.GetOwner(square))?.Name ?? "";
+            string town = L(board[square].Name);
+            int level = state.GetBuildingLevel(square);
+            int price = (int)GameRules.TakeoverPrice(board, state, square);
+
+            CardArt.AddPicture(ui.Container, CardArt.Takeover, TakeoverPictureWidth);
+            Text title = ui.Title(UiIcon.Flag, L("ŞEHRİ DEVRAL"), CardArt.ToneColor(CardTone.Trade));
+            title.font = UiTheme.BlackFont;
+            ui.Label(F($"{town} şehri {owner} oyuncusunun. Kirayı ödedin; şehri binalarıyla birlikte devralabilirsin."), UiTextStyle.Body);
+            UiBuilder card = ui.Card();
+            Line(card, L("Arsa"), M(board[square].Price));
+            if (level > 0) Line(card, F($"Evler ({level})"), M(level * board[square].BuildingCost));
+            Line(card, F($"Devir bedeli (%{GameRules.TakeoverPercent})"), M(price), strong: true);
+            Line(card, L("Kalan paran"), M(player.Money - price));
+            ui.Label(F($"Bedel {owner} oyuncusuna ödenir."), UiTextStyle.Small, UiTheme.Muted);
+
+            var take = new TakeOverCommand(player.Id);
+            ui.Button(F($"Şehri devral ({M(price)})"), () => _controller.Submit(take), staged || _controller.IsAllowed(take),
+                UiButtonStyle.Primary, CardButton);
+            ui.Button(L("Devam Et"), () => _controller.Submit(new DeclineTakeoverCommand(player.Id)), true, UiButtonStyle.Secondary, CardButton);
+        }
+
+        /// <summary>"ŞEHİR DEVRALINDI" in the middle for everyone at the table (Faz 31): who took which town from whom, at what price.</summary>
+        private void UpdateTakeoverPopup()
+        {
+            float age = Time.time - _controller.ShownTakeoverTime;
+            if (_controller.ShownTakeoverSquare < 0 || !CenterNotice.Showing(age))
+            {
+                _takeoverNotice.Hide();
+                return;
+            }
+
+            GameState state = _controller.Session.State;
+            string buyer = state.FindPlayer(_controller.ShownTakeoverBuyer)?.Name;
+            string seller = state.FindPlayer(_controller.ShownTakeoverSeller)?.Name;
+            string town = L(_controller.Session.Board[_controller.ShownTakeoverSquare].Name);
+            _takeoverNotice.Paint(CardArt.Takeover, CardTone.Trade);
+            _takeoverNotice.Title.text = L("ŞEHİR DEVRALINDI");
+            _takeoverNotice.Body.text = F($"{buyer}, {town} şehrini {seller} oyuncusundan devraldı.") + "\n" +
+                                        F($"Devir bedeli: {M(_controller.ShownTakeoverPrice)}");
+            _takeoverNotice.Show(age);
+        }
+
         /// <summary>
         /// A turn in jail, on a card in the middle of the screen: roll for a double, which lets the player out for free
         /// (the first button), or pay the exit fee and roll now. Any other roll waits the turn out; after the last one the
@@ -1671,15 +1724,6 @@ namespace Lazpoly.Presentation.Game
             ui.Title(UiIcon.List, L("Olaylar"));
             RenderLog(ui.Scroll(WindowListHeight));
             ui.Button(L("Kapat (Esc)"), () => _logLayer.SetActive(false));
-        }
-
-        /// <summary>The properties window: the person on turn's list with its build and sell buttons.</summary>
-        private void RenderProperties(UiBuilder ui)
-        {
-            GameState state = _controller.Session.State;
-            if (state == null) return;
-            PropertyPanel.Render(ui.Scroll(WindowListHeight), _controller, state, state.CurrentPlayer.Id);
-            ui.Button(L("Kapat (Esc)"), () => _propertiesLayer.SetActive(false));
         }
 
         private void RenderLog(UiBuilder ui)
@@ -1866,10 +1910,11 @@ namespace Lazpoly.Presentation.Game
                 Typing = IsTyping(),
                 ButtonFocused = UiFocus.ButtonFocused,
                 PauseOpen = _pauseLayer.activeSelf,
-                ClosableOpen = _squareLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
+                ClosableOpen = _squareLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || _logLayer.activeSelf ||
                                _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf || _handLayer.activeSelf ||
                                (state != null && _cards.Aiming(state) != CardHand.NoCard),
-                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf || _offerLayer.activeSelf || _discardLayer.activeSelf || _rentLayer.activeSelf,
+                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf || _offerLayer.activeSelf || _discardLayer.activeSelf || _rentLayer.activeSelf ||
+                               _takeoverLayer.activeSelf,
                 Acting = acting,
                 Phase = state?.Phase ?? GamePhase.GameOver,
                 CanBuild = acting && OffersExtras(state) && CanReopenBuildCard(state),
@@ -1942,7 +1987,6 @@ namespace Lazpoly.Presentation.Game
             else if (_settingsLayer.activeSelf) _settingsLayer.SetActive(false);
             else if (_howToLayer.activeSelf) _howToLayer.SetActive(false);
             else if (_pauseLayer.activeSelf) ClosePause();
-            else if (_propertiesLayer.activeSelf) _propertiesLayer.SetActive(false);
             else if (_logLayer.activeSelf) _logLayer.SetActive(false);
             else if (_tradeLayer.activeSelf) _trade.Close();
             else if (_buildLayer.activeSelf && state != null) _buildCardDismissed = BuildVisitKey(state);

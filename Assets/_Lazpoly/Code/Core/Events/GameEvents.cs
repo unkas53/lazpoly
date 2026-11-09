@@ -44,6 +44,9 @@ namespace Lazpoly.Core.Events
 
         /// <summary>Paid into an investment fund, or paid out by it at Start (Faz 30).</summary>
         Fund = 17,
+
+        /// <summary>The price of a rival's town taken over, paid to its owner (Faz 31).</summary>
+        Takeover = 18,
     }
 
     /// <summary>How a pawn gets to its new square, so every screen animates the move the same way.</summary>

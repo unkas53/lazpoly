@@ -169,6 +169,7 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Cup: return L("kupa");
                 case MoneyReason.Audit: return L("vergi denetimi");
                 case MoneyReason.Fund: return L("yatırım fonu");
+                case MoneyReason.Takeover: return L("şehir devri");
                 default: return reason.ToString();
             }
         }
