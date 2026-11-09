@@ -52,6 +52,34 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheTownColoursAreOneFamilyAndEachGroupStandsApart()
+        {
+            // The owner's wish (Faz 31): colours pleasing to the eye that hold together. One saturation and brightness band,
+            // hues going round the board, and each town's printed band still far enough from every other to tell them apart.
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var bands = new List<Color>();
+            for (int group = 1; group <= 8; group++)
+            {
+                Color colour = data.GroupColor(group);
+                Color.RGBToHSV(colour, out float hue, out float saturation, out float value);
+                Assert.That(saturation, Is.InRange(0.38f, 0.7f), $"group {group} is neither washed out nor loud");
+                Assert.That(value, Is.InRange(0.75f, 0.96f), $"group {group} is as bright as the others");
+                Color band = BoardView.BandColor(colour);
+                Assert.GreaterOrEqual(BoardView.Contrast(band, BoardView.InkColor), BoardView.BandContrast, $"group {group}'s names read");
+                bands.Add(band);
+            }
+
+            for (int a = 0; a < bands.Count; a++)
+            {
+                for (int b = a + 1; b < bands.Count; b++)
+                {
+                    float distance = new Vector3(bands[a].r - bands[b].r, bands[a].g - bands[b].g, bands[a].b - bands[b].b).magnitude;
+                    Assert.Greater(distance, 0.1f, $"groups {a + 1} and {b + 1} look alike");
+                }
+            }
+        }
+
+        [Test]
         public void ATownsColourIsPrintedFlatInsideItsFrameOnTopWithTheLightStripBelow()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
