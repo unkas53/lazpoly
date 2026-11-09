@@ -202,6 +202,61 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void EveryCardInTheMiddleHasItsPictureAndColour()
+        {
+            foreach (string name in CardArt.All.Distinct())
+            {
+                Sprite picture = CardArt.Get(name);
+                Assert.IsNotNull(picture, name);
+                Assert.AreEqual(8f / 3f, picture.rect.width / picture.rect.height, 0.01f, $"{name} is an 8:3 band");
+            }
+
+            Assert.IsNotNull(CardArt.Get(CardArt.Face));
+            Assert.AreNotEqual(Vector4.zero, CardArt.Get(CardArt.Face).border, "the face stretches as a 9-slice");
+            Assert.IsNotNull(CardArt.Get(CardArt.Shadow));
+            Assert.AreEqual("Card_demolish", CardArt.PictureFor(CardKind.Demolish));
+            Assert.AreEqual(CardTone.Attack, CardArt.ToneFor(CardKind.ForceSale));
+            Assert.AreEqual(CardTone.Defence, CardArt.ToneFor(CardKind.Shield));
+            Assert.AreEqual(CardTone.Money, CardArt.ToneFor(CardKind.Fund));
+            Assert.AreEqual("SALDIRI KARTI", CardArt.Family(CardKind.Demolish));
+            Assert.IsNull(CardArt.Family(CardKind.Collect), "a plain card has the deck's name over it instead");
+            Assert.AreEqual("HAPSE GİR", CardArt.Title(CardKind.GoToJail));
+            Assert.AreEqual("İMARSIZ YAPI", CardArt.Title(CardKind.Demolish));
+        }
+
+        [Test]
+        public void ACardInTheMiddleGrowsWithItsTextAndShowsItsPicture()
+        {
+            var canvas = new GameObject("Canvas", typeof(RectTransform), typeof(Canvas));
+            try
+            {
+                var notice = new CenterNotice(canvas.transform, "Test Card");
+                notice.Paint(CardArt.Cup, CardTone.Cup, "KUPA");
+                notice.Title.text = "ŞAMPİYONLAR KUPASI";
+                notice.Body.text = "Bir satır.";
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(notice.Rect);
+                float short_ = notice.Rect.rect.height;
+                notice.Body.text = string.Join("\n", Enumerable.Repeat("Şampiyonlar Kupası maçları Paris şehrinde yapılıyor.", 4));
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(notice.Rect);
+                Assert.Greater(notice.Rect.rect.height, short_ + 3f * CenterNotice.BodySize, "the card grows with its text instead of cutting it");
+                Assert.Greater(short_, CenterNotice.PictureHeight, "the picture is part of the card");
+                Assert.IsTrue(notice.Picture.gameObject.activeSelf);
+                Assert.IsTrue(notice.Family.gameObject.activeSelf);
+                Assert.AreEqual(CardArt.ToneColor(CardTone.Cup), notice.Title.color);
+                Assert.GreaterOrEqual(notice.Body.fontSize, 24, "large enough to read at a glance");
+
+                notice.Paint(null, CardTone.Grey);
+                Assert.IsFalse(notice.Picture.gameObject.activeSelf, "no picture, no empty band");
+                Assert.IsFalse(notice.Family.gameObject.activeSelf);
+                Assert.IsFalse(notice.Shown, "hidden until shown");
+            }
+            finally
+            {
+                Object.DestroyImmediate(canvas);
+            }
+        }
+
+        [Test]
         public void TheBoardShowsAShieldAndAStrikeBesideTheBuildings()
         {
             Mesh shield = MeshFactory.Shield();

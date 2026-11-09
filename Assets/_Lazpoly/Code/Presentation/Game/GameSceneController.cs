@@ -1030,6 +1030,59 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => !CenterNotice.Showing(Time.time - ShownPlayTime, CardPlay.Seconds), CardPlay.Seconds + 1f);
             }
 
+            // The other cards in the middle, one of each (the owner's wish, 2026-11-09): a drawn money card and a drawn
+            // strategy card, a trade's result and a player who cannot pay.
+            int deckSquare = -1;
+            for (int i = 0; i < _session.Board.Count && deckSquare < 0; i++)
+            {
+                if (_session.Board[i].Type == SquareType.Card) deckSquare = i;
+            }
+
+            foreach (CardKind kind in new[] { CardKind.Collect, CardKind.ForceSale })
+            {
+                int drawn = -1;
+                for (int i = 0; i < _session.Board.Cards.Count && drawn < 0; i++)
+                {
+                    if (_session.Board.Cards[i].Kind == kind) drawn = i;
+                }
+
+                if (drawn < 0) continue;
+                ShownCard = drawn;
+                ShownCardPlayer = person;
+                ShownCardSquare = deckSquare;
+                ShownCardTime = Time.unscaledTime;
+                Revision++;
+                yield return ScreenTour.Until(() => false, 0.4f);
+                yield return ScreenTour.Take(kind == CardKind.Collect ? "sans-karti" : "sans-strateji-karti");
+                ShownCard = -1;
+                Revision++;
+            }
+
+            int rival = GameState.NoOwner;
+            foreach (PlayerState player in _session.State.Players)
+            {
+                if (player.Id != person && !player.IsBankrupt) rival = player.Id;
+            }
+
+            if (rival != GameState.NoOwner)
+            {
+                ShownTrade = new TradeOffer(person, rival, 100000, 0, Array.Empty<int>(), Array.Empty<int>());
+                ShownTradeOutcome = TradeOutcome.Accepted;
+                ShownTradeTime = Time.time;
+                Revision++;
+                yield return ScreenTour.Until(() => false, 0.4f);
+                yield return ScreenTour.Take("takas-karti");
+                ShownTradeTime = float.NegativeInfinity;
+
+                ShownDebt = new DebtIncurredEvent(person, rival, 250000, MoneyReason.Rent);
+                ShownDebtTime = Time.time;
+                Revision++;
+                yield return ScreenTour.Until(() => false, 0.4f);
+                yield return ScreenTour.Take("borc-karti");
+                ShownDebt = null;
+                Revision++;
+            }
+
             // The roll's total in the middle of the screen (the owner's wish, Faz 28), staged as a double so ÇİFT shows too.
             ShowRoll(new DiceRolledEvent(person, 3, 3));
             ShownRollLasts = RollTotal.Seconds + ScreenTour.SettleSeconds + 1f; // Up long enough for the picture's settling wait.

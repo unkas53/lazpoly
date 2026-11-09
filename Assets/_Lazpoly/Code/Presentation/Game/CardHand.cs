@@ -22,6 +22,9 @@ namespace Lazpoly.Presentation.Game
     {
         public const int NoCard = -1;
 
+        /// <summary>The width of a card's picture in the hand window.</summary>
+        public const float ThumbWidth = 128f;
+
         private readonly GameSceneController _controller;
         private int _aimCard = NoCard;
         private int _aimKey;
@@ -155,9 +158,24 @@ namespace Lazpoly.Presentation.Game
         private UiBuilder CardBlock(UiBuilder ui, int card)
         {
             UiBuilder block = ui.Card();
-            Text name = block.Label(CardPlay.Name(Board, card), UiTextStyle.Body, UiTheme.Accent);
+            CardKind kind = Board.Cards[card].Kind;
+            // The card's picture beside its name and text, as on the card in the middle (2026-11-09).
+            UiBuilder row = block.Row(12f, expand: false);
+            Sprite picture = CardArt.Get(CardArt.PictureFor(kind));
+            if (picture != null)
+            {
+                RectTransform rect = UiRoot.Rect(row.Container, "Picture", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+                var image = rect.gameObject.AddComponent<Image>();
+                image.sprite = picture;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+                UiBuilder.Fix(rect.gameObject, ThumbWidth, ThumbWidth * 3f / 8f);
+            }
+
+            UiBuilder words = row.Column();
+            Text name = words.Label(CardPlay.Name(Board, card), UiTextStyle.Body, CardArt.ToneColor(CardArt.ToneFor(kind)));
             name.font = UiTheme.BoldFont;
-            block.Label(CardPlay.Body(Board, card), UiTextStyle.Small, UiTheme.Muted);
+            words.Label(CardPlay.Body(Board, card), UiTextStyle.Small, UiTheme.Muted);
             return block;
         }
 

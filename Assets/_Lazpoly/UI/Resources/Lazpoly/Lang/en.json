@@ -756,5 +756,15 @@
   "Şehirdeki her şey yıkıldı; şehir bankaya döndü.": "Everything in the town came down; it went back to the bank.",
   "Şehrin binası bir kat düştü.": "The town's building lost a floor.",
   "Şehir bankaya satıldı; bedeli sahibine ödendi.": "The town was sold to the bank; its owner got its price.",
-  "Elinde strateji kartı var. Zar atmadan önce alttaki \"Kartlar\" düğmesinden birini oynayabilirsin; her sırada bir kart. Düğme, oynayabileceğin bir kart varken yanar.": "You hold a strategy card. Before rolling you may play one from the \"Cards\" button below; one card a turn. The button lights up while you have a card to play."
+  "Elinde strateji kartı var. Zar atmadan önce alttaki \"Kartlar\" düğmesinden birini oynayabilirsin; her sırada bir kart. Düğme, oynayabileceğin bir kart varken yanar.": "You hold a strategy card. Before rolling you may play one from the \"Cards\" button below; one card a turn. The button lights up while you have a card to play.",
+  "Hareket kartı": "Move card",
+  "Saldırı kartı": "Attack card",
+  "Koruma kartı": "Protection card",
+  "Ekonomi kartı": "Money card",
+  "Kupa kartı": "Cup card",
+  "Para geldi": "Money in",
+  "Ceza": "Fine",
+  "Yürü": "Walk",
+  "Tamir": "Repairs",
+  "Hapse gir": "Go to jail"
 }

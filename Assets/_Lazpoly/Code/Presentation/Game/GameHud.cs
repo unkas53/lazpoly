@@ -82,10 +82,7 @@ namespace Lazpoly.Presentation.Game
         private CenterNotice _jailNotice;
         private CenterNotice _groupNotice;
         private CenterNotice _cupNotice;
-        private Text _cardTitle;
-        private Text _cardText;
-        private CanvasGroup _cardGroup;
-        private RectTransform _cardRect;
+        private CenterNotice _drawNotice;
         private Text _rollText;
         private CanvasGroup _rollGroup;
         private RectTransform _rollPrompt;
@@ -375,23 +372,12 @@ namespace Lazpoly.Presentation.Game
             _rentLayer.SetActive(false);
         }
 
-        /// <summary>The drawn card, titled after the square it came from ("SOKAK HABERİ" or "ŞANS"), shown in the middle for a few seconds. It never takes the mouse.</summary>
-        private void BuildCardPopup()
-        {
-            RectTransform card = UiRoot.Rect(_canvas.transform, "Card Popup", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(-260f, -40f), new Vector2(260f, 150f));
-            UiRoot.Panel(card).raycastTarget = false; // A sheet of the kit's paper, like every window.
-            _cardGroup = card.gameObject.AddComponent<CanvasGroup>();
-            _cardGroup.blocksRaycasts = false;
-            _cardGroup.interactable = false;
-            _cardGroup.alpha = 0f;
-            _cardRect = card;
-            UiBuilder.AddColumnLayout(card.gameObject, 18, 8f);
-            var builder = new UiBuilder(card);
-            _cardTitle = builder.Label(L("SOKAK HABERİ"), UiTextStyle.Heading, UiTheme.Accent, TextAnchor.MiddleCenter);
-            _cardText = builder.Label("", UiTextStyle.Body, UiTheme.Text, TextAnchor.MiddleCenter);
-            _cardText.fontSize = 22;
-        }
+        /// <summary>
+        /// The drawn card in the middle for a few seconds, as a card of its own (the owner's wish, 2026-11-09): its picture,
+        /// the deck it came from with who drew it ("ŞANS · Ayşe"), its name and what it says. It never takes the mouse.
+        /// </summary>
+        private void BuildCardPopup() =>
+            _drawNotice = new CenterNotice(_canvas.transform, "Card Popup", GameSceneController.CardReadSeconds + 1.6f);
 
         /// <summary>A trade's result in the middle (the owner's wish, Faz 23): who offered what to whom, and whether it was taken.</summary>
         private void UpdateTradePopup()
@@ -410,7 +396,8 @@ namespace Lazpoly.Presentation.Game
             TradeOutcome outcome = _controller.ShownTradeOutcome;
             _tradeNotice.Title.text = outcome == TradeOutcome.Accepted ? L("TAKAS KABUL EDİLDİ")
                 : outcome == TradeOutcome.Rejected ? L("TAKAS REDDEDİLDİ") : L("TAKAS GERİ ÇEKİLDİ");
-            _tradeNotice.Title.color = outcome == TradeOutcome.Accepted ? UiTheme.Gain : UiTheme.Warning;
+            _tradeNotice.Paint(outcome == TradeOutcome.Accepted ? CardArt.TradeAccepted : CardArt.TradeRejected,
+                outcome == TradeOutcome.Accepted ? CardTone.Trade : CardTone.Grey);
             _tradeNotice.Body.text = $"{from} → {to}\n" + F($"{from} verir: {_trade.Describe(offer.GiveSquares, offer.GiveMoney)}") + "\n" +
                                      F($"{from} ister: {_trade.Describe(offer.TakeSquares, offer.TakeMoney)}");
             _tradeNotice.Show(age);
@@ -432,8 +419,8 @@ namespace Lazpoly.Presentation.Game
 
             GameState state = _controller.Session.State;
             _debtNotice.Title.text = EventDescriber.CannotPayText(state.FindPlayer(debt.PlayerId)?.Name, debt.Reason);
-            _debtNotice.Title.color = UiTheme.Warning;
-            _debtNotice.Body.text = F($"Ödenecek: {debt.Amount}") + "\n" + F($"Alacaklı: {EventDescriber.CreditorText(state, debt.CreditorId)}");
+            _debtNotice.Paint(CardArt.Debt, CardTone.Cost);
+            _debtNotice.Body.text = F($"Ödenecek: {M(debt.Amount)}") + "\n" + F($"Alacaklı: {EventDescriber.CreditorText(state, debt.CreditorId)}");
             _debtNotice.Show(age);
         }
 
@@ -453,7 +440,7 @@ namespace Lazpoly.Presentation.Game
 
             bool mine = _controller.Session.CanControl(playerId) && !_controller.Session.IsAiPlaying(playerId);
             _jailNotice.Title.text = L("HAPSE!");
-            _jailNotice.Title.color = UiTheme.Warning;
+            _jailNotice.Paint(CardArt.ThirdDouble, CardTone.Jail);
             _jailNotice.Body.text = ThirdDoubleText(mine ? null : _controller.Session.State.FindPlayer(playerId)?.Name);
             _jailNotice.Show(age);
         }
@@ -474,7 +461,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             _cupNotice.Title.text = CupNews.Title;
-            _cupNotice.Title.color = UiTheme.Accent;
+            _cupNotice.Paint(CardArt.Cup, CardTone.Cup);
             _cupNotice.Body.text = CupNews.Text(_controller.Session.Board[cup.SquareIndex].Name) + "\n" + CupNews.RaiseText(cup.Percent);
             _cupNotice.Show(age);
         }
@@ -496,7 +483,10 @@ namespace Lazpoly.Presentation.Game
             BoardDefinition board = _controller.Session.Board;
             bool blocked = _controller.ShownPlayBlocked;
             _playNotice.Title.text = CardPlay.Title(board, played.CardIndex);
-            _playNotice.Title.color = blocked ? UiTheme.Warning : UiTheme.Accent;
+            CardKind kind = board.Cards[played.CardIndex].Kind;
+            // A shield that held shows the shield, in protection's colour; otherwise the card's own picture.
+            if (blocked) _playNotice.Paint(CardArt.ShieldHeld, CardTone.Defence, CardArt.Family(kind));
+            else _playNotice.Paint(CardArt.PictureFor(kind), CardArt.ToneFor(kind), CardArt.Family(kind));
             // A blocked attack did nothing: the shield's line takes the effect's place.
             _playNotice.Body.text = CardPlay.Headline(board, _controller.Session.State, played) + "\n" +
                                     (blocked ? CardPlay.BlockedText : CardPlay.Effect(board, played));
@@ -518,7 +508,7 @@ namespace Lazpoly.Presentation.Game
             }
 
             _groupNotice.Title.text = L("TİCARET ANLAŞMASI");
-            _groupNotice.Title.color = UiTheme.Gain;
+            _groupNotice.Paint(CardArt.GroupDeal, CardTone.Money);
             _groupNotice.Body.text = deal + "\n" + GroupDeal.RentText(_controller.Session.Rules.FullGroupRentMultiplier);
             _groupNotice.Show(age);
         }
@@ -847,22 +837,23 @@ namespace Lazpoly.Presentation.Game
         {
             int card = _controller.ShownCard;
             float age = Time.unscaledTime - _controller.ShownCardTime;
-            float visible = GameSceneController.CardReadSeconds + 1.6f;
-            if (card < 0 || age > visible)
+            BoardDefinition board = _controller.Session.Board;
+            if (card < 0 || card >= board.Cards.Count || !CenterNotice.Showing(age, _drawNotice.Lasts))
             {
-                _cardGroup.alpha = 0f;
+                _drawNotice.Hide();
                 return;
             }
 
             string player = _controller.Session.State.FindPlayer(_controller.ShownCardPlayer)?.Name;
-            BoardDefinition board = _controller.Session.Board;
             int square = _controller.ShownCardSquare;
             string deck = square >= 0 && square < board.Count && board[square].Type == SquareType.Card ? Lang.Upper(L(board[square].Name)) : L("SOKAK HABERİ");
-            _cardTitle.text = player == null ? deck : $"{deck} · {player}";
-            _cardText.text = L(EventDescriber.CardText(_controller.Session.Board, card));
-            if (board.Cards[card].IsKept) _cardText.text += "\n" + L("Kart ele alındı: sıranın başında, zar atmadan önce oynanır.");
-            _cardGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
-            _cardRect.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.3f)));
+            CardDefinition drawn = board.Cards[card];
+            _drawNotice.Paint(CardArt.PictureFor(drawn.Kind), CardArt.ToneFor(drawn.Kind), player == null ? deck : $"{deck} · {player}");
+            _drawNotice.Title.text = CardArt.Title(drawn.Kind);
+            _drawNotice.Body.text = drawn.IsKept
+                ? CardPlay.Body(board, card) + "\n" + L("Kart ele alındı: sıranın başında, zar atmadan önce oynanır.")
+                : CardPlay.Body(board, card);
+            _drawNotice.Show(age);
         }
 
         private void LateUpdate()
