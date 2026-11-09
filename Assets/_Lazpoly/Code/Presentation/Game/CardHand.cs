@@ -157,7 +157,7 @@ namespace Lazpoly.Presentation.Game
             UiBuilder block = ui.Card();
             Text name = block.Label(CardPlay.Name(Board, card), UiTextStyle.Body, UiTheme.Accent);
             name.font = UiTheme.BoldFont;
-            block.Label(L(EventDescriber.CardText(Board, card)), UiTextStyle.Small, UiTheme.Muted);
+            block.Label(CardPlay.Body(Board, card), UiTextStyle.Small, UiTheme.Muted);
             return block;
         }
 
@@ -185,7 +185,7 @@ namespace Lazpoly.Presentation.Game
                     int inRow = 0;
                     foreach (int rival in GameRules.CardTargets(Board, state, state.CurrentPlayer, card))
                     {
-                        if (row == null || inRow == 3)
+                        if (row == null || inRow == 2)
                         {
                             row = block.Row();
                             inRow = 0;
@@ -278,17 +278,6 @@ namespace Lazpoly.Presentation.Game
                 case CardKind.Chauffeur: return F($"{town} karesine git");
                 default: return F($"Oyna: {town}");
             }
-        }
-
-        /// <summary>A line in the bottom panel before the roll when a person here has a card to play: how many, and the hand's button.</summary>
-        public void RenderReminder(UiBuilder ui, GameState state)
-        {
-            int count = PlayableCount(state);
-            if (count == 0 || Aiming(state) != NoCard) return;
-            UiBuilder row = ui.Row();
-            Text line = row.Label(F($"Oynanabilir {count} kartın var: zar atmadan önce birini kullanabilirsin."), UiTextStyle.Small);
-            UiBuilder.Fix(line, -1f).flexibleWidth = 1f;
-            UiBuilder.Fix(row.Button(L("Kartlarım"), () => Open = true, true, UiButtonStyle.Primary, UiTheme.SmallButtonHeight), 170f);
         }
 
         /// <summary>True while a person here must let a card go: a fifth was drawn.</summary>

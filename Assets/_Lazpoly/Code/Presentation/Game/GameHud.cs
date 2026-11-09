@@ -497,8 +497,9 @@ namespace Lazpoly.Presentation.Game
             bool blocked = _controller.ShownPlayBlocked;
             _playNotice.Title.text = CardPlay.Title(board, played.CardIndex);
             _playNotice.Title.color = blocked ? UiTheme.Warning : UiTheme.Accent;
-            string body = CardPlay.Headline(board, _controller.Session.State, played) + "\n" + L(EventDescriber.CardText(board, played.CardIndex));
-            _playNotice.Body.text = blocked ? body + "\n" + CardPlay.BlockedText : body;
+            // A blocked attack did nothing: the shield's line takes the effect's place.
+            _playNotice.Body.text = CardPlay.Headline(board, _controller.Session.State, played) + "\n" +
+                                    (blocked ? CardPlay.BlockedText : CardPlay.Effect(board, played));
             _playNotice.Show(age);
         }
 
@@ -1235,6 +1236,9 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Width of each small button at the end of the bottom strip.</summary>
         public const float ToolbarButtonWidth = 120f;
 
+        /// <summary>The cards' button is a little wider: "Kartlar 4" on one line.</summary>
+        public const float CardsButtonWidth = 150f;
+
         /// <summary>
         /// The few buttons the game screen keeps (the side dock is gone): the properties and a trade offer
         /// while the turn is this person's to use, and the menu. Rolling has its own big button and Space;
@@ -1248,10 +1252,13 @@ namespace Lazpoly.Presentation.Game
             UiBuilder.Fix(row.IconButton(UiIcon.Flag, L("Mülkler"), OpenProperties, !over && CanOpenProperties(state), height: UiTheme.SmallButtonHeight),
                 ToolbarButtonWidth);
             UiBuilder.Fix(row.IconButton(UiIcon.People, L("Takas"), () => _trade.Open(id), free, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
+            // The cards' button lights up while a card may be played (Faz 30); a panel over the board would push the board up
+            // under the roll button.
             PlayerState holder = over ? null : _cards.Owner(state);
             string cards = holder == null ? L("Kartlar") : F($"Kartlar {holder.Hand.Count}");
-            UiBuilder.Fix(row.IconButton(UiIcon.Bookmark, cards, () => _cards.Open = !_cards.Open, holder != null, height: UiTheme.SmallButtonHeight),
-                ToolbarButtonWidth);
+            UiButtonStyle look = !over && _cards.PlayableCount(state) > 0 ? UiButtonStyle.Primary : UiButtonStyle.Secondary;
+            UiBuilder.Fix(row.IconButton(UiIcon.Bookmark, cards, () => _cards.Open = !_cards.Open, holder != null, look, UiTheme.SmallButtonHeight),
+                CardsButtonWidth);
             UiBuilder.Fix(row.IconButton(UiIcon.Pause, L("Menü"), OpenPause, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
         }
 
@@ -1413,11 +1420,6 @@ namespace Lazpoly.Presentation.Game
 
             switch (state.Phase)
             {
-                // Before the roll, a reminder of the cards that may be played (Faz 30); the roll has its own big button.
-                case GamePhase.WaitingForRoll:
-                    if (WaitsOnPersonHere(state, GamePhase.WaitingForRoll)) _cards.RenderReminder(ui, state);
-                    break;
-
                 // A debt has its own card in the middle of the screen (DebtSaleView).
                 case GamePhase.AwaitingTravelDecision:
                     RenderTravel(ui, player);

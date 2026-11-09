@@ -197,8 +197,8 @@ namespace Lazpoly.Presentation.Game
             Picture("Avatar Frame", 12f, 14f, 56f, 56f, "Avatar_Frame", Color.white);
             Picture("Number Tab", 30f, 66f, 20f, 12f, "Number_Tab", own);
             Words("Number", 30f, 66f, 20f, 12f, model.Number, 8, Color.white, UiTheme.BoldFont, TextAnchor.MiddleCenter);
+            BuildCards(bankrupt ? 0 : model.Cards); // Over the face's frame.
 
-            BuildCards(bankrupt ? 0 : model.Cards);
             Shrinking(Words("Name", 94f, 12f, 136f, 22f, model.Name, 14, bankrupt ? Muted : NameInk, UiTheme.BoldFont), 10);
 
             if (bankrupt)
@@ -245,23 +245,25 @@ namespace Lazpoly.Presentation.Game
         public static readonly Color CardBackColor = new Color(0.42f, 0.32f, 0.7f);
         public static readonly Color CardEdgeColor = new Color(0.97f, 0.93f, 0.82f);
 
-        /// <summary>At most this many card backs fit under the face (the hand's limit).</summary>
+        /// <summary>The badge never shows more than this (the hand's limit).</summary>
         public const int MaxCards = 4;
 
-        /// <summary>The card backs shown, for tests.</summary>
+        /// <summary>The number on the hand's badge, 0 when there is none; for tests.</summary>
         public int CardBacks { get; private set; }
 
-        /// <summary>A small card back per card held, in a row under the seat number.</summary>
+        /// <summary>
+        /// A small violet card on the face's lower right corner with the number of cards held, only while the player holds
+        /// any. A row of card backs under the seat number covered the kit's LAZPOLY print, so the hand sits on the face.
+        /// </summary>
         private void BuildCards(int count)
         {
             CardBacks = Mathf.Clamp(count, 0, MaxCards);
-            for (int i = 0; i < CardBacks; i++)
-            {
-                Image edge = Picture($"Card {i}", 15f + i * 13f, 83f, 11f, 15f, null, CardEdgeColor);
-                edge.sprite = UiSprites.Rounded;
-                Image back = Picture("Back", 1.5f, 1.5f, 8f, 12f, null, CardBackColor, edge.transform);
-                back.sprite = UiSprites.Rounded;
-            }
+            if (CardBacks == 0) return;
+            Image edge = Picture("Hand Badge", 55f, 49f, 16f, 22f, null, CardEdgeColor);
+            edge.sprite = UiSprites.Rounded;
+            Image back = Picture("Back", 1.5f, 1.5f, 13f, 19f, null, CardBackColor, edge.transform);
+            back.sprite = UiSprites.Rounded;
+            Words("Hand Count", 0f, 0f, 16f, 22f, CardBacks.ToString(), 12, Color.white, UiTheme.BoldFont, TextAnchor.MiddleCenter, edge.transform);
         }
 
         /// <summary>A house per group on the strip; each has a wider invisible pad around it so it is easy to click.</summary>

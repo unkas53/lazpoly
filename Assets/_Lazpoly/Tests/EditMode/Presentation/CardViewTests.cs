@@ -83,6 +83,20 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsTrue(CardPlay.Blocked(new ShieldChangedEvent(paris, false, blocked: true)));
             Assert.IsFalse(CardPlay.Blocked(new ShieldChangedEvent(paris, true)));
             Assert.IsFalse(CardPlay.Blocked(null));
+
+            Assert.AreEqual("Şehirdeki her şey yıkıldı; şehir bankaya döndü.", CardPlay.Effect(Board, demolish));
+            Assert.AreEqual("200K yatırdı; Başlangıç'tan geçince 500K alacak.", CardPlay.Effect(Board, new CardPlayedEvent(1, Card(CardKind.Fund), -1, 1)));
+            Assert.AreEqual("3 sıra boyunca bu şehirde kira alınmayacak.", CardPlay.Effect(Board, new CardPlayedEvent(1, Card(CardKind.Strike), paris)));
+            for (int i = 0; i < Board.Cards.Count; i++)
+            {
+                if (Board.Cards[i].IsKept) Assert.IsNotEmpty(CardPlay.Effect(Board, new CardPlayedEvent(1, i)), Board.Cards[i].Kind.ToString());
+            }
+
+            Assert.AreEqual("Kendi şehrine kalkan koy, ilk saldırıyı durdursun.", CardPlay.Body(Board, Card(CardKind.Shield)), "the name is the title already");
+            StringAssert.StartsWith("Bir şehirde imarsız yapı", CardPlay.Body(Board, Card(CardKind.Demolish)), "a text without the name stays whole");
+            Lang.Set(Language.English);
+            Assert.AreEqual("Put a shield on your town to stop the first attack.", CardPlay.Body(Board, Card(CardKind.Shield)));
+            Lang.Set(Language.Turkish);
             Assert.AreEqual(3f, CardPlay.Seconds);
         }
 
@@ -148,7 +162,7 @@ namespace Lazpoly.Presentation.Tests
             var seen = new HashSet<TipId> { TipId.FirstRoll, TipId.RoundLimit };
             Tip? tip = Tips.Next(Board, _data.Rules, state, state.Players[0].Id, seen.Contains);
             Assert.AreEqual(TipId.Cards, tip?.Id);
-            StringAssert.Contains("Kartlarım", tip?.Text);
+            StringAssert.Contains("\"Kartlar\" düğmesinden", tip?.Text);
         }
 
         [Test]
@@ -161,7 +175,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void ACornerCardShowsACardBackPerCardHeld()
+        public void ACornerCardShowsHowManyCardsAreHeldOnTheFace()
         {
             var parent = new GameObject("Corner", typeof(RectTransform));
             try
@@ -169,7 +183,11 @@ namespace Lazpoly.Presentation.Tests
                 var model = new PlayerCardModel { Name = "Ayşe", Color = Color.red, Cards = 3 };
                 PlayerCardView view = PlayerCardView.Create((RectTransform)parent.transform, 300f, model, _ => { });
                 Assert.AreEqual(3, view.CardBacks);
-                Assert.AreEqual(3, view.Root.GetComponentsInChildren<Transform>(true).Count(t => t.name.StartsWith("Card ")));
+                Assert.AreEqual(1, view.Root.GetComponentsInChildren<Transform>(true).Count(t => t.name == "Hand Badge"), "one badge on the face");
+                Assert.AreEqual("3", view.Root.GetComponentsInChildren<UnityEngine.UI.Text>(true).Single(t => t.name == "Hand Count").text);
+                model.Cards = 0;
+                Assert.IsFalse(PlayerCardView.Create((RectTransform)parent.transform, 300f, model, _ => { }).Root
+                    .GetComponentsInChildren<Transform>(true).Any(t => t.name == "Hand Badge"), "no badge without cards");
 
                 model.Cards = 9;
                 Assert.AreEqual(PlayerCardView.MaxCards, PlayerCardView.Create((RectTransform)parent.transform, 300f, model, _ => { }).CardBacks);

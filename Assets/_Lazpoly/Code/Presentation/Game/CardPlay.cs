@@ -41,6 +41,49 @@ namespace Lazpoly.Presentation.Game
         public static string Name(BoardDefinition board, int card) =>
             card >= 0 && card < board.Cards.Count ? Name(board.Cards[card].Kind) : "?";
 
+        /// <summary>
+        /// What the card does, without its name in front when the text starts with it ("Koruma: kendi şehrine..." under the
+        /// title "Koruma" reads "Kendi şehrine..."), in the language shown.
+        /// </summary>
+        public static string Body(BoardDefinition board, int card)
+        {
+            if (card < 0 || card >= board.Cards.Count) return "?";
+            string text = L(board.Cards[card].Text);
+            string prefix = Name(board.Cards[card].Kind) + ":";
+            if (!text.StartsWith(prefix, System.StringComparison.Ordinal)) return text;
+            string rest = text.Substring(prefix.Length).TrimStart();
+            return rest.Length == 0 ? text : Upper(rest.Substring(0, 1)) + rest.Substring(1);
+        }
+
+        /// <summary>
+        /// What happened, under the played card's headline (the card's own text tells the player what to do, which reads
+        /// wrong once it is done): "Şehirdeki her şey yıkıldı; şehir bankaya döndü."
+        /// </summary>
+        public static string Effect(BoardDefinition board, CardPlayedEvent played)
+        {
+            if (played.CardIndex < 0 || played.CardIndex >= board.Cards.Count) return "";
+            CardDefinition card = board.Cards[played.CardIndex];
+            switch (card.Kind)
+            {
+                case CardKind.Lookout: return L("Sonraki zarında iki atıştan birini seçecek.");
+                case CardKind.Lawyer: return L("Hapisten bedava çıktı.");
+                case CardKind.RentShield: return L("Bu kirayı ödemedi.");
+                case CardKind.Chauffeur: return L("Zar atmadan oraya gidiyor.");
+                case CardKind.CupTransfer: return L("Şampiyonlar Kupası ücretsiz bu şehre taşındı.");
+                case CardKind.LandDeal: return F($"Şehri %{card.Amount} indirimle aldı.");
+                case CardKind.Renewal: return F($"Şehre %{100 - card.Amount} indirimle bir bina kondu.");
+                case CardKind.Fund:
+                    return played.Option == 1 ? F($"{M(card.Cost)} yatırdı; Başlangıç'tan geçince {M(card.Payout)} alacak.") : F($"Bankadan {M(card.Amount)} aldı.");
+                case CardKind.Shield: return L("Şehre koruma kalkanı kondu; ilk saldırıyı durduracak.");
+                case CardKind.Strike: return F($"{card.Amount} sıra boyunca bu şehirde kira alınmayacak.");
+                case CardKind.Audit: return F($"Varlıklarının %{card.Amount} kadarını bankaya ödüyor.");
+                case CardKind.Demolish: return L("Şehirdeki her şey yıkıldı; şehir bankaya döndü.");
+                case CardKind.IllegalFloor: return L("Şehrin binası bir kat düştü.");
+                case CardKind.ForceSale: return L("Şehir bankaya satıldı; bedeli sahibine ödendi.");
+                default: return "";
+            }
+        }
+
         /// <summary>What the card is played on, for its card and the log: a town's name, a rival's, the fund's choice, or null.</summary>
         public static string TargetText(BoardDefinition board, GameState state, CardPlayedEvent played)
         {

@@ -74,7 +74,7 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.FirstRoll, myTurn && state.Phase == GamePhase.WaitingForRoll,
                        L("Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır."))
                    ?? Offer(TipId.Cards, myTurn && state.Phase == GamePhase.WaitingForRoll && me.Hand.Count > 0 && !state.CardPlayedThisTurn,
-                       L("Elinde strateji kartı var. Zar atmadan önce \"Kartlarım\" ile birini oynayabilirsin; her sırada bir kart. Kartlar sıra sende olmasa da \"Kartlar\" düğmesinde görünür."))
+                       L("Elinde strateji kartı var. Zar atmadan önce alttaki \"Kartlar\" düğmesinden birini oynayabilirsin; her sırada bir kart. Düğme, oynayabileceğin bir kart varken yanar."))
                    ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
                        F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
                    ?? Offer(TipId.ShortOfMoney, me.Money < rules.StartingMoney * LowMoneyPercent / 100 && HasSellable(board, state, playerId),
