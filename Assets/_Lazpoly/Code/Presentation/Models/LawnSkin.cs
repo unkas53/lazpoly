@@ -12,8 +12,8 @@ namespace Lazpoly.Presentation.Models
         public const int Size = 1024;
 
         /// <summary>The two greens of the mowed diamonds, kin to the towns' palette: a light sage and a slightly deeper one.</summary>
-        public static readonly Color Light = new Color32(0x99, 0xCF, 0x8E, 0xFF);
-        public static readonly Color Deep = new Color32(0x87, 0xC1, 0x83, 0xFF);
+        public static readonly Color Light = new Color32(0x84, 0xB8, 0x78, 0xFF);
+        public static readonly Color Deep = new Color32(0x74, 0xA9, 0x6C, 0xFF);
 
         /// <summary>The border's cream paint.</summary>
         public static readonly Color Paint = new Color(0.97f, 0.96f, 0.90f);
