@@ -262,6 +262,13 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The last payment someone could not make and the game time it came, for the "cannot pay" card in the middle; null before any.</summary>
         public DebtIncurredEvent ShownDebt { get; private set; }
 
+        /// <summary>The last strategic card played and the game time it was, for its card in the middle (Faz 30); null before any.</summary>
+        public CardPlayedEvent ShownPlay { get; private set; }
+        public float ShownPlayTime { get; private set; } = float.NegativeInfinity;
+
+        /// <summary>Whether the card shown in <see cref="ShownPlay"/> was an attack a protection card's shield stopped.</summary>
+        public bool ShownPlayBlocked { get; private set; }
+
         /// <summary>The cup's last move, while its card "Şampiyonlar Kupası maçları X şehrinde yapılıyor" is up (Faz 29).</summary>
         public CupHostedEvent ShownCup { get; private set; }
         public float ShownCupTime { get; private set; } = float.NegativeInfinity;
@@ -993,6 +1000,36 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The strategic cards (Faz 30): the person's hand, a card's towns lit on the board, and an attack's card in the middle.
+            hud.OpenCards();
+            yield return ScreenTour.Until(() => hud.CardsOpen, 3f);
+            yield return ScreenTour.Take("kart-eli");
+            hud.CloseTop();
+            int demolish = GameRules.HeldCard(_session.Board, _session.State.FindPlayer(person), CardKind.Demolish);
+            if (demolish >= 0)
+            {
+                hud.AimCard(demolish);
+                List<int> targets = GameRules.CardTargets(_session.Board, _session.State, _session.State.FindPlayer(person), demolish);
+                if (targets.Count > 0) hud.PinSquare(targets[0]);
+                yield return ScreenTour.Take("kart-hedef");
+                hud.CloseTop();
+                hud.PinSquare(-1);
+
+                int shielded = -1;
+                for (int i = 0; i < _session.Board.Count; i++)
+                {
+                    if (_session.State.HasShield(i)) shielded = i;
+                }
+
+                ShownPlay = new CardPlayedEvent(person, demolish, shielded >= 0 ? shielded : targets.Count > 0 ? targets[0] : -1);
+                ShownPlayBlocked = shielded >= 0;
+                ShownPlayTime = Time.time;
+                Revision++;
+                yield return ScreenTour.Until(() => false, 0.4f);
+                yield return ScreenTour.Take("kart-oynandi");
+                yield return ScreenTour.Until(() => !CenterNotice.Showing(Time.time - ShownPlayTime, CardPlay.Seconds), CardPlay.Seconds + 1f);
+            }
+
             // The roll's total in the middle of the screen (the owner's wish, Faz 28), staged as a double so ÇİFT shows too.
             ShowRoll(new DiceRolledEvent(person, 3, 3));
             ShownRollLasts = RollTotal.Seconds + ScreenTour.SettleSeconds + 1f; // Up long enough for the picture's settling wait.
@@ -1160,6 +1197,12 @@ namespace Lazpoly.Presentation.Game
             }
 
             _board.SetCup(state.CupSquare);
+            for (int i = 0; i < state.SquareCount; i++)
+            {
+                _board.SetShield(i, state.HasShield(i));
+                _board.SetStrike(i, state.IsStruck(i));
+            }
+
             _heldRentGroups.Clear(); // A table set straight from the state shows the rents as they are.
             ShowRents(animate: false);
         }
@@ -1377,6 +1420,29 @@ namespace Lazpoly.Presentation.Game
                         Say(jail.PlayerId, L(jail.Turns == 0 ? "Özgürüm!" : jail.Turns >= _session.Rules.JailTurns ? "Hapse düştüm!" : "Bekliyorum..."));
                         Revision++;
                         break;
+                    case CardPlayedEvent played:
+                        // The card in the middle for everyone, what it is played on under its name (Faz 30); an attack that
+                        // meets a shield says so on the same card.
+                        ShownPlay = played;
+                        ShownPlayBlocked = CardPlay.Blocked(_pendingEvents.Count > 0 ? _pendingEvents.Peek() : null);
+                        ShownPlayTime = Time.time;
+                        Say(played.PlayerId, CardPlay.Name(_session.Board, played.CardIndex) + "!");
+                        Revision++;
+                        yield return new WaitForSeconds(CardPlay.Seconds);
+                        break;
+                    case ShieldChangedEvent shield:
+                        _board.SetShield(shield.SquareIndex, shield.Raised, animate: true);
+                        if (shield.Blocked) Say(_session.State.GetOwner(shield.SquareIndex), L("Kalkan korudu!"));
+                        Revision++;
+                        break;
+                    case StrikeChangedEvent strike:
+                        _board.SetStrike(strike.SquareIndex, strike.StrikerId != GameState.NoOwner, animate: true);
+                        ShowRents();
+                        break;
+                    case FundChangedEvent _:
+                    case CardDiscardedEvent _:
+                        Revision++; // The hands and funds on the corner cards.
+                        break;
                     case CardDrawnEvent card:
                         ShownCard = card.CardIndex;
                         ShownCardPlayer = card.PlayerId;
@@ -1403,6 +1469,9 @@ namespace Lazpoly.Presentation.Game
                         }
 
                         _shownOwners[owner.SquareIndex] = owner.NewOwnerId;
+                        // A town that changes hands loses its shield and its strike (Faz 30).
+                        _board.SetShield(owner.SquareIndex, false, animate: true);
+                        _board.SetStrike(owner.SquareIndex, false, animate: true);
                         if (owner.NewOwnerId == GameState.NoOwner)
                         {
                             _board.ClearOwner(owner.SquareIndex, animate: true);

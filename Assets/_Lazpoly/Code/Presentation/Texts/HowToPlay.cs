@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Lazpoly.App.Session;
 using Lazpoly.Core.Board;
+using Lazpoly.Core.Engine;
 using Lazpoly.Core.Rules;
 using Lazpoly.Core.State;
 
@@ -43,6 +44,11 @@ namespace Lazpoly.Presentation.Texts
             }
 
             if (HasType(board, SquareType.Card)) sections.Add(Section(CardSquaresTitle(board), L("Bu kareye gelen desteden rastgele bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));
+            if (HasKeptCards(board))
+            {
+                sections.Add(Section(L("Strateji kartları"), F($"Avukat, Kira Kalkanı, Koruma, İmarsız Yapı gibi kartlar ele alınır; herkes kimin elinde kaç kart olduğunu görür. Elde en çok {GameRules.HandLimit} kart durur, fazlası çekilince biri bırakılır. Her sırada yalnızca bir kart, zar atmadan önce oynanır (Kira Kalkanı kira gelince). Saldırı kartları rakip şehirleri vurur; Koruma kalkanı ilk saldırıyı durdurup kalkar. Kartlar takas edilmez.")));
+            }
+
             if (board.HasPot) sections.Add(Section(L("Çay Molası"), L("Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır.")));
             if (board.HasJail)
             {
@@ -95,6 +101,17 @@ namespace Lazpoly.Presentation.Texts
         }
 
         private static bool HasType(BoardDefinition board, SquareType type) => IndexOfType(board, type) >= 0;
+
+        /// <summary>Whether the deck holds any card kept in hand to be played later (Faz 30's strategic cards).</summary>
+        private static bool HasKeptCards(BoardDefinition board)
+        {
+            foreach (CardDefinition card in board.Cards)
+            {
+                if (card.IsKept && card.Kind != CardKind.Lookout) return true;
+            }
+
+            return false;
+        }
 
         /// <summary>The first square of a type; -1 when the board has none.</summary>
         private static int IndexOfType(BoardDefinition board, SquareType type)

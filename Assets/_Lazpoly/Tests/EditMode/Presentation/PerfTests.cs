@@ -203,6 +203,21 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(board.JailIndex, jailed.Position, "a computer stands in the cell");
             Assert.AreEqual(ScreenTour.JailedTurns, jailed.JailTurns);
 
+            // Faz 30: the person's hand, a computer's shielded town and another's town under the person's strike.
+            Assert.AreEqual(ScreenTour.HandHeld.Length, state.CurrentPlayer.Hand.Count);
+            for (int i = 0; i < ScreenTour.HandHeld.Length; i++) Assert.AreEqual(ScreenTour.HandHeld[i], board.Cards[state.CurrentPlayer.Hand[i]].Kind);
+            int shielded = -1, struck = -1;
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (state.HasShield(i)) shielded = i;
+                if (state.IsStruck(i)) struck = i;
+            }
+
+            Assert.GreaterOrEqual(shielded, 0, "a shield stands on the board");
+            Assert.GreaterOrEqual(struck, 0, "a strike stands on the board");
+            Assert.AreNotEqual(state.GetOwner(shielded), state.GetOwner(struck), "on two computers' towns");
+            Assert.AreEqual(ScreenTour.PersonId, state.StrikerOf(struck));
+
             Assert.AreEqual("03-ayarlar.png", ScreenTour.FileName(3, "ayarlar"));
             Assert.IsTrue(PerfRun.HasArgument(new[] { "Lazpoly.exe", "-SHOTS" }, ScreenTour.Flag));
         }

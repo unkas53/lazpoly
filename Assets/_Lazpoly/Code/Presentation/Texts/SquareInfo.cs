@@ -175,6 +175,11 @@ namespace Lazpoly.Presentation.Texts
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
             info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
             if (cup) info.Notes.Add(F($"Şampiyonlar Kupası bu şehirde: kirası %{state.CupPercent} fazla."));
+            if (state.HasShield(squareIndex)) info.Notes.Add(L("Koruma kalkanı var: bu şehre yapılan ilk saldırı durur, kalkan kalkar."));
+            if (state.IsStruck(squareIndex))
+            {
+                info.Notes.Add(F($"Kira grevi: {EventDescriber.NameOf(state, state.StrikerOf(squareIndex))} oyuncusunun {state.StrikeTurnsLeft(squareIndex)} sırası daha bitene kadar kira alınmaz."));
+            }
             info.Notes.Add(GroupNote(board, state, square.GroupId));
             if (square.IsDevelopable) info.Notes.Add(L("Sahibi şehre yeniden gelince ev kurar: başlangıçtan geçene kadar bir, sonra dörde kadar; dört evden sonra otel."));
             return info;

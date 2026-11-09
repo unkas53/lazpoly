@@ -1133,6 +1133,124 @@ namespace Lazpoly.Presentation.Tabletop
             _cupTrophy.localRotation = FacingCamera(_yaw);
         }
 
+        /// <summary>How big the card marks beside a town's buildings are, and how far to the screen's left of them they stand (Faz 30).</summary>
+        public const float CardMarkSize = 0.22f;
+        public const float CardMarkSide = 0.37f;
+
+        /// <summary>The protection card's shield, blue as the kit's water; the rent strike's picket sign, red.</summary>
+        public static readonly Color ShieldColor = new Color(0.22f, 0.5f, 0.9f);
+        public static readonly Color ShieldRimColor = new Color(0.98f, 0.86f, 0.35f);
+        public static readonly Color StrikeColor = new Color(0.86f, 0.22f, 0.2f);
+        public static readonly Color StrikePoleColor = new Color(0.55f, 0.38f, 0.22f);
+
+        private readonly Dictionary<int, Transform> _shieldMarks = new Dictionary<int, Transform>();
+        private readonly Dictionary<int, Transform> _strikeMarks = new Dictionary<int, Transform>();
+
+        /// <summary>Whether the board shows the protection card's shield on a town.</summary>
+        public bool ShowsShield(int squareIndex) => _shieldMarks.TryGetValue(squareIndex, out Transform mark) && mark != null && mark.gameObject.activeSelf;
+
+        /// <summary>Whether the board shows the rent strike's sign on a town.</summary>
+        public bool ShowsStrike(int squareIndex) => _strikeMarks.TryGetValue(squareIndex, out Transform mark) && mark != null && mark.gameObject.activeSelf;
+
+        /// <summary>
+        /// A protection card's shield on a town (Faz 30): a blue shield with a gold rim beside its buildings, on the screen's
+        /// left of them (the cup stands on the right). With <paramref name="animate"/> it rises, or, when it goes, shrinks away.
+        /// </summary>
+        public void SetShield(int squareIndex, bool raised, bool animate = false) =>
+            SetCardMark(_shieldMarks, squareIndex, raised, animate, CreateShieldMark);
+
+        /// <summary>A rent strike on a town (Faz 30): a red picket sign beside its buildings, in front of a shield if both stand.</summary>
+        public void SetStrike(int squareIndex, bool struck, bool animate = false) =>
+            SetCardMark(_strikeMarks, squareIndex, struck, animate, CreateStrikeMark);
+
+        private void SetCardMark(Dictionary<int, Transform> marks, int squareIndex, bool shown, bool animate, System.Func<Transform> create)
+        {
+            if (_data == null || squareIndex < 0 || squareIndex >= _data.Board.Count) return;
+            marks.TryGetValue(squareIndex, out Transform mark);
+            if (!shown)
+            {
+                if (mark == null || !mark.gameObject.activeSelf) return;
+                if (animate) StartCoroutine(Shrink(mark));
+                else mark.gameObject.SetActive(false);
+                return;
+            }
+
+            if (mark == null)
+            {
+                mark = create();
+                marks[squareIndex] = mark;
+            }
+
+            if (mark.gameObject.activeSelf && !animate) return;
+            mark.gameObject.SetActive(true);
+            mark.localScale = Vector3.one * (_width * CardMarkSize);
+            PlaceCardMarks();
+            if (animate) StartCoroutine(Raise(mark, mark.localScale));
+        }
+
+        private Transform CreateShieldMark()
+        {
+            var root = new GameObject("Shield mark").transform;
+            root.SetParent(transform, false);
+            GameObject rim = ModelParts.Create("Rim", root, MeshFactory.Shield(0.12f), ShieldRimColor, 0.5f);
+            rim.transform.localScale = new Vector3(1.12f, 1.1f, 1f);
+            rim.transform.localPosition = new Vector3(0f, -0.06f, 0f);
+            GameObject face = ModelParts.Create("Face", root, MeshFactory.Shield(0.2f), ShieldColor, 0.5f);
+            face.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+            return root;
+        }
+
+        private Transform CreateStrikeMark()
+        {
+            var root = new GameObject("Strike mark").transform;
+            root.SetParent(transform, false);
+            GameObject pole = ModelParts.Create("Pole", root, MeshFactory.Cylinder(12), StrikePoleColor);
+            pole.transform.localScale = new Vector3(0.06f, 1.1f, 0.06f);
+            GameObject board = ModelParts.Create("Sign", root, MeshFactory.RoundedBox(new Vector3(1f, 0.62f, 0.08f), 0.03f), StrikeColor, 0.35f);
+            board.transform.localPosition = new Vector3(0f, 1.05f, -0.05f);
+            GameObject stripe = ModelParts.Create("Stripe", root, MeshFactory.RoundedBox(new Vector3(0.8f, 0.12f, 0.1f), 0.02f), PaperColor, 0.35f);
+            stripe.transform.localPosition = new Vector3(0f, 1.05f, -0.06f);
+            return root;
+        }
+
+        /// <summary>Puts the card marks beside their towns' buildings for the camera's turn now, on the screen's left of them.</summary>
+        private void PlaceCardMarks()
+        {
+            PlaceCardMarks(_shieldMarks, 0f);
+            PlaceCardMarks(_strikeMarks, CupForward * 2.5f);
+        }
+
+        private void PlaceCardMarks(Dictionary<int, Transform> marks, float forward)
+        {
+            foreach (KeyValuePair<int, Transform> pair in marks)
+            {
+                if (pair.Value == null || !pair.Value.gameObject.activeSelf) continue;
+                Vector3 center = Layout.SquareCenter(pair.Key);
+                Vector3 outward = Outward(center);
+                Vector3 along = Vector3.Cross(Vector3.up, outward);
+                if (Vector3.Dot(along, ScreenRight(_yaw)) > 0f) along = -along;
+                float width = Layout.SquareSize(pair.Key).x - Gap;
+                pair.Value.localPosition = BuildingRowCenter(center) + along * (width * CardMarkSide) + ScreenDown(outward) * (_depth * (CupForward + forward));
+                pair.Value.localRotation = FacingCamera(_yaw);
+            }
+        }
+
+        private static IEnumerator Shrink(Transform mark)
+        {
+            const float seconds = 0.45f;
+            Vector3 size = mark.localScale;
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                if (mark == null) yield break;
+                mark.localScale = size * (1f - Ease.InCubic(t));
+                yield return null;
+            }
+
+            if (mark == null) yield break;
+            mark.gameObject.SetActive(false);
+            mark.localScale = size;
+        }
+
         /// <summary>A model's turn that shows its front (+Z) straight to a camera at <paramref name="yaw"/>.</summary>
         public static Quaternion FacingCamera(float yaw) => Quaternion.LookRotation(-ScreenUp(yaw));
 
@@ -1494,6 +1612,7 @@ namespace Lazpoly.Presentation.Tabletop
         private void TurnBuildings(float yaw)
         {
             PlaceCup();
+            PlaceCardMarks();
             if (_cupScene != null) _cupScene.localRotation = FacingCamera(yaw);
             foreach (KeyValuePair<Transform, Vector3> scene in _frontScenes)
             {

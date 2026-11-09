@@ -226,6 +226,61 @@ namespace Lazpoly.Presentation.Models
                 new Vector2(inner, 0f), new Vector2(1f, 0f), new Vector2(1f, thickness), new Vector2(inner, thickness), new Vector2(inner, 0f),
             }, segments);
 
+        /// <summary>
+        /// A heraldic shield standing up (Faz 30's protection card): flat top, straight sides that curve in to a point at
+        /// the bottom, 1 wide and 1.2 tall with its point at y = 0, <paramref name="thickness"/> deep along Z. The outline is
+        /// convex, so each face is a fan around its middle.
+        /// </summary>
+        public static Mesh Shield(float thickness = 0.16f, int curve = 8)
+        {
+            string key = $"shield:{thickness:F3}:{curve}";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var outline = new List<Vector2> { new Vector2(-0.5f, 1.2f), new Vector2(0.5f, 1.2f), new Vector2(0.5f, 0.75f) };
+            for (int i = 1; i < curve; i++)
+            {
+                float t = (float)i / curve; // Down the right side to the point, then the left side mirrored.
+                outline.Add(new Vector2(0.5f * Mathf.Cos(t * Mathf.PI / 2f), 0.75f * (1f - Mathf.Sin(t * Mathf.PI / 2f))));
+            }
+
+            outline.Add(new Vector2(0f, 0f));
+            for (int i = curve - 1; i >= 1; i--) outline.Add(new Vector2(-outline[2 + i].x, outline[2 + i].y));
+            outline.Add(new Vector2(-0.5f, 0.75f));
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            float half = thickness / 2f;
+            var middle = new Vector2(0f, 0.7f);
+            foreach (float z in new[] { -half, half })
+            {
+                int centre = vertices.Count;
+                vertices.Add(new Vector3(middle.x, middle.y, z));
+                foreach (Vector2 point in outline) vertices.Add(new Vector3(point.x, point.y, z));
+                for (int i = 0; i < outline.Count; i++)
+                {
+                    int a = centre + 1 + i;
+                    int b = centre + 1 + (i + 1) % outline.Count;
+                    // The outline runs clockwise seen from -Z: the front (-Z) keeps that order, the back flips it.
+                    if (z < 0f) triangles.AddRange(new[] { centre, a, b });
+                    else triangles.AddRange(new[] { centre, b, a });
+                }
+            }
+
+            for (int i = 0; i < outline.Count; i++)
+            {
+                Vector2 p = outline[i];
+                Vector2 q = outline[(i + 1) % outline.Count];
+                int start = vertices.Count;
+                vertices.Add(new Vector3(p.x, p.y, -half));
+                vertices.Add(new Vector3(q.x, q.y, -half));
+                vertices.Add(new Vector3(q.x, q.y, half));
+                vertices.Add(new Vector3(p.x, p.y, half));
+                triangles.AddRange(new[] { start, start + 2, start + 1, start, start + 3, start + 2 });
+            }
+
+            return Store(key, vertices, null, triangles);
+        }
+
         /// <summary>Several meshes merged into one, each placed by its matrix. Cached under <paramref name="name"/>.</summary>
         public static Mesh Combine(string name, IReadOnlyList<KeyValuePair<Mesh, Matrix4x4>> parts)
         {

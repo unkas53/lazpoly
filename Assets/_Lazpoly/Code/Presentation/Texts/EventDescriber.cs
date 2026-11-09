@@ -68,6 +68,9 @@ namespace Lazpoly.Presentation.Texts
                 case CupHostedEvent e: return e.PlayerId;
                 case TradeProposedEvent e: return e.Offer.FromPlayerId;
                 case DebtIncurredEvent e: return e.PlayerId;
+                case CardPlayedEvent e: return e.PlayerId;
+                case CardDiscardedEvent e: return e.PlayerId;
+                case FundChangedEvent e: return e.PlayerId;
                 default: return GameState.NoOwner;
             }
         }
@@ -126,6 +129,17 @@ namespace Lazpoly.Presentation.Texts
                     return F($"{NameOf(state, e.PlayerId)} iki kez attı: {e.FirstDie1} + {e.FirstDie2} ya da {e.SecondDie1} + {e.SecondDie2}");
                 case PotChangedEvent _:
                     return null;
+                case CardPlayedEvent e:
+                    return Lazpoly.Presentation.Game.CardPlay.LogLine(board, state, e);
+                case CardDiscardedEvent e:
+                    return F($"{NameOf(state, e.PlayerId)} elindeki bir kartı bıraktı: {Lazpoly.Presentation.Game.CardPlay.Name(board, e.CardIndex)}");
+                case ShieldChangedEvent e:
+                    if (e.Blocked) return F($"{L(board[e.SquareIndex].Name)}: koruma kalkanı saldırıyı durdurdu");
+                    return e.Raised ? F($"{L(board[e.SquareIndex].Name)} koruma kalkanı altında") : null;
+                case StrikeChangedEvent e:
+                    return e.StrikerId == GameState.NoOwner ? F($"{L(board[e.SquareIndex].Name)}: kira grevi bitti") : null;
+                case FundChangedEvent e:
+                    return e.Payout > 0 ? F($"{NameOf(state, e.PlayerId)} Başlangıç'tan geçince {M(e.Payout)} alacak") : null;
                 case PlayerTimedOutEvent e:
                     return e.StandInTookOver
                         ? F($"{NameOf(state, e.PlayerId)} yanıt vermiyor: bilgisayar onun yerine oynuyor, bir hamle yapınca kontrol ona döner")
@@ -153,6 +167,8 @@ namespace Lazpoly.Presentation.Texts
                 case MoneyReason.Travel: return L("otogar bileti");
                 case MoneyReason.Jail: return L("hapisten çıkış");
                 case MoneyReason.Cup: return L("kupa");
+                case MoneyReason.Audit: return L("vergi denetimi");
+                case MoneyReason.Fund: return L("yatırım fonu");
                 default: return reason.ToString();
             }
         }

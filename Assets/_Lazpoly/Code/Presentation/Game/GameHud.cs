@@ -117,6 +117,14 @@ namespace Lazpoly.Presentation.Game
         private GameObject _jailLayer;
         private UiView _offerWindow;
         private GameObject _offerLayer;
+        private CardHand _cards;
+        private UiView _handWindow;
+        private GameObject _handLayer;
+        private UiView _discardWindow;
+        private GameObject _discardLayer;
+        private UiView _rentWindow;
+        private GameObject _rentLayer;
+        private CenterNotice _playNotice;
         private int _buildCardDismissed;
         private PropertyCard _propertyCard;
         private DebtSaleView _debtSale;
@@ -212,6 +220,15 @@ namespace Lazpoly.Presentation.Game
             }
         }
 
+        /// <summary>Opens the strategic cards' hand window (Faz 30), as its button does.</summary>
+        public void OpenCards() => _cards.Open = true;
+
+        /// <summary>Whether the hand window is up.</summary>
+        public bool CardsOpen => _handLayer != null && _handLayer.activeSelf;
+
+        /// <summary>Starts picking <paramref name="card"/>'s town on the board, as its "Tahtadan seç" button does.</summary>
+        public void AimCard(int card) => _cards.Aim(_controller.Session.State, card);
+
         /// <summary>Closes the window on top, as Esc does.</summary>
         public void CloseTop() => CloseTopWindow(_controller.Session?.State);
 
@@ -219,6 +236,7 @@ namespace Lazpoly.Presentation.Game
         {
             _controller = controller;
             _trade = new TradePanel(controller);
+            _cards = new CardHand(controller);
             _settings = new SettingsPanel();
             _preview = new BuildingPreview(transform);
             _propertyCard = new PropertyCard(controller, _preview);
@@ -295,6 +313,7 @@ namespace Lazpoly.Presentation.Game
             _jailNotice = new CenterNotice(_canvas.transform, "Third Double Popup");
             _groupNotice = new CenterNotice(_canvas.transform, "Group Deal Popup", GroupDeal.Seconds);
             _cupNotice = new CenterNotice(_canvas.transform, "Cup Popup", CupNews.Seconds);
+            _playNotice = new CenterNotice(_canvas.transform, "Card Play Popup", CardPlay.Seconds);
             BuildRollPopup();
             BuildRollTotal();
             BuildRollPrompt();
@@ -324,6 +343,13 @@ namespace Lazpoly.Presentation.Game
             _jailWindow = new UiView(UiRoot.Modal(_canvas.transform, "Jail Card", UiLayout.WindowWidth, out _jailLayer), RenderJailCard);
             // A trade offer's answer opens in the middle too, for whoever here sent or received it (Faz 23).
             _offerWindow = new UiView(UiRoot.Modal(_canvas.transform, "Trade Offer", UiLayout.WindowWidth, out _offerLayer), RenderOffer);
+            // The strategic cards (Faz 30): the hand, letting a fifth card go, and the rent shield's question, all in the middle.
+            _handWindow = new UiView(UiRoot.Modal(_canvas.transform, "Card Hand", UiLayout.WindowWidth, out _handLayer),
+                ui => _cards.RenderHand(ui, _controller.Session.State));
+            _discardWindow = new UiView(UiRoot.Modal(_canvas.transform, "Card Discard", UiLayout.WindowWidth, out _discardLayer),
+                ui => _cards.RenderDiscard(ui, _controller.Session.State));
+            _rentWindow = new UiView(UiRoot.Modal(_canvas.transform, "Rent Shield", UiLayout.WindowWidth, out _rentLayer),
+                ui => _cards.RenderRentShield(ui, _controller.Session.State));
             // The log and the properties open on request, over whatever card is up.
             _logWindow = new UiView(UiRoot.Modal(_canvas.transform, "Log", UiLayout.WindowWidth, out _logLayer), RenderLogWindow);
             _propertiesWindow = new UiView(UiRoot.Modal(_canvas.transform, "Properties", UiLayout.WindowWidth, out _propertiesLayer), RenderProperties);
@@ -344,6 +370,9 @@ namespace Lazpoly.Presentation.Game
             _buildLayer.SetActive(false);
             _jailLayer.SetActive(false);
             _offerLayer.SetActive(false);
+            _handLayer.SetActive(false);
+            _discardLayer.SetActive(false);
+            _rentLayer.SetActive(false);
         }
 
         /// <summary>The drawn card, titled after the square it came from ("SOKAK HABERİ" or "ŞANS"), shown in the middle for a few seconds. It never takes the mouse.</summary>
@@ -448,6 +477,29 @@ namespace Lazpoly.Presentation.Game
             _cupNotice.Title.color = UiTheme.Accent;
             _cupNotice.Body.text = CupNews.Text(_controller.Session.Board[cup.SquareIndex].Name) + "\n" + CupNews.RaiseText(cup.Percent);
             _cupNotice.Show(age);
+        }
+
+        /// <summary>
+        /// A strategic card someone played, in the middle for everyone (Faz 30): its name, who played it on what, what it
+        /// does, and when it was an attack a shield stopped, that too. Up for <see cref="CardPlay.Seconds"/> while the table waits.
+        /// </summary>
+        private void UpdatePlayPopup()
+        {
+            CardPlayedEvent played = _controller.ShownPlay;
+            float age = Time.time - _controller.ShownPlayTime;
+            if (played == null || !CenterNotice.Showing(age, _playNotice.Lasts))
+            {
+                _playNotice.Hide();
+                return;
+            }
+
+            BoardDefinition board = _controller.Session.Board;
+            bool blocked = _controller.ShownPlayBlocked;
+            _playNotice.Title.text = CardPlay.Title(board, played.CardIndex);
+            _playNotice.Title.color = blocked ? UiTheme.Warning : UiTheme.Accent;
+            string body = CardPlay.Headline(board, _controller.Session.State, played) + "\n" + L(EventDescriber.CardText(board, played.CardIndex));
+            _playNotice.Body.text = blocked ? body + "\n" + CardPlay.BlockedText : body;
+            _playNotice.Show(age);
         }
 
         /// <summary>
@@ -807,6 +859,7 @@ namespace Lazpoly.Presentation.Game
             string deck = square >= 0 && square < board.Count && board[square].Type == SquareType.Card ? Lang.Upper(L(board[square].Name)) : L("SOKAK HABERİ");
             _cardTitle.text = player == null ? deck : $"{deck} · {player}";
             _cardText.text = L(EventDescriber.CardText(_controller.Session.Board, card));
+            if (board.Cards[card].IsKept) _cardText.text += "\n" + L("Kart ele alındı: sıranın başında, zar atmadan önce oynanır.");
             _cardGroup.alpha = Mathf.Clamp01(age / 0.15f) * Mathf.Clamp01((visible - age) / 0.4f);
             _cardRect.localScale = Vector3.one * Mathf.Lerp(0.8f, 1f, Ease.OutBack(Mathf.Clamp01(age / 0.3f)));
         }
@@ -822,7 +875,7 @@ namespace Lazpoly.Presentation.Game
             // The pinned square is the destination of a ride, so the decision panel follows it too.
             // While a debt is sold on the board, the town under the mouse is named with its price on the panel.
             int key = HashCode.Combine(revision, _controller.IsBusy, _controller.EndReason, tradeOpen, _pinnedSquare,
-                SellingOnBoard(state) ? _hoveredSquare : NoSquare);
+                SellingOnBoard(state) ? _hoveredSquare : NoSquare, _cards.Aiming(state), _cards.Open);
             foreach (UiView corner in _corners) corner.Refresh(key);
             _turn.Refresh(key);
             // The panel shows only while there is something to decide or to say.
@@ -843,6 +896,7 @@ namespace Lazpoly.Presentation.Game
             UpdateThirdDoublePopup();
             UpdateGroupDealPopup();
             UpdateCupPopup();
+            UpdatePlayPopup();
             UpdateRollPopup();
             UpdateRollTotal();
             UpdateTip(state);
@@ -853,10 +907,16 @@ namespace Lazpoly.Presentation.Game
             bool cityOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingBuyDecision);
             SetLayer(_cityLayer, _cityWindow, cityOpen, revision);
             SetLayer(_offerLayer, _offerWindow, OffersAnswerHere(state), revision);
-            bool jailOpen = !tradeOpen && WaitsOnPersonHere(state, GamePhase.AwaitingJailDecision);
+            // A card's town is picked on the board, so the jail card makes room while it is.
+            bool aiming = _cards.Aiming(state) != CardHand.NoCard;
+            bool jailOpen = !tradeOpen && !aiming && WaitsOnPersonHere(state, GamePhase.AwaitingJailDecision);
             SetLayer(_jailLayer, _jailWindow, jailOpen, revision);
             bool buildOpen = !tradeOpen && !cityOpen && OffersBuildCard(state);
             SetLayer(_buildLayer, _buildWindow, buildOpen, revision);
+            if (_cards.Open && (tradeOpen || state == null || state.Phase == GamePhase.GameOver || _controller.EndReason.HasValue)) _cards.Open = false;
+            SetLayer(_handLayer, _handWindow, _cards.Open && _cards.Owner(state) != null, HashCode.Combine(revision, _controller.IsBusy));
+            SetLayer(_discardLayer, _discardWindow, _cards.Discarding(state), revision);
+            SetLayer(_rentLayer, _rentWindow, _cards.AskingRent(state), revision);
             SetLayer(_pauseLayer, _pauseWindow, _pauseLayer.activeSelf, HashCode.Combine(revision, _controller.EndReason, _controller.ReportNote));
             SetLayer(_settingsLayer, _settingsWindow, _settingsLayer.activeSelf, 0);
             SetLayer(_howToLayer, _howToWindow, _howToLayer.activeSelf, 0);
@@ -865,7 +925,7 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_logLayer, _logWindow, _logLayer.activeSelf, revision);
             SetLayer(_propertiesLayer, _propertiesWindow, _propertiesLayer.activeSelf && CanOpenProperties(state), revision);
             bool windowOpen = tradeOpen || _pauseLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || ended || _logLayer.activeSelf ||
-                              _propertiesLayer.activeSelf || _squareLayer.activeSelf;
+                              _propertiesLayer.activeSelf || _squareLayer.activeSelf || _handLayer.activeSelf || aiming;
             UpdateRollPrompt(state, windowOpen);
         }
 
@@ -934,7 +994,7 @@ namespace Lazpoly.Presentation.Game
             _hoveredSquare = !overInterface && board.TryGetSquare(camera.ScreenPointToRay(Input.mousePosition), out int square) ? square : NoSquare;
             if (!overInterface && Input.GetMouseButtonDown(0)) ClickSquare(state, _hoveredSquare);
             // While a ride's destination (or the cup's town) is being chosen the view leans a little towards the chosen square.
-            bool choosing = ChoosingRide(state) || ChoosingCup(state);
+            bool choosing = ChoosingRide(state) || ChoosingCup(state) || _cards.Aiming(state) != CardHand.NoCard;
             _controller.CameraRig?.Peek(choosing && _pinnedSquare != NoSquare ? board.SquarePosition(_pinnedSquare) : (Vector3?)null);
         }
 
@@ -948,7 +1008,7 @@ namespace Lazpoly.Presentation.Game
                 return;
             }
 
-            if (ChoosingRide(state) || ChoosingCup(state))
+            if (ChoosingRide(state) || ChoosingCup(state) || _cards.Aiming(state) != CardHand.NoCard)
             {
                 if (square == NoSquare || BoardChoices(state).Contains(square)) _pinnedSquare = square;
                 return;
@@ -977,6 +1037,15 @@ namespace Lazpoly.Presentation.Game
         /// </summary>
         public List<int> BoardChoices(GameState state)
         {
+            List<int> aimed = _cards.AimTargets(state);
+            if (aimed != null)
+            {
+                // A card's town (Faz 30): the squares it may be played at.
+                _choices.Clear();
+                _choices.AddRange(aimed);
+                return _choices;
+            }
+
             bool ride = ChoosingRide(state);
             bool cup = !ride && ChoosingCup(state);
             bool sale = !ride && !cup && SellingOnBoard(state);
@@ -1013,7 +1082,7 @@ namespace Lazpoly.Presentation.Game
             if (key == _choicesKey) return;
             _choicesKey = key;
             // A ride and the cup light their squares and darken the rest; a sale rings the towns instead.
-            bool ride = choices != null && (ChoosingRide(state) || ChoosingCup(state));
+            bool ride = choices != null && (ChoosingRide(state) || ChoosingCup(state) || _cards.Aiming(state) != CardHand.NoCard);
             _controller.Markers?.ShowChoices(ride ? null : choices);
             // The group light under the mouse is drawn again from scratch once the choice is over.
             _highlightedFor = ChoiceHighlight;
@@ -1179,6 +1248,10 @@ namespace Lazpoly.Presentation.Game
             UiBuilder.Fix(row.IconButton(UiIcon.Flag, L("Mülkler"), OpenProperties, !over && CanOpenProperties(state), height: UiTheme.SmallButtonHeight),
                 ToolbarButtonWidth);
             UiBuilder.Fix(row.IconButton(UiIcon.People, L("Takas"), () => _trade.Open(id), free, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
+            PlayerState holder = over ? null : _cards.Owner(state);
+            string cards = holder == null ? L("Kartlar") : F($"Kartlar {holder.Hand.Count}");
+            UiBuilder.Fix(row.IconButton(UiIcon.Bookmark, cards, () => _cards.Open = !_cards.Open, holder != null, height: UiTheme.SmallButtonHeight),
+                ToolbarButtonWidth);
             UiBuilder.Fix(row.IconButton(UiIcon.Pause, L("Menü"), OpenPause, height: UiTheme.SmallButtonHeight), ToolbarButtonWidth);
         }
 
@@ -1232,6 +1305,7 @@ namespace Lazpoly.Presentation.Game
                 Face = _controller.Faces?.For(player.Id),
                 Initial = Initial(player.Name),
                 Pips = _controller.ShowsBankrupt(player) ? Array.Empty<PlayerCardPip>() : PlayerCardView.GroupsOf(state, player.Id, _controller.GroupOf, _controller.GroupColorOf),
+                Cards = player.Hand.Count,
             };
             DescribeSeat(model, player);
             PlayerCardView view = PlayerCardView.Create(ui.Container, CornerWidth, model, PinSquare);
@@ -1330,8 +1404,20 @@ namespace Lazpoly.Presentation.Game
             PlayerState player = state.CurrentPlayer;
             if (!_controller.Session.CanControl(player.Id)) return;
 
+            if (_cards.Aiming(state) != CardHand.NoCard)
+            {
+                // A card's town is being picked on the board (Faz 30).
+                _cards.RenderAim(ui, state, _pinnedSquare, () => _pinnedSquare = NoSquare);
+                return;
+            }
+
             switch (state.Phase)
             {
+                // Before the roll, a reminder of the cards that may be played (Faz 30); the roll has its own big button.
+                case GamePhase.WaitingForRoll:
+                    if (WaitsOnPersonHere(state, GamePhase.WaitingForRoll)) _cards.RenderReminder(ui, state);
+                    break;
+
                 // A debt has its own card in the middle of the screen (DebtSaleView).
                 case GamePhase.AwaitingTravelDecision:
                     RenderTravel(ui, player);
@@ -1546,13 +1632,24 @@ namespace Lazpoly.Presentation.Game
             bool canPay = _controller.IsAllowed(pay);
             ui.Button(canPay ? F($"Öde ve çık ({fee})") : F($"Paran yetmiyor ({fee})"), () => _controller.Submit(pay), canPay,
                 UiButtonStyle.Secondary, CardButton);
+
+            // A lawyer card lets the player out for free; the other cards may be played in jail too (Faz 30).
+            int lawyer = GameRules.HeldCard(board, player, CardKind.Lawyer);
+            var free = new PlayCardCommand(player.Id, lawyer);
+            if (lawyer >= 0 && _controller.IsAllowed(free))
+            {
+                ui.Button(L("Avukat kartıyla bedava çık"), () => _controller.Submit(free), true, UiButtonStyle.Primary, CardButton);
+            }
+
+            int playable = _cards.PlayableCount(state);
+            if (playable > 0) ui.Button(F($"Kartlarım ({playable})"), () => _cards.Open = true, true, UiButtonStyle.Secondary, UiTheme.SmallButtonHeight);
         }
 
         /// <summary>The lookout's two rolls, each with where it would take the player.</summary>
         private void RenderDiceChoice(UiBuilder ui, GameState state, PlayerState player)
         {
             BoardDefinition board = _controller.Session.Board;
-            ui.Label(L("Seyir Terası: iki atıştan birini seç."), UiTextStyle.Small);
+            ui.Label(L("Dürbün: iki atıştan birini seç."), UiTextStyle.Small);
             for (int option = 0; option < 2; option++)
             {
                 int[] dice = GameRules.DiceOption(state, option);
@@ -1771,8 +1868,9 @@ namespace Lazpoly.Presentation.Game
                 ButtonFocused = UiFocus.ButtonFocused,
                 PauseOpen = _pauseLayer.activeSelf,
                 ClosableOpen = _squareLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || _propertiesLayer.activeSelf || _logLayer.activeSelf ||
-                               _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf,
-                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf || _offerLayer.activeSelf,
+                               _tradeLayer.activeSelf || _endLayer.activeSelf || _buildLayer.activeSelf || _handLayer.activeSelf ||
+                               (state != null && _cards.Aiming(state) != CardHand.NoCard),
+                BlockingOpen = _cityLayer.activeSelf || _jailLayer.activeSelf || _offerLayer.activeSelf || _discardLayer.activeSelf || _rentLayer.activeSelf,
                 Acting = acting,
                 Phase = state?.Phase ?? GamePhase.GameOver,
                 CanBuild = acting && OffersExtras(state) && CanReopenBuildCard(state),
@@ -1836,6 +1934,12 @@ namespace Lazpoly.Presentation.Game
         private void CloseTopWindow(GameState state)
         {
             if (_squareLayer.activeSelf) _pinnedSquare = NoSquare;
+            else if (_handLayer.activeSelf) _cards.Open = false;
+            else if (state != null && _cards.Aiming(state) != CardHand.NoCard)
+            {
+                _cards.StopAiming();
+                _pinnedSquare = NoSquare;
+            }
             else if (_settingsLayer.activeSelf) _settingsLayer.SetActive(false);
             else if (_howToLayer.activeSelf) _howToLayer.SetActive(false);
             else if (_pauseLayer.activeSelf) ClosePause();

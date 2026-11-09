@@ -101,6 +101,12 @@ namespace Lazpoly.Presentation.Perf
             return ai;
         }
 
+        /// <summary>The strategic cards in the person's hand at the tour's table (Faz 30), for the hand's and the board picking's pictures.</summary>
+        public static readonly CardKind[] HandHeld = { CardKind.Shield, CardKind.Demolish, CardKind.Audit, CardKind.Fund };
+
+        /// <summary>The turns of the person's rent strike on a computer's town at the tour's table.</summary>
+        public const int StrikeTurns = 2;
+
         /// <summary>The turns the jailed computer of the tour still waits.</summary>
         public const int JailedTurns = 2;
 
@@ -157,6 +163,46 @@ namespace Lazpoly.Presentation.Perf
 
             GameStateSnapshot.PlayerEntry here = snapshot.Players[person];
             here.Money = PersonMoney;
+
+            // The person holds strategic cards, the first computer's first town stands under a shield and the second's under
+            // the person's rent strike, so the hand, the corner cards and the board's marks show (Faz 30).
+            here.Hand.Clear();
+            foreach (CardKind kind in HandHeld)
+            {
+                int card = board.Cards.Count;
+                for (int i = 0; i < board.Cards.Count; i++)
+                {
+                    if (board.Cards[i].Kind != kind) continue;
+                    card = i;
+                    break;
+                }
+
+                if (card < board.Cards.Count) here.Hand.Add(card);
+            }
+
+            if (snapshot.Shields == null || snapshot.Shields.Length != board.Count) snapshot.Shields = new bool[board.Count];
+            if (snapshot.Strikers == null || snapshot.Strikers.Length != board.Count)
+            {
+                snapshot.Strikers = new int[board.Count];
+                for (int i = 0; i < board.Count; i++) snapshot.Strikers[i] = GameState.NoOwner;
+            }
+
+            if (snapshot.StrikeTurns == null || snapshot.StrikeTurns.Length != board.Count) snapshot.StrikeTurns = new int[board.Count];
+            int marked = 0;
+            for (int i = 1; i < towns.Count && marked < 2; i++)
+            {
+                int owner = snapshot.Owners[towns[i]];
+                if (owner == GameState.NoOwner || owner == PersonId) continue;
+                if (marked == 0) snapshot.Shields[towns[i]] = true;
+                else
+                {
+                    snapshot.Strikers[towns[i]] = PersonId;
+                    snapshot.StrikeTurns[towns[i]] = StrikeTurns;
+                }
+
+                marked++;
+                i += TownsEach - 1; // On to the next computer's towns.
+            }
             if (towns.Count > 0) here.Position = towns[0];
             snapshot.CurrentPlayerIndex = person;
             snapshot.Phase = GamePhase.AwaitingBuyDecision;

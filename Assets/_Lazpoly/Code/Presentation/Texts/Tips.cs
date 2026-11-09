@@ -22,6 +22,7 @@ namespace Lazpoly.Presentation.Texts
         Pot = 10,
         Jail = 11,
         Cup = 12,
+        Cards = 13,
     }
 
     public readonly struct Tip
@@ -65,13 +66,15 @@ namespace Lazpoly.Presentation.Texts
                    ?? Offer(TipId.Jail, myTurn && state.Phase == GamePhase.AwaitingJailDecision && board.HasJail,
                        F($"Hapistesin: {me.JailTurns} tur daha beklemen gerek. \"Öde ve çık\" ile {GameRules.JailFee(board)} ödeyip hemen zar atabilirsin; ya da bedava zar at, çift gelirse çıkıp ilerlersin."))
                    ?? Offer(TipId.DiceChoice, myTurn && state.Phase == GamePhase.AwaitingDiceChoice,
-                       L("Seyir Terası sayesinde iki kez attın. Düğmelerde her atışın seni nereye götüreceği yazıyor; birini seç."))
+                       L("İki kez attın. Düğmelerde her atışın seni nereye götüreceği yazıyor; birini seç."))
                    ?? Offer(TipId.BuyOrDecline, myTurn && state.Phase == GamePhase.AwaitingBuyDecision,
                        L("Bu kare sahipsiz. Satın alabilirsin; almazsan bankada kalır."))
                    ?? Offer(TipId.RoundLimit, rules.RoundLimit > 0,
                        F($"Bu oyun {rules.RoundLimit} tur sürecek. Sonunda parası, mülkleri ve binaları en değerli olan kazanır."))
                    ?? Offer(TipId.FirstRoll, myTurn && state.Phase == GamePhase.WaitingForRoll,
                        L("Sıra sende: \"Zar At\" düğmesine bas. Bir kareye fareyle gelince ya da tıklayınca o karenin kartı açılır."))
+                   ?? Offer(TipId.Cards, myTurn && state.Phase == GamePhase.WaitingForRoll && me.Hand.Count > 0 && !state.CardPlayedThisTurn,
+                       L("Elinde strateji kartı var. Zar atmadan önce \"Kartlarım\" ile birini oynayabilirsin; her sırada bir kart. Kartlar sıra sende olmasa da \"Kartlar\" düğmesinde görünür."))
                    ?? Offer(TipId.CanBuild, myTurn && GameRules.BuildableNow(board, state, me, me.Position) > 0,
                        F($"Kendi şehrine geldin! Açılan bina kartından ev kurabilirsin: başlangıçtan geçene kadar bir ev, sonra {GameRules.MaxHouses} eve kadar. Dört evli şehre yeniden gelince otel kurulur."))
                    ?? Offer(TipId.ShortOfMoney, me.Money < rules.StartingMoney * LowMoneyPercent / 100 && HasSellable(board, state, playerId),
