@@ -918,8 +918,14 @@ namespace Lazpoly.Presentation.Game
             SetLayer(_propertiesLayer, _propertiesWindow, _propertiesLayer.activeSelf && CanOpenProperties(state), revision);
             bool windowOpen = tradeOpen || _pauseLayer.activeSelf || _settingsLayer.activeSelf || _howToLayer.activeSelf || ended || _logLayer.activeSelf ||
                               _propertiesLayer.activeSelf || _squareLayer.activeSelf || _handLayer.activeSelf || aiming;
-            UpdateRollPrompt(state, windowOpen);
+            UpdateRollPrompt(state, windowOpen || CenterCardUp);
         }
+
+        /// <summary>True while a card is open in the middle of the screen: the roll button waits until it closes, so it never covers the card's last lines.</summary>
+        private bool CenterCardUp =>
+            Up(_drawNotice) || Up(_playNotice) || Up(_tradeNotice) || Up(_debtNotice) || Up(_jailNotice) || Up(_groupNotice) || Up(_cupNotice);
+
+        private static bool Up(CenterNotice notice) => notice != null && notice.Shown;
 
         /// <summary>Counts each player's money towards its new value; only the labels change, nothing is rebuilt.</summary>
         private void UpdateMoney()

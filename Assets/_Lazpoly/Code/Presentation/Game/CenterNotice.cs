@@ -9,7 +9,7 @@ namespace Lazpoly.Presentation.Game
     /// A card in the middle of the screen that stays up for <see cref="Seconds"/> and fades out over the last
     /// <see cref="FadeOutSeconds"/> (a trade's result, a player who cannot pay; the owner's wish, Faz 23). The table
     /// waits the same time, so play goes on only once the card is gone. A card can stay up for another time (the trade
-    /// agreement card, 4 s). It never takes the mouse.
+    /// agreement card, 4 s). It never takes the mouse, and the roll button waits until it has closed.
     /// The card is drawn as a playing card (the owner's wish, 2026-11-09): a cream face with a soft shadow, the card's
     /// picture on top in its colour family (<see cref="CardArt"/>), a small family line, the title in the family's colour
     /// and the text under it in large dark letters. It grows with its text, so nothing is cut and no space is left over.
@@ -36,8 +36,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The dark ink of the text on the cream face; it reads the same in every colour setting.</summary>
         public static readonly Color Ink = new Color(0.17f, 0.15f, 0.14f);
 
-        /// <summary>How far above the screen's middle the card's middle sits, clear of the turn panel.</summary>
-        public const float Lift = 40f;
+        /// <summary>How far above the screen's middle the card's middle sits; the roll button hides while a card is up.</summary>
+        public const float Lift = 20f;
 
         private readonly CanvasGroup _group;
         private readonly RectTransform _rect;
