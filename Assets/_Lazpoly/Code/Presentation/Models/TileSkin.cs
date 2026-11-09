@@ -60,6 +60,37 @@ namespace Lazpoly.Presentation.Models
             return Mathf.Clamp(value, 0.75f, 1f);
         }
 
+        /// <summary>
+        /// The paving stones under a town's colour (the owner's wish, Faz 31: "hafiften belli olacak şekilde parke taşı"):
+        /// rows of 2:1 stones laid in a running bond, <see cref="StonesAcross"/> to a tile's width, each a touch lighter or
+        /// darker than the next, with thin soft joints between them. Kept faint so the colour and the name still lead.
+        /// </summary>
+        public const int StonesAcross = 7;
+        public const float JointWidth = 0.1f;
+        public const float JointShade = 0.12f;
+        public const float StoneShade = 0.045f;
+
+        /// <summary>
+        /// The paving's brightness (about 0.85-1) at a point measured in tile widths (<paramref name="x"/> along the tile,
+        /// <paramref name="y"/> across it), so the stones keep their shape on a deep tile.
+        /// </summary>
+        public static float StoneValue(float x, float y)
+        {
+            float width = 1f / StonesAcross, height = width * 0.5f;
+            float rowAt = Mathf.Max(0f, y) / height;
+            int row = Mathf.FloorToInt(rowAt);
+            float colAt = Mathf.Max(0f, x) / width + ((row & 1) == 1 ? 0.5f : 0f);
+            int col = Mathf.FloorToInt(colAt);
+            float fx = colAt - col, fy = rowAt - row;
+            // The distance to the nearest joint, in stone heights: the long sides count twice as far across.
+            float edge = Mathf.Min(Mathf.Min(fx, 1f - fx) * (width / height), Mathf.Min(fy, 1f - fy));
+            float joint = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((edge - JointWidth * 0.5f) / JointWidth));
+            float stone = 1f + StoneShade * (2f * Hash(col * 7 + 3, row * 13 + 5) - 1f);
+            // A soft light on each stone's upper edge, so the stones read as raised a little.
+            stone += 0.02f * (1f - Mathf.Clamp01(fy / 0.3f));
+            return stone * (1f - JointShade * joint);
+        }
+
         /// <summary>The shared paper texture, made on first use.</summary>
         public static Texture2D Paper()
         {
@@ -168,8 +199,9 @@ namespace Lazpoly.Presentation.Models
             // The paper and the pattern are the same for every colour, so they are worked out once per shape and reused.
             float[] paper = Grid($"grain:{width}:{height}", width, height, PaperGrain);
             float span = Mathf.Max(1e-4f, bandTo - bandFrom);
+            // The worn-stone pattern over paving stones (Faz 31), the stones measured in tile widths so they stay 2:1.
             float[] pattern = Grid($"pattern:{width}:{height}:{bandFrom:F3}:{bandTo:F3}", width, height,
-                (u, v) => PatternValue(u, Mathf.Clamp01((v - bandFrom) / span)));
+                (u, v) => Mathf.Clamp01(PatternValue(u, Mathf.Clamp01((v - bandFrom) / span)) * StoneValue(u, v * depthOverWidth)));
             // The line between the two parts lies on the band's inner end: the end that is not at the tile's edge.
             float split = bandFrom <= 0f ? bandTo : bandFrom;
             // The colour stays inside the frame: from the frame line on the tile's edge side to the line between the parts.

@@ -134,6 +134,21 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void ATownsColourLiesOnFaintPavingStones()
+        {
+            // The owner's wish (Faz 31): paving stones that show only faintly. A stone's middle is lighter than the joint beside it.
+            float stone = 1f / TileSkin.StonesAcross;
+            float middle = TileSkin.StoneValue(stone * 0.5f, stone * 0.25f);
+            float joint = TileSkin.StoneValue(stone * 0.995f, stone * 0.25f); // the same stone, at its end
+            Assert.Greater(middle, joint + 0.06f, "the joints show");
+            for (int i = 0; i < 400; i++)
+            {
+                float value = TileSkin.StoneValue((i % 20) / 20f, (i / 20) / 20f);
+                Assert.That(value, Is.InRange(0.8f, 1.1f), "faint: the colour stays the colour");
+            }
+        }
+
+        [Test]
         public void CornerScenesStandOnTheirSquareWithTheirBaseOnIt()
         {
             var root = new GameObject("Scenes");
