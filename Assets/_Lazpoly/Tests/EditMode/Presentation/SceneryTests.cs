@@ -375,6 +375,16 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsFalse(RoadSkin.OnLine(middle, (14f + (1f + RoadSkin.DashShare) / 2f) / RoadSkin.DashesPerSide, middle, halfLine), "a gap between dashes");
                 Assert.IsFalse(RoadSkin.OnLine(0.5f, 0.5f, middle, halfLine), "no line under the lawn");
                 Assert.Less(RoadSkin.Asphalt.grayscale, 0.35f, "the road is dark asphalt");
+
+                // The grass itself is mowed in soft diamonds inside a cream border (Faz 31, the owner's wish), no objects added.
+                Assert.AreSame(LawnSkin.Texture(), lawn.Find("Grass").GetComponent<MeshRenderer>().sharedMaterial.mainTexture);
+                float n = LawnSkin.DiamondsAcross;
+                // Two diamonds' middles side by side: u + v the same, u - v one diamond further.
+                float one = LawnSkin.MowValue(5f / n, 4f / n), other = LawnSkin.MowValue(6f / n, 3f / n);
+                Assert.AreEqual(1f, Mathf.Abs(one - other), 0.01f, "neighbouring diamonds take the two greens");
+                Assert.Greater(LawnSkin.BorderValue(LawnSkin.BorderInset, 0.5f), 0.9f, "the border runs round the lawn");
+                Assert.Less(LawnSkin.BorderValue(0.3f, 0.5f), 0.01f, "and nowhere inside it");
+                Assert.Greater(LawnSkin.Light.g, LawnSkin.Light.r + 0.1f, "still a green");
             }
             finally
             {

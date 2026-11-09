@@ -109,7 +109,6 @@ namespace Lazpoly.Presentation.Tabletop
         private static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
-        private static readonly Color GrassColor = new Color(0.47f, 0.70f, 0.36f);
         /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
         public static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
 
@@ -1313,7 +1312,9 @@ namespace Lazpoly.Presentation.Tabletop
             ModelParts.Skin(road, RoadSkin.Create((1f - LawnShare) / 2f));
             road.transform.localPosition = new Vector3(0f, 0.02f, 0f);
 
-            GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), GrassColor, 0.05f);
+            // Mowed in soft diamonds with a cream garden border, in a sage green kin to the towns' colours (Faz 31, the owner's wish).
+            GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), Color.white, 0.05f);
+            ModelParts.Skin(green, LawnSkin.Texture());
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
         }
 
