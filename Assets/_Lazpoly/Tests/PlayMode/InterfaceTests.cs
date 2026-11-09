@@ -146,6 +146,20 @@ namespace Lazpoly.PlayTests
                 Assert.AreEqual(player.Money, controller.ShownMoneyOf(player.Id), $"{player.Name}'s money on screen");
             }
 
+            // A choice on the board (a ride waiting since the last turn, the cup, a card's town) keeps a square's card shut,
+            // and the dice are random, so play is first brought to a moment with no such choice.
+            float settled = Time.realtimeSinceStartup;
+            while (controller.Session.State.Phase != GamePhase.GameOver && (controller.IsBusy || hud.BoardChoices(controller.Session.State) != null))
+            {
+                Assert.Less(Time.realtimeSinceStartup - settled, 60f, "The board kept asking for a square.");
+                yield return null;
+                if (controller.IsBusy || hud.BoardChoices(controller.Session.State) == null) continue;
+                foreach (string label in order)
+                {
+                    if (Press(hud.transform, label)) break;
+                }
+            }
+
             // A clicked square opens its card with the square's name and price.
             hud.PinSquare(1);
             yield return null;
