@@ -3,8 +3,9 @@
 `cash-father-logo.png` (1244x1265, saydam zeminli PNG) proje sahibi **mami** tarafından 2026-11-10 20:16'da verildi
 ("logoyu bununla değiştir iconda logodaki karakter olsun"). Üstte çizgi film tarzında, silindir şapkalı, kızgın yüzlü,
 iri yapılı bir adam (siyah palto, kırmızı kravat, altın topuzlu baston, "$" yüzük); arkasında gökdelenler ve para
-desteleri; altta taçlı altın "CASH", gümüş "FATHER", iki yanda zarlar, en altta "$" madalyonu. Üretim aracı henüz
-yazılmadı; görünüşü yapay zekâ ile üretilmiş gibi, Steam içerik beyanına eklenmeli (`Steam/README.md` §6).
+desteleri; altta taçlı altın "CASH", gümüş "FATHER", iki yanda zarlar, en altta "$" madalyonu. Sahibin bildirimine göre
+(2026-11-10 21:08, "chatgpt ile") ChatGPT ile üretildi; Steam içerik beyanında yapay zekâ içeriği olarak yer alır
+(`Steam/README.md` §6).
 
 Aynı gün verilen ilk Cash Father logosu (puro içen fotogerçekçi adam) ve eski Lazpoly logosu (`lazpoly-logo.jpg`,
 ChatGPT) depodan kaldırıldı; git geçmişinde durur.
