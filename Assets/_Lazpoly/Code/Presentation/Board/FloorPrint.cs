@@ -158,10 +158,11 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A picture of whatever <paramref name="covers"/> says lies on the page, over <paramref name="area"/> (x across,
-        /// y up the page), <paramref name="width"/> texels across: white, its alpha how much of each texel is covered (4x4
-        /// samples per texel), so the edges come out soft at any size. Kept readable, so a test can check the drawing.
+        /// y up the page), <paramref name="width"/> texels across: white, its alpha how much of each texel is covered
+        /// (<paramref name="samples"/> by <paramref name="samples"/> points per texel), so the edges come out soft at any size.
+        /// Kept readable, so a test can check the drawing.
         /// </summary>
-        public static Texture2D Picture(string name, Rect area, int width, System.Func<float, float, bool> covers)
+        public static Texture2D Picture(string name, Rect area, int width, System.Func<float, float, bool> covers, int samples = 4)
         {
             int height = Mathf.Max(1, Mathf.RoundToInt(width * area.height / area.width));
             var picture = new Texture2D(width, height, TextureFormat.RGBA32, false, true)
@@ -169,7 +170,7 @@ namespace Lazpoly.Presentation.Tabletop
                 name = name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave,
             };
             var pixels = new Color32[width * height];
-            const int samples = 4;
+            samples = Mathf.Max(1, samples);
             for (int row = 0; row < height; row++)
             {
                 for (int column = 0; column < width; column++)

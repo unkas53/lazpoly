@@ -37,6 +37,12 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Like the tax document's: the cards are no bigger on the screen, and the three pictures are made at once when the board is built.</summary>
         public const int PictureWidth = 192;
 
+        /// <summary>
+        /// Points tried per texel along each side: 3 by 3 (the document's pictures take 4 by 4) keeps the edges soft, and
+        /// the three pictures, made while the board is built, cost the game's start about half the time.
+        /// </summary>
+        public const int Samples = 3;
+
         private const float Layer = 0.003f;
 
         private static Texture2D _paper;
@@ -73,13 +79,13 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>Both cards' cream, the one in front over the one behind.</summary>
-        public static Texture2D PaperPicture() => _paper != null ? _paper : _paper = FloorPrint.Picture("print-chance-paper", Area, PictureWidth, IsPaper);
+        public static Texture2D PaperPicture() => _paper != null ? _paper : _paper = FloorPrint.Picture("print-chance-paper", Area, PictureWidth, IsPaper, Samples);
 
         /// <summary>The back card's deep colour inside its rim, where the front card leaves it showing, and the front card's outline.</summary>
-        public static Texture2D DeepPicture() => _deep != null ? _deep : _deep = FloorPrint.Picture("print-chance-deep", Area, PictureWidth, IsDeep);
+        public static Texture2D DeepPicture() => _deep != null ? _deep : _deep = FloorPrint.Picture("print-chance-deep", Area, PictureWidth, IsDeep, Samples);
 
         /// <summary>The front card's two pips and the two sparkles beside the cards.</summary>
-        public static Texture2D GoldPicture() => _gold != null ? _gold : _gold = FloorPrint.Picture("print-chance-gold", Area, PictureWidth, IsGold);
+        public static Texture2D GoldPicture() => _gold != null ? _gold : _gold = FloorPrint.Picture("print-chance-gold", Area, PictureWidth, IsGold, Samples);
 
         public static bool IsPaper(float x, float z) => InFront(x, z, 0f) || InBack(x, z, 0f);
 
