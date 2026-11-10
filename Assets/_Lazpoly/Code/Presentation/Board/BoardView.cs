@@ -620,9 +620,10 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// How far a hatch's middle lies in from the lawn's edge, and how far either side of the edge's middle when two seats
-        /// share the edge: the top ones stay clear of the clock sign, the bottom ones of the dice and the pot.
+        /// share the edge: the top ones stay clear of the clock sign, the bottom ones of the dice and the pot. Far enough in
+        /// that the whole frame stays on the flat grass wherever the lawn's wandering edge comes in (<see cref="LawnShape.Inward"/>).
         /// </summary>
-        public const float HatchInset = 0.61f;
+        public const float HatchInset = 0.80f;
         public const float HatchSpread = 1.25f;
 
         /// <summary>
@@ -1297,8 +1298,9 @@ namespace Lazpoly.Presentation.Tabletop
             ModelParts.Skin(road, RoadSkin.Create((1f - LawnShare) / 2f));
             road.transform.localPosition = new Vector3(0f, 0.02f, 0f);
 
-            // Mowed in soft diamonds with a cream garden border, in a sage green kin to the towns' colours (Faz 31, the owner's wish).
-            GameObject green = ModelParts.Create("Grass", root, MeshFactory.RoundedBox(new Vector3(grass, LawnHeight, grass), 0.2f, 3), Color.white, 0.05f);
+            // A natural, matt meadow whose edge wanders instead of running dead straight (the owner's wish, 2026-11-10; it
+            // was mowed diamonds inside a cream border on a straight-edged box).
+            GameObject green = ModelParts.Create("Grass", root, LawnShape.Build(grass / 2f, LawnHeight), Color.white, 0f);
             ModelParts.Skin(green, LawnSkin.Texture());
             green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
         }

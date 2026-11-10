@@ -269,6 +269,13 @@ namespace Lazpoly.Presentation.Tests
                     Assert.LessOrEqual(Vector3.Dot(spot, outward) + size.z / 2f, lawnHalf - 0.15f, $"seat {seat + 1}: inside the lawn's edge");
                     Assert.LessOrEqual(Mathf.Abs(Vector3.Dot(spot, along)) + size.x / 2f, lawnHalf - 0.15f, $"seat {seat + 1}: inside the lawn");
                     Assert.Greater(Vector3.Dot(spot, outward), lawnHalf * 0.75f, $"seat {seat + 1}: on its own side of the lawn");
+                    // The lawn's edge wanders: the whole frame still lies on the flat grass, in from the bank.
+                    foreach (float side in new[] { -0.5f, 0.5f })
+                    foreach (float end in new[] { -0.5f, 0.5f })
+                    {
+                        Vector3 corner = spot + along * (size.x * side) + outward * (size.z * end);
+                        Assert.IsTrue(LawnShape.Covers(new Vector2(corner.x, corner.z) / lawnHalf, LawnShape.Bevel), $"seat {seat + 1}: a corner of its frame is off the grass");
+                    }
                     Vector3 pile = BoardView.MoneyPileSpot(seat, 8, board.HalfExtent, yaw);
                     Assert.AreEqual(Mathf.Sign(Vector3.Dot(pile, along)), Mathf.Sign(Vector3.Dot(spot, along)), $"seat {seat + 1}: beside its case's way");
                     Assert.That(Quaternion.Angle(hatch.transform.localRotation, BoardView.MoneyPileTurn(seat, yaw)), Is.LessThan(0.01f), $"seat {seat + 1}: turned as its case, so the money fits");

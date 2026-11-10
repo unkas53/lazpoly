@@ -355,7 +355,7 @@ namespace Lazpoly.Presentation.Tests
             var holder = new GameObject("Board Test");
             try
             {
-                BoardView.Create(holder.transform, data);
+                BoardView board = BoardView.Create(holder.transform, data);
                 Transform lawn = null;
                 foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
                 {
@@ -365,7 +365,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsNotNull(lawn);
                 var names = new List<string>();
                 foreach (Transform child in lawn) names.Add(child.name);
-                CollectionAssert.AreEquivalent(new[] { "Road", "Grass" }, names, "no trees, bushes, bunting, paths or patches: the owner wants plain grass");
+                CollectionAssert.AreEquivalent(new[] { "Road", "Grass" }, names, "no trees, bushes, bunting or paths: nothing stands on the grass");
 
                 // Round the lawn an asphalt road with a dashed middle line (Faz 25).
                 var road = (Texture2D)lawn.Find("Road").GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
@@ -376,15 +376,66 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsFalse(RoadSkin.OnLine(0.5f, 0.5f, middle, halfLine), "no line under the lawn");
                 Assert.Less(RoadSkin.Asphalt.grayscale, 0.35f, "the road is dark asphalt");
 
-                // The grass itself is mowed in soft diamonds inside a cream border (Faz 31, the owner's wish), no objects added.
-                Assert.AreSame(LawnSkin.Texture(), lawn.Find("Grass").GetComponent<MeshRenderer>().sharedMaterial.mainTexture);
-                float n = LawnSkin.DiamondsAcross;
-                // Two diamonds' middles side by side: u + v the same, u - v one diamond further.
-                float one = LawnSkin.MowValue(5f / n, 4f / n), other = LawnSkin.MowValue(6f / n, 3f / n);
-                Assert.AreEqual(1f, Mathf.Abs(one - other), 0.01f, "neighbouring diamonds take the two greens");
-                Assert.Greater(LawnSkin.BorderValue(LawnSkin.BorderInset, 0.5f), 0.9f, "the border runs round the lawn");
-                Assert.Less(LawnSkin.BorderValue(0.3f, 0.5f), 0.01f, "and nowhere inside it");
+                // The grass itself is a natural, matt meadow with a wandering edge (the owner's wish, 2026-11-10), no objects added.
+                Transform grass = lawn.Find("Grass");
+                Assert.AreSame(LawnSkin.Texture(), grass.GetComponent<MeshRenderer>().sharedMaterial.mainTexture);
+                Color.RGBToHSV(LawnSkin.Light, out _, out float saturation, out float value);
                 Assert.Greater(LawnSkin.Light.g, LawnSkin.Light.r + 0.1f, "still a green");
+                Assert.Less(saturation, 0.45f, "a muted green, not a bright one");
+                Assert.Less(value, 0.65f, "and not a pale one");
+                Assert.Less(LawnSkin.Deep.grayscale, LawnSkin.Light.grayscale, "two tones, a deeper and a lighter");
+
+                // Its edge wanders in and out, never past its allowance: off the hatches inside, short of the road's line outside.
+                float least = float.MaxValue, most = float.MinValue;
+                for (int i = 0; i < 3600; i++)
+                {
+                    float wander = LawnShape.Wander(i * Mathf.PI / 1800f);
+                    least = Mathf.Min(least, wander);
+                    most = Mathf.Max(most, wander);
+                }
+
+                Assert.GreaterOrEqual(least, -(LawnShape.Inward + LawnShape.Fine) - 1e-4f);
+                Assert.LessOrEqual(most, LawnShape.Outward + LawnShape.Fine + 1e-4f);
+                Assert.Greater(most - least, 0.06f, "the edge is not a straight line");
+                Assert.Less(least, -0.02f, "it comes in");
+                Assert.Greater(most, 0.015f, "and goes out");
+                Assert.AreEqual(1f, LawnShape.BaseRadius(0f), 1e-5f, "a straight edge's middle is one half-lawn away");
+                Assert.Less(LawnShape.BaseRadius(Mathf.PI / 4f), Mathf.Sqrt(2f) - 0.05f, "the corners are well rounded");
+                float inner = board.Inner, lawnHalf = inner * BoardView.LawnShare / 2f;
+                Assert.Less(lawnHalf * (1f + LawnShape.Outward + LawnShape.Fine), inner * (0.5f - middle - halfLine) - 0.08f, "the grass stays clear of the road's painted line");
+
+                // The mesh: a flat top at the lawn's height, a bank and a skirt down to the ground, every face turned outwards.
+                Mesh mesh = grass.GetComponent<MeshFilter>().sharedMesh;
+                Assert.AreSame(LawnShape.Build(lawnHalf, BoardView.LawnHeight), mesh, "made once and shared");
+                Assert.AreEqual(BoardView.LawnHeight, mesh.bounds.max.y, 1e-5f);
+                Assert.AreEqual(0f, mesh.bounds.min.y, 1e-5f);
+                Assert.LessOrEqual(Mathf.Max(mesh.bounds.max.x, -mesh.bounds.min.x), lawnHalf * (1f + LawnShape.Outward + LawnShape.Fine) + 1e-3f);
+                Vector3[] vertices = mesh.vertices, normals = mesh.normals;
+                Vector2[] uvs = mesh.uv;
+                int[] triangles = mesh.triangles;
+                for (int i = 0; i < triangles.Length; i += 3)
+                {
+                    Vector3 a = vertices[triangles[i]], b = vertices[triangles[i + 1]], c = vertices[triangles[i + 2]];
+                    Vector3 facing = Vector3.Cross(b - a, c - a);
+                    Vector3 lit = normals[triangles[i]] + normals[triangles[i + 1]] + normals[triangles[i + 2]];
+                    Assert.Greater(Vector3.Dot(facing, lit), 0f, $"triangle {i / 3} faces the way it is lit");
+                }
+
+                foreach (Vector2 uv in uvs)
+                    Assert.IsTrue(uv.x > 0f && uv.x < 1f && uv.y > 0f && uv.y < 1f, "the texture covers the whole lawn");
+
+                // The paint: an earthy rim where the grass ends, plain grass a little way in; daisies in loose patches, never in the calm middle.
+                Assert.AreEqual(1f, LawnSkin.Rim(0f, 0.5f), 1e-4f, "earth at the very edge");
+                Assert.AreEqual(0f, LawnSkin.Rim(LawnSkin.RimWidth, 1f), 1e-4f, "none past the rim");
+                Assert.Greater(LawnSkin.Rim(0.01f, 1f), LawnSkin.Rim(0.01f, 0f), "the rim's inner side is ragged");
+                Assert.AreEqual(0f, LawnSkin.Shade(LawnSkin.ShadeWidth), 1e-5f);
+                Assert.That(LawnSkin.Flowers.Count, Is.InRange(50, 130), "a sprinkle, not a carpet");
+                foreach (Vector3 flower in LawnSkin.Flowers)
+                {
+                    var at = new Vector2(flower.x, flower.y);
+                    Assert.Greater(at.magnitude, 0.3f, "the middle stays calm for the dice total and the pot");
+                    Assert.IsTrue(LawnShape.Covers(at, LawnSkin.RimWidth), "a daisy stands on grass, not on the rim");
+                }
             }
             finally
             {
