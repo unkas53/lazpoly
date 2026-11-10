@@ -52,20 +52,33 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheTownColoursAreOneFamilyAndEachGroupStandsApart()
+        public void TheTownColoursAreCloseTonesOfOneWarmFamilyAndEachGroupStillStandsApart()
         {
-            // The owner's wish (Faz 31): colours pleasing to the eye that hold together. One saturation and brightness band,
-            // hues going round the board, and each town's printed band still far enough from every other to tell them apart.
+            // The owner's wish (2026-11-10): the squares' colours pleasing and in tones close to each other, not every
+            // colour of the rainbow. One warm family: from wheat through apricot and rose to mauve, each group a step
+            // deeper and a step further round than the one before (the dearer the town, the deeper its colour), each
+            // town's printed band still far enough from every other to tell the groups apart.
             BoardData data = BoardDataLoader.LoadFromResources();
             var bands = new List<Color>();
+            float lastWarmth = 1f, lastLight = float.MaxValue;
             for (int group = 1; group <= 8; group++)
             {
                 Color colour = data.GroupColor(group);
                 Color.RGBToHSV(colour, out float hue, out float saturation, out float value);
-                Assert.That(saturation, Is.InRange(0.38f, 0.7f), $"group {group} is neither washed out nor loud");
-                Assert.That(value, Is.InRange(0.75f, 0.96f), $"group {group} is as bright as the others");
+                // Hues counted from the cool side of mauve, so the warm family is one unbroken stretch: mauve low, wheat high.
+                float warmth = Mathf.Repeat(hue + 0.25f, 1f);
+                Assert.That(warmth, Is.InRange(0.08f, 0.42f), $"group {group} is one of the warm family (no green, no blue)");
+                Assert.Less(warmth, lastWarmth, $"group {group} lies a step further round than the one before");
+                Assert.That(saturation, Is.InRange(0.28f, 0.55f), $"group {group} is neither washed out nor loud");
+                Assert.That(value, Is.InRange(0.58f, 0.9f), $"group {group} is not so bright that the table's light burns it out");
                 Color band = BoardView.BandColor(colour);
+                Assert.AreEqual(Color.Lerp(colour, BoardView.PaperColor, BoardView.BandPastel), band, $"group {group} is light enough for the ink as it is");
                 Assert.GreaterOrEqual(BoardView.Contrast(band, BoardView.InkColor), BoardView.BandContrast, $"group {group}'s names read");
+                Assert.LessOrEqual(Mathf.Max(band.r, Mathf.Max(band.g, band.b)), 0.9f, $"group {group} keeps its colour under the table's light");
+                float light = BoardView.Contrast(band, Color.black);
+                Assert.Less(light, lastLight, $"group {group} is deeper than the one before");
+                lastWarmth = warmth;
+                lastLight = light;
                 bands.Add(band);
             }
 
@@ -74,9 +87,45 @@ namespace Lazpoly.Presentation.Tests
                 for (int b = a + 1; b < bands.Count; b++)
                 {
                     float distance = new Vector3(bands[a].r - bands[b].r, bands[a].g - bands[b].g, bands[a].b - bands[b].b).magnitude;
-                    Assert.Greater(distance, 0.1f, $"groups {a + 1} and {b + 1} look alike");
+                    Assert.Greater(distance, 0.045f, $"groups {a + 1} and {b + 1} look alike");
+                    Assert.Less(distance, 0.4f, $"groups {a + 1} and {b + 1} are tones of one family");
                 }
             }
+        }
+
+        [Test]
+        public void TheOtherSquaresAreWarmCreamsAndTheResortsSeaIsTheOneSoftCoolTone()
+        {
+            // The squares that are no town: one family of light, warm, quiet tones on the paper, none burned out by the light.
+            Color[] others = { BoardView.StartColor, BoardView.TaxColor, BoardView.CardColor, BoardView.CupColor, BoardView.TravelColor, BoardView.JailColor };
+            var tiles = new List<Color>();
+            foreach (Color other in others)
+            {
+                Color tile = Color.Lerp(other, BoardView.PaperColor, BoardView.Pastel);
+                Color.RGBToHSV(tile, out _, out float saturation, out float value);
+                Assert.LessOrEqual(saturation, 0.4f, $"{other} is a quiet tone");
+                Assert.That(value, Is.InRange(0.78f, 0.88f), $"{other} is light, and keeps its tone under the table's light");
+                Assert.GreaterOrEqual(tile.r, tile.b, $"{other} is not a cool tone");
+                Assert.GreaterOrEqual(BoardView.Contrast(tile, BoardView.InkColor), 7f, $"the ink reads on {other}");
+                tiles.Add(tile);
+            }
+
+            for (int a = 0; a < tiles.Count; a++)
+            {
+                for (int b = a + 1; b < tiles.Count; b++)
+                {
+                    float distance = new Vector3(tiles[a].r - tiles[b].r, tiles[a].g - tiles[b].g, tiles[a].b - tiles[b].b).magnitude;
+                    Assert.Less(distance, 0.3f, $"squares {a} and {b} are tones of one family");
+                }
+            }
+
+            Color sand = Color.Lerp(BoardView.SandColor, BoardView.PaperColor, BoardView.SandPastel);
+            Assert.That(Mathf.Max(sand.r, Mathf.Max(sand.g, sand.b)), Is.InRange(0.8f, 0.88f), "the sand is light but not burned out");
+            Assert.Greater(sand.r, sand.b, "and warm");
+            Color.RGBToHSV(BoardView.SeaColor, out float seaHue, out float seaSaturation, out _);
+            Assert.That(seaHue, Is.InRange(0.45f, 0.6f), "the sea is still a sea");
+            Assert.LessOrEqual(seaSaturation, 0.35f, "but a soft one");
+            Assert.Greater(new Vector3(sand.r - BoardView.SeaColor.r, sand.g - BoardView.SeaColor.g, sand.b - BoardView.SeaColor.b).magnitude, 0.3f, "that shows on the sand");
         }
 
         [Test]

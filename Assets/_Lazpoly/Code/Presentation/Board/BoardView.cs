@@ -93,14 +93,18 @@ namespace Lazpoly.Presentation.Tabletop
         public const float PotPileOffset = -0.04f;
         public const float PotPileSide = 0.12f;
 
-        private static readonly Color StartColor = new Color(0.40f, 0.73f, 0.42f);
-        private static readonly Color TaxColor = new Color(0.62f, 0.62f, 0.62f);
+        // The squares that are no town, each before its wash towards the paper (Pastel). Since 2026-11-10 (the owner's
+        // wish: tones close to each other, pleasing, not every colour of the rainbow) they are one family of warm
+        // creams, a little darker than the light shows them: the table's light brightens a tile by about 1.45 (linear),
+        // and the earlier, brighter ones burned out to lemon and white on the screen.
+        public static readonly Color StartColor = new Color(0.51f, 0.63f, 0.41f);
+        public static readonly Color TaxColor = new Color(0.60f, 0.58f, 0.55f);
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
-        private static readonly Color CardColor = new Color(0.98f, 0.80f, 0.42f);
-        private static readonly Color CupColor = new Color(0.99f, 0.86f, 0.40f);
+        public static readonly Color CardColor = new Color(0.74f, 0.64f, 0.45f);
+        public static readonly Color CupColor = new Color(0.70f, 0.54f, 0.08f);
         private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
-        private static readonly Color TravelColor = new Color(0.62f, 0.74f, 0.95f);
-        private static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
+        public static readonly Color TravelColor = new Color(0.66f, 0.67f, 0.65f);
+        public static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
         /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
@@ -144,8 +148,8 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BandContrast = 4.5f;
 
         /// <summary>The sand of a resort's tile, and the sea and surf printed on it.</summary>
-        public static readonly Color SandColor = new Color(0.97f, 0.86f, 0.58f);
-        public static readonly Color SeaColor = new Color(0.30f, 0.70f, 0.84f);
+        public static readonly Color SandColor = new Color(0.82f, 0.75f, 0.56f);
+        public static readonly Color SeaColor = new Color(0.47f, 0.65f, 0.66f);
         public static readonly Color SurfColor = new Color(0.98f, 0.98f, 0.96f);
 
         /// <summary>How far a resort's sand is washed towards the paper: less than a town's, so the beach stands out.</summary>
@@ -268,7 +272,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ChanceMarkOffset = -0.15f;
         public const float ChanceMarkSize = 0.3f;
         public const float ChanceMarkDepth = 0.62f;
-        public static readonly Color ChanceMarkColor = new Color(0.36f, 0.27f, 0.62f);
+        public static readonly Color ChanceMarkColor = new Color(0.47f, 0.27f, 0.40f);
 
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
         public const float NameSize = 0.02f;
