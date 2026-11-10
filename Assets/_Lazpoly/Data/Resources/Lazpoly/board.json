@@ -7,7 +7,7 @@
     "fullGroupRentMultiplier": 2,
     "buildingSellbackPercent": 100,
     "groups": [
-        { "id": 1, "name": "Kuzey Afrika", "color": "#E0D4B0" },
+        { "id": 1, "name": "Kuzey Afrika", "color": "#E3CC96" },
         { "id": 2, "name": "Güney Amerika", "color": "#E7BB78" },
         { "id": 3, "name": "Güneydoğu Asya", "color": "#E7A56A" },
         { "id": 4, "name": "Orta Avrupa", "color": "#E38967" },
