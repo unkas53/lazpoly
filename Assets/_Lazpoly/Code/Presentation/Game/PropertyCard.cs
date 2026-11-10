@@ -76,7 +76,7 @@ namespace Lazpoly.Presentation.Game
             Band(ui, L(square.Name), groupColor, _controller.GroupMarkOf(squareIndex), dismiss);
             ui.Label((buying ? L("Satılık şehir") : L("Senin şehrin")) + " · " + _controller.GroupNameOf(squareIndex), UiTextStyle.Small, UiTheme.Muted,
                 TextAnchor.MiddleCenter);
-            Color paper = choice.Resort ? Color.Lerp(BoardView.SandColor, BoardView.PaperColor, BoardView.SandPastel) : Color.Lerp(groupColor, BoardView.PaperColor, BoardView.Pastel);
+            Color paper = choice.Resort ? BoardView.FactoryStone : Color.Lerp(groupColor, BoardView.PaperColor, BoardView.Pastel);
             RenderTiles(ui, choice, paper, _controller.ColorOf(player.Id));
 
             Text rent = ui.Label(F($"Kira: {choice.RentAt(picked)}"), UiTextStyle.Body, UiTheme.Accent, TextAnchor.MiddleCenter);
@@ -179,7 +179,7 @@ namespace Lazpoly.Presentation.Game
             if (included)
                 UiRoot.Background(UiRoot.Rect(check, "Mark", Vector2.zero, Vector2.one, new Vector2(5f, 5f), new Vector2(-5f, -5f)), UiTheme.Accent).raycastTarget = false;
 
-            Text name = tile.Label(choice.Resort ? L("Tatil yeri") : LevelName(level), UiTextStyle.Small, locked != null ? UiTheme.Muted : UiTheme.Text, TextAnchor.MiddleCenter);
+            Text name = tile.Label(choice.Resort ? L("Fabrika şehri") : LevelName(level), UiTextStyle.Small, locked != null ? UiTheme.Muted : UiTheme.Text, TextAnchor.MiddleCenter);
             name.font = UiTheme.BoldFont;
             tile.Label(F($"Kira {choice.RentAt(level)}"), UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
         }

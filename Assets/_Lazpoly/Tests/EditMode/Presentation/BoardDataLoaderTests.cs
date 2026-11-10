@@ -42,9 +42,9 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsFalse(string.IsNullOrWhiteSpace(data.GroupName(data.Board[i].GroupId)), $"{data.Board[i].Name} has no region.");
             }
             Assert.AreEqual("İstanbul", data.Board[data.Board.Count - 2].Name, "the dearest city closes the lap");
-            // The owner's wish (2026-11-11): New York and Maldivler change places, so the two metropolises stand side by side.
+            // The owner's wish (2026-11-11): New York and the last resort (now Detroit, a factory city) change places, so the two metropolises stand side by side.
             Assert.AreEqual("New York", data.Board[data.Board.Count - 3].Name);
-            Assert.AreEqual("Maldivler", data.Board[data.Board.Count - 4].Name);
+            Assert.AreEqual("Detroit", data.Board[data.Board.Count - 4].Name);
             Assert.AreEqual(data.Board[data.Board.Count - 2].GroupId, data.Board[data.Board.Count - 3].GroupId);
         }
 
@@ -175,9 +175,9 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(0, board[board.Count - 1].TaxAmount);
             Assert.IsFalse(Enumerable.Range(0, board.Count).Any(i => board[i].Type == SquareType.Lookout), "the lookout terrace is gone");
 
-            // East Asia too: Santorini moved up a square and Pekin took the luxury tax's place, next to Seul and Tokyo.
+            // East Asia too: the third resort (now Pittsburgh) moved up a square and Pekin took the luxury tax's place, next to Seul and Tokyo.
             int seoul = Enumerable.Range(0, board.Count).Single(i => board[i].Name == "Seul");
-            CollectionAssert.AreEqual(new[] { "Roma", "Santorini", "Pekin", "Seul", "Tokyo" },
+            CollectionAssert.AreEqual(new[] { "Roma", "Pittsburgh", "Pekin", "Seul", "Tokyo" },
                 Enumerable.Range(seoul - 3, 5).Select(i => board[i].Name).ToArray());
             Assert.AreEqual(3, board.CountInGroup(board[seoul].GroupId));
             Assert.AreEqual(board[seoul].GroupId, board[seoul - 1].GroupId);

@@ -62,7 +62,7 @@ namespace Lazpoly.Presentation.Texts
                     if (square.TaxPercent > 0)
                     {
                         info.Rows.Add(new SquareInfoRow(L("Oran"), F($"%{square.TaxPercent}")));
-                        info.Notes.Add(L("Mülk değerinden alınır: şehirlerin ve tatil yerlerinin fiyatı ile binaların maliyeti. Nakit sayılmaz; mülkü olmayan ödemez."));
+                        info.Notes.Add(L("Mülk değerinden alınır: şehirlerin ve fabrika şehirlerinin fiyatı ile binaların maliyeti. Nakit sayılmaz; mülkü olmayan ödemez."));
                     }
                     else
                     {
@@ -116,7 +116,7 @@ namespace Lazpoly.Presentation.Texts
                     info.Rows.Add(new SquareInfoRow(L("Kupanın şehri"),
                         state.CupSquare == GameState.NoCup ? L("henüz yok") : F($"{L(board[state.CupSquare].Name)} (%{state.CupPercent})"), state.CupSquare != GameState.NoCup));
                     info.Notes.Add(F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir; o şehrin kirası artar. Kupa tek bir şehirde durur: yeni bir şehir seçilince eskisinden kalkar."));
-                    info.Notes.Add(F($"Artış ilk seçimde %{square.BoostPercent}; oyun boyunca kim seçerse seçsin her seçimde %{square.BoostStep} büyür. Tatil yerleri seçilemez."));
+                    info.Notes.Add(F($"Artış ilk seçimde %{square.BoostPercent}; oyun boyunca kim seçerse seçsin her seçimde %{square.BoostStep} büyür. Fabrika şehirleri seçilemez."));
                     if (square.BoostLimit > 0) info.Notes.Add(F($"Artış en fazla %{square.BoostLimit} olur."));
                     return info;
                 }
@@ -189,7 +189,7 @@ namespace Lazpoly.Presentation.Texts
         private static SquareInfo DescribeResort(BoardDefinition board, GameState state, int squareIndex)
         {
             SquareDefinition square = board[squareIndex];
-            var info = new SquareInfo(L(square.Name), L("Tatil yeri"));
+            var info = new SquareInfo(L(square.Name), L("Fabrika şehri"));
             int owner = state.GetOwner(squareIndex);
             int held = owner == GameState.NoOwner ? 0 : GameRules.ResortsOwned(board, state, owner);
             int resorts = ResortCount(board);
@@ -197,13 +197,13 @@ namespace Lazpoly.Presentation.Texts
             info.Rows.Add(new SquareInfoRow(L("Fiyat"), M(square.Price)));
             for (int count = 1; count <= resorts; count++)
             {
-                info.Rows.Add(new SquareInfoRow(F($"{count} tatil yeri"), M(GameRules.ResortRent(square.BaseRent, count)), held == count, rent: true));
+                info.Rows.Add(new SquareInfoRow(F($"{count} fabrika şehri"), M(GameRules.ResortRent(square.BaseRent, count)), held == count, rent: true));
             }
 
             info.Rows.Add(new SquareInfoRow(L("Satış değeri"), M(square.SaleValue)));
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
             info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
-            info.Notes.Add(L("Tatil yerine bina kurulmaz. Sahibinin elindeki her yeni tatil yeriyle kirası iki katına çıkar: bir, iki, dört ya da sekiz kat."));
+            info.Notes.Add(L("Fabrika şehrine bina kurulmaz. Sahibinin elindeki her yeni fabrika şehriyle fabrikası büyür ve kirası iki katına çıkar: bir, iki, dört ya da sekiz kat."));
             return info;
         }
 

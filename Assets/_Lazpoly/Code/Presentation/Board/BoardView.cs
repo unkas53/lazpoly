@@ -133,16 +133,9 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BuildingOffset = -0.27f;
 
         /// <summary>
-        /// A holiday resort's tile: sand with a strip of sea along its top edge and white surf where the sea meets the
-        /// sand, so it reads as a beach and not a town, all printed flat into the tile inside its frame
-        /// (<see cref="TileSkin.Resort"/>). The sea's middle and depth in tile depths (it starts just past the frame, which
-        /// clips it), the surf's scallop radius in tile widths and how many scallops run along the edge, and where the
-        /// owner's beach stands (a little further down the tile than a town's buildings, clear of the sea).
+        /// Where the owner's factory stands on a factory city (the squares that were the holiday resorts; the owner's wish,
+        /// 2026-11-11), in tile depths towards the screen's bottom: a little further down the tile than a town's buildings.
         /// </summary>
-        public const float SeaOffset = -0.40f;
-        public const float SeaDepth = 0.08f;
-        public const float SurfRadius = 0.05f;
-        public const int SurfScallops = 7;
         public const float ResortOffset = -0.19f;
 
         /// <summary>
@@ -156,15 +149,11 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BandContrast = 4.5f;
 
         /// <summary>
-        /// The sand of a resort's tile, and the sea and surf printed on it. Since 2026-11-11 (the owner's wish: colours that
-        /// suit the table) a warm honey sand like the cheap towns' wheat, and a soft teal sea, kin to the Şans squares' jade.
+        /// A factory city's tile (the owner's wish, 2026-11-11): dark grey paving with larger stones than a town's
+        /// (<see cref="TileSkin.Factory"/>), its name and rent printed in a light ink that reads on it.
         /// </summary>
-        public static readonly Color SandColor = new Color(0.79f, 0.69f, 0.53f);
-        public static readonly Color SeaColor = new Color(0.5f, 0.75f, 0.74f);
-        public static readonly Color SurfColor = new Color(0.98f, 0.98f, 0.96f);
-
-        /// <summary>How far a resort's sand is washed towards the paper: less than a town's, so the beach stands out.</summary>
-        public const float SandPastel = 0.25f;
+        public static readonly Color FactoryStone = new Color(0.30f, 0.31f, 0.33f);
+        public static readonly Color FactoryInk = new Color(0.95f, 0.93f, 0.88f);
 
         /// <summary>Where pawns stand: on the price line.</summary>
         public const float PawnOffset = 0.31f;
@@ -366,7 +355,6 @@ namespace Lazpoly.Presentation.Tabletop
         private TextMesh[] _names;
         private TextMesh[] _chanceMarks;
         private Transform[] _chanceCards;
-        private Transform[] _palms;
         private Transform[] _documents;
         private Transform _startArrow;
 
@@ -543,7 +531,6 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
                 if (_documents[i] != null) _documents[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
                 if (_chanceCards[i] != null) _chanceCards[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
-                if (_palms[i] != null) _palms[i].localRotation = Quaternion.LookRotation(BuildingFront(Outward(Layout.SquareCenter(i)), yaw));
             }
 
             foreach (KeyValuePair<Transform, Vector3> mark in _marks) mark.Key.localRotation = LabelRotation(mark.Value, yaw);
@@ -983,7 +970,6 @@ namespace Lazpoly.Presentation.Tabletop
             _names = new TextMesh[board.Count];
             _chanceMarks = new TextMesh[board.Count];
             _chanceCards = new Transform[board.Count];
-            _palms = new Transform[board.Count];
             _documents = new Transform[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
@@ -1008,7 +994,7 @@ namespace Lazpoly.Presentation.Tabletop
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), TileEdgeRadius, 2), body, 0.05f);
                 ModelParts.Skin(tileObject, town ? TownSkin(outward, size, BandColor(TileColor(square, data)))
-                    : square.IsResort ? ResortSkin(outward, size) : paper);
+                    : square.IsResort ? TileSkin.Factory(FactoryStone, size.y / size.x) : paper);
                 _printed[i] = printed;
                 tileObject.transform.localPosition = center + Vector3.up * (TileHeight / 2f);
                 tileObject.transform.localRotation = facing;
@@ -1031,7 +1017,7 @@ namespace Lazpoly.Presentation.Tabletop
                         Vector3 along = Vector3.Cross(Vector3.up, outward);
                         if (Vector3.Dot(along, ScreenRight(BoardCameraRig.BaseYaw)) > 0f) along = -along;
                         Vector3 line = center + down * (_depth * NameOffset) + Vector3.up * top;
-                        CreateBandMark(mark, line + along * (size.x * 0.4f), outward, InkColor);
+                        CreateBandMark(mark, line + along * (size.x * 0.4f), outward, InkOf(square));
                     }
                 }
                 else if (corner && square.Type == SquareType.Start)
@@ -1076,7 +1062,7 @@ namespace Lazpoly.Presentation.Tabletop
                     : center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
                     : center + down * (_depth * (IsChance(i) || DocumentUnderName(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
-                    NameCharacterSize(i), NameRoom(i, size), InkColor);
+                    NameCharacterSize(i), NameRoom(i, size), InkOf(square));
                 _names[i].transform.localRotation = NameRotation(i, _names[i].transform.localRotation, _yaw);
                 string subtitle = Subtitle(square);
                 if (subtitle != null || property)
@@ -1085,29 +1071,19 @@ namespace Lazpoly.Presentation.Tabletop
                         ? center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerPriceOffset)
                         : center + down * (_depth * PriceOffset);
                     _prices[i] = CreateLabel("Price", subtitle ?? string.Empty, pricePlace + Vector3.up * (TileHeight + PrintHeight), outward,
-                        PriceCharacterSize(i), PriceRoom(i, size), PriceColor);
+                        PriceCharacterSize(i), PriceRoom(i, size), PriceInkOf(square));
                 }
 
                 if (property)
                 {
                     // Owner marker: the owner's plot (or the flag) on the tile's top part, where the buildings will stand.
-                    // On a resort it is the owner's beach, which grows with the resorts they hold (SetResortStage).
+                    // On a factory city it is the owner's factory, which grows with the factory cities they hold (SetResortStage).
                     OwnerMarker marker = square.IsResort ? OwnerMarker.CreateResort("Owner marker", transform) : OwnerMarker.Create("Owner marker", transform, i * 0.9f);
                     marker.Place(outward, square.IsResort ? ResortSpot(center) : BuildingRowCenter(center), _yaw);
                     _flagScale[i] = marker.RestScale(_width);
                     marker.transform.localScale = _flagScale[i];
                     marker.gameObject.SetActive(false);
                     _ownerMarkers[i] = marker;
-                    if (square.IsResort)
-                    {
-                        // Every resort, held or not, has its palms (the owner's wish, 2026-11-11), where the beach stands.
-                        GameObject palms = ResortParts.Palms("Palms", transform);
-                        palms.transform.localPosition = ResortSpot(center);
-                        palms.transform.localRotation = Quaternion.LookRotation(BuildingFront(outward, _yaw));
-                        palms.transform.localScale = _flagScale[i];
-                        _palms[i] = palms.transform;
-                    }
-
                     if (square.IsDevelopable)
                     {
                         _buildings[i] = CreateBuildings(center);
@@ -1451,17 +1427,10 @@ namespace Lazpoly.Presentation.Tabletop
                 : TileSkin.Town(color, PavingColor, 1f - bottom, 1f, size.y / size.x);
         }
 
-        /// <summary>
-        /// A resort tile's skin: the sand, the sea along the tile's top edge on the screen and the surf below it, inside
-        /// the frame (<see cref="TileSkin.Resort"/>); the sea lies at the low or the high end of v as for a town.
-        /// </summary>
-        private Texture2D ResortSkin(Vector3 outward, Vector2 size)
-        {
-            float seaEnd = 0.5f + _depth * (SeaOffset + SeaDepth / 2f) / size.y;
-            bool withOutward = Vector3.Dot(ScreenDown(outward), outward) > 0f;
-            return TileSkin.Resort(Color.Lerp(SandColor, PaperColor, SandPastel), SeaColor, SurfColor, seaEnd,
-                _width * SurfRadius / size.x, SurfScallops, !withOutward, size.y / size.x);
-        }
+        /// <summary>The ink of a square's name: light on a factory city's dark paving, the board's dark ink elsewhere.</summary>
+        public static Color InkOf(SquareDefinition square) => square.IsResort ? FactoryInk : InkColor;
+
+        private static Color PriceInkOf(SquareDefinition square) => square.IsResort ? FactoryInk : PriceColor;
 
         /// <summary>
         /// Shows on a resort the beach for an owner who holds <paramref name="held"/> resorts; it pops up from the sand
@@ -1541,9 +1510,6 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>The flat "?" printed on a Şans square, or null on any other square.</summary>
         public TextMesh ChanceMark(int index) => _chanceMarks != null ? _chanceMarks[index] : null;
-
-        /// <summary>A resort's palms, which stand whether or not it is held; null on any other square.</summary>
-        public Transform Palms(int index) => _palms != null ? _palms[index] : null;
 
         /// <summary>The cards printed on a Şans square (<see cref="ChancePrint"/>); null on any other square.</summary>
         public Transform ChanceCards(int index) => _chanceCards != null ? _chanceCards[index] : null;
@@ -1749,7 +1715,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (price == null) return;
             int? rent = _rents[index];
             price.text = rent.HasValue ? F($"{rent.Value}") : Subtitle(_data.Board[index]) ?? string.Empty;
-            price.color = PriceColor; // The rent stays in the print's ink, never the owner's colour (the owner's wish, Faz 21).
+            price.color = PriceInkOf(_data.Board[index]); // The rent stays in the print's ink, never the owner's colour (the owner's wish, Faz 21).
             Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
             FitLabel(price, PriceCharacterSize(index), PriceRoom(index, size), Outward(Layout.SquareCenter(index)));
         }
@@ -1864,7 +1830,7 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 case SquareType.Start: return StartColor;
                 case SquareType.Tax: return TaxColor;
-                case SquareType.Property: return square.IsResort ? SandColor : data.GroupColor(square.GroupId);
+                case SquareType.Property: return square.IsResort ? FactoryStone : data.GroupColor(square.GroupId);
                 case SquareType.Card: return ChanceColor;
                 case SquareType.Cup: return CupColor;
                 case SquareType.Pot: return PotColor;

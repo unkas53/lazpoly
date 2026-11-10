@@ -60,14 +60,14 @@ namespace Lazpoly.Presentation.Texts
             int taxPercent = TaxPercent(board);
             if (taxPercent > 0)
             {
-                sections.Add(Section(L("Vergi"), F($"Vergi karesine gelen, sahip olduğu şehirlerin ve tatil yerlerinin fiyatı ile üstlerindeki binaların maliyeti toplamının %{taxPercent} kadarını bankaya öder. Nakit sayılmaz; mülkü olmayan bir şey ödemez.")));
+                sections.Add(Section(L("Vergi"), F($"Vergi karesine gelen, sahip olduğu şehirlerin ve fabrika şehirlerinin fiyatı ile üstlerindeki binaların maliyeti toplamının %{taxPercent} kadarını bankaya öder. Nakit sayılmaz; mülkü olmayan bir şey ödemez.")));
             }
 
             int cup = IndexOfType(board, SquareType.Cup);
             if (cup >= 0)
             {
                 SquareDefinition square = board[cup];
-                sections.Add(Section(L(square.Name), F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir ve o şehrin kirası artar: ilk seçimde %{square.BoostPercent}, sonra kim seçerse seçsin her seçimde %{square.BoostStep} daha fazla. Kupa tek bir şehirde durur; başka bir şehir seçilince oraya geçer, eski şehrin kirası normale döner. Tatil yerleri seçilemez.")
+                sections.Add(Section(L(square.Name), F($"Buraya gelen isterse {square.Fee} ödeyip kupayı kendi şehirlerinden birine getirir ve o şehrin kirası artar: ilk seçimde %{square.BoostPercent}, sonra kim seçerse seçsin her seçimde %{square.BoostStep} daha fazla. Kupa tek bir şehirde durur; başka bir şehir seçilince oraya geçer, eski şehrin kirası normale döner. Fabrika şehirleri seçilemez.")
                     + (square.BoostLimit > 0 ? " " + F($"Artış en fazla %{square.BoostLimit} olur.") : "")));
             }
 

@@ -87,12 +87,12 @@ namespace Lazpoly.Presentation.Game
             Texture picture = null;
             if (property && square.IsResort)
             {
-                // A resort shows its beach at the stage its owner's resorts reach, in their colour; for sale, the first stage unpainted.
+                // A factory city shows its factory at the stage its owner's factory cities reach, in their colour; for sale, the first stage unpainted.
                 GameState state = _controller.Session.State;
                 int owner = state.GetOwner(squareIndex);
                 bool owned = owner != GameState.NoOwner;
                 int held = owned ? GameRules.ResortsOwned(_controller.Session.Board, state, owner) : 1;
-                picture = _preview?.BeachPicture(held, Color.Lerp(BoardView.SandColor, BoardView.PaperColor, BoardView.SandPastel),
+                picture = _preview?.BeachPicture(held, BoardView.FactoryStone,
                     owned ? _controller.ColorOf(owner) : ResortParts.Unowned);
             }
             else if (property)

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Lazpoly.Presentation.Tests
 {
-    /// <summary>The holiday resorts on the board: squares as wide as ever, a beach tile, and the owner's beach in four stages.</summary>
+    /// <summary>The factory cities (once the holiday resorts) on the board: squares as wide as ever, a dark paved tile, and the owner's factory in four stages.</summary>
     public class ResortViewTests
     {
         [Test]
@@ -26,15 +26,14 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheBeachStandsOnTheSandBetweenTheSeaAndTheName()
+        public void TheFactoryStandsOnItsTileAboveTheName()
         {
             var layout = new BoardLayout(28, BoardView.HalfSizeFor(28), BoardView.DepthRatio);
             float widthInDepths = (layout.Width - BoardView.Gap) / (layout.Depth - BoardView.Gap);
             float half = ResortParts.Depth * BoardView.BuildingScale * widthInDepths / 2f;
-            Assert.GreaterOrEqual(BoardView.ResortOffset - half, BoardView.SeaOffset + BoardView.SeaDepth / 2f - 0.01f, "the beach starts where the sea ends");
+            Assert.GreaterOrEqual(BoardView.ResortOffset - half, -0.5f, "the factory starts on the tile");
             Assert.LessOrEqual(BoardView.ResortOffset + half, BoardView.NameOffset - BoardView.StripDepth / 2f, "and ends before the name");
-            Assert.GreaterOrEqual(BoardView.SeaOffset - BoardView.SeaDepth / 2f, -0.5f, "the sea stays on the tile");
-            Assert.Less(ResortParts.Width * BoardView.BuildingScale, 1f - BoardView.Gap / layout.Width, "the beach stays inside its tile's width");
+            Assert.Less(ResortParts.Width * BoardView.BuildingScale, 1f - BoardView.Gap / layout.Width, "the factory stays inside its tile's width");
         }
 
         [Test]
@@ -43,20 +42,17 @@ namespace Lazpoly.Presentation.Tests
             var holder = new GameObject("Beach Test");
             try
             {
-                // The owner's wish (2026-11-11): loungers at one resort held, a small hut at two, two huts at three, a big hut at four.
-                int[] loungers = { 2, 2, 2, 2 };
-                int[] parasols = { 1, 1, 1, 1 };
-                int[] huts = { 0, 1, 2, 0 };
-                int[] bigHuts = { 0, 0, 0, 1 };
+                // The owner's wish (2026-11-11): a factory that grows in four stages with the factory cities held.
+                int[] halls = { 1, 1, 2, 1 };
+                int[] chimneys = { 1, 1, 2, 3 };
+                int[] offices = { 0, 0, 0, 1 };
                 int previous = 0;
                 for (int stage = 1; stage <= ResortParts.Stages; stage++)
                 {
                     GameObject beach = ResortParts.Layout(stage, $"Beach {stage}", holder.transform);
-                    Assert.AreEqual(loungers[stage - 1], Count(beach, "Lounger"), $"stage {stage} loungers");
-                    Assert.AreEqual(parasols[stage - 1], Count(beach, "Parasol"), $"stage {stage} parasols");
-                    Assert.AreEqual(huts[stage - 1], Count(beach, "Hut"), $"stage {stage} small huts");
-                    Assert.AreEqual(bigHuts[stage - 1], Count(beach, "Big hut"), $"stage {stage} big hut");
-                    Assert.AreEqual(0, Count(beach, "Palm"), $"stage {stage}: the palms stand apart, on every resort");
+                    Assert.AreEqual(halls[stage - 1], Count(beach, "Hall"), $"stage {stage} halls");
+                    Assert.AreEqual(chimneys[stage - 1], Count(beach, "Chimney"), $"stage {stage} chimneys");
+                    Assert.AreEqual(offices[stage - 1], Count(beach, "Office"), $"stage {stage} office");
                     Renderer[] parts = beach.GetComponentsInChildren<Renderer>(true);
                     Assert.Greater(parts.Length, previous, $"stage {stage} has more on it than the one before");
                     previous = parts.Length;
@@ -71,45 +67,17 @@ namespace Lazpoly.Presentation.Tests
                     Bounds bounds = Extent(parts);
                     Assert.That(Vector3.Distance(bounds.min, mergedBounds.min) + Vector3.Distance(bounds.max, mergedBounds.max), Is.LessThan(1e-3f), $"stage {stage} merges in place");
                     Assert.LessOrEqual(bounds.extents.x, ResortParts.Width / 2f, $"stage {stage} stays within its width");
-                    Assert.LessOrEqual(Mathf.Max(-bounds.min.x, bounds.max.x), ResortParts.StageHalfWidth + 1e-3f, $"stage {stage} keeps between the palms");
+                    Assert.LessOrEqual(Mathf.Max(-bounds.min.x, bounds.max.x), ResortParts.Width / 2f, $"stage {stage} stays on its spot across");
                     Assert.LessOrEqual(bounds.extents.z * 2f, ResortParts.Depth + 1e-3f, $"stage {stage} stays within its depth");
                     Assert.LessOrEqual(Mathf.Abs(bounds.center.z) + bounds.extents.z, ResortParts.Depth / 2f + 1e-3f, $"stage {stage} is centred on its spot");
                     Assert.GreaterOrEqual(bounds.min.y, -1e-3f, $"stage {stage} stands on the tile");
-                    Assert.LessOrEqual(bounds.max.y, ResortParts.Height, $"stage {stage} is no taller than a palm");
+                    Assert.LessOrEqual(bounds.max.y, ResortParts.Height, $"stage {stage} is no taller than its smoke allows");
                 }
 
                 GameObject full = holder.transform.Find("Beach 4").gameObject;
-                Assert.Greater(Count(full, "Post"), 0, "the big hut has its porch");
-                Assert.AreEqual(2, Count(full, "Window"), "and a window either side of its door");
-            }
-            finally
-            {
-                Object.DestroyImmediate(holder);
-            }
-        }
-
-        [Test]
-        public void EveryResortHasTwoPalmsAtTheEndsOfItsBeach()
-        {
-            var holder = new GameObject("Palm Test");
-            try
-            {
-                GameObject loose = ResortParts.PalmLayout("Palms", holder.transform);
-                Assert.AreEqual(2, Count(loose, "Palm"));
-                Assert.AreEqual(0, Count(loose, ResortParts.OwnerPart), "the palms keep their own colours");
-                Assert.Greater(ResortParts.PalmSpread, ResortParts.StageHalfWidth, "they stand beyond every stage");
-
-                GameObject merged = ResortParts.Palms("Merged palms", holder.transform);
-                Renderer[] draws = merged.GetComponentsInChildren<Renderer>(true);
-                Assert.LessOrEqual(draws.Length, 5, "the palms draw in a few calls");
-                Bounds bounds = Extent(draws);
-                Bounds looseBounds = Extent(loose.GetComponentsInChildren<Renderer>(true));
-                Assert.That(Vector3.Distance(bounds.min, looseBounds.min) + Vector3.Distance(bounds.max, looseBounds.max), Is.LessThan(1e-3f), "they merge in place");
-                Assert.LessOrEqual(Mathf.Max(-bounds.min.x, bounds.max.x), ResortParts.Width / 2f, "within the beach's width");
-                Assert.LessOrEqual(Mathf.Max(-bounds.min.z, bounds.max.z), ResortParts.Depth / 2f, "and its depth");
-                Assert.GreaterOrEqual(bounds.min.y, -1e-3f, "on the sand");
-                Assert.LessOrEqual(bounds.max.y, ResortParts.Height, "no taller than the beach allows");
-                Assert.Greater(bounds.max.y, ResortParts.Height * 0.75f, "and the tallest thing on it");
+                Assert.AreEqual(6, Count(full, "Window"), "the big works' office has two rows of windows");
+                Assert.AreEqual(4, Count(full, ResortParts.OwnerPart) - 3 - 1, "its hall has four roof teeth (besides three chimney bands and the office roof)");
+                Assert.AreEqual(1, Count(holder.transform.Find("Beach 2").gameObject, "Tank"), "the factory has its tank");
             }
             finally
             {
@@ -143,7 +111,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheCushionsParasolsAndTowelsWearTheOwnersColour()
+        public void TheRoofsAndChimneyBandsWearTheOwnersColour()
         {
             var holder = new GameObject("Beach Test");
             try
@@ -165,7 +133,7 @@ namespace Lazpoly.Presentation.Tests
                     }
                 }
 
-                Assert.AreEqual(1, owned, "the cushions, the parasol, the towel and the ball are one mesh");
+                Assert.AreEqual(1, owned, "the roofs and the chimney's band are one mesh");
                 ResortParts.PaintOwner(beach, null);
                 foreach (Renderer part in beach.GetComponentsInChildren<Renderer>(true))
                 {
@@ -179,7 +147,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheShippedBoardPrintsABeachOnEachResortAndGrowsItsOwnersBeach()
+        public void TheShippedBoardPavesEachFactoryCityAndGrowsItsOwnersFactory()
         {
             BoardData data = BoardDataLoader.LoadFromResources();
             var holder = new GameObject("Board Test");
@@ -209,19 +177,20 @@ namespace Lazpoly.Presentation.Tests
                     }
 
                     Material material = tile.GetComponent<Renderer>().sharedMaterial;
-                    Assert.AreEqual(Color.white, material.color, "the sand and the sea are in the texture");
+                    Assert.AreEqual(Color.white, material.color, "the paving is in the texture");
                     var skin = (Texture2D)material.mainTexture;
-                    Vector3 down = BoardView.ScreenDown(BoardLayout.Outward(board.Layout.SquareCenter(resort)));
-                    bool lowEnd = Vector3.Dot(tile.forward, down) > 0f;
-                    float V(float fromTop) => lowEnd ? fromTop : 1f - fromTop;
-                    Color sea = skin.GetPixelBilinear(0.5f, V(0.5f + BoardView.SeaOffset + 0.01f));
-                    // A soft sea (the owner's wish for close tones, 2026-11-10): still plainly bluer than it is red, and no sand.
-                    Assert.Greater(sea.b, sea.r + 0.1f, "the sea runs along the top inside the frame");
-                    Assert.Greater(sea.g, sea.r + 0.1f, "a sea green, not the sand");
-                    Color edge = skin.GetPixelBilinear(0.5f, V(0.02f));
-                    Assert.Greater(edge.b, edge.r, "the sea runs out to the frame on the tile's edge");
-                    Color sand = skin.GetPixelBilinear(0.5f, V(0.5f + BoardView.ResortOffset));
-                    Assert.Greater(sand.r, sand.b + 0.1f, "the beach stands on sand");
+                    float darkest = 1f, lightest = 0f;
+                    for (int step = 1; step < 40; step++)
+                    {
+                        Color paving = skin.GetPixelBilinear(0.5f + 0.004f * step, 0.2f + 0.015f * step);
+                        darkest = Mathf.Min(darkest, paving.grayscale);
+                        lightest = Mathf.Max(lightest, paving.grayscale);
+                    }
+
+                    Assert.Less(lightest, 0.45f, "dark grey paving all over");
+                    Assert.Greater(lightest - darkest, 0.08f, "with its stones and joints showing");
+                    Assert.AreEqual(BoardView.FactoryInk, board.NameLabel(resort).color, "the name in the light ink");
+                    Assert.AreEqual(BoardView.FactoryInk, board.PriceLabel(resort).color, "the price too");
                 }
 
                 var beaches = new List<OwnerMarker>();
@@ -230,19 +199,7 @@ namespace Lazpoly.Presentation.Tests
                     if (marker.IsResort) beaches.Add(marker);
                 }
 
-                Assert.AreEqual(resorts.Count, beaches.Count, "each resort has a beach in place of the plot");
-                for (int i = 0; i < data.Board.Count; i++)
-                {
-                    if (!data.Board[i].IsResort)
-                    {
-                        Assert.IsNull(board.Palms(i), $"square {i} has no palms");
-                        continue;
-                    }
-
-                    Assert.IsNotNull(board.Palms(i), $"{data.Board[i].Name} has its palms");
-                    Assert.IsTrue(board.Palms(i).gameObject.activeInHierarchy, $"{data.Board[i].Name}: the palms stand while it is for sale");
-                    Assert.AreEqual(beaches[0].RestScale(board.Layout.Width - BoardView.Gap), board.Palms(i).localScale, "at the beach's size");
-                }
+                Assert.AreEqual(resorts.Count, beaches.Count, "each factory city has a factory in place of the plot");
 
                 Assert.AreEqual(Vector3.one * (board.Layout.Width - BoardView.Gap) * BoardView.BuildingScale, beaches[0].RestScale(board.Layout.Width - BoardView.Gap));
 
@@ -255,7 +212,7 @@ namespace Lazpoly.Presentation.Tests
                     if (beach.gameObject.activeSelf) shown = beach;
                 }
 
-                Assert.IsNotNull(shown, "the bought resort shows its beach");
+                Assert.IsNotNull(shown, "the bought factory city shows its factory");
                 Assert.AreEqual(3, shown.Stage, "the stage of three resorts held");
                 int active = 0;
                 foreach (Transform stage in shown.transform)
@@ -269,10 +226,9 @@ namespace Lazpoly.Presentation.Tests
                 shown.ShowStage(0);
                 Assert.AreEqual(1, shown.Stage);
 
-                Assert.IsTrue(board.Palms(resorts[0]).gameObject.activeInHierarchy, "the palms stand beside the owner's beach");
                 board.SetOwner(resorts[0], null);
-                Assert.IsFalse(shown.gameObject.activeSelf, "a resort for sale has no beach");
-                Assert.IsTrue(board.Palms(resorts[0]).gameObject.activeInHierarchy, "but keeps its palms");
+                Assert.IsFalse(shown.gameObject.activeSelf, "a factory city for sale has no factory");
+                Assert.AreEqual(BoardView.FactoryInk, board.PriceLabel(resorts[0]).color, "and its price keeps the light ink");
             }
             finally
             {

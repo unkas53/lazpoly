@@ -1001,7 +1001,7 @@ namespace Lazpoly.Presentation.Game
             {
                 if (!_session.Board[i].IsResort || _session.State.GetOwner(i) == GameState.NoOwner) continue;
                 hud.PinSquare(i);
-                yield return ScreenTour.Take("tatil-yeri-karti");
+                yield return ScreenTour.Take("fabrika-karti");
                 hud.CloseTop();
                 break;
             }

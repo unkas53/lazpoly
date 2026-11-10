@@ -162,7 +162,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheOtherSquaresAreWarmCreamsAndTheResortsSeaIsTheOneSoftCoolTone()
+        public void TheOtherSquaresAreWarmCreamsAndTheFactoryCitiesADarkGrey()
         {
             // The squares that are no town: one family of light, warm, quiet tones on the paper, none burned out by the light.
             // Şans has its own jade since 2026-11-11 (see TheChanceSquaresAreASoftJade...).
@@ -188,13 +188,11 @@ namespace Lazpoly.Presentation.Tests
                 }
             }
 
-            Color sand = Color.Lerp(BoardView.SandColor, BoardView.PaperColor, BoardView.SandPastel);
-            Assert.That(Mathf.Max(sand.r, Mathf.Max(sand.g, sand.b)), Is.InRange(0.8f, 0.88f), "the sand is light but not burned out");
-            Assert.Greater(sand.r, sand.b, "and warm");
-            Color.RGBToHSV(BoardView.SeaColor, out float seaHue, out float seaSaturation, out _);
-            Assert.That(seaHue, Is.InRange(0.45f, 0.6f), "the sea is still a sea");
-            Assert.LessOrEqual(seaSaturation, 0.35f, "but a soft one");
-            Assert.Greater(new Vector3(sand.r - BoardView.SeaColor.r, sand.g - BoardView.SeaColor.g, sand.b - BoardView.SeaColor.b).magnitude, 0.3f, "that shows on the sand");
+            // The factory cities (the owner's wish, 2026-11-11): dark grey paving, a near-neutral grey, with a light ink on it.
+            Color stone = BoardView.FactoryStone;
+            Assert.Less(Mathf.Max(stone.r, Mathf.Max(stone.g, stone.b)), 0.4f, "a dark grey");
+            Assert.Less(Mathf.Max(stone.r, Mathf.Max(stone.g, stone.b)) - Mathf.Min(stone.r, Mathf.Min(stone.g, stone.b)), 0.06f, "a grey, not a colour");
+            Assert.GreaterOrEqual(BoardView.Contrast(stone, BoardView.FactoryInk), 7f, "the name and the rent read on it");
         }
 
         [Test]

@@ -231,17 +231,49 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>
-        /// A resort tile's whole skin, printed flat into the tile's own face like a town's: sand, the sea along the top
-        /// of the screen from the frame down to <paramref name="seaEnd"/> (a share of the tile's depth from its top edge
-        /// on the screen), a row of <paramref name="scallops"/> white surf scallops of <paramref name="surfRadius"/> (of
-        /// the tile's width) where the sea meets the sand, and the frame line over it all. The sea and the surf stay
-        /// inside the frame. <paramref name="seaAtHighV"/> puts the screen's top at v = 1 instead of v = 0.
+        /// A factory city's paving (the owner's wish, 2026-11-11: dark grey, with larger paving stones than a town's): rows
+        /// of setts with rounded corners in a running bond, <see cref="FactoryStonesAcross"/> to a tile's width (a town's are
+        /// seven), each its own shade of the grey, with plain dark joints and a little grit, so it reads as an industrial yard.
         /// </summary>
-        public static Texture2D Resort(Color sand, Color sea, Color surf, float seaEnd, float surfRadius, int scallops, bool seaAtHighV, float depthOverWidth)
+        public const int FactoryStonesAcross = 4;
+        public const float FactoryJointWidth = 0.07f;
+        public const float FactoryJointShade = 0.42f;
+        public const float FactoryStoneShade = 0.09f;
+        public const float FactoryStoneHeight = 0.7f; // of its width
+        public const float FactoryStoneRound = 0.2f;  // of its height
+
+        /// <summary>The factory paving's brightness (about 0.55-1.1) at a point measured in tile widths, like <see cref="StoneValue"/>.</summary>
+        public static float FactoryStoneValue(float x, float y)
+        {
+            float width = 1f / FactoryStonesAcross, height = width * FactoryStoneHeight;
+            float rowAt = Mathf.Max(0f, y) / height;
+            int row = Mathf.FloorToInt(rowAt);
+            float colAt = Mathf.Max(0f, x) / width + ((row & 1) == 1 ? 0.5f : 0f);
+            int col = Mathf.FloorToInt(colAt);
+            float fx = colAt - col, fy = rowAt - row;
+            // The distance to the nearest joint, in stone heights, round at the corners.
+            float ex = Mathf.Min(fx, 1f - fx) * (width / height), ey = Mathf.Min(fy, 1f - fy);
+            const float round = FactoryStoneRound;
+            float edge = ex < round && ey < round ? round - Mathf.Sqrt((round - ex) * (round - ex) + (round - ey) * (round - ey)) : Mathf.Min(ex, ey);
+            float joint = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((edge - FactoryJointWidth * 0.5f) / (FactoryJointWidth * 0.6f)));
+            float stone = 1f + FactoryStoneShade * (2f * Hash(col * 11 + 5, row * 17 + 3) - 1f);
+            // Each stone's upper edge catches a little light, its lower edge a little shade: the setts read as raised.
+            stone += 0.05f * (1f - Mathf.Clamp01(fy / 0.25f)) - 0.04f * (1f - Mathf.Clamp01((1f - fy) / 0.25f));
+            // Grit: fine noise over the stone.
+            stone *= 0.96f + 0.08f * Noise(x * 90f + 7f, y * 90f + 13f);
+            return stone * (1f - FactoryJointShade * joint);
+        }
+
+        /// <summary>
+        /// A factory city tile's whole skin, printed flat into the tile's own face like a town's: <paramref name="stone"/>
+        /// paving (<see cref="FactoryStoneValue"/>) inside the frame and the frame line round it. The tile is drawn white.
+        /// <paramref name="depthOverWidth"/> is the tile's depth over its width, so the stones keep their shape.
+        /// </summary>
+        public static Texture2D Factory(Color stone, float depthOverWidth)
         {
             int width = TownWidth;
             int height = Mathf.Max(1, Mathf.RoundToInt(width * depthOverWidth));
-            string key = $"resort:{ColorUtility.ToHtmlStringRGB(sand)}:{ColorUtility.ToHtmlStringRGB(sea)}:{seaEnd:F3}:{surfRadius:F3}:{scallops}:{seaAtHighV}:{height}";
+            string key = $"factory:{ColorUtility.ToHtmlStringRGB(stone)}:{height}";
             if (Towns.TryGetValue(key, out Texture2D cached) && cached != null) return cached;
 
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, true)
@@ -251,39 +283,17 @@ namespace Lazpoly.Presentation.Models
                 filterMode = FilterMode.Trilinear,
                 anisoLevel = 8, // the tiles lie at a slant to the camera
             };
-            float[] paper = Grid($"grain:{width}:{height}", width, height, PaperGrain);
-            // The scallops' centres run along the sea's edge inside the frame; distances are measured in tile widths.
-            float first = FrameInset + surfRadius, last = 1f - FrameInset - surfRadius;
-            float pixel = 1f / width;
             var pixels = new Color32[width * height];
             for (int y = 0; y < height; y++)
             {
                 float v = (y + 0.5f) / height;
-                float down = seaAtHighV ? 1f - v : v;
                 for (int x = 0; x < width; x++)
                 {
-                    int i = y * width + x;
                     float u = (x + 0.5f) / width;
-                    Color colour = sand * paper[i];
-                    if (FrameDistance(u, v) < 0f)
-                    {
-                        // The sea, with its lower edge smoothed over a pixel.
-                        float below = (down - seaEnd) * depthOverWidth;
-                        colour = Color.Lerp(colour, sea * paper[i], Mathf.Clamp01(0.5f - below / pixel));
-                        // The surf: the lower halves of round scallops hanging from the sea's edge.
-                        if (below > 0f && scallops > 0)
-                        {
-                            float step = scallops == 1 ? 0f : (last - first) / (scallops - 1);
-                            int nearest = scallops == 1 ? 0 : Mathf.Clamp(Mathf.RoundToInt((u - first) / step), 0, scallops - 1);
-                            float cx = scallops == 1 ? 0.5f : first + nearest * step;
-                            float distance = Mathf.Sqrt((u - cx) * (u - cx) + below * below);
-                            colour = Color.Lerp(colour, surf, Mathf.Clamp01(0.5f + (surfRadius - distance) / pixel));
-                        }
-                    }
-
-                    if (OnFrame(u, v)) colour = sand * paper[i] * FrameShade;
+                    Color colour = stone * FactoryStoneValue(u, v * depthOverWidth);
+                    if (OnFrame(u, v)) colour = stone * FrameShade;
                     colour.a = 1f;
-                    pixels[i] = colour;
+                    pixels[y * width + x] = colour;
                 }
             }
 

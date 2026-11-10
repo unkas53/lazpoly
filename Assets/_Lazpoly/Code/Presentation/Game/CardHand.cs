@@ -279,7 +279,7 @@ namespace Lazpoly.Presentation.Game
             switch (aim)
             {
                 case CardTarget.OwnTown: return L("Tahtada parlayan şehirlerinden birine tıkla.");
-                case CardTarget.FreeProperty: return L("Tahtada parlayan sahipsiz şehir ya da tatil yerlerinden birine tıkla.");
+                case CardTarget.FreeProperty: return L("Tahtada parlayan sahipsiz şehir ya da fabrika şehirlerinden birine tıkla.");
                 case CardTarget.RivalTown: return L("Tahtada parlayan rakip şehirlerden birine tıkla.");
                 default: return L("Tahtada parlayan karelerden gitmek istediğine tıkla.");
             }

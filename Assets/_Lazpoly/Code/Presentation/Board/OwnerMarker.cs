@@ -9,7 +9,7 @@ namespace Lazpoly.Presentation.Tabletop
     /// (<see cref="BuildingModels"/>, level 0) in the owner's colour, standing where the buildings will
     /// stand and at their size, or the flag when the models are not in the build. The board places,
     /// scales, raises and lowers it the same way either way; the first house takes its place.
-    /// On a holiday resort the marker is the owner's beach instead (<see cref="ResortParts"/>), at the stage
+    /// On a factory city (once a holiday resort) the marker is the owner's factory instead (<see cref="ResortParts"/>), at the stage
     /// that matches how many resorts the owner holds (<see cref="ShowStage"/>).
     /// </summary>
     public sealed class OwnerMarker : MonoBehaviour

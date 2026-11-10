@@ -135,20 +135,20 @@ namespace Lazpoly.Presentation.Tests
             var board = new BoardDefinition(new[]
             {
                 SquareDefinition.Start("Başlangıç"),
-                SquareDefinition.Resort("Bodrum", 200, 50, 9),
-                SquareDefinition.Resort("Bali", 200, 50, 9),
-                SquareDefinition.Resort("Santorini", 200, 50, 9),
-                SquareDefinition.Resort("Maldivler", 200, 50, 9),
+                SquareDefinition.Resort("Manchester", 200, 50, 9),
+                SquareDefinition.Resort("Şenzen", 200, 50, 9),
+                SquareDefinition.Resort("Pittsburgh", 200, 50, 9),
+                SquareDefinition.Resort("Detroit", 200, 50, 9),
             });
             GameState state = GameState.CreateInitial(board, Rules, new[] { new PlayerSeat(1, "Ayşe"), new PlayerSeat(2, "Can") });
 
-            SquareInfo info = SquareInfo.Describe(board, Rules, state, 2, "Tatil Yerleri");
-            Assert.AreEqual("Tatil yeri", info.Kind);
+            SquareInfo info = SquareInfo.Describe(board, Rules, state, 2, "Fabrika Şehirleri");
+            Assert.AreEqual("Fabrika şehri", info.Kind);
             Assert.AreEqual("200", ValueOf(info, "Fiyat"));
-            Assert.AreEqual("50", ValueOf(info, "1 tatil yeri"));
-            Assert.AreEqual("100", ValueOf(info, "2 tatil yeri"));
-            Assert.AreEqual("200", ValueOf(info, "3 tatil yeri"), "each further resort doubles the rent (the owner's wish, Faz 27)");
-            Assert.AreEqual("400", ValueOf(info, "4 tatil yeri"));
+            Assert.AreEqual("50", ValueOf(info, "1 fabrika şehri"));
+            Assert.AreEqual("100", ValueOf(info, "2 fabrika şehri"));
+            Assert.AreEqual("200", ValueOf(info, "3 fabrika şehri"), "each further resort doubles the rent (the owner's wish, Faz 27)");
+            Assert.AreEqual("400", ValueOf(info, "4 fabrika şehri"));
             Assert.AreEqual(4, info.Rows.Count(row => row.Rent));
             Assert.IsFalse(info.Rows.Any(row => row.Label == "Ev maliyeti"), "a resort takes no buildings");
             Assert.IsFalse(info.Rows.Any(row => row.Current));
@@ -156,8 +156,8 @@ namespace Lazpoly.Presentation.Tests
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(1, GameState.NoOwner, 1));
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(2, GameState.NoOwner, 1));
             GameStateReducer.Apply(state, new PropertyOwnerChangedEvent(4, GameState.NoOwner, 1));
-            info = SquareInfo.Describe(board, Rules, state, 2, "Tatil Yerleri");
-            Assert.AreEqual("3 tatil yeri", info.Rows.Single(row => row.Current).Label);
+            info = SquareInfo.Describe(board, Rules, state, 2, "Fabrika Şehirleri");
+            Assert.AreEqual("3 fabrika şehri", info.Rows.Single(row => row.Current).Label);
             CollectionAssert.Contains(info.Notes, "Sahibi Ayşe.");
             Assert.AreEqual(4, SquareInfo.ResortCount(board));
         }
