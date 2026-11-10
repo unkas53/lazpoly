@@ -20,6 +20,50 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheBusIsHeardStartingPullingAwaySoundingItsHornAndBraking()
+        {
+            // The owner's wish (2026-11-11): the engine starting, the horn, the brakes and the engine pulling away.
+            Assert.AreEqual("bus_start", SoundCues.FileName(SoundCue.BusStart));
+            Assert.AreEqual("bus_rev", SoundCues.FileName(SoundCue.BusRev));
+            Assert.AreEqual("bus_horn", SoundCues.FileName(SoundCue.BusHorn));
+            Assert.AreEqual("bus_brake", SoundCues.FileName(SoundCue.BusBrake));
+            foreach (SoundCue cue in new[] { SoundCue.BusStart, SoundCue.BusRev, SoundCue.BusHorn, SoundCue.BusBrake })
+            {
+                Assert.AreEqual(1, SoundCues.Variants(cue), cue.ToString());
+                Assert.That(SoundCues.Volume(cue), Is.InRange(0.4f, 0.65f), $"{cue} sits under the table's big moments");
+                Assert.AreEqual(0f, SoundCues.PitchJitter(cue), $"{cue} keeps its pitch");
+            }
+
+            Assert.LessOrEqual(SoundCues.Volume(SoundCue.BusRev), SoundCues.Volume(SoundCue.BusHorn), "the long engine sound lies under the short ones");
+
+            // The engine's sound outlasts the longest drive (the ride fades it out when the bus stops), and the engine
+            // has started by the time the bus pulls away.
+            AudioClip rev = Resources.Load<AudioClip>(SoundCues.ResourcePath(SoundCue.BusRev));
+            Assert.GreaterOrEqual(rev.length, Tabletop.BusRoute.MostSeconds, "the engine is heard for the whole of the longest drive");
+            AudioClip start = Resources.Load<AudioClip>(SoundCues.ResourcePath(SoundCue.BusStart));
+            Assert.That(start.length, Is.InRange(Pawns.BusTrip.StartSeconds, Pawns.BusTrip.StartSeconds + 0.6f), "the engine has caught when the bus pulls away");
+            Assert.Less(Resources.Load<AudioClip>(SoundCues.ResourcePath(SoundCue.BusHorn)).length, 0.8f, "a short greeting, not a blast");
+            Assert.Less(Resources.Load<AudioClip>(SoundCues.ResourcePath(SoundCue.BusBrake)).length, 1.2f);
+
+            // The ride's timing: the bus waits for its engine, and brakes a moment before it stands.
+            Assert.AreEqual(Pawns.BusTrip.StartSeconds - Pawns.PawnView.BoardingSeconds, Pawns.BusTrip.WaitToStart(1f), 1e-5f);
+            Assert.AreEqual(Pawns.BusTrip.WaitToStart(1f) / 2f, Pawns.BusTrip.WaitToStart(2f), 1e-5f, "a faster game waits less");
+            Assert.Greater(Pawns.BusTrip.WaitToStart(1f), 0.2f);
+            Assert.AreEqual(3f - Pawns.BusTrip.BrakeLead, Pawns.BusTrip.BrakesAt(3f, 1f), 1e-5f);
+            Assert.AreEqual(3f - Pawns.BusTrip.BrakeLead / 2f, Pawns.BusTrip.BrakesAt(3f, 2f), 1e-5f);
+            Assert.AreEqual(0f, Pawns.BusTrip.BrakesAt(0.2f, 1f), "a drive shorter than the braking brakes from its start");
+            Assert.Less(Pawns.BusTrip.BrakeLead, Tabletop.BusRoute.LeastSeconds, "even the shortest drive pulls away before it brakes");
+            Assert.Less(Pawns.BusTrip.EngineFade, Pawns.BusTrip.BrakeLead, "the engine is quiet when the bus stands");
+
+            // A sound that is stopped fades away instead of being cut.
+            Assert.AreEqual(0.6f, AudioPlayer.FadedVolume(0.6f, 0f, 0.4f), 1e-6f);
+            Assert.AreEqual(0.3f, AudioPlayer.FadedVolume(0.6f, 0.2f, 0.4f), 1e-6f);
+            Assert.AreEqual(0f, AudioPlayer.FadedVolume(0.6f, 0.4f, 0.4f), 1e-6f);
+            Assert.AreEqual(0f, AudioPlayer.FadedVolume(0.6f, 9f, 0.4f), 1e-6f);
+            Assert.AreEqual(0f, AudioPlayer.FadedVolume(0.6f, 0f, 0f), "no time to fade over: silent at once");
+        }
+
+        [Test]
         public void FileNamesAreSnakeCase()
         {
             Assert.AreEqual("dice_shake", SoundCues.FileName(SoundCue.DiceShake));

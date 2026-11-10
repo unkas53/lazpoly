@@ -27,6 +27,12 @@ namespace Lazpoly.Presentation.Audio
         Hotel,
         TurnPass,
         Firework,
+
+        // The bus's ride from the station (the owner's wish, 2026-11-11); written by Tools/Audio/make_sfx_bus.py.
+        BusStart,
+        BusRev,
+        BusHorn,
+        BusBrake,
     }
 
     /// <summary>Which sound goes with which game event, and where each clip lives. No engine calls, so it is tested directly.</summary>
@@ -38,7 +44,8 @@ namespace Lazpoly.Presentation.Audio
         /// The sound played when an event is shown, or <see cref="SoundCue.None"/>. One action that
         /// sends several events sounds once: a purchase plays on its payment, not on the owner change,
         /// and rent plays on the payer's side only. Dice, steps and the turn banner are timed by
-        /// their animations instead; the hotel and the quiet turn-pass note are played by the scene too.
+        /// their animations instead; the hotel and the quiet turn-pass note are played by the scene too,
+        /// and the bus's sounds by its ride (<see cref="Pawns.BusTrip"/>).
         /// </summary>
         public static SoundCue For(GameEvent gameEvent)
         {
@@ -87,7 +94,7 @@ namespace Lazpoly.Presentation.Audio
         /// <summary>The clip's path under a Resources folder, e.g. "Lazpoly/Sfx/dice_shake"; null for <see cref="SoundCue.None"/>.</summary>
         public static string ResourcePath(SoundCue cue) => cue == SoundCue.None ? null : Folder + FileName(cue);
 
-        /// <summary>File name without extension: the cue's name in snake_case, as Tools/Audio/make_sfx_kenney.py writes it.</summary>
+        /// <summary>File name without extension: the cue's name in snake_case, as Tools/Audio/make_sfx_kenney.py (and make_sfx_bus.py) writes it.</summary>
         public static string FileName(SoundCue cue)
         {
             string name = cue.ToString();
@@ -171,6 +178,10 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.UiOpen: return 0.4f;
                 case SoundCue.TurnPass: return 0.45f;
                 case SoundCue.Firework: return 0.55f; // Several go off together over a group.
+                case SoundCue.BusRev: return 0.5f; // Long, and under whatever else happens on the table.
+                case SoundCue.BusStart: return 0.6f;
+                case SoundCue.BusHorn: return 0.55f;
+                case SoundCue.BusBrake: return 0.5f;
                 default: return 0.75f;
             }
         }

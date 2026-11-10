@@ -10,3 +10,7 @@ dosyası klasöründe. Kayıtlar insan yapımıdır, yapay zekâ ile üretilmedi
 Teşekkür olarak oyunun künyesinde "Ses: Kenney (kenney.nl)" yazılabilir.
 
 Yeni bir ses eklemek için: kaydı ilgili paket klasörüne koy, betikteki `RECIPES` tablosuna ekle, betiği çalıştır.
+
+Otobüsün dört sesi (`bus_start`, `bus_rev`, `bus_horn`, `bus_brake`) bu kayıtlardan değildir: Kenney paketlerinde
+otobüs sesi yok, o yüzden `Tools/Audio/make_sfx_bus.py` onları hesaplayarak üretir (2026-11-11). Gerçek kayıtla
+değiştirilecekse CC0 lisanslı kayıt bu klasöre konur ve tarif `make_sfx_kenney.py` içindeki `RECIPES` tablosuna yazılır.

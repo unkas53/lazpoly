@@ -24,6 +24,11 @@ namespace Lazpoly.Presentation.Audio
         private static bool _quitting;
 
         private readonly AudioSource[] _sources = new AudioSource[Voices];
+        private readonly SoundCue[] _playing = new SoundCue[Voices];
+        // A voice being faded out by Stop: the volume it had, over how long it fades (0: not fading) and for how long it has.
+        private readonly float[] _fadeFrom = new float[Voices];
+        private readonly float[] _fadeSeconds = new float[Voices];
+        private readonly float[] _fadeElapsed = new float[Voices];
         private readonly Dictionary<SoundCue, AudioClip[]> _clips = new Dictionary<SoundCue, AudioClip[]>();
         private readonly Dictionary<SoundCue, int> _lastVariant = new Dictionary<SoundCue, int>();
         private readonly Dictionary<SoundCue, float> _lastPlayed = new Dictionary<SoundCue, float>();
@@ -54,6 +59,57 @@ namespace Lazpoly.Presentation.Audio
             // Nothing may be created while the game shuts down.
             if (_quitting || cue == SoundCue.None) return;
             Ensure().PlayCue(cue);
+        }
+
+        /// <summary>
+        /// Fades out a cue that is still sounding, over <paramref name="fadeSeconds"/> (at once for 0): for the long ones,
+        /// like the bus's engine, that end when what they belong to ends. Nothing happens if it is not playing.
+        /// </summary>
+        public static void Stop(SoundCue cue, float fadeSeconds = 0.2f)
+        {
+            if (_quitting || _instance == null || cue == SoundCue.None) return;
+            _instance.StopCue(cue, fadeSeconds);
+        }
+
+        /// <summary>A fading voice's volume: from <paramref name="from"/> down to nothing over <paramref name="seconds"/>.</summary>
+        public static float FadedVolume(float from, float elapsed, float seconds) =>
+            seconds <= 0f ? 0f : from * Mathf.Clamp01(1f - elapsed / seconds);
+
+        private void StopCue(SoundCue cue, float fadeSeconds)
+        {
+            for (int i = 0; i < Voices; i++)
+            {
+                if (_playing[i] != cue || !_sources[i].isPlaying) continue;
+                if (fadeSeconds <= 0f)
+                {
+                    Silence(i);
+                }
+                else if (_fadeSeconds[i] <= 0f)
+                {
+                    _fadeFrom[i] = _sources[i].volume;
+                    _fadeSeconds[i] = fadeSeconds;
+                    _fadeElapsed[i] = 0f;
+                }
+            }
+        }
+
+        private void Silence(int voice)
+        {
+            _sources[voice].Stop();
+            _playing[voice] = SoundCue.None;
+            _fadeSeconds[voice] = 0f;
+        }
+
+        private void Update()
+        {
+            for (int i = 0; i < Voices; i++)
+            {
+                if (_fadeSeconds[i] <= 0f) continue;
+                _fadeElapsed[i] += Time.unscaledDeltaTime;
+                float volume = FadedVolume(_fadeFrom[i], _fadeElapsed[i], _fadeSeconds[i]);
+                if (volume <= 0f) Silence(i);
+                else _sources[i].volume = volume;
+            }
         }
 
         private void Awake()
@@ -98,7 +154,12 @@ namespace Lazpoly.Presentation.Audio
 
         private static void OnWindowShown() => Play(SoundCue.UiOpen);
 
-        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) => EnsureListener();
+        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            EnsureListener();
+            // A table left in the middle of a ride: its bus is not heard in the menu.
+            Stop(SoundCue.BusRev);
+        }
 
         /// <summary>Sounds need one listener in the scene; a camera built in code may not have one.</summary>
         private static void EnsureListener()
@@ -122,7 +183,10 @@ namespace Lazpoly.Presentation.Audio
             _lastVariant[cue] = variant;
             AudioClip clip = takes[variant];
 
-            AudioSource source = FreeSource();
+            int voice = FreeVoice();
+            AudioSource source = _sources[voice];
+            _playing[voice] = cue;
+            _fadeSeconds[voice] = 0f;
             float jitter = SoundCues.PitchJitter(cue);
             source.pitch = 1f + Random.Range(-jitter, jitter);
             source.volume = SoundCues.Volume(cue) * _effectsVolume;
@@ -132,18 +196,18 @@ namespace Lazpoly.Presentation.Audio
             LastCue = cue;
         }
 
-        // A source that is not playing, or else the one started longest ago.
-        private AudioSource FreeSource()
+        // A voice that is not playing, or else the one started longest ago.
+        private int FreeVoice()
         {
             for (int i = 0; i < Voices; i++)
             {
-                AudioSource candidate = _sources[(_next + i) % Voices];
-                if (candidate.isPlaying) continue;
-                _next = (_next + i + 1) % Voices;
+                int candidate = (_next + i) % Voices;
+                if (_sources[candidate].isPlaying) continue;
+                _next = (candidate + 1) % Voices;
                 return candidate;
             }
 
-            AudioSource oldest = _sources[_next];
+            int oldest = _next;
             _next = (_next + 1) % Voices;
             return oldest;
         }
@@ -158,7 +222,7 @@ namespace Lazpoly.Presentation.Audio
             if (first == null)
             {
                 _missing.Add(cue);
-                Debug.LogWarning($"[Lazpoly] Sound '{SoundCues.ResourcePath(cue)}' is missing; run Tools/Audio/make_sfx_kenney.py.");
+                Debug.LogWarning($"[Lazpoly] Sound '{SoundCues.ResourcePath(cue)}' is missing; run Tools/Audio/make_sfx_kenney.py (the bus's: make_sfx_bus.py).");
                 return null;
             }
 

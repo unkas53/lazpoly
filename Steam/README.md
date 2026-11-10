@@ -89,8 +89,9 @@ beyan edilecek içerik:
 | Şampiyonlar Kupası: mat altın kupa ("LazPoly CHAMPIONS" yazılı), kupanın şehrinde | oyunda `Resources/Lazpoly/Models/figure_trophy*` (`Tools/Art/make_figures.py`) | Proje sahibi Meshy AI ile resimden üretti (2026-11-07); oyun için sadeleştirildi ve dokusu küçültüldü |
 | Uçan para: bantlı para destesi ve altın külçe | `Tools/Art/Models/Figures/CleanBandMoneyStack.glb`, `CleanGoldBar.glb` (git dışı), oyunda `Resources/Lazpoly/Models/figure_moneystack*`, `figure_goldbar*` (`Tools/Art/make_corner_models.py`) | Proje sahibi Meshy AI ile görüntüden 3B üretti (2026-11-07); önceki dolar destesi ve yapay zekâ kodlu para seti kaldırıldı |
 | Şampiyonlar Kupası köşesi: çizgi film tarzı stadyum dioraması (tribün, ışık direkleri, ağaçlar) | oyunda `Resources/Lazpoly/Models/figure_stadium*` (`Tools/Art/make_corner_models.py`) | Proje sahibi Meshy AI ile resimden üretti (2026-11-07, köşedeki kupanın yerine); oyun için sadeleştirildi ve dokusu küçültüldü |
+| Otobüsün sesleri: motorun çalışması, gazlama, korna, fren | `Assets/_Lazpoly/Audio/Resources/Lazpoly/Sfx/bus_*.wav` (`Tools/Audio/make_sfx_bus.py`) | Kayıt değildir ve üretken bir ses modelinden çıkmadı: Claude'un yazdığı betik sesleri hesaplayarak kurar (2026-11-11). Betik yapay zekâ yardımıyla yazıldığı için güvenli taraf beyana yazmaktır; karar proje sahibinin |
 
-Ses efektleri yapay zekâ ürünü değildir: Kenney'nin CC0 kayıtlarından kurulur (`Tools/Audio/Kenney/KAYNAK.md`), beyan gerekmez.
+Öteki ses efektleri yapay zekâ ürünü değildir: Kenney'nin CC0 kayıtlarından kurulur (`Tools/Audio/Kenney/KAYNAK.md`), beyan gerekmez.
 
 Başvurudan önce üretim araçlarının (ChatGPT) kullanım koşullarının ticari kullanıma izin verdiği kontrol
 edilir. Listeye yeni üretilmiş içerik eklendikçe bu tablo güncellenir. Kamp çadırı modeli (ChatGPT + Higgsfield) Faz 16a'da oyundan çıkarıldı; yerini arsa modeli aldı, beyan gerekmez.
