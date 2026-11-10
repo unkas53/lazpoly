@@ -298,6 +298,43 @@ namespace Lazpoly.Presentation.Tabletop
 
         // The corner that holds the bus station diorama; -1 when the drawn stop stands there.
         private int _stationCorner = -1;
+        private Transform _station;
+        private BusView _bus;
+        private RoadPath _lane;
+
+        /// <summary>The road's top, where the bus drives round the lawn.</summary>
+        public const float RoadHeight = 0.04f;
+
+        /// <summary>The square of the bus station diorama; -1 on a board without it.</summary>
+        public int StationSquare => _stationCorner;
+
+        /// <summary>The station's bus, which takes a player along the road (the owner's wish, 2026-11-10); null when the diorama or the bus is not in the build.</summary>
+        public BusView Bus => _bus;
+
+        /// <summary>The road's painted line round the lawn, in the board's frame: the bus drives along it.</summary>
+        public RoadPath Lane => _lane;
+
+        /// <summary>The bus's way from its stop to the road and along it to the point nearest <paramref name="square"/>.</summary>
+        public BusRoute BusRouteTo(int square) =>
+            BusRoute.Out(_bus.ParkedSpot, _bus.ParkedHeading, BusGate, _lane, Layout.SquareCenter(square), BusGround);
+
+        /// <summary>The bus's way home from the point of the road nearest <paramref name="square"/>, on round the lawn to its stop.</summary>
+        public BusRoute BusRouteHome(int square) =>
+            BusRoute.Home(_bus.ParkedSpot, _bus.ParkedHeading, BusGate, _lane, Layout.SquareCenter(square), BusGround);
+
+        /// <summary>The station square's inner corner: the one place the bus gets down to the road without crossing another square.</summary>
+        public Vector3 BusGate
+        {
+            get
+            {
+                Vector3 corner = Layout.SquareCenter(_stationCorner);
+                float edge = Layout.HalfSize - Layout.Depth / 2f;
+                return new Vector3(Mathf.Sign(corner.x) * edge, 0f, Mathf.Sign(corner.z) * edge);
+            }
+        }
+
+        private BusRoute.Ground BusGround =>
+            new BusRoute.Ground(Layout.HalfSize - Layout.Depth / 2f, TileHeight, RoadHeight, _bus.StopRise, _bus.BaseCentre, _bus.BaseHalf);
 
         private OwnerMarker[] _ownerMarkers;
         private Vector3[] _flagScale;
@@ -1283,6 +1320,9 @@ namespace Lazpoly.Presentation.Tabletop
             scene.transform.localScale = Vector3.one * (side * StationSize);
             scene.transform.localRotation = Quaternion.LookRotation(BuildingFront(outward, _yaw));
             _frontScenes.Add(new KeyValuePair<Transform, Vector3>(scene.transform, outward));
+            // The stop's bus is a model of its own, parked where the diorama showed it, so it can drive off with a player.
+            _station = scene.transform;
+            _bus = BusView.Create(transform, _station);
         }
 
         /// <summary>The lawn in the middle: a gravel ring where the squares end and plain grass (the owner had the trees, bunting and paths taken away).</summary>
@@ -1295,9 +1335,11 @@ namespace Lazpoly.Presentation.Tabletop
             // Sandy ground with an asphalt lane and its dashed middle line round the lawn (Faz 25, the owner's wish; since
             // 2026-11-10 the lane's edges are mixed with sand and the line bends round the corners with it).
             float grass = inner * LawnShare;
-            GameObject road = ModelParts.Create("Road", root, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f, 2), Color.white, 0.15f);
-            ModelParts.Skin(road, RoadSkin.Create((1f - LawnShare) / 2f));
-            road.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            GameObject road = ModelParts.Create("Road", root, MeshFactory.RoundedBox(new Vector3(inner, RoadHeight, inner), RoadHeight / 2f, 2), Color.white, 0.15f);
+            float strip = (1f - LawnShare) / 2f;
+            ModelParts.Skin(road, RoadSkin.Create(strip));
+            road.transform.localPosition = new Vector3(0f, RoadHeight / 2f, 0f);
+            _lane = new RoadPath(RoadSkin.LineReach(strip) * inner / 2f, RoadSkin.LineBend(strip) * inner / 2f);
 
             // A natural, matt meadow whose edge wanders instead of running dead straight (the owner's wish, 2026-11-10; it
             // was mowed diamonds inside a cream border on a straight-edged box).
@@ -1592,6 +1634,9 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 if (scene.Key != null) scene.Key.localRotation = Quaternion.LookRotation(BuildingFront(scene.Value, yaw));
             }
+
+            // The stop turned: the waiting bus turns with it (one on the road finds the new place when it gets home).
+            if (_bus != null && !_bus.Away) _bus.Park();
 
             if (_buildings == null || !BuildingModels.IsAvailable) return;
             for (int i = 0; i < _buildings.Length; i++)

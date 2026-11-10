@@ -27,9 +27,9 @@ Menüde, lobide ve oyuncu kartlarında görünen karakter resimleri (`Figure_<ki
 
 Otogar köşesindeki sahne de proje sahibinin Meshy AI ile ürettiği bir modeldir: `Meshy_AI_CartoonBusStopDiorama_1106180721_image-to-3d-texture.glb` (52 MB, 615.500 üçgen), çizgi film tarzı sarı bir şehir otobüsü ve durak (ilk `BusAtBusStopDiorama` modelinin yerine, 2026-11-06). Bu klasöre `CartoonBusStopDiorama.glb` adıyla koyup çalıştır:
 
-    python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
+    python3 Tools/Art/make_station.py
 
-Araç modeli boyuna göre değil genişliğine göre ölçekler (bir birim genişlik, taban y = 0, önü +Z), aynı iki ayrıntı düzeyini ve içe alınan dokuyu yazar (`figure_station.bytes`, `figure_station_skin.jpg`). Dosyalar yoksa oyun çizilmiş durağı gösterir.
+Araç modeli boyuna göre değil genişliğine göre ölçekler (bir birim genişlik, taban y = 0, önü +Z), aynı iki ayrıntı düzeyini ve içe alınan dokuyu yazar. Otobüs oyuncuyu ortadaki yoldan taşıdığı için (sahibin isteği, 2026-11-10) model ikiye ayrılır: otobüssüz durak (`figure_station.bytes`, `figure_station_skin.jpg`) ve tek başına otobüs (`figure_bus.bytes`; durağın dokusunu kullanır, tekerlekleri y = 0'da, burnu +Z'de, durakla aynı ölçekte). Otobüs modele yalnızca lastiklerinden bağlı olduğu için yol hizasının hemen üstünden kesilir; lastiklerin yolda bıraktığı delikler koyu bir yamayla kapanır. Aracın sonunda yazdığı park yeri ve ölçüler `BusModel.cs` içindedir. Dosyalar yoksa oyun çizilmiş durağı gösterir; otobüs dosyası yoksa yolculuk eskisi gibi yürüyerek gösterilir.
 
 Steam yapay zekâ beyanına girer (Steam/README.md).
 

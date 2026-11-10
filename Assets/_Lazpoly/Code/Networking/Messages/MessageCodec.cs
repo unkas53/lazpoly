@@ -15,12 +15,12 @@ namespace Lazpoly.Net.Messages
     public static class MessageCodec
     {
         /// <summary>
-        /// 21: the strategic cards (Faz 30): playing, letting go and the rent shield's choice; cards kept in hand, shields,
+        /// 23: a ride from the bus station is its own kind of move (the bus carries the pawn). 21: the strategic cards (Faz 30): playing, letting go and the rent shield's choice; cards kept in hand, shields,
         /// strikes, funds and the waiting rent in the state. 20: the cup's raise grows by its step up to a limit (Faz 29). 15: a build or buy command carries how many levels go up at once. 14: the champions' cup (its commands, event and the cup's town, raise and picks in the state). 13: the jail (its commands, event and each player's turns to wait). 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
         /// not end on another player's town. 10: the engine
         /// ends an insolvent player's game at once and the turn ends by itself. Mixed builds must not share a table.
         /// </summary>
-        public const int ProtocolVersion = 22;
+        public const int ProtocolVersion = 23;
 
         private enum CommandTag : byte
         {

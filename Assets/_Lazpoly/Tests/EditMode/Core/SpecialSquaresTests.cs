@@ -287,7 +287,7 @@ namespace Lazpoly.Core.Tests
 
             CommandResult result = Accept(engine, new TravelCommand(Alice, P3));
             PlayerMovedEvent move = result.Events.OfType<PlayerMovedEvent>().Single();
-            Assert.AreEqual(MoveKind.Walk, move.Kind, "The pawn walks there square by square, as after a roll.");
+            Assert.AreEqual(MoveKind.Ride, move.Kind, "The bus takes the pawn there; by the rules it goes forward square by square, as after a roll.");
             Assert.AreEqual(Ride, move.FromSquare);
             Assert.IsFalse(move.PassedStart);
             Assert.AreEqual(950, Player(engine, Alice).Money);

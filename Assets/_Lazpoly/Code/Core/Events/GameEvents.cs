@@ -63,6 +63,12 @@ namespace Lazpoly.Core.Events
         /// walks, Faz 15b).
         /// </summary>
         Jump = 2,
+
+        /// <summary>
+        /// A ride from the bus station (the owner's wish, 2026-11-10: the bus takes the player there). By the rules it
+        /// is a walk forward (passing Start pays); only the way it is shown differs.
+        /// </summary>
+        Ride = 3,
     }
 
     /// <summary>Why the game ended.</summary>

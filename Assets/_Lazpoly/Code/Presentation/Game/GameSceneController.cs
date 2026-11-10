@@ -1275,6 +1275,8 @@ namespace Lazpoly.Presentation.Game
             _shownPlayed = _session.State.PlayedSeconds;
             _bankruptPending.Clear();
             GameState state = _session.State;
+            // A ride cut short: the bus is back at its stop.
+            if (_board.Bus != null) _board.Bus.Park();
             foreach (PlayerState player in state.Players)
             {
                 _shownMoney[player.Id] = player.Money;
@@ -1499,6 +1501,7 @@ namespace Lazpoly.Presentation.Game
                         PawnView pawn = _pawns[moved.PlayerId];
                         Markers.ShowTarget(moved.ToSquare, ColorOf(moved.PlayerId));
                         if (moved.Kind == MoveKind.Jump) yield return pawn.JumpTo(moved.ToSquare);
+                        else if (moved.Kind == MoveKind.Ride && BusTrip.CanCarry(_board, pawn)) yield return BusTrip.Carry(_board, pawn, moved.ToSquare);
                         else yield return pawn.WalkTo(moved.ToSquare, backward: moved.Kind == MoveKind.Back);
                         Markers.HideTarget();
                         if (moved.PassedStart) _board.PulseTile(0);

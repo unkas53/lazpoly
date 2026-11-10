@@ -137,6 +137,7 @@ namespace Lazpoly.Presentation.Pawns
         {
             transform.position = Reserve(square);
             _square = square;
+            SetStretch(1f); // Its own size again, were it caught riding the bus.
         }
 
         /// <summary>Takes a slot on <paramref name="square"/> and says where the pawn stands there.</summary>
@@ -204,6 +205,69 @@ namespace Lazpoly.Presentation.Pawns
             _square = destination;
             SetStretch(1f);
             Stepped?.Invoke(destination);
+        }
+
+        /// <summary>How small the piece is when it slips into the bus, as a share of its size, and how long a hop in or out takes.</summary>
+        public const float RidingSize = 0.12f;
+        public const float BoardingSeconds = 0.42f;
+
+        /// <summary>
+        /// Hops from where it stands into the bus at <paramref name="seat"/> (world space), shrinking as it goes, and is
+        /// out of sight inside it (the owner's wish, 2026-11-10). It keeps its square until <see cref="HopOutOf"/>.
+        /// </summary>
+        public IEnumerator HopInto(Vector3 seat)
+        {
+            float speed = Mathf.Max(Speed, 0.1f);
+            Vector3 from = transform.position;
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / BoardingSeconds)
+            {
+                transform.position = BoardingPoint(from, seat, t);
+                transform.localScale = Vector3.one * BoardingSize(t);
+                yield return null;
+            }
+
+            transform.position = seat;
+            transform.localScale = Vector3.zero;
+        }
+
+        /// <summary>Hops out of the bus at <paramref name="seat"/> (world space) onto <paramref name="destination"/>, growing back to its size.</summary>
+        public IEnumerator HopOutOf(Vector3 seat, int destination)
+        {
+            float speed = Mathf.Max(Speed, 0.1f);
+            Vector3 to = Reserve(destination);
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / BoardingSeconds)
+            {
+                transform.position = BoardingPoint(to, seat, 1f - t);
+                transform.localScale = Vector3.one * BoardingSize(1f - t);
+                yield return null;
+            }
+
+            transform.position = to;
+            _square = destination;
+            Stepped?.Invoke(destination);
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / SquashSeconds)
+            {
+                SetStretch(1f - 0.16f * Ease.Bump(t));
+                yield return null;
+            }
+
+            SetStretch(1f);
+        }
+
+        /// <summary>Where the piece is a share <paramref name="t"/> of the way from its square into the bus: one arc over the ground.</summary>
+        public static Vector3 BoardingPoint(Vector3 ground, Vector3 seat, float t)
+        {
+            t = Mathf.Clamp01(t);
+            Vector3 point = Vector3.Lerp(ground, seat, Ease.InOutCubic(t));
+            point.y += Mathf.Sin(t * Mathf.PI) * HopHeight * 2f;
+            return point;
+        }
+
+        /// <summary>How big the piece is on that way: its own size on the square, <see cref="RidingSize"/> at the bus's door; it shrinks late, so the hop reads.</summary>
+        public static float BoardingSize(float t)
+        {
+            t = Mathf.Clamp01(t);
+            return Mathf.Lerp(1f, RidingSize, t * t);
         }
 
         /// <summary>A small hop in place, to say "this one is on turn".</summary>

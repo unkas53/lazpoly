@@ -36,6 +36,12 @@ namespace Lazpoly.Presentation.Models
         public const string StationId = "station";
 
         /// <summary>
+        /// The station's bus on its own (Tools/Art/make_station.py cuts it from the diorama; <see cref="BusModel"/>), in
+        /// the station's units. It is a piece of the same model, so it reads the station's colour map (<see cref="SkinOf"/>).
+        /// </summary>
+        public const string BusId = "bus";
+
+        /// <summary>
         /// Not a character either: the owner's champions' cup (Meshy AI; "LazPoly CHAMPIONS" on its front at +Z), one unit
         /// tall like a figure (Tools/Art/make_figures.py; <see cref="CornerParts.ChampionsCup"/>).
         /// </summary>
@@ -80,7 +86,10 @@ namespace Lazpoly.Presentation.Models
         private static bool _fullDetail = true;
 
         public static string MeshResource(string id) => Folder + "figure_" + id;
-        public static string SkinResource(string id) => Folder + "figure_" + id + "_skin";
+        public static string SkinResource(string id) => Folder + "figure_" + SkinOf(id) + "_skin";
+
+        /// <summary>Whose colour map a model reads: its own, but the bus the station's, which it was cut from.</summary>
+        public static string SkinOf(string id) => id == BusId ? StationId : id;
 
         /// <summary>Whether the figure's files are in the build and readable.</summary>
         public static bool IsAvailable(string id) => Load(id) != null;

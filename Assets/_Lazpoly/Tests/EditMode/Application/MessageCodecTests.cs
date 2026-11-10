@@ -93,6 +93,7 @@ namespace Lazpoly.App.Tests
                 new DebtIncurredEvent(1, GameState.NoOwner, 100, MoneyReason.Tax),
                 new DebtClearedEvent(1),
                 new PlayerMovedEvent(2, 7, 3, false, MoveKind.Jump),
+                new PlayerMovedEvent(1, 24, 2, true, MoveKind.Ride),
                 new GameEndedEvent(2, GameEndReason.RoundLimit),
                 new PotChangedEvent(-120),
                 new CardDrawnEvent(1, 5),

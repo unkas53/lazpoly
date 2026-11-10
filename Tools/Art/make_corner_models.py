@@ -15,8 +15,11 @@ and the largest colour map kept; a skin of 0 keeps the model's own colour map as
 original quality: dollars=Tools/Art/Models/Figures/CartoonDollarStack.glb@1000000,24000,0). Its .meta must keep the
 full size (maxTextureSize 4096) and mipmaps.
 
+The bus station is not made here any more: make_station.py cuts its bus off as a model of its own (figure_bus) and
+writes the stop without it (figure_station), fitted the same way.
+
 Needs: pip install numpy pillow meshoptimizer. Run from the repository root:
-    python3 Tools/Art/make_corner_models.py station=Tools/Art/Models/Figures/CartoonBusStopDiorama.glb
+    python3 Tools/Art/make_corner_models.py stadium=Tools/Art/Models/Figures/StadiumDiorama.glb
 """
 import os
 import struct

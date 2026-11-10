@@ -261,14 +261,14 @@ namespace Lazpoly.Core.Engine
             if (!ResolveLanding(player, drawCards: true)) FinishMove();
         }
 
-        private void MovePlayer(PlayerState player, int steps)
+        private void MovePlayer(PlayerState player, int steps, MoveKind kind = MoveKind.Walk)
         {
             int from = player.Position;
             int total = from + steps;
             int to = total % Board.Count;
             bool passedStart = total >= Board.Count;
 
-            Emit(new PlayerMovedEvent(player.Id, from, to, passedStart));
+            Emit(new PlayerMovedEvent(player.Id, from, to, passedStart, kind));
             if (passedStart && Rules.PassStartBonus > 0)
             {
                 Emit(new MoneyChangedEvent(player.Id, Rules.PassStartBonus, MoneyReason.PassedStart));
@@ -569,14 +569,14 @@ namespace Lazpoly.Core.Engine
         }
 
         /// <summary>
-        /// At the start of a turn spent at the bus stop: pays the fare and walks forward to the chosen square as after a roll
-        /// (passing Start pays the bonus), then lands there; the turn's roll still comes after it (<see cref="FinishMove"/>).
+        /// At the start of a turn spent at the bus stop: pays the fare and goes forward to the chosen square as after a roll
+        /// (passing Start pays the bonus; the move is a <see cref="MoveKind.Ride"/>, so the bus is shown taking the player), then lands there; the turn's roll still comes after it (<see cref="FinishMove"/>).
         /// </summary>
         private void Travel(PlayerState player, int target)
         {
             int fee = Board[player.Position].Fee;
             if (fee > 0) Emit(new MoneyChangedEvent(player.Id, -fee, MoneyReason.Travel));
-            MovePlayer(player, (target - player.Position + Board.Count) % Board.Count);
+            MovePlayer(player, (target - player.Position + Board.Count) % Board.Count, MoveKind.Ride);
             if (!ResolveLanding(player, drawCards: true)) FinishMove();
         }
 
