@@ -99,7 +99,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(london, board.CupShownOn, "one cup only: it moves");
                 Assert.AreEqual(1, holder.GetComponentsInChildren<Transform>(true).Count(t => t.name == "Cup on town"));
 
-                board.SetCup(Town("Bodrum"));
+                board.SetCup(Town("Manchester"));
                 Assert.IsFalse(board.CupTrophy.gameObject.activeSelf, "a resort never shows it");
             }
             finally

@@ -280,7 +280,7 @@ namespace Lazpoly.Presentation.Tests
 
                 for (int i = 0; i < data.Board.Count; i++)
                 {
-                    if (data.Board[i].Type != SquareType.Property) continue;
+                    if (data.Board[i].Type != SquareType.Property || data.Board[i].IsResort) continue; // Factory cities: a light ink on dark paving (ResortViewTests).
                     Color ink = board.NameLabel(i).color;
                     Assert.Less(ink.grayscale, 0.4f, $"square {i}: the name reads dark on its pastel tile");
                     Assert.AreEqual((Color32)board.NameLabel(0).color, (Color32)ink, $"square {i}: every name is in the one ink, whatever its group");

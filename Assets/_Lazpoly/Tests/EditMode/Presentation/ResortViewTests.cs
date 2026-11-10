@@ -189,8 +189,8 @@ namespace Lazpoly.Presentation.Tests
 
                     Assert.Less(lightest, 0.45f, "dark grey paving all over");
                     Assert.Greater(lightest - darkest, 0.08f, "with its stones and joints showing");
-                    Assert.AreEqual(BoardView.FactoryInk, board.NameLabel(resort).color, "the name in the light ink");
-                    Assert.AreEqual(BoardView.FactoryInk, board.PriceLabel(resort).color, "the price too");
+                    Assert.AreEqual((Color32)BoardView.FactoryInk, (Color32)board.NameLabel(resort).color, "the name in the light ink");
+                    Assert.AreEqual((Color32)BoardView.FactoryInk, (Color32)board.PriceLabel(resort).color, "the price too");
                 }
 
                 var beaches = new List<OwnerMarker>();
@@ -228,7 +228,7 @@ namespace Lazpoly.Presentation.Tests
 
                 board.SetOwner(resorts[0], null);
                 Assert.IsFalse(shown.gameObject.activeSelf, "a factory city for sale has no factory");
-                Assert.AreEqual(BoardView.FactoryInk, board.PriceLabel(resorts[0]).color, "and its price keeps the light ink");
+                Assert.AreEqual((Color32)BoardView.FactoryInk, (Color32)board.PriceLabel(resorts[0]).color, "and its price keeps the light ink");
             }
             finally
             {
