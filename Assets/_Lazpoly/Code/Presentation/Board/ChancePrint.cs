@@ -32,7 +32,7 @@ namespace Lazpoly.Presentation.Tabletop
         public const float Outline = 0.035f;
 
         /// <summary>The front card's room for the "?" (inside its outline), in page units.</summary>
-        public static readonly Vector2 MarkRoom = new Vector2(0.3f, 0.42f);
+        public static readonly Vector2 MarkRoom = new Vector2(0.34f, 0.56f);
 
         public const int PictureWidth = 256;
 
@@ -89,8 +89,8 @@ namespace Lazpoly.Presentation.Tabletop
         {
             // The pips: small diamonds in the front card's top left and bottom right, like a playing card's corners.
             Vector2 card = ToCard(x, z, Vector2.zero, FrontLean);
-            if (Mathf.Abs(card.x + 0.14f) + Mathf.Abs(card.y - 0.24f) <= 0.05f) return true;
-            if (Mathf.Abs(card.x - 0.14f) + Mathf.Abs(card.y + 0.24f) <= 0.05f) return true;
+            if (Mathf.Abs(card.x + 0.175f) + Mathf.Abs(card.y - 0.28f) <= 0.035f) return true;
+            if (Mathf.Abs(card.x - 0.175f) + Mathf.Abs(card.y + 0.28f) <= 0.035f) return true;
             if (InFront(x, z, 0f) || InBack(x, z, 0f)) return false;
             return Sparkle(x, z, new Vector2(0.39f, 0.4f), 0.1f) || Sparkle(x, z, new Vector2(-0.5f, -0.35f), 0.08f);
         }
