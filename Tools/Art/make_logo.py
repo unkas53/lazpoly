@@ -5,10 +5,10 @@ The picture comes with a see-through ground, so it is only trimmed to what it sh
 nearly opaque pixels made fully opaque, and written as PNG bytes that ship as TextAssets:
     Assets/_Lazpoly/UI/Resources/Lazpoly/Art/logo.bytes            (MenuArt: the lawn's logo, the fallback logo)
     Assets/_Lazpoly/UI/Resources/Lazpoly/Art/Menu/Lazpoly_Logo.bytes (KitArt: the main menu, the loading screens)
-The same picture, fitted into a square, is the player's icon (Cash Father.exe, the window title):
+The player's icon (CashFather.exe, the task bar, the window title) is the logo's character, as the owner asked
+(2026-11-10): his head in the top hat with a little of the collar and tie,
     Assets/_Lazpoly/Art/Textures/lazpoly-icon.png (256x256)
-and at the sizes where the whole logo is a smear (48 and under) a drawn coin in the logo's gold and black with a
-"$" on it, like the medallion under the lettering:
+and, for the sizes of 48 and under, a tighter crop of the hat and the face, so they still read:
     Assets/_Lazpoly/Art/Textures/lazpoly-icon-small.png (64x64)
 The player card kit printed the old name and an "L" on its pictures; brand_kit.py repaints them (also run here).
 The asset names keep their old "Lazpoly" spelling: they are internal, and keeping them keeps Unity's guids.
@@ -17,7 +17,7 @@ Run from the repository root: python3 Tools/Art/make_logo.py
 import os
 import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import brand_kit  # noqa: E402
@@ -34,11 +34,9 @@ SMALL_ICON_SIZE = 64
 MARGIN = 10          # Pixels of see-through ground kept round the trimmed picture, so its soft edge is not cut.
 SOLID = 245          # Alpha from here up counts as opaque (the source's opaque parts carry 251-253).
 
-GOLD_LIGHT = (255, 214, 102)
-GOLD = (222, 160, 40)
-GOLD_DEEP = (150, 94, 18)
-BLACK = (16, 14, 12)
-MARK_FONT = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Fonts", "Nunito-Black.ttf")
+# Squares of the source picture (1244x1265) round the character's head: with the collar, and tighter.
+ICON_BOX = (440, 0, 800, 360)
+SMALL_ICON_BOX = (465, 2, 775, 312)
 
 
 def load_logo(root):
@@ -60,23 +58,10 @@ def fit_square(picture, size):
     return square
 
 
-def coin(size, root):
-    """The small icon: a gold-rimmed black coin with a gold "$", drawn four times bigger and scaled down."""
-    big = size * 4
-    image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    m = big * 0.02
-    draw.ellipse((m, m, big - m, big - m), fill=GOLD_DEEP + (255,))
-    m2 = big * 0.05
-    draw.ellipse((m2, m2, big - m2, big - m2), fill=GOLD + (255,))
-    m3 = big * 0.09
-    draw.pieslice((m3, m3, big - m3, big - m3), 135, 315, fill=GOLD_LIGHT + (255,))
-    m4 = big * 0.15
-    draw.ellipse((m4, m4, big - m4, big - m4), fill=BLACK + (255,))
-    font = ImageFont.truetype(os.path.join(root, MARK_FONT), int(big * 0.62))
-    left, top, right, bottom = draw.textbbox((0, 0), "$", font=font)
-    draw.text((big / 2 - (right - left) / 2 - left, big / 2 - (bottom - top) / 2 - top), "$", font=font, fill=GOLD_LIGHT + (255,))
-    return image.resize((size, size), Image.LANCZOS)
+def character(root, box, size):
+    """A square of the source round the character's head, scaled to the icon's size."""
+    image = Image.open(os.path.join(root, SOURCE)).convert("RGBA")
+    return image.crop(box).resize((size, size), Image.LANCZOS)
 
 
 def main():
@@ -89,9 +74,9 @@ def main():
         logo.save(path, format="PNG", optimize=True)
         print(f"wrote {target}: {logo.width}x{logo.height} PNG, {os.path.getsize(path) // 1024} KB")
 
-    fit_square(logo, ICON_SIZE).save(os.path.join(root, ICON), format="PNG", optimize=True)
+    character(root, ICON_BOX, ICON_SIZE).save(os.path.join(root, ICON), format="PNG", optimize=True)
     print(f"wrote {ICON}: {ICON_SIZE}x{ICON_SIZE}")
-    coin(SMALL_ICON_SIZE, root).save(os.path.join(root, SMALL_ICON), format="PNG", optimize=True)
+    character(root, SMALL_ICON_BOX, SMALL_ICON_SIZE).save(os.path.join(root, SMALL_ICON), format="PNG", optimize=True)
     print(f"wrote {SMALL_ICON}: {SMALL_ICON_SIZE}x{SMALL_ICON_SIZE}")
 
     brand_kit.repaint_folder(os.path.join(root, brand_kit.TARGET), root)

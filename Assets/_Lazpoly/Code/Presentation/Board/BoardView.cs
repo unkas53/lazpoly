@@ -65,7 +65,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The logo's width in lawn widths: its lettering sits above the dice score and its corners stay on the lawn.</summary>
         public const float TitleSize = 0.30f;
 
-        /// <summary>The logo's width and depth in lawn widths: <see cref="TitleSize"/> across, as deep as the picture's shape asks (the wide Cash Father logo is about two thirds as deep as it is wide).</summary>
+        /// <summary>The logo's width and depth in lawn widths: <see cref="TitleSize"/> across, as deep as the picture's shape asks (the Cash Father logo is about square), so it is never stretched.</summary>
         public static Vector2 TitleExtent(Texture picture) =>
             picture == null || picture.width <= 0 ? Vector2.one * TitleSize : new Vector2(TitleSize, TitleSize * picture.height / picture.width);
 

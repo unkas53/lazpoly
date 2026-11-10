@@ -271,15 +271,22 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 Assert.IsNotNull(logo, "the bytes are a picture");
-                // The Cash Father logo, trimmed to its picture: wide, as the menu and the lawn show it.
+                // The Cash Father logo (the top-hatted character over the lettering), trimmed to its picture: about square.
                 Assert.That(logo.height, Is.GreaterThanOrEqualTo(600), "sharp at 4K");
-                Assert.That((float)logo.width / logo.height, Is.InRange(1.4f, 1.7f), "the wide logo, not the old square one");
+                Assert.That((float)logo.width / logo.height, Is.InRange(0.9f, 1.1f), "the owner's second logo, about square");
                 Assert.That(logo.GetPixel(2, 2).a, Is.LessThan(0.02f), "the corner is see-through");
                 Assert.That(logo.GetPixel(logo.width - 3, logo.height - 3).a, Is.LessThan(0.02f), "the other corner is see-through");
                 Assert.That(logo.GetPixel(logo.width / 2, logo.height / 2).a, Is.GreaterThan(0.98f), "the middle is painted");
-                Color medallion = logo.GetPixel(logo.width / 2, logo.height * 15 / 100);
-                Assert.That(medallion.a, Is.GreaterThan(0.98f), "the dollar medallion under the lettering is painted");
-                Assert.That(medallion.r > 0.6f && medallion.r > medallion.g && medallion.g > medallion.b, $"and gold: {medallion}");
+                int gold = 0, seen = 0;
+                for (int y = logo.height * 28 / 100; y < logo.height * 38 / 100; y += 3)
+                for (int x = logo.width / 4; x < logo.width * 3 / 4; x += 3)
+                {
+                    Color c = logo.GetPixel(x, y);
+                    seen++;
+                    if (c.r > 0.6f && c.r > c.g && c.g > c.b && c.r - c.b > 0.3f) gold++;
+                }
+
+                Assert.That((float)gold / seen, Is.GreaterThan(0.4f), "the word CASH across the lower middle is gold");
 
                 Vector2 extent = BoardView.TitleExtent(logo);
                 Assert.AreEqual(BoardView.TitleSize, extent.x, "the lawn's logo is as wide as before");

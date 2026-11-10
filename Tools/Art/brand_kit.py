@@ -23,13 +23,16 @@ NAME = "CASH FATHER"
 CARDS = ["Card_Normal", "Card_Active", "Card_Bankrupt"]
 
 # The print on the 640x224 card: its letters fill rows 197-205 and sit centred on the dark side's x 80.5.
-PRINT_BOX = (30, 192, 132, 211)   # Painted over (left, top, right, bottom; right and bottom exclusive).
+PRINT_BOX = (27, 192, 137, 211)   # Painted over (left, top, right, bottom; right and bottom exclusive).
 PANEL_SAMPLE_X = 26               # Each row is painted with the colour this column has on that row.
 CAP_TOP = 197
 CAP_HEIGHT = 9
 CENTRE_X = 80.5
 TRACKING = 1.3                    # Pixels between letters, close to the old print.
 SCALE = 4
+
+# The old print's colour on each card (its brightest pixel), so painting again gives the same picture.
+INK = {"Card_Normal": (228, 210, 162), "Card_Active": (228, 210, 162), "Card_Bankrupt": (204, 213, 214)}
 
 COIN_RIM = (215, 172, 85)
 COIN_FACE = (245, 225, 166)
@@ -58,11 +61,11 @@ def lettering(root, text, cap_height, tracking):
     return layer, total
 
 
-def repaint_card(picture, root):
+def repaint_card(name, picture, root):
     picture = picture.convert("RGBA")
     pixels = picture.load()
     left, top, right, bottom = PRINT_BOX
-    ink = max((pixels[x, y] for y in range(CAP_TOP, CAP_TOP + CAP_HEIGHT) for x in range(left, right)), key=lambda p: sum(p[:3]))
+    ink = INK[name]
     for y in range(top, bottom):
         colour = pixels[PANEL_SAMPLE_X, y]
         for x in range(left, right):
@@ -122,7 +125,7 @@ def money_coin(size, root):
 def repaint(name, picture, root):
     """The kit picture with the new name on it; pictures that carry no name come back as they are."""
     if name in CARDS:
-        return repaint_card(picture, root)
+        return repaint_card(name, picture, root)
     if name == "Lazpoly_Mark":
         return seal(picture.width, root)
     if name == "Currency_L":

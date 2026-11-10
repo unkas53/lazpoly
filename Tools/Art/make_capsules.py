@@ -119,8 +119,9 @@ def main():
     lg = Image.new("RGBA", (1280, 720), (0, 0, 0, 0))
     place_logo(lg, logo, 640, 360, 700)
     lg.save(os.path.join(OUT, "library_logo.png"))
-    make_logo.fit_square(logo, 1024).save(os.path.join(OUT, "logo_1024.png"))
-    make_logo.fit_square(logo, 256).save(os.path.join(OUT, "logo_256.png"))
+    # The app icons: the logo's character, as in the game's own icon.
+    make_logo.character(ROOT, make_logo.ICON_BOX, 1024).save(os.path.join(OUT, "logo_1024.png"))
+    make_logo.character(ROOT, make_logo.ICON_BOX, 256).save(os.path.join(OUT, "logo_256.png"))
     print("yazıldı:", OUT)
 
 

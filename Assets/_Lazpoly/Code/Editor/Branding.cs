@@ -6,8 +6,8 @@ namespace Lazpoly.Editor
 {
     /// <summary>
     /// The player's branding: the name "Cash Father" on the window (the game was called Lazpoly until 2026-11-10;
-    /// the code, the folders and the asset names keep that name), our logo as the application icon (CashFather.exe,
-    /// task bar, window title; a gold "$" coin alone at the small sizes, where the whole logo is a smear), no
+    /// the code, the folders and the asset names keep that name), the logo's character as the application icon (CashFather.exe,
+    /// task bar, window title; his top-hatted face cropped tighter at 48 and under), no
     /// "Made with Unity" splash before the first scene (Unity 6 lets every plan turn it off) and the loading
     /// screen's cream as the colour the player clears the window to before our first frame. The company name
     /// stays "DefaultCompany" for now: the saves and settings live under it and the product name, and moving them
@@ -19,7 +19,7 @@ namespace Lazpoly.Editor
     {
         public const string IconPath = "Assets/_Lazpoly/Art/Textures/lazpoly-icon.png";
 
-        /// <summary>The medallion alone, for the sizes at which the whole logo is a smear (48 and under).</summary>
+        /// <summary>The character's face alone, for the sizes at which more of him is a smear (48 and under).</summary>
         public const string SmallIconPath = "Assets/_Lazpoly/Art/Textures/lazpoly-icon-small.png";
         public const int SmallIconUpTo = 48;
 
@@ -55,7 +55,7 @@ namespace Lazpoly.Editor
             PlayerSettings.SplashScreen.show = false;
             PlayerSettings.SplashScreen.showUnityLogo = false;
             AssetDatabase.SaveAssets();
-            Debug.Log("[Lazpoly] Branding applied: name, logo icon ($ coin at 48 and under), Unity splash screen off, cream start colour.");
+            Debug.Log("[Lazpoly] Branding applied: name, the logo's character as the icon (a tighter crop at 48 and under), Unity splash screen off, cream start colour.");
         }
     }
 }
