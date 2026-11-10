@@ -155,9 +155,12 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BandPastel = 0.2f;
         public const float BandContrast = 4.5f;
 
-        /// <summary>The sand of a resort's tile, and the sea and surf printed on it.</summary>
-        public static readonly Color SandColor = new Color(0.82f, 0.75f, 0.56f);
-        public static readonly Color SeaColor = new Color(0.58f, 0.82f, 0.85f);
+        /// <summary>
+        /// The sand of a resort's tile, and the sea and surf printed on it. Since 2026-11-11 (the owner's wish: colours that
+        /// suit the table) a warm honey sand like the cheap towns' wheat, and a soft teal sea, kin to the Şans squares' jade.
+        /// </summary>
+        public static readonly Color SandColor = new Color(0.79f, 0.69f, 0.53f);
+        public static readonly Color SeaColor = new Color(0.5f, 0.75f, 0.74f);
         public static readonly Color SurfColor = new Color(0.98f, 0.98f, 0.96f);
 
         /// <summary>How far a resort's sand is washed towards the paper: less than a town's, so the beach stands out.</summary>
@@ -363,6 +366,7 @@ namespace Lazpoly.Presentation.Tabletop
         private TextMesh[] _names;
         private TextMesh[] _chanceMarks;
         private Transform[] _chanceCards;
+        private Transform[] _palms;
         private Transform[] _documents;
         private Transform _startArrow;
 
@@ -539,6 +543,7 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
                 if (_documents[i] != null) _documents[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
                 if (_chanceCards[i] != null) _chanceCards[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
+                if (_palms[i] != null) _palms[i].localRotation = Quaternion.LookRotation(BuildingFront(Outward(Layout.SquareCenter(i)), yaw));
             }
 
             foreach (KeyValuePair<Transform, Vector3> mark in _marks) mark.Key.localRotation = LabelRotation(mark.Value, yaw);
@@ -978,6 +983,7 @@ namespace Lazpoly.Presentation.Tabletop
             _names = new TextMesh[board.Count];
             _chanceMarks = new TextMesh[board.Count];
             _chanceCards = new Transform[board.Count];
+            _palms = new Transform[board.Count];
             _documents = new Transform[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
@@ -1092,6 +1098,16 @@ namespace Lazpoly.Presentation.Tabletop
                     marker.transform.localScale = _flagScale[i];
                     marker.gameObject.SetActive(false);
                     _ownerMarkers[i] = marker;
+                    if (square.IsResort)
+                    {
+                        // Every resort, held or not, has its palms (the owner's wish, 2026-11-11), where the beach stands.
+                        GameObject palms = ResortParts.Palms("Palms", transform);
+                        palms.transform.localPosition = ResortSpot(center);
+                        palms.transform.localRotation = Quaternion.LookRotation(BuildingFront(outward, _yaw));
+                        palms.transform.localScale = _flagScale[i];
+                        _palms[i] = palms.transform;
+                    }
+
                     if (square.IsDevelopable)
                     {
                         _buildings[i] = CreateBuildings(center);
@@ -1525,6 +1541,9 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>The flat "?" printed on a Şans square, or null on any other square.</summary>
         public TextMesh ChanceMark(int index) => _chanceMarks != null ? _chanceMarks[index] : null;
+
+        /// <summary>A resort's palms, which stand whether or not it is held; null on any other square.</summary>
+        public Transform Palms(int index) => _palms != null ? _palms[index] : null;
 
         /// <summary>The cards printed on a Şans square (<see cref="ChancePrint"/>); null on any other square.</summary>
         public Transform ChanceCards(int index) => _chanceCards != null ? _chanceCards[index] : null;

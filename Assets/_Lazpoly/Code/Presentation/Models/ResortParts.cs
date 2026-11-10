@@ -5,10 +5,11 @@ namespace Lazpoly.Presentation.Models
 {
     /// <summary>
     /// The beach that stands on a holiday resort its owner holds, in four stages that follow how many
-    /// resorts the owner has (the rent grows the same way): one sun lounger under a parasol; two loungers
-    /// with a towel and a beach ball; three loungers under two parasols beside a palm; and the full resort
-    /// with a pool and a beach bar on a timber deck. The cushions, towels, parasols, ball and the bar's roof
-    /// are the owner's (<see cref="PaintOwner"/>); the timber, sea water and palms keep their own colours.
+    /// resorts the owner has (the rent grows the same way), the owner's wish (2026-11-11): sun loungers under
+    /// a parasol; then a small beach hut beside them; two huts; and one big hut with a porch. Every resort, held
+    /// or not, has its two palms (<see cref="Palms"/>), which stand at the ends of the beach, clear of the stages.
+    /// The cushions, parasols, towel, ball and the huts' roofs are the owner's (<see cref="PaintOwner"/>); the
+    /// timber, the windows and the palms keep their own colours.
     /// Built from the game's own meshes like the corner scenes: base at y = 0, front (towards the camera)
     /// at +Z, inside <see cref="Width"/> by <see cref="Depth"/> so the board can scale it like a building.
     /// </summary>
@@ -37,6 +38,15 @@ namespace Lazpoly.Presentation.Models
         public static readonly Color Water = new Color(0.36f, 0.76f, 0.86f);
         public static readonly Color Frond = new Color(0.28f, 0.60f, 0.30f);
         public static readonly Color Bark = new Color(0.62f, 0.46f, 0.30f);
+        public static readonly Color Bush = new Color(0.36f, 0.62f, 0.36f);
+        public static readonly Color Window = new Color(0.62f, 0.84f, 0.88f);
+
+        /// <summary>Where the palms stand: at both ends of the beach (x), towards the sea (z).</summary>
+        public const float PalmSpread = 0.51f;
+        public const float PalmBack = -0.14f;
+
+        /// <summary>The stages keep within this half width, between the palms.</summary>
+        public const float StageHalfWidth = 0.47f;
 
         /// <summary>
         /// The stage for an owner holding <paramref name="held"/> resorts (1 to <see cref="Stages"/>; outside that it is clamped),
@@ -46,7 +56,30 @@ namespace Lazpoly.Presentation.Models
         public static GameObject Stage(int held, string name, Transform parent)
         {
             int stage = Mathf.Clamp(held, 1, Stages);
-            GameObject loose = Layout(stage, name, null);
+            return Merge(Layout(stage, name, null), $"resort:{stage}", name, parent);
+        }
+
+        /// <summary>
+        /// A resort's two palms, with a bush at each foot, merged like a stage: they stand on every resort, held or not,
+        /// at the ends of the beach (<see cref="PalmSpread"/>), leaning in over it. Same space as <see cref="Stage"/>.
+        /// </summary>
+        public static GameObject Palms(string name, Transform parent) => Merge(PalmLayout(name, null), "resort:palms", name, parent);
+
+        /// <summary>The palms' pieces one by one, as <see cref="Layout"/> gives a stage's.</summary>
+        public static GameObject PalmLayout(string name, Transform parent)
+        {
+            GameObject root = Root(name, parent);
+            Palm(root, new Vector3(-PalmSpread, 0f, PalmBack), 0f);
+            Palm(root, new Vector3(PalmSpread, 0f, PalmBack + 0.04f), 180f);
+            // A bush at each palm's foot, on the outer side, clear of the huts.
+            Part(root, "Bush", MeshFactory.Sphere(10), Bush, new Vector3(-PalmSpread - 0.045f, 0.015f, PalmBack - 0.06f), new Vector3(0.05f, 0.035f, 0.045f));
+            Part(root, "Bush", MeshFactory.Sphere(10), Bush, new Vector3(PalmSpread + 0.045f, 0.015f, PalmBack + 0.08f), new Vector3(0.045f, 0.03f, 0.04f));
+            return root;
+        }
+
+        // The pieces of loose merged into one mesh per colour, the owner's parts into one named OwnerPart; loose is destroyed.
+        private static GameObject Merge(GameObject loose, string id, string name, Transform parent)
+        {
             GameObject root = Root(name, parent);
             var order = new List<KeyValuePair<bool, Color>>();
             var groups = new Dictionary<KeyValuePair<bool, Color>, List<KeyValuePair<Mesh, Matrix4x4>>>();
@@ -68,8 +101,8 @@ namespace Lazpoly.Presentation.Models
 
             foreach (KeyValuePair<bool, Color> key in order)
             {
-                string id = key.Key ? "owner" : ColorUtility.ToHtmlStringRGB(key.Value);
-                Mesh merged = MeshFactory.Combine($"resort:{stage}:{id}", groups[key]);
+                string colour = key.Key ? "owner" : ColorUtility.ToHtmlStringRGB(key.Value);
+                Mesh merged = MeshFactory.Combine($"{id}:{colour}", groups[key]);
                 ModelParts.Create(key.Key ? OwnerPart : "Beach", root.transform, merged, key.Value, key.Key ? 0.35f : 0.2f);
             }
 
@@ -78,7 +111,7 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>
-        /// The stage's pieces one by one (loungers, parasols, palms...), each its own object under the root: what
+        /// The stage's pieces one by one (loungers, parasols, huts...), each its own object under the root: what
         /// <see cref="Stage"/> merges, and what the tests count.
         /// </summary>
         public static GameObject Layout(int held, string name, Transform parent)
@@ -88,34 +121,39 @@ namespace Lazpoly.Presentation.Models
             switch (stage)
             {
                 case 1:
-                    Lounger(root, new Vector3(0.08f, 0f, 0.04f));
-                    Parasol(root, new Vector3(-0.14f, 0f, -0.08f));
+                    // Sun loungers under a parasol, a little table between them.
+                    Lounger(root, new Vector3(-0.13f, 0f, 0.06f));
+                    Lounger(root, new Vector3(0.13f, 0f, 0.06f));
+                    Parasol(root, new Vector3(0f, 0f, -0.12f));
+                    SideTable(root, new Vector3(0f, 0f, 0.16f));
                     break;
                 case 2:
-                    Lounger(root, new Vector3(-0.12f, 0f, 0.04f));
-                    Lounger(root, new Vector3(0.16f, 0f, 0.04f));
-                    Parasol(root, new Vector3(0.02f, 0f, -0.1f));
-                    SideTable(root, new Vector3(0.02f, 0f, 0.15f));
-                    Towel(root, new Vector3(-0.42f, 0f, 0.06f), 14f);
-                    Ball(root, new Vector3(0.4f, 0f, 0.18f));
+                    // A small hut beside the loungers.
+                    Hut(root, new Vector3(-0.25f, 0f, -0.1f), false);
+                    Lounger(root, new Vector3(0.09f, 0f, 0.08f));
+                    Lounger(root, new Vector3(0.31f, 0f, 0.08f));
+                    Parasol(root, new Vector3(0.2f, 0f, -0.12f));
+                    Towel(root, new Vector3(-0.25f, 0f, 0.24f), 82f);
                     break;
                 case 3:
-                    for (int i = 0; i < 3; i++) Lounger(root, new Vector3(-0.32f + i * 0.26f, 0f, 0.06f));
-                    Parasol(root, new Vector3(-0.19f, 0f, -0.1f));
-                    Parasol(root, new Vector3(0.07f, 0f, -0.1f));
-                    Palm(root, new Vector3(0.44f, 0f, -0.1f), 170f);
-                    Ball(root, new Vector3(0.42f, 0f, 0.2f));
-                    Towel(root, new Vector3(-0.5f, 0f, 0.1f), -10f);
+                    // Two huts, the loungers between them.
+                    Hut(root, new Vector3(-0.31f, 0f, -0.1f), false);
+                    Hut(root, new Vector3(0.31f, 0f, -0.1f), false);
+                    Lounger(root, new Vector3(-0.1f, 0f, 0.1f));
+                    Lounger(root, new Vector3(0.1f, 0f, 0.1f));
+                    Parasol(root, new Vector3(0f, 0f, -0.14f));
+                    Towel(root, new Vector3(-0.31f, 0f, 0.24f), 82f);
+                    Ball(root, new Vector3(0.33f, 0f, 0.22f));
                     break;
                 default:
-                    Part(root, "Deck", MeshFactory.RoundedBox(new Vector3(1.04f, 0.024f, 0.36f), 0.01f, 2), Timber, new Vector3(-0.04f, 0.012f, -0.17f), Vector3.one);
-                    Pool(root, new Vector3(-0.22f, 0.024f, -0.17f));
-                    Bar(root, new Vector3(0.32f, 0.024f, -0.17f));
-                    for (int i = 0; i < 3; i++) Lounger(root, new Vector3(-0.38f + i * 0.25f, 0f, 0.18f));
-                    Parasol(root, new Vector3(-0.255f, 0f, 0.12f));
-                    Parasol(root, new Vector3(-0.005f, 0f, 0.12f));
-                    Palm(root, new Vector3(0.44f, 0f, 0.14f), 160f);
-                    Palm(root, new Vector3(-0.48f, 0f, -0.06f), -20f);
+                    // One big hut with its porch, the loungers beside it.
+                    Hut(root, new Vector3(-0.17f, 0f, -0.1f), true);
+                    Lounger(root, new Vector3(0.22f, 0f, 0.1f));
+                    Lounger(root, new Vector3(0.4f, 0f, 0.1f));
+                    Parasol(root, new Vector3(0.29f, 0f, -0.14f));
+                    SideTable(root, new Vector3(0.31f, 0f, 0.27f));
+                    Towel(root, new Vector3(-0.3f, 0f, 0.27f), 82f);
+                    Ball(root, new Vector3(-0.04f, 0f, 0.27f));
                     break;
             }
 
@@ -186,6 +224,48 @@ namespace Lazpoly.Presentation.Models
             Part(root, "Band", MeshFactory.Cylinder(16), White, at + Vector3.up * 0.026f, new Vector3(0.0365f, 0.018f, 0.0365f));
         }
 
+        /// <summary>
+        /// A beach hut, its door to the front (+Z): timber walls on a low deck, a dark door, light windows and a hipped roof
+        /// in the owner's colour. The big one is wider, with a window either side of the door and a porch under the roof
+        /// on two posts, with a step down to the sand.
+        /// </summary>
+        private static void Hut(GameObject root, Vector3 at, bool big)
+        {
+            GameObject hut = Group(root, big ? "Big hut" : "Hut", at, 0f);
+            float width = big ? 0.42f : 0.22f, depth = big ? 0.2f : 0.17f, wall = big ? 0.17f : 0.14f;
+            float porch = big ? 0.1f : 0f;
+            float deck = 0.022f;
+            // The deck runs out in front of the walls for the porch.
+            Part(hut, "Deck", MeshFactory.RoundedBox(new Vector3(width + 0.04f, deck, depth + 0.04f + porch), 0.004f, 1), DarkTimber,
+                new Vector3(0f, deck / 2f, porch / 2f), Vector3.one);
+            Part(hut, "Walls", MeshFactory.RoundedBox(new Vector3(width, wall, depth), 0.006f, 2), Timber, new Vector3(0f, deck + wall / 2f, 0f), Vector3.one);
+            float front = depth / 2f + 0.002f;
+            Part(hut, "Door", MeshFactory.RoundedBox(new Vector3(0.05f, wall * 0.68f, 0.008f), 0.003f, 1), DarkTimber,
+                new Vector3(big ? 0f : -0.045f, deck + wall * 0.34f, front), Vector3.one);
+            foreach (float x in big ? new[] { -0.13f, 0.13f } : new[] { 0.05f })
+            {
+                Part(hut, "Window", MeshFactory.RoundedBox(new Vector3(0.055f, 0.045f, 0.008f), 0.003f, 1), Window,
+                    new Vector3(x, deck + wall * 0.58f, front), Vector3.one);
+            }
+
+            if (big)
+            {
+                foreach (float x in new[] { -width / 2f + 0.015f, width / 2f - 0.015f })
+                {
+                    Part(hut, "Post", MeshFactory.Cylinder(6), DarkTimber, new Vector3(x, deck, depth / 2f + porch - 0.015f), new Vector3(0.009f, wall, 0.009f));
+                }
+
+                Part(hut, "Step", MeshFactory.RoundedBox(new Vector3(0.1f, deck * 0.6f, 0.04f), 0.003f, 1), Timber,
+                    new Vector3(0f, deck * 0.3f, depth / 2f + porch + 0.04f), Vector3.one);
+            }
+
+            // A hipped roof: a four-sided cone turned to lie square, stretched over the walls (and the porch) with an overhang.
+            float roofDepth = depth + porch + 0.06f;
+            GameObject roof = Group(hut, "Roof", new Vector3(0f, deck + wall, porch / 2f), 0f);
+            roof.transform.localScale = new Vector3((width + 0.06f) * Mathf.Sqrt(2f) / 2f, big ? 0.15f : 0.12f, roofDepth * Mathf.Sqrt(2f) / 2f);
+            Part(roof, OwnerPart, MeshFactory.Cone(4), Unowned, Vector3.zero, Vector3.one, Quaternion.Euler(0f, 45f, 0f));
+        }
+
         /// <summary>A palm: a trunk that bends towards its local +X as it rises (the yaw turns it in over the beach), a crown of drooping fronds and three coconuts.</summary>
         private static void Palm(GameObject root, Vector3 at, float yaw)
         {
@@ -217,46 +297,6 @@ namespace Lazpoly.Presentation.Models
             {
                 float angle = (i * 120f + 30f) * Mathf.Deg2Rad;
                 Part(palm, "Coconut", MeshFactory.Sphere(8), DarkTimber, top + new Vector3(Mathf.Cos(angle) * 0.022f, -0.022f, Mathf.Sin(angle) * 0.022f), Vector3.one * 0.016f);
-            }
-        }
-
-        /// <summary>A pool with a white edge round clear water.</summary>
-        private static void Pool(GameObject root, Vector3 at)
-        {
-            const float width = 0.46f;
-            const float depth = 0.26f;
-            const float edge = 0.03f;
-            const float height = 0.03f;
-            Part(root, "Water", MeshFactory.RoundedBox(new Vector3(width - edge, height * 0.7f, depth - edge), 0.004f, 1), Water, at + Vector3.up * (height * 0.35f), Vector3.one);
-            foreach (float z in new[] { -1f, 1f })
-            {
-                Part(root, "Pool edge", MeshFactory.RoundedBox(new Vector3(width, height, edge), 0.006f, 1), White, at + new Vector3(0f, height / 2f, z * (depth - edge) / 2f), Vector3.one);
-            }
-
-            foreach (float x in new[] { -1f, 1f })
-            {
-                Part(root, "Pool edge", MeshFactory.RoundedBox(new Vector3(edge, height, depth), 0.006f, 1), White, at + new Vector3(x * (width - edge) / 2f, height / 2f, 0f), Vector3.one);
-            }
-        }
-
-        /// <summary>A beach bar: a timber counter under a roof in the owner's colour on four posts, with two stools in front.</summary>
-        private static void Bar(GameObject root, Vector3 at)
-        {
-            GameObject bar = Group(root, "Bar", at, 0f);
-            foreach (float x in new[] { -0.1f, 0.1f })
-            {
-                foreach (float z in new[] { -0.1f, 0.1f })
-                {
-                    Part(bar, "Post", MeshFactory.Cylinder(6), DarkTimber, new Vector3(x, 0f, z), new Vector3(0.01f, 0.24f, 0.01f));
-                }
-            }
-
-            Part(bar, "Counter", MeshFactory.RoundedBox(new Vector3(0.22f, 0.1f, 0.06f), 0.008f, 2), Timber, new Vector3(0f, 0.05f, 0.08f), Vector3.one);
-            Part(bar, "Counter top", MeshFactory.RoundedBox(new Vector3(0.24f, 0.012f, 0.075f), 0.004f, 1), White, new Vector3(0f, 0.105f, 0.08f), Vector3.one);
-            Part(bar, OwnerPart, MeshFactory.Cone(4), Unowned, new Vector3(0f, 0.235f, 0f), new Vector3(0.2f, 0.11f, 0.2f), Quaternion.Euler(0f, 45f, 0f));
-            foreach (float x in new[] { -0.05f, 0.05f })
-            {
-                Part(bar, "Stool", MeshFactory.Cylinder(10), Timber, new Vector3(x, 0f, 0.15f), new Vector3(0.016f, 0.065f, 0.016f));
             }
         }
 

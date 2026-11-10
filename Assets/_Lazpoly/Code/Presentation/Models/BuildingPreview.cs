@@ -96,6 +96,7 @@ namespace Lazpoly.Presentation.Models
             for (int i = 0; i < _beaches.Length; i++)
             {
                 GameObject beach = ResortParts.Stage(i + 1, $"Beach {i + 1}", _root.transform);
+                ResortParts.Palms("Palms", beach.transform); // Every resort has its palms (the owner's wish, 2026-11-11).
                 beach.transform.localPosition = new Vector3(0f, 0f, RowDepth);
                 beach.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
                 beach.transform.localScale = Vector3.one * ModelScale;

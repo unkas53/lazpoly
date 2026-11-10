@@ -43,14 +43,20 @@ namespace Lazpoly.Presentation.Tests
             var holder = new GameObject("Beach Test");
             try
             {
-                int[] loungers = { 1, 2, 3, 3 };
-                int[] parasols = { 1, 1, 2, 2 };
+                // The owner's wish (2026-11-11): loungers at one resort held, a small hut at two, two huts at three, a big hut at four.
+                int[] loungers = { 2, 2, 2, 2 };
+                int[] parasols = { 1, 1, 1, 1 };
+                int[] huts = { 0, 1, 2, 0 };
+                int[] bigHuts = { 0, 0, 0, 1 };
                 int previous = 0;
                 for (int stage = 1; stage <= ResortParts.Stages; stage++)
                 {
                     GameObject beach = ResortParts.Layout(stage, $"Beach {stage}", holder.transform);
                     Assert.AreEqual(loungers[stage - 1], Count(beach, "Lounger"), $"stage {stage} loungers");
                     Assert.AreEqual(parasols[stage - 1], Count(beach, "Parasol"), $"stage {stage} parasols");
+                    Assert.AreEqual(huts[stage - 1], Count(beach, "Hut"), $"stage {stage} small huts");
+                    Assert.AreEqual(bigHuts[stage - 1], Count(beach, "Big hut"), $"stage {stage} big hut");
+                    Assert.AreEqual(0, Count(beach, "Palm"), $"stage {stage}: the palms stand apart, on every resort");
                     Renderer[] parts = beach.GetComponentsInChildren<Renderer>(true);
                     Assert.Greater(parts.Length, previous, $"stage {stage} has more on it than the one before");
                     previous = parts.Length;
@@ -65,6 +71,7 @@ namespace Lazpoly.Presentation.Tests
                     Bounds bounds = Extent(parts);
                     Assert.That(Vector3.Distance(bounds.min, mergedBounds.min) + Vector3.Distance(bounds.max, mergedBounds.max), Is.LessThan(1e-3f), $"stage {stage} merges in place");
                     Assert.LessOrEqual(bounds.extents.x, ResortParts.Width / 2f, $"stage {stage} stays within its width");
+                    Assert.LessOrEqual(Mathf.Max(-bounds.min.x, bounds.max.x), ResortParts.StageHalfWidth + 1e-3f, $"stage {stage} keeps between the palms");
                     Assert.LessOrEqual(bounds.extents.z * 2f, ResortParts.Depth + 1e-3f, $"stage {stage} stays within its depth");
                     Assert.LessOrEqual(Mathf.Abs(bounds.center.z) + bounds.extents.z, ResortParts.Depth / 2f + 1e-3f, $"stage {stage} is centred on its spot");
                     Assert.GreaterOrEqual(bounds.min.y, -1e-3f, $"stage {stage} stands on the tile");
@@ -72,9 +79,37 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 GameObject full = holder.transform.Find("Beach 4").gameObject;
-                Assert.Greater(Count(full, "Water"), 0, "the full resort has its pool");
-                Assert.Greater(Count(full, "Bar"), 0, "and its beach bar");
-                Assert.AreEqual(2, Count(full, "Palm"));
+                Assert.Greater(Count(full, "Post"), 0, "the big hut has its porch");
+                Assert.AreEqual(2, Count(full, "Window"), "and a window either side of its door");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void EveryResortHasTwoPalmsAtTheEndsOfItsBeach()
+        {
+            var holder = new GameObject("Palm Test");
+            try
+            {
+                GameObject loose = ResortParts.PalmLayout("Palms", holder.transform);
+                Assert.AreEqual(2, Count(loose, "Palm"));
+                Assert.AreEqual(0, Count(loose, ResortParts.OwnerPart), "the palms keep their own colours");
+                Assert.Greater(ResortParts.PalmSpread, ResortParts.StageHalfWidth, "they stand beyond every stage");
+
+                GameObject merged = ResortParts.Palms("Merged palms", holder.transform);
+                Renderer[] draws = merged.GetComponentsInChildren<Renderer>(true);
+                Assert.LessOrEqual(draws.Length, 5, "the palms draw in a few calls");
+                Bounds bounds = Extent(draws);
+                Bounds looseBounds = Extent(loose.GetComponentsInChildren<Renderer>(true));
+                Assert.That(Vector3.Distance(bounds.min, looseBounds.min) + Vector3.Distance(bounds.max, looseBounds.max), Is.LessThan(1e-3f), "they merge in place");
+                Assert.LessOrEqual(Mathf.Max(-bounds.min.x, bounds.max.x), ResortParts.Width / 2f, "within the beach's width");
+                Assert.LessOrEqual(Mathf.Max(-bounds.min.z, bounds.max.z), ResortParts.Depth / 2f, "and its depth");
+                Assert.GreaterOrEqual(bounds.min.y, -1e-3f, "on the sand");
+                Assert.LessOrEqual(bounds.max.y, ResortParts.Height, "no taller than the beach allows");
+                Assert.Greater(bounds.max.y, ResortParts.Height * 0.75f, "and the tallest thing on it");
             }
             finally
             {
@@ -196,6 +231,19 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 Assert.AreEqual(resorts.Count, beaches.Count, "each resort has a beach in place of the plot");
+                for (int i = 0; i < data.Board.Count; i++)
+                {
+                    if (!data.Board[i].IsResort)
+                    {
+                        Assert.IsNull(board.Palms(i), $"square {i} has no palms");
+                        continue;
+                    }
+
+                    Assert.IsNotNull(board.Palms(i), $"{data.Board[i].Name} has its palms");
+                    Assert.IsTrue(board.Palms(i).gameObject.activeInHierarchy, $"{data.Board[i].Name}: the palms stand while it is for sale");
+                    Assert.AreEqual(beaches[0].RestScale(board.Layout.Width - BoardView.Gap), board.Palms(i).localScale, "at the beach's size");
+                }
+
                 Assert.AreEqual(Vector3.one * (board.Layout.Width - BoardView.Gap) * BoardView.BuildingScale, beaches[0].RestScale(board.Layout.Width - BoardView.Gap));
 
                 board.SetOwner(resorts[0], Color.red);
@@ -221,8 +269,10 @@ namespace Lazpoly.Presentation.Tests
                 shown.ShowStage(0);
                 Assert.AreEqual(1, shown.Stage);
 
+                Assert.IsTrue(board.Palms(resorts[0]).gameObject.activeInHierarchy, "the palms stand beside the owner's beach");
                 board.SetOwner(resorts[0], null);
                 Assert.IsFalse(shown.gameObject.activeSelf, "a resort for sale has no beach");
+                Assert.IsTrue(board.Palms(resorts[0]).gameObject.activeInHierarchy, "but keeps its palms");
             }
             finally
             {
