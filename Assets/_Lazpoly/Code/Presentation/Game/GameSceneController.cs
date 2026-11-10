@@ -1019,6 +1019,37 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The bus ride (Faz 33), posed: the stop without its bus and a piece half way into it, the bus on its way
+            // down to the road, on the road round the lawn, and stopped by a town half the board away.
+            if (CameraRig != null && _board.Bus != null && _pawns.TryGetValue(person, out PawnView rider) && rider != null)
+            {
+                BusView bus = _board.Bus;
+                BusRoute way = _board.BusRouteTo((_board.StationSquare + _session.Board.Squares.Count / 2 - 3) % _session.Board.Squares.Count);
+                Vector3 stood = rider.transform.position, size = rider.transform.localScale;
+                CameraRig.SetView(BoardCameraRig.BaseYaw, BoardCameraRig.MinZoom);
+                CameraRig.Peek(bus.Roof);
+                Vector3 ground = bus.Roof + new Vector3(-0.9f, 0f, -0.9f);
+                ground.y = stood.y;
+                rider.transform.position = PawnView.BoardingPoint(ground, bus.Roof, 0.5f);
+                rider.transform.localScale = Vector3.one * PawnView.BoardingSize(0.5f);
+                yield return ScreenTour.Take("otobus-binis");
+                rider.transform.position = stood;
+                rider.transform.localScale = size;
+                foreach ((string frame, float distance) in new[] { ("otobus-iniyor", 1.9f), ("otobus-yolda", way.Length * 0.6f), ("otobus-sehirde", way.Length) })
+                {
+                    bus.Show(way, Mathf.Min(distance, way.Length));
+                    CameraRig.Peek(bus.Roof);
+                    yield return ScreenTour.Take(frame);
+                }
+
+                CameraRig.Peek(_board.transform.TransformPoint(bus.ParkedSpot));
+                yield return ScreenTour.Take("otobus-duraksiz");
+                bus.Park();
+                CameraRig.Peek(null);
+                CameraRig.ResetView();
+                yield return ScreenTour.Until(() => false, 1f);
+            }
+
             // The strategic cards (Faz 30): the person's hand, a card's towns lit on the board, and an attack's card in the middle.
             hud.OpenCards();
             yield return ScreenTour.Until(() => hud.CardsOpen, 3f);
