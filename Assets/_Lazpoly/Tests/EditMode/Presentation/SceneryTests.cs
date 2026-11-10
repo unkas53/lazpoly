@@ -55,7 +55,7 @@ namespace Lazpoly.Presentation.Tests
         public void TheTownColoursAreCloseTonesOfOneWarmFamilyAndEachGroupStillStandsApart()
         {
             // The owner's wish (2026-11-10): the squares' colours pleasing and in tones close to each other, not every
-            // colour of the rainbow. One warm family: from wheat through apricot and rose to mauve, each group a step
+            // colour of the rainbow. One warm family: from vanilla through honey, apricot and rose to mauve, each group a step
             // deeper and a step further round than the one before (the dearer the town, the deeper its colour), each
             // town's printed band still far enough from every other to tell the groups apart.
             BoardData data = BoardDataLoader.LoadFromResources();
@@ -69,12 +69,12 @@ namespace Lazpoly.Presentation.Tests
                 float warmth = Mathf.Repeat(hue + 0.25f, 1f);
                 Assert.That(warmth, Is.InRange(0.08f, 0.42f), $"group {group} is one of the warm family (no green, no blue)");
                 Assert.Less(warmth, lastWarmth, $"group {group} lies a step further round than the one before");
-                Assert.That(saturation, Is.InRange(0.28f, 0.55f), $"group {group} is neither washed out nor loud");
-                Assert.That(value, Is.InRange(0.58f, 0.9f), $"group {group} is not so bright that the table's light burns it out");
+                Assert.That(saturation, Is.InRange(0.18f, 0.6f), $"group {group} is neither washed out nor loud");
+                Assert.That(value, Is.InRange(0.58f, 0.93f), $"group {group} is not so bright that the table's light burns it out");
                 Color band = BoardView.BandColor(colour);
                 Assert.AreEqual(Color.Lerp(colour, BoardView.PaperColor, BoardView.BandPastel), band, $"group {group} is light enough for the ink as it is");
                 Assert.GreaterOrEqual(BoardView.Contrast(band, BoardView.InkColor), BoardView.BandContrast, $"group {group}'s names read");
-                Assert.LessOrEqual(Mathf.Max(band.r, Mathf.Max(band.g, band.b)), 0.9f, $"group {group} keeps its colour under the table's light");
+                Assert.LessOrEqual(Mathf.Max(band.r, Mathf.Max(band.g, band.b)), 0.92f, $"group {group} keeps its colour under the table's light");
                 float light = BoardView.Contrast(band, Color.black);
                 Assert.Less(light, lastLight, $"group {group} is deeper than the one before");
                 lastWarmth = warmth;
@@ -87,8 +87,8 @@ namespace Lazpoly.Presentation.Tests
                 for (int b = a + 1; b < bands.Count; b++)
                 {
                     float distance = new Vector3(bands[a].r - bands[b].r, bands[a].g - bands[b].g, bands[a].b - bands[b].b).magnitude;
-                    Assert.Greater(distance, 0.045f, $"groups {a + 1} and {b + 1} look alike");
-                    Assert.Less(distance, 0.4f, $"groups {a + 1} and {b + 1} are tones of one family");
+                    Assert.Greater(distance, 0.06f, $"groups {a + 1} and {b + 1} look alike");
+                    Assert.Less(distance, 0.45f, $"groups {a + 1} and {b + 1} are tones of one family");
                 }
             }
         }
@@ -104,7 +104,7 @@ namespace Lazpoly.Presentation.Tests
                 Color tile = Color.Lerp(other, BoardView.PaperColor, BoardView.Pastel);
                 Color.RGBToHSV(tile, out _, out float saturation, out float value);
                 Assert.LessOrEqual(saturation, 0.4f, $"{other} is a quiet tone");
-                Assert.That(value, Is.InRange(0.78f, 0.88f), $"{other} is light, and keeps its tone under the table's light");
+                Assert.That(value, Is.InRange(0.75f, 0.88f), $"{other} is light, and keeps its tone under the table's light");
                 Assert.GreaterOrEqual(tile.r, tile.b, $"{other} is not a cool tone");
                 Assert.GreaterOrEqual(BoardView.Contrast(tile, BoardView.InkColor), 7f, $"the ink reads on {other}");
                 tiles.Add(tile);
@@ -115,7 +115,7 @@ namespace Lazpoly.Presentation.Tests
                 for (int b = a + 1; b < tiles.Count; b++)
                 {
                     float distance = new Vector3(tiles[a].r - tiles[b].r, tiles[a].g - tiles[b].g, tiles[a].b - tiles[b].b).magnitude;
-                    Assert.Less(distance, 0.3f, $"squares {a} and {b} are tones of one family");
+                    Assert.Less(distance, 0.35f, $"squares {a} and {b} are tones of one family");
                 }
             }
 

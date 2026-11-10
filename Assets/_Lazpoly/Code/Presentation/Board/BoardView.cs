@@ -95,13 +95,13 @@ namespace Lazpoly.Presentation.Tabletop
 
         // The squares that are no town, each before its wash towards the paper (Pastel). Since 2026-11-10 (the owner's
         // wish: tones close to each other, pleasing, not every colour of the rainbow) they are one family of warm
-        // creams, a little darker than the light shows them: the table's light brightens a tile by about 1.45 (linear),
-        // and the earlier, brighter ones burned out to lemon and white on the screen.
-        public static readonly Color StartColor = new Color(0.51f, 0.63f, 0.41f);
+        // creams, a good deal darker than the light shows them: the table's light brightens a plain tile by about 1.5
+        // (linear), and brighter ones burn out to lemon and white on the screen.
+        public static readonly Color StartColor = new Color(0.45f, 0.56f, 0.38f);
         public static readonly Color TaxColor = new Color(0.60f, 0.58f, 0.55f);
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
-        public static readonly Color CardColor = new Color(0.74f, 0.64f, 0.45f);
-        public static readonly Color CupColor = new Color(0.70f, 0.54f, 0.08f);
+        public static readonly Color CardColor = new Color(0.575f, 0.495f, 0.35f);
+        public static readonly Color CupColor = new Color(0.55f, 0.37f, 0f);
         private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
         public static readonly Color TravelColor = new Color(0.66f, 0.67f, 0.65f);
         public static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
@@ -149,7 +149,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>The sand of a resort's tile, and the sea and surf printed on it.</summary>
         public static readonly Color SandColor = new Color(0.82f, 0.75f, 0.56f);
-        public static readonly Color SeaColor = new Color(0.47f, 0.65f, 0.66f);
+        public static readonly Color SeaColor = new Color(0.58f, 0.82f, 0.85f);
         public static readonly Color SurfColor = new Color(0.98f, 0.98f, 0.96f);
 
         /// <summary>How far a resort's sand is washed towards the paper: less than a town's, so the beach stands out.</summary>
