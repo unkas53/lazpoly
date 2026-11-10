@@ -14,7 +14,7 @@ namespace Lazpoly.Presentation.Tabletop
     /// <summary>
     /// Builds the board from data with meshes made in code (<see cref="MeshFactory"/>): a plate floating
     /// in the sky with the squares around its edge and a lawn in the middle that carries the dice score,
-    /// the pot and the title. When the Blender models arrive they replace these shapes; the layout and the API stay the same.
+    /// and the pot (no logo since 2026-11-10). When the Blender models arrive they replace these shapes; the layout and the API stay the same.
     /// </summary>
     public sealed class BoardView : MonoBehaviour
     {
@@ -58,16 +58,6 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Where the dice score stands on the lawn, towards the top of the screen from the middle, in lawn widths.</summary>
         public const float ScoreOffset = 0.17f;
-
-        /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
-        public const float TitleOffset = 0.40f;
-
-        /// <summary>The logo's width in lawn widths: the square Cash Father logo then leaves room for the clock sign above it and the dice score below, and its corners stay on the lawn.</summary>
-        public const float TitleSize = 0.27f;
-
-        /// <summary>The logo's width and depth in lawn widths: <see cref="TitleSize"/> across, as deep as the picture's shape asks (the Cash Father logo is about square), so it is never stretched.</summary>
-        public static Vector2 TitleExtent(Texture picture) =>
-            picture == null || picture.width <= 0 ? Vector2.one * TitleSize : new Vector2(TitleSize, TitleSize * picture.height / picture.width);
 
         /// <summary>
         /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
@@ -118,7 +108,6 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>How far a tile's own colour is washed towards the paper: the pastel of the printed board.</summary>
         public const float Pastel = 0.6f;
-        private static readonly Color TitleColor = new Color(0.16f, 0.32f, 0.20f);
         private static readonly Color PotTextColor = new Color(0.20f, 0.26f, 0.20f);
         /// <summary>The one dark ink every name on the board is printed in.</summary>
         public static readonly Color InkColor = new Color(0.17f, 0.15f, 0.14f);
@@ -344,7 +333,6 @@ namespace Lazpoly.Presentation.Tabletop
         private float _inner;
         private float _yaw = BoardCameraRig.BaseYaw;
         private Transform _scoreboard;
-        private Transform _title;
         private TextMesh _pot;
         private PotPile _potPile;
 
@@ -488,7 +476,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Turns everything written on the board so it reads from a camera at <paramref name="yaw"/>: the
-        /// plaques and group letters flip to run left to right, and the score and the title lie square to the screen.
+        /// plaques and group letters flip to run left to right, and the score lies square to the screen.
         /// </summary>
         public void FaceCamera(float yaw)
         {
@@ -509,12 +497,6 @@ namespace Lazpoly.Presentation.Tabletop
             {
                 _scoreboard.localPosition = new Vector3(0f, LawnHeight + 0.01f, 0f) + up * (_inner * ScoreOffset);
                 _scoreboard.localRotation = FlatFacing(yaw);
-            }
-
-            if (_title != null)
-            {
-                _title.localPosition = new Vector3(0f, LawnHeight + 0.01f, 0f) + up * (_inner * TitleOffset);
-                _title.localRotation = FlatFacing(yaw);
             }
 
             if (_potPile != null) _potPile.Root.localPosition = new Vector3(0f, LawnHeight, 0f) + up * (_inner * PotPileOffset) + ScreenRight(yaw) * (_inner * PotPileSide);
@@ -638,7 +620,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// How far a hatch's middle lies in from the lawn's edge, and how far either side of the edge's middle when two seats
-        /// share the edge: the top ones stay clear of the logo, the bottom ones of the dice and the pot.
+        /// share the edge: the top ones stay clear of the clock sign, the bottom ones of the dice and the pot.
         /// </summary>
         public const float HatchInset = 0.61f;
         public const float HatchSpread = 1.25f;
@@ -663,7 +645,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Where the roll's total shows over the lawn, in world space (Faz 28): where the lawn's dice figures used to lie,
-        /// between the settled dice and the LAZPOLY title, so the total covers neither.
+        /// just above the settled dice, so it never covers them.
         /// </summary>
         public Vector3 RollTotalSpot => transform.TransformPoint(new Vector3(0f, LawnHeight, 0f) + ScreenUp(_yaw) * (_inner * ScoreOffset));
 
@@ -928,9 +910,8 @@ namespace Lazpoly.Presentation.Tabletop
             plate.transform.localPosition = new Vector3(0f, -PlateThickness / 2f, 0f);
 
             _inner = 2f * Layout.HalfSize - Layout.Depth * 1.05f;
-            // The middle of the board is a lawn that carries the dice score, the pot and the title.
+            // The middle of the board is a lawn that carries the dice score and the pot; no logo (the owner's wish, 2026-11-10).
             CreateLawn(_inner);
-            CreateTitle(_inner);
             CreateScoreboard(_inner, board.HasPot);
             FaceCamera(_yaw);
             _ownerMarkers = new OwnerMarker[board.Count];
@@ -1539,24 +1520,6 @@ namespace Lazpoly.Presentation.Tabletop
             piece.transform.localScale = size;
             piece.SetActive(false);
             return piece;
-        }
-
-        /// <summary>
-        /// The logo lying on the far part of the lawn (<see cref="FaceCamera"/> places and turns it); the name
-        /// in letters when the picture or its shader is not in the build.
-        /// </summary>
-        private void CreateTitle(float inner)
-        {
-            var title = new GameObject("Title");
-            title.transform.SetParent(transform, false);
-            _title = title.transform;
-            if (MenuArt.HasLogo && PicturePlate.IsAvailable)
-            {
-                PicturePlate.Create("Logo", _title, MenuArt.Logo.texture, TitleExtent(MenuArt.Logo.texture) * inner);
-                return;
-            }
-
-            CreateText("Lettering", "CASH FATHER", _title, Vector3.zero, 192, inner * 0.005f, TitleColor);
         }
 
         /// <summary>Text lying in its parent's plane, readable from the parent's -Z side (<see cref="FlatFacing"/> turns the parent to the camera).</summary>

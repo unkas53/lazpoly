@@ -70,10 +70,15 @@ namespace Lazpoly.Presentation.Tests
                 foreach (TextMesh text in board.GetComponentsInChildren<TextMesh>(true))
                     Assert.AreNotEqual("–  –", text.text, $"{text.name} still prints the dice");
 
-                // The total stands up the screen from the lawn's middle (the dice rest below it), short of the LAZPOLY title.
+                // The total stands up the screen from the lawn's middle (the dice rest below it), well short of the clock sign.
                 float up = Vector3.Dot(board.transform.InverseTransformPoint(board.RollTotalSpot), BoardView.ScreenUp(BoardCameraRig.BaseYaw));
                 Assert.Greater(up, 0f);
-                Assert.Less(up, board.Inner * BoardView.TitleOffset * 0.6f, "clear of the title");
+                Assert.Less(up, board.Inner * BoardView.ClockOffset * 0.5f, "clear of the clock sign");
+
+                // The table carries no logo (the owner's wish, 2026-11-10).
+                Assert.IsNull(board.transform.Find("Title"), "no logo on the lawn");
+                foreach (TextMesh text in board.GetComponentsInChildren<TextMesh>(true))
+                    Assert.AreNotEqual("CASH FATHER", text.text, $"{text.name} prints the name");
             }
             finally
             {

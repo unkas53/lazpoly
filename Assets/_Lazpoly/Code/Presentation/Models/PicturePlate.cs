@@ -5,7 +5,7 @@ namespace Lazpoly.Presentation.Models
     /// <summary>
     /// A picture lying flat in its parent's plane: a quad in the parent's XY, readable from the -Z side
     /// like the board's printed text, drawn with the <see cref="ShaderResource"/> shader so pieces
-    /// standing on it hide it. The lawn's logo is one.
+    /// standing on it hide it. The sky backdrop is one.
     /// </summary>
     public static class PicturePlate
     {

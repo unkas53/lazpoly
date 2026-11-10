@@ -288,10 +288,6 @@ namespace Lazpoly.Presentation.Tests
 
                 Assert.That((float)gold / seen, Is.GreaterThan(0.4f), "the word CASH across the lower middle is gold");
 
-                Vector2 extent = BoardView.TitleExtent(logo);
-                Assert.AreEqual(BoardView.TitleSize, extent.x, "the lawn's logo is TitleSize wide");
-                Assert.AreEqual(BoardView.TitleSize * logo.height / logo.width, extent.y, 1e-5f, "and not stretched to a square");
-
                 var kit = Resources.Load<TextAsset>("Lazpoly/Art/Menu/" + MenuKit.Logo);
                 Assert.IsNotNull(kit, "the menu kit's wide logo is there too");
                 CollectionAssert.AreEqual(asset.bytes, kit.bytes, "the menu, the loading screens and the lawn show the same logo");

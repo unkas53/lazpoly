@@ -5,7 +5,6 @@ using Lazpoly.Core.State;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Game;
-using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
@@ -255,13 +254,11 @@ namespace Lazpoly.Presentation.Tests
                 BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
                 float yaw = BoardCameraRig.BaseYaw;
                 float inner = board.Layout.HalfSize * 2f - board.Layout.Depth * 1.05f, lawnHalf = inner * BoardView.LawnShare / 2f;
-                Vector3 up = BoardView.ScreenUp(yaw), right = BoardView.ScreenRight(yaw);
                 var colors = new Color[8];
                 for (int i = 0; i < colors.Length; i++) colors[i] = Color.HSVToRGB(i / 8f, 0.7f, 0.9f);
                 board.CreateMoneyPiles(colors);
                 Assert.AreEqual(8, board.MoneyHatches.Count, "a hatch for every seat");
                 Vector3 size = MoneyHatch.Size;
-                float reach = (size.x + size.z) / 2f * Mathf.Sqrt(0.5f);
                 for (int seat = 0; seat < 8; seat++)
                 {
                     MoneyHatch hatch = board.HatchOf(seat);
@@ -276,11 +273,6 @@ namespace Lazpoly.Presentation.Tests
                     Assert.AreEqual(Mathf.Sign(Vector3.Dot(pile, along)), Mathf.Sign(Vector3.Dot(spot, along)), $"seat {seat + 1}: beside its case's way");
                     Assert.That(Quaternion.Angle(hatch.transform.localRotation, BoardView.MoneyPileTurn(seat, yaw)), Is.LessThan(0.01f), $"seat {seat + 1}: turned as its case, so the money fits");
 
-                    // Clear of the logo above the middle.
-                    Vector2 logoHalf = BoardView.TitleExtent(MenuArt.Logo != null ? MenuArt.Logo.texture : null) * (inner / 2f);
-                    float logoUp = inner * BoardView.TitleOffset;
-                    bool onLogo = Mathf.Abs(Vector3.Dot(spot, right)) - reach < logoHalf.x && Mathf.Abs(Vector3.Dot(spot, up) - logoUp) - reach < logoHalf.y;
-                    Assert.IsFalse(onLogo, $"seat {seat + 1}: clear of the logo");
                     for (int other = 0; other < seat; other++)
                     {
                         Vector3 gap = spot - board.HatchOf(other).transform.localPosition;
