@@ -62,8 +62,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
         public const float TitleOffset = 0.40f;
 
-        /// <summary>The logo's width in lawn widths: its lettering sits above the dice score and its corners stay on the lawn.</summary>
-        public const float TitleSize = 0.30f;
+        /// <summary>The logo's width in lawn widths: the square Cash Father logo then leaves room for the clock sign above it and the dice score below, and its corners stay on the lawn.</summary>
+        public const float TitleSize = 0.27f;
 
         /// <summary>The logo's width and depth in lawn widths: <see cref="TitleSize"/> across, as deep as the picture's shape asks (the Cash Father logo is about square), so it is never stretched.</summary>
         public static Vector2 TitleExtent(Texture picture) =>
