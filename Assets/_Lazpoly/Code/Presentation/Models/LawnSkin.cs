@@ -60,13 +60,12 @@ namespace Lazpoly.Presentation.Models
                 name = "lawn", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 8, hideFlags = HideFlags.DontSave,
             };
 
-            var broad = new Noise(5, 5, 1);
-            var patches = new Noise(17, 17, 2);
-            var tufts = new Noise(61, 61, 3);
-            var dry = new Noise(7, 7, 4);
-            var ragged = new Noise(140, 140, 6);
-            var blades = new Noise(400, 90, 8);
-            float[] radius = RadiusTable();
+            var broad = new GridNoise(5, 5, 1);
+            var patches = new GridNoise(17, 17, 2);
+            var tufts = new GridNoise(61, 61, 3);
+            var dry = new GridNoise(7, 7, 4);
+            var ragged = new GridNoise(140, 140, 6);
+            var blades = new GridNoise(400, 90, 8);
             var grain = new System.Random(5);
             var pixels = new Color32[Size * Size];
             for (int y = 0; y < Size; y++)
@@ -84,7 +83,7 @@ namespace Lazpoly.Presentation.Models
                     float fromMiddle = Mathf.Sqrt(px * px + py * py);
                     if (fromMiddle > NearEdge)
                     {
-                        float inFromEdge = Lookup(radius, Mathf.Atan2(py, px)) - fromMiddle;
+                        float inFromEdge = LawnShape.QuickRadius(Mathf.Atan2(py, px)) - fromMiddle;
                         shine *= 1f - ShadeStrength * Shade(inFromEdge);
                         colour = Color.Lerp(colour * shine, Earth, RimStrength * Rim(inFromEdge, ragged.At(u, v)));
                     }
@@ -199,52 +198,6 @@ namespace Lazpoly.Presentation.Models
                     mixed.a = 1f;
                     pixels[y * Size + x] = mixed;
                 }
-            }
-        }
-
-        private const int RadiusSteps = 4096;
-
-        /// <summary>The outline's reach at evenly spaced angles from -pi to pi, so each pixel only looks it up.</summary>
-        private static float[] RadiusTable()
-        {
-            var table = new float[RadiusSteps + 1];
-            for (int i = 0; i <= RadiusSteps; i++) table[i] = LawnShape.Radius(-Mathf.PI + i * 2f * Mathf.PI / RadiusSteps);
-            return table;
-        }
-
-        private static float Lookup(float[] table, float angle)
-        {
-            float at = Mathf.Clamp01((angle + Mathf.PI) / (2f * Mathf.PI)) * RadiusSteps;
-            int i = Mathf.Min(RadiusSteps - 1, (int)at);
-            return Mathf.Lerp(table[i], table[i + 1], at - i);
-        }
-
-        /// <summary>Soft noise over the unit square: random numbers on a grid, blended smoothly between its points.</summary>
-        private sealed class Noise
-        {
-            private readonly float[] _values;
-            private readonly int _across, _along;
-
-            public Noise(int across, int along, int seed)
-            {
-                _across = across;
-                _along = along;
-                _values = new float[(across + 2) * (along + 2)];
-                var random = new System.Random(seed);
-                for (int i = 0; i < _values.Length; i++) _values[i] = (float)random.NextDouble();
-            }
-
-            public float At(float u, float v)
-            {
-                float x = Mathf.Clamp01(u) * _across, y = Mathf.Clamp01(v) * _along;
-                int ix = Mathf.Min(_across, (int)x), iy = Mathf.Min(_along, (int)y);
-                float fx = x - ix, fy = y - iy;
-                fx = fx * fx * (3f - 2f * fx);
-                fy = fy * fy * (3f - 2f * fy);
-                int row = iy * (_across + 2) + ix, next = row + _across + 2;
-                float low = _values[row] + (_values[row + 1] - _values[row]) * fx;
-                float high = _values[next] + (_values[next + 1] - _values[next]) * fx;
-                return low + (high - low) * fy;
             }
         }
     }

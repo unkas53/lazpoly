@@ -65,6 +65,26 @@ namespace Lazpoly.Presentation.Models
         /// <summary>How far the lawn reaches from the middle along <paramref name="angle"/>.</summary>
         public static float Radius(float angle) => BaseRadius(angle) + Wander(angle);
 
+        /// <summary>
+        /// <see cref="Radius"/> read from a table of evenly spaced angles, for the textures, which ask it pixel by pixel.
+        /// </summary>
+        public static float QuickRadius(float angle)
+        {
+            if (_table == null)
+            {
+                var table = new float[TableSteps + 1];
+                for (int i = 0; i <= TableSteps; i++) table[i] = Radius(-Mathf.PI + i * 2f * Mathf.PI / TableSteps);
+                _table = table;
+            }
+
+            float at = Mathf.Clamp01((angle + Mathf.PI) / (2f * Mathf.PI)) * TableSteps;
+            int step = Mathf.Min(TableSteps - 1, (int)at);
+            return Mathf.Lerp(_table[step], _table[step + 1], at - step);
+        }
+
+        private const int TableSteps = 4096;
+        private static float[] _table;
+
         /// <summary>Whether a point (in half-lawns from the middle) lies on the grass, at least <paramref name="margin"/> in from its edge.</summary>
         public static bool Covers(Vector2 point, float margin = 0f) =>
             point.magnitude <= Radius(Mathf.Atan2(point.y, point.x)) - margin;

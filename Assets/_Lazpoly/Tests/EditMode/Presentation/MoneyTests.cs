@@ -259,9 +259,18 @@ namespace Lazpoly.Presentation.Tests
                 board.CreateMoneyPiles(colors);
                 Assert.AreEqual(8, board.MoneyHatches.Count, "a hatch for every seat");
                 Vector3 size = MoneyHatch.Size;
+                // The grass's top is where the hatches stand: it must not rise over their holes, or the money sinks into green.
+                float grassTop = float.MinValue;
+                foreach (MeshRenderer part in holder.GetComponentsInChildren<MeshRenderer>(true))
+                {
+                    if (part.name == "Grass") grassTop = part.bounds.max.y;
+                }
+
+                Assert.AreEqual(BoardView.LawnHeight, grassTop, 1e-4f, "the grass ends at the lawn's height");
                 for (int seat = 0; seat < 8; seat++)
                 {
                     MoneyHatch hatch = board.HatchOf(seat);
+                    Assert.Greater(hatch.transform.Find("Hole").GetComponent<MeshRenderer>().bounds.min.y, grassTop, $"seat {seat + 1}: the hole shows over the grass");
                     Vector3 spot = hatch.transform.localPosition;
                     Assert.AreEqual(BoardView.LawnHeight, spot.y, 1e-4f, $"seat {seat + 1}: on the grass");
                     Vector3 outward = BoardView.MoneyEdgeOutward(seat, yaw);

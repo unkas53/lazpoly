@@ -1292,7 +1292,8 @@ namespace Lazpoly.Presentation.Tabletop
             lawn.transform.SetParent(transform, false);
             Transform root = lawn.transform;
 
-            // An asphalt road with a dashed middle line round the lawn (Faz 25, the owner's wish; it was plain gravel).
+            // Sandy ground with an asphalt lane and its dashed middle line round the lawn (Faz 25, the owner's wish; since
+            // 2026-11-10 the lane's edges are mixed with sand and the line bends round the corners with it).
             float grass = inner * LawnShare;
             GameObject road = ModelParts.Create("Road", root, MeshFactory.RoundedBox(new Vector3(inner, 0.04f, inner), 0.02f, 2), Color.white, 0.15f);
             ModelParts.Skin(road, RoadSkin.Create((1f - LawnShare) / 2f));
@@ -1302,7 +1303,8 @@ namespace Lazpoly.Presentation.Tabletop
             // was mowed diamonds inside a cream border on a straight-edged box).
             GameObject green = ModelParts.Create("Grass", root, LawnShape.Build(grass / 2f, LawnHeight), Color.white, 0f);
             ModelParts.Skin(green, LawnSkin.Texture());
-            green.transform.localPosition = new Vector3(0f, LawnHeight / 2f, 0f);
+            // The mesh stands on the board's floor and its top is the lawn's height, where the hatches, the clock and the pot stand.
+            green.transform.localPosition = Vector3.zero;
         }
 
         /// <summary>

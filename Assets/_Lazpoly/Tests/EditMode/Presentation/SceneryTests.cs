@@ -367,14 +367,65 @@ namespace Lazpoly.Presentation.Tests
                 foreach (Transform child in lawn) names.Add(child.name);
                 CollectionAssert.AreEquivalent(new[] { "Road", "Grass" }, names, "no trees, bushes, bunting or paths: nothing stands on the grass");
 
-                // Round the lawn an asphalt road with a dashed middle line (Faz 25).
+                // Round the lawn an asphalt lane with a dashed middle line (Faz 25) on sandy ground, its edges mixed with
+                // sand and its line bending round the corners with it (the owner's wish, 2026-11-10).
                 var road = (Texture2D)lawn.Find("Road").GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
-                Assert.IsNotNull(road, "the road has its asphalt texture");
-                float strip = (1f - BoardView.LawnShare) / 2f, middle = strip / 2f, halfLine = strip * RoadSkin.LineShare / 2f;
-                Assert.IsTrue(RoadSkin.OnLine(middle, (14f + RoadSkin.DashShare / 2f) / RoadSkin.DashesPerSide, middle, halfLine), "a dash on the strip's middle");
-                Assert.IsFalse(RoadSkin.OnLine(middle, (14f + (1f + RoadSkin.DashShare) / 2f) / RoadSkin.DashesPerSide, middle, halfLine), "a gap between dashes");
-                Assert.IsFalse(RoadSkin.OnLine(0.5f, 0.5f, middle, halfLine), "no line under the lawn");
-                Assert.Less(RoadSkin.Asphalt.grayscale, 0.35f, "the road is dark asphalt");
+                Assert.IsNotNull(road, "the road has its texture");
+                float strip = (1f - BoardView.LawnShare) / 2f, reach = RoadSkin.LineReach(strip), bend = RoadSkin.LineBend(strip);
+                float lineHalf = strip * RoadSkin.LineShare;
+                float quarter = RoadSkin.QuarterLength(strip), dash = quarter / Mathf.Round(quarter / RoadSkin.DashStep);
+                Assert.IsTrue(RoadSkin.OnLine(new Vector2(reach, 0f), strip), "a dash on the middle of a side");
+                Assert.IsTrue(RoadSkin.OnLine(new Vector2(0f, -reach), strip), "and of every side");
+                Assert.IsFalse(RoadSkin.OnLine(new Vector2(reach, dash / 2f), strip), "a gap between dashes");
+                Assert.IsTrue(RoadSkin.OnLine(new Vector2(reach, dash), strip), "the next dash");
+                Assert.IsFalse(RoadSkin.OnLine(new Vector2(reach + 2f * lineHalf, 0f), strip), "the line is narrow");
+                Assert.IsFalse(RoadSkin.OnLine(Vector2.zero, strip), "no line under the lawn");
+                Assert.IsFalse(RoadSkin.OnLine(new Vector2(reach, reach), strip), "the line does not run square into the corner");
+                RoadSkin.Lane(new Vector2(reach - bend, reach - bend) + new Vector2(1f, 1f).normalized * bend, strip, out float across, out float along);
+                Assert.AreEqual(0f, across, 1e-4f, "it bends round the corner instead");
+                Assert.AreEqual(quarter / 2f, along, 1e-4f, "a quarter of the way round from side to side, halfway at the diagonal");
+                Assert.AreEqual(reach - bend, (1f - 2f * strip) * (1f - LawnShape.Corner), 1e-5f, "the bend turns about the lawn's own corner");
+                Assert.Less(RoadSkin.Asphalt.grayscale, 0.35f, "the lane is dark asphalt");
+                Color.RGBToHSV(RoadSkin.Sand, out _, out float sandSaturation, out _);
+                Assert.Greater(RoadSkin.Sand.r, RoadSkin.Sand.b + 0.15f, "the sand is warm");
+                Assert.Less(sandSaturation, 0.45f, "and matt");
+                Assert.Greater(RoadSkin.Sand.grayscale, RoadSkin.Asphalt.grayscale + 0.2f, "it stands out from the asphalt");
+
+                // Asphalt along the line; sand by the squares, in the corners and wherever the grass is near.
+                for (int i = 0; i < 720; i++)
+                {
+                    float angle = i * Mathf.PI / 360f;
+                    var outward = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                    float edge = (1f - 2f * strip) * LawnShape.Radius(angle);
+                    foreach (float rough in new[] { 0f, 0.5f, 1f })
+                    {
+                        Assert.AreEqual(0f, RoadSkin.Cover(outward * (edge + 0.001f), strip, rough), 1e-4f, $"sand where the grass ends ({i / 2f} degrees)");
+                        Assert.AreEqual(0f, RoadSkin.Cover(outward * (edge + 2f * strip * RoadSkin.FringeMin * 0.5f), strip, rough), 1e-4f, "a sandy fringe before the asphalt");
+                    }
+                }
+
+                foreach (float rough in new[] { 0f, 0.5f, 1f })
+                {
+                    Assert.AreEqual(1f, RoadSkin.Cover(new Vector2(reach, 0.3f), strip, rough), 1e-4f, "asphalt under the line");
+                    Assert.AreEqual(1f, RoadSkin.Cover(new Vector2(-0.4f, reach + lineHalf), strip, rough), 1e-4f, "and either side of it");
+                    Assert.AreEqual(1f, RoadSkin.Cover(new Vector2(-0.4f, reach - lineHalf), strip, rough), 1e-4f);
+                    Assert.AreEqual(0f, RoadSkin.Cover(new Vector2(0.999f, 0.2f), strip, rough), 1e-4f, "sand along the squares");
+                    Assert.AreEqual(0f, RoadSkin.Cover(new Vector2(0.99f, -0.99f), strip, rough), 1e-4f, "sand in the corner");
+                }
+
+                // Every painted dash lies wholly on asphalt, whatever the noise: the line is set right for the sandy edges.
+                for (int i = 0; i < 2000; i++)
+                {
+                    float angle = i * Mathf.PI / 1000f;
+                    var outward = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                    float far = 1f / Mathf.Max(Mathf.Abs(outward.x), Mathf.Abs(outward.y));
+                    for (float away = far * 0.8f; away < far; away += 0.002f)
+                    {
+                        Vector2 point = outward * away;
+                        if (!RoadSkin.OnLine(point, strip)) continue;
+                        foreach (float rough in new[] { 0f, 0.5f, 1f }) Assert.AreEqual(1f, RoadSkin.Cover(point, strip, rough), 1e-4f, $"a dash on sand at {point}");
+                    }
+                }
 
                 // The grass itself is a natural, matt meadow with a wandering edge (the owner's wish, 2026-11-10), no objects added.
                 Transform grass = lawn.Find("Grass");
@@ -402,7 +453,9 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(1f, LawnShape.BaseRadius(0f), 1e-5f, "a straight edge's middle is one half-lawn away");
                 Assert.Less(LawnShape.BaseRadius(Mathf.PI / 4f), Mathf.Sqrt(2f) - 0.05f, "the corners are well rounded");
                 float inner = board.Inner, lawnHalf = inner * BoardView.LawnShare / 2f;
-                Assert.Less(lawnHalf * (1f + LawnShape.Outward + LawnShape.Fine), inner * (0.5f - middle - halfLine) - 0.08f, "the grass stays clear of the road's painted line");
+                Assert.Less(lawnHalf * (1f + LawnShape.Outward + LawnShape.Fine), inner / 2f * (reach - lineHalf) - 0.08f, "the grass stays clear of the road's painted line");
+                Assert.AreEqual(BoardView.LawnHeight, grass.GetComponent<MeshRenderer>().bounds.max.y, 1e-4f, "the grass's top is the lawn's height, where the hatches, the clock and the pot stand");
+                Assert.AreEqual(0f, grass.GetComponent<MeshRenderer>().bounds.min.y, 1e-4f, "it stands on the board's floor");
 
                 // The mesh: a flat top at the lawn's height, a bank and a skirt down to the ground, every face turned outwards.
                 Mesh mesh = grass.GetComponent<MeshFilter>().sharedMesh;
