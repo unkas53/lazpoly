@@ -42,6 +42,10 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsFalse(string.IsNullOrWhiteSpace(data.GroupName(data.Board[i].GroupId)), $"{data.Board[i].Name} has no region.");
             }
             Assert.AreEqual("İstanbul", data.Board[data.Board.Count - 2].Name, "the dearest city closes the lap");
+            // The owner's wish (2026-11-11): New York and Maldivler change places, so the two metropolises stand side by side.
+            Assert.AreEqual("New York", data.Board[data.Board.Count - 3].Name);
+            Assert.AreEqual("Maldivler", data.Board[data.Board.Count - 4].Name);
+            Assert.AreEqual(data.Board[data.Board.Count - 2].GroupId, data.Board[data.Board.Count - 3].GroupId);
         }
 
         [Test]

@@ -145,10 +145,25 @@ namespace Lazpoly.Presentation.Tabletop
         /// A picture over the whole sheet (<see cref="DocumentSize"/>) of <paramref name="shapes"/>: white, its alpha how
         /// much of each texel they cover (4x4 samples per texel), so the edges come out soft at any size.
         /// </summary>
-        private static Texture2D Picture(string name, List<InkBar> shapes)
+        private static Texture2D Picture(string name, List<InkBar> shapes) =>
+            Picture(name, new Rect(-DocumentSize / 2f, DocumentSize), PictureWidth, (x, z) =>
+            {
+                foreach (InkBar bar in shapes)
+                {
+                    if (bar.Covers(x, z)) return true;
+                }
+
+                return false;
+            });
+
+        /// <summary>
+        /// A picture of whatever <paramref name="covers"/> says lies on the page, over <paramref name="area"/> (x across,
+        /// y up the page), <paramref name="width"/> texels across: white, its alpha how much of each texel is covered (4x4
+        /// samples per texel), so the edges come out soft at any size. Kept readable, so a test can check the drawing.
+        /// </summary>
+        public static Texture2D Picture(string name, Rect area, int width, System.Func<float, float, bool> covers)
         {
-            int width = PictureWidth;
-            int height = Mathf.RoundToInt(width * DocumentSize.y / DocumentSize.x);
+            int height = Mathf.Max(1, Mathf.RoundToInt(width * area.height / area.width));
             var picture = new Texture2D(width, height, TextureFormat.RGBA32, false, true)
             {
                 name = name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave,
@@ -164,14 +179,9 @@ namespace Lazpoly.Presentation.Tabletop
                     {
                         for (int sx = 0; sx < samples; sx++)
                         {
-                            float x = ((column + (sx + 0.5f) / samples) / width - 0.5f) * DocumentSize.x;
-                            float z = ((row + (sy + 0.5f) / samples) / height - 0.5f) * DocumentSize.y;
-                            foreach (InkBar bar in shapes)
-                            {
-                                if (!bar.Covers(x, z)) continue;
-                                covered++;
-                                break;
-                            }
+                            float x = area.xMin + (column + (sx + 0.5f) / samples) / width * area.width;
+                            float z = area.yMin + (row + (sy + 0.5f) / samples) / height * area.height;
+                            if (covers(x, z)) covered++;
                         }
                     }
 
@@ -180,9 +190,31 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             picture.SetPixels32(pixels);
-            picture.Apply(false, false); // Kept readable (about 200 KB), so a test can check the drawing.
+            picture.Apply(false, false);
             return picture;
         }
+
+        /// <summary>
+        /// One flat sheet over <paramref name="area"/> of the page (x across, y up the page) at <paramref name="height"/>,
+        /// for a picture drawn with the print shader: the vertices carry <paramref name="color"/>, the picture's alpha the shape.
+        /// </summary>
+        public static Mesh PictureSheet(string name, Rect area, Color color, float height)
+        {
+            var mesh = new Mesh { name = name };
+            mesh.vertices = new[]
+            {
+                new Vector3(area.xMin, height, area.yMin), new Vector3(area.xMin, height, area.yMax), new Vector3(area.xMax, height, area.yMax), new Vector3(area.xMax, height, area.yMin),
+            };
+            mesh.uv = new[] { new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(1f, 0f) };
+            mesh.colors = new[] { color, color, color, color };
+            mesh.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
+            mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>A part drawn flat, casting no shadow: for the pictures printed on a tile.</summary>
+        public static void NoShadow(GameObject part) => Flat(part);
 
         /// <summary>The ink as separate thin bars on the paper: the drawing when the print shader is missing.</summary>
         public static Mesh DocumentInkBars()

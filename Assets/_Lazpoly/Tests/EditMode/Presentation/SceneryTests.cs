@@ -94,10 +94,79 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheChanceSquaresAreASoftJadeWithCardsAndTheCupLiesOnTheStationsGround()
+        {
+            // The owner's wish (2026-11-11): Şans on a ground that suits the table, with a better picture than the plain "?",
+            // and the Champions Cup on the bus station's ground.
+            Assert.AreEqual(BoardView.TravelColor, BoardView.CupColor);
+            BoardData data = BoardDataLoader.LoadFromResources();
+            int cup = -1, travel = -1, chance = -1;
+            for (int i = 0; i < data.Board.Count; i++)
+            {
+                if (data.Board[i].Type == SquareType.Cup) cup = i;
+                if (data.Board[i].Type == SquareType.Travel) travel = i;
+                if (data.Board[i].Type == SquareType.Card) chance = i;
+            }
+
+            Assert.AreEqual(BoardView.TileBody(data.Board[travel], data), BoardView.TileBody(data.Board[cup], data), "the cup's tile is the station's");
+            Assert.AreEqual(BoardView.ChanceColor, BoardView.TileBody(data.Board[chance], data), "Şans is printed in its jade, not washed to the paper");
+
+            Color.RGBToHSV(BoardView.ChanceColor, out float hue, out float saturation, out float value);
+            Assert.That(hue, Is.InRange(0.4f, 0.5f), "a jade green");
+            Assert.That(saturation, Is.InRange(0.15f, 0.35f), "a quiet one");
+            Assert.That(value, Is.InRange(0.5f, 0.7f), "mid-light, so the light does not burn it out and the cards stand out on it");
+            Assert.GreaterOrEqual(BoardView.Contrast(BoardView.ChanceColor, BoardView.InkColor), 4.5f, "ŞANS reads on it");
+            Assert.GreaterOrEqual(BoardView.Contrast(BoardView.ChanceDeep, FloorPrint.PrintedPaper), 7f, "the \"?\" reads on the card");
+            Assert.GreaterOrEqual(BoardView.Contrast(FloorPrint.PrintedPaper, BoardView.ChanceColor), 2.5f, "the cards stand out on the ground");
+            Assert.Greater(BoardView.ChanceGold.r, BoardView.ChanceGold.b + 0.4f, "the sparkles are gold");
+            foreach (Color group in new[] { data.GroupColor(1), data.GroupColor(8) })
+            {
+                float distance = new Vector3(group.r - BoardView.ChanceColor.r, group.g - BoardView.ChanceColor.g, group.b - BoardView.ChanceColor.b).magnitude;
+                Assert.Greater(distance, 0.2f, "Şans is told from the towns");
+            }
+        }
+
+        [Test]
+        public void TheChanceCardsAreTwoFannedCardsWithGoldPipsAndSparkles()
+        {
+            // The front card's middle is cream (the "?" lies there), the card behind shows its deep back beside it.
+            Assert.IsTrue(ChancePrint.IsPaper(0f, 0f));
+            Assert.IsFalse(ChancePrint.IsDeep(0f, 0f));
+            Assert.IsTrue(ChancePrint.IsDeep(-0.4f, 0.3f), "the back card's deep colour shows on the left");
+            Assert.IsTrue(ChancePrint.InBack(-0.4f, 0.3f, ChancePrint.Rim) && !ChancePrint.InFront(-0.4f, 0.3f, 0f));
+            Assert.IsTrue(ChancePrint.IsDeep(ChancePrint.CardSize.x / 2f - 0.01f, 0f), "the front card has its outline");
+            Assert.IsTrue(ChancePrint.IsGold(0.39f, 0.4f), "a sparkle");
+            Assert.IsFalse(ChancePrint.IsPaper(0.39f, 0.4f), "beside the cards");
+            Assert.Less(ChancePrint.BackLean * ChancePrint.FrontLean, 0f, "the cards lean apart, like a fan");
+            // The "?" has room on the front card, inside its outline.
+            Assert.Less(ChancePrint.MarkRoom.x, ChancePrint.CardSize.x - 2f * ChancePrint.Outline);
+            Assert.Less(ChancePrint.MarkRoom.y, ChancePrint.CardSize.y - 2f * ChancePrint.Outline);
+            Assert.IsTrue(ChancePrint.Area.Contains(Vector2.zero));
+
+            foreach (Texture2D picture in new[] { ChancePrint.PaperPicture(), ChancePrint.DeepPicture(), ChancePrint.GoldPicture() })
+            {
+                Assert.AreEqual(ChancePrint.PictureWidth, picture.width);
+                Assert.AreEqual(Mathf.RoundToInt(picture.width * ChancePrint.Area.height / ChancePrint.Area.width), picture.height);
+                Color32[] pixels = picture.GetPixels32();
+                int covered = 0;
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    int column = i % picture.width, row = i / picture.width;
+                    bool edge = column == 0 || row == 0 || column == picture.width - 1 || row == picture.height - 1;
+                    if (edge) Assert.AreEqual(0, (int)pixels[i].a, $"{picture.name}: the drawing stays inside its sheet");
+                    if (pixels[i].a > 0) covered++;
+                }
+
+                Assert.Greater(covered, pixels.Length / 100, $"{picture.name} draws something");
+            }
+        }
+
+        [Test]
         public void TheOtherSquaresAreWarmCreamsAndTheResortsSeaIsTheOneSoftCoolTone()
         {
             // The squares that are no town: one family of light, warm, quiet tones on the paper, none burned out by the light.
-            Color[] others = { BoardView.StartColor, BoardView.TaxColor, BoardView.CardColor, BoardView.CupColor, BoardView.TravelColor, BoardView.JailColor };
+            // Şans has its own jade since 2026-11-11 (see TheChanceSquaresAreASoftJade...).
+            Color[] others = { BoardView.StartColor, BoardView.TaxColor, BoardView.CupColor, BoardView.TravelColor, BoardView.JailColor };
             var tiles = new List<Color>();
             foreach (Color other in others)
             {
@@ -283,7 +352,15 @@ namespace Lazpoly.Presentation.Tests
                         Assert.AreEqual("ŞANS", board.NameLabel(i).text, "Şans in capitals, larger (the owner's wish, Faz 24)");
                         Assert.IsNotNull(board.ChanceMark(i), "a question mark is printed on the Şans tile");
                         Assert.AreEqual("?", board.ChanceMark(i).text);
-                        Assert.Greater(board.ChanceMark(i).characterSize, board.NameLabel(i).characterSize * 2f, "the question mark is the tile's big print");
+                        Assert.Greater(board.ChanceMark(i).characterSize, board.NameLabel(i).characterSize * 1.3f, "the question mark is the tile's big print");
+                        Transform cards = board.ChanceCards(i);
+                        Assert.IsNotNull(cards, "two cards are printed under the \"?\" (the owner's wish, 2026-11-11)");
+                        Vector3 offset = board.ChanceMark(i).transform.localPosition - cards.localPosition;
+                        Assert.Less(new Vector2(offset.x, offset.z).magnitude, 0.001f, "the \"?\" lies on the front card's middle");
+                        Assert.Greater(offset.y, 0f, "over the cards");
+                        Bounds nameBounds = board.NameLabel(i).GetComponent<MeshRenderer>().bounds;
+                        foreach (MeshRenderer sheet in cards.GetComponentsInChildren<MeshRenderer>())
+                            Assert.IsFalse(sheet.bounds.Intersects(nameBounds), $"square {i}: the cards run into ŞANS");
                         Bounds mark = board.ChanceMark(i).GetComponent<MeshRenderer>().bounds;
                         Bounds name = board.NameLabel(i).GetComponent<MeshRenderer>().bounds;
                         Assert.IsFalse(mark.Intersects(name), $"square {i}: the question mark runs into ŞANS");
@@ -292,6 +369,7 @@ namespace Lazpoly.Presentation.Tests
                     else
                     {
                         Assert.IsNull(board.ChanceMark(i), $"square {i} has no question mark");
+                        Assert.IsNull(board.ChanceCards(i), $"square {i} has no cards");
                     }
                 }
             }

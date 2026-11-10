@@ -100,10 +100,18 @@ namespace Lazpoly.Presentation.Tabletop
         public static readonly Color StartColor = new Color(0.45f, 0.56f, 0.38f);
         public static readonly Color TaxColor = new Color(0.60f, 0.58f, 0.55f);
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
-        public static readonly Color CardColor = new Color(0.575f, 0.495f, 0.35f);
-        public static readonly Color CupColor = new Color(0.55f, 0.37f, 0f);
+        /// <summary>
+        /// A Şans square's ground (the owner's wish, 2026-11-11: a colour that suits the table better): a soft jade, the
+        /// lawn's and the sea's quiet green among the warm squares, printed as it is rather than washed to the paper, so
+        /// the cards on it (<see cref="ChancePrint"/>) stand out. Their back, outline and "?" are a deep shade of it, the pips and sparkles gold.
+        /// </summary>
+        public static readonly Color ChanceColor = new Color(0.46f, 0.60f, 0.55f);
+        public static readonly Color ChanceDeep = new Color(0.13f, 0.33f, 0.31f);
+        public static readonly Color ChanceGold = new Color(0.90f, 0.69f, 0.26f);
         private static readonly Color PotColor = new Color(0.55f, 0.82f, 0.75f);
         public static readonly Color TravelColor = new Color(0.66f, 0.67f, 0.65f);
+        /// <summary>The Champions Cup corner is printed on the bus station's ground (the owner's wish, 2026-11-11).</summary>
+        public static readonly Color CupColor = TravelColor;
         public static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
         private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
@@ -250,8 +258,9 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A Şans square (a card square along an edge, Faz 24) prints its name larger and in capitals, like the jail, low on
-        /// the tile (where a price would sit), with a big question mark printed flat over the rest of the tile in
-        /// <see cref="ChanceMarkColor"/>, in place of a standing sign. Offsets and depth are in tile depths, towards the screen's bottom.
+        /// the tile (where a price would sit), with two fanned cards printed flat over the rest of the tile (<see cref="ChancePrint"/>,
+        /// since 2026-11-11) and a big question mark on the front one, in place of a standing sign. Offsets and depth are in
+        /// tile depths, towards the screen's bottom.
         /// </summary>
         public const float ChanceNameScale = 1.6f;
 
@@ -272,7 +281,6 @@ namespace Lazpoly.Presentation.Tabletop
         public const float ChanceMarkOffset = -0.15f;
         public const float ChanceMarkSize = 0.3f;
         public const float ChanceMarkDepth = 0.62f;
-        public static readonly Color ChanceMarkColor = new Color(0.47f, 0.27f, 0.40f);
 
         /// <summary>Character sizes of the name and the price before they shrink to fit, in tile widths.</summary>
         public const float NameSize = 0.02f;
@@ -354,6 +362,7 @@ namespace Lazpoly.Presentation.Tabletop
         private bool[] _printed;
         private TextMesh[] _names;
         private TextMesh[] _chanceMarks;
+        private Transform[] _chanceCards;
         private Transform[] _documents;
         private Transform _startArrow;
 
@@ -529,6 +538,7 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_prices[i] != null) _prices[i].transform.localRotation = rotation;
                 if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
                 if (_documents[i] != null) _documents[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
+                if (_chanceCards[i] != null) _chanceCards[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
             }
 
             foreach (KeyValuePair<Transform, Vector3> mark in _marks) mark.Key.localRotation = LabelRotation(mark.Value, yaw);
@@ -967,6 +977,7 @@ namespace Lazpoly.Presentation.Tabletop
             _printed = new bool[board.Count];
             _names = new TextMesh[board.Count];
             _chanceMarks = new TextMesh[board.Count];
+            _chanceCards = new Transform[board.Count];
             _documents = new Transform[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
@@ -987,7 +998,7 @@ namespace Lazpoly.Presentation.Tabletop
                 // the tile (TownSkin); a resort is sand with its sea; the other squares one colour.
                 bool town = square.Type == SquareType.Property && !square.IsResort;
                 bool printed = town || square.IsResort;
-                Color body = printed ? Color.white : Color.Lerp(TileColor(square, data), PaperColor, Pastel);
+                Color body = printed ? Color.white : TileBody(square, data);
                 GameObject tileObject = ModelParts.Create($"Square {i:00} {square.Name}", transform,
                     MeshFactory.RoundedBox(new Vector3(size.x, TileHeight, size.y), TileEdgeRadius, 2), body, 0.05f);
                 ModelParts.Skin(tileObject, town ? TownSkin(outward, size, BandColor(TileColor(square, data)))
@@ -1035,8 +1046,15 @@ namespace Lazpoly.Presentation.Tabletop
                 }
                 else if (IsChance(i))
                 {
-                    _chanceMarks[i] = CreateLabel("Chance mark", "?", center + down * (_depth * ChanceMarkOffset) + Vector3.up * top, outward,
-                        _width * ChanceMarkSize, new Vector2(size.x * NameFill, _depth * ChanceMarkDepth), ChanceMarkColor);
+                    // Two fanned cards printed flat, and the big "?" on the front one.
+                    float fit = Mathf.Min(size.x * NameFill / ChancePrint.Area.width, _depth * ChanceMarkDepth / ChancePrint.Area.height);
+                    Vector3 mark = center + down * (_depth * ChanceMarkOffset);
+                    GameObject cards = ChancePrint.Create("Chance cards", transform, fit, FloorPrint.PrintedPaper, ChanceDeep, ChanceGold);
+                    cards.transform.localPosition = mark + Vector3.up * (TileHeight + 0.001f);
+                    cards.transform.localRotation = PrintRotation(outward, _yaw);
+                    _chanceCards[i] = cards.transform;
+                    _chanceMarks[i] = CreateLabel("Chance mark", "?", mark + Vector3.up * top, outward,
+                        _width * ChanceMarkSize, ChancePrint.MarkRoom * fit, ChanceDeep);
                 }
                 else
                 {
@@ -1508,6 +1526,9 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The flat "?" printed on a Şans square, or null on any other square.</summary>
         public TextMesh ChanceMark(int index) => _chanceMarks != null ? _chanceMarks[index] : null;
 
+        /// <summary>The cards printed on a Şans square (<see cref="ChancePrint"/>); null on any other square.</summary>
+        public Transform ChanceCards(int index) => _chanceCards != null ? _chanceCards[index] : null;
+
         private float NameCharacterSize(int index) => _width * NameSize * NameScale(index);
 
         private Vector2 NameRoom(int index, Vector2 size)
@@ -1814,6 +1835,10 @@ namespace Lazpoly.Presentation.Tabletop
             label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
         }
 
+        /// <summary>A plain tile's colour on the paper: its own colour washed to a pastel, but a Şans square's jade as it is.</summary>
+        public static Color TileBody(SquareDefinition square, BoardData data) =>
+            square.Type == SquareType.Card ? ChanceColor : Color.Lerp(TileColor(square, data), PaperColor, Pastel);
+
         private static Color TileColor(SquareDefinition square, BoardData data)
         {
             switch (square.Type)
@@ -1821,7 +1846,7 @@ namespace Lazpoly.Presentation.Tabletop
                 case SquareType.Start: return StartColor;
                 case SquareType.Tax: return TaxColor;
                 case SquareType.Property: return square.IsResort ? SandColor : data.GroupColor(square.GroupId);
-                case SquareType.Card: return CardColor;
+                case SquareType.Card: return ChanceColor;
                 case SquareType.Cup: return CupColor;
                 case SquareType.Pot: return PotColor;
                 case SquareType.Jail: return JailColor;

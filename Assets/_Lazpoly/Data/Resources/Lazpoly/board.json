@@ -46,8 +46,8 @@
         { "type": "card", "name": "Şans" },
         { "type": "property", "name": "Paris", "price": 380000, "rent": 150000, "group": 7, "buildingCost": 180000, "rents": [225000, 295000, 370000, 440000, 510000] },
         { "type": "property", "name": "Londra", "price": 400000, "rent": 160000, "group": 7, "buildingCost": 180000, "rents": [230000, 305000, 375000, 450000, 520000] },
-        { "type": "property", "name": "New York", "price": 440000, "rent": 175000, "group": 8, "buildingCost": 200000, "rents": [255000, 335000, 415000, 495000, 575000] },
         { "type": "resort", "name": "Maldivler", "price": 200000, "rent": 25000, "group": 9 },
+        { "type": "property", "name": "New York", "price": 440000, "rent": 175000, "group": 8, "buildingCost": 200000, "rents": [255000, 335000, 415000, 495000, 575000] },
         { "type": "property", "name": "İstanbul", "price": 500000, "rent": 200000, "group": 8, "buildingCost": 200000, "rents": [280000, 360000, 440000, 520000, 600000] },
         { "type": "tax", "name": "Vergi", "percent": 10 }
     ],
