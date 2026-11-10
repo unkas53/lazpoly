@@ -72,8 +72,8 @@ namespace Lazpoly.Presentation.Models
             Palm(root, new Vector3(-PalmSpread, 0f, PalmBack), 0f);
             Palm(root, new Vector3(PalmSpread, 0f, PalmBack + 0.04f), 180f);
             // A bush at each palm's foot, on the outer side, clear of the huts.
-            Part(root, "Bush", MeshFactory.Sphere(10), Bush, new Vector3(-PalmSpread - 0.045f, 0.015f, PalmBack - 0.06f), new Vector3(0.05f, 0.035f, 0.045f));
-            Part(root, "Bush", MeshFactory.Sphere(10), Bush, new Vector3(PalmSpread + 0.045f, 0.015f, PalmBack + 0.08f), new Vector3(0.045f, 0.03f, 0.04f));
+            Part(root, "Bush", MeshFactory.Sphere(10), Bush, new Vector3(-PalmSpread - 0.045f, 0.035f, PalmBack - 0.06f), new Vector3(0.05f, 0.035f, 0.045f));
+            Part(root, "Bush", MeshFactory.Sphere(10), Bush, new Vector3(PalmSpread + 0.045f, 0.03f, PalmBack + 0.08f), new Vector3(0.045f, 0.03f, 0.04f));
             return root;
         }
 
