@@ -1027,30 +1027,30 @@ namespace Lazpoly.Presentation.Game
                 BusView bus = _board.Bus;
                 int town = (_board.StationSquare + _session.Board.Count / 2 - 3) % _session.Board.Count;
                 BusRoute way = _board.BusRouteTo(town);
-                Vector3 stood = rider.transform.position, size = rider.transform.localScale;
+                Vector3 stood = rider.transform.position;
                 Vector3 stop = _board.transform.TransformPoint(bus.ParkedSpot);
                 CameraRig.SetView(BoardCameraRig.BaseYaw, BoardCameraRig.MinZoom);
                 CameraRig.Hold(stop);
                 Vector3 ground = _board.SquarePosition(_board.StationSquare);
                 ground.y = stood.y;
-                rider.transform.position = PawnView.BoardingPoint(ground, bus.Roof, 0.5f);
-                rider.transform.localScale = Vector3.one * PawnView.BoardingSize(0.5f);
+                rider.RideAt(bus.Roof);
+                rider.transform.position = PawnView.BoardingPoint(ground, bus.Roof, 0.8f);
+                rider.transform.localScale = Vector3.one * PawnView.BoardingSize(0.8f);
                 yield return ScreenTour.Take("otobus-binis");
-                rider.transform.localScale = Vector3.zero;
                 foreach ((string frame, float distance) in new[] { ("otobus-iniyor", 1.9f), ("otobus-yolda", way.Length * 0.6f), ("otobus-sehirde", way.Length) })
                 {
                     bus.Show(way, Mathf.Min(distance, way.Length));
+                    rider.RideAt(bus.Roof);
                     CameraRig.Hold(bus.transform.position);
                     yield return ScreenTour.Take(frame);
                 }
 
                 ground = _board.SquarePosition(town);
                 ground.y = stood.y;
-                rider.transform.position = PawnView.BoardingPoint(ground, bus.Roof, 0.5f);
-                rider.transform.localScale = Vector3.one * PawnView.BoardingSize(0.5f);
+                rider.transform.position = PawnView.BoardingPoint(ground, bus.Roof, 0.8f);
+                rider.transform.localScale = Vector3.one * PawnView.BoardingSize(0.8f);
                 yield return ScreenTour.Take("otobus-inis");
-                rider.transform.position = stood;
-                rider.transform.localScale = size;
+                rider.PlaceOn(rider.Square);
                 CameraRig.Hold(stop);
                 yield return ScreenTour.Take("otobus-duraksiz");
                 bus.Park();

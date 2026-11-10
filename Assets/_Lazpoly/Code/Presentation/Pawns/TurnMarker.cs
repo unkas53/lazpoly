@@ -5,7 +5,8 @@ namespace Lazpoly.Presentation.Pawns
 {
     /// <summary>
     /// A flat ring in the player's colour under the pawn whose turn it is. It follows the pawn
-    /// (without taking on its squash and stretch) and breathes slowly so the eye finds it.
+    /// (without taking on its squash and stretch) and breathes slowly so the eye finds it. It stays away while
+    /// the pawn rides the bus (<see cref="PawnView.Riding"/>), or it would hang in the air where the pawn got in.
     /// </summary>
     public sealed class TurnMarker : MonoBehaviour
     {
@@ -36,9 +37,12 @@ namespace Lazpoly.Presentation.Pawns
             LateUpdate();
         }
 
+        /// <summary>Whether the ring shows under <paramref name="pawn"/>: a pawn on the board that is not riding the bus.</summary>
+        public static bool Shows(PawnView pawn) => pawn != null && pawn.gameObject.activeInHierarchy && !pawn.Riding;
+
         private void LateUpdate()
         {
-            bool shown = _pawn != null && _pawn.gameObject.activeInHierarchy;
+            bool shown = Shows(_pawn);
             if (_renderer.enabled != shown) _renderer.enabled = shown;
             if (!shown) return;
 

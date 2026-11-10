@@ -76,6 +76,9 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>The square the pawn stands on (or is walking from).</summary>
         public int Square => _square;
 
+        /// <summary>True from the hop into the bus until the piece lands on its square again: its turn's ring stays away meanwhile.</summary>
+        public bool Riding { get; private set; }
+
         /// <param name="crowd">Shared by every pawn on the board, so two never take the same slot of a square.</param>
         /// <param name="playerId">The pawn's key in <paramref name="crowd"/>.</param>
         /// <param name="figure">The character the player plays as (a figure id); another figure stands in when its files are missing.</param>
@@ -137,6 +140,7 @@ namespace Lazpoly.Presentation.Pawns
         {
             transform.position = Reserve(square);
             _square = square;
+            Riding = false;
             SetStretch(1f); // Its own size again, were it caught riding the bus.
         }
 
@@ -219,6 +223,7 @@ namespace Lazpoly.Presentation.Pawns
         {
             float speed = Mathf.Max(Speed, 0.1f);
             Vector3 from = transform.position;
+            Riding = true;
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / BoardingSeconds)
             {
                 transform.position = BoardingPoint(from, seat, t);
@@ -226,6 +231,14 @@ namespace Lazpoly.Presentation.Pawns
                 yield return null;
             }
 
+            transform.position = seat;
+            transform.localScale = Vector3.zero;
+        }
+
+        /// <summary>Keeps the piece, out of sight, in the bus at <paramref name="seat"/> (world space) while the bus drives.</summary>
+        public void RideAt(Vector3 seat)
+        {
+            Riding = true;
             transform.position = seat;
             transform.localScale = Vector3.zero;
         }
@@ -244,6 +257,7 @@ namespace Lazpoly.Presentation.Pawns
 
             transform.position = to;
             _square = destination;
+            Riding = false;
             Stepped?.Invoke(destination);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / SquashSeconds)
             {

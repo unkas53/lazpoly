@@ -24,7 +24,15 @@ namespace Lazpoly.Presentation.Pawns
             bus.Park();
             yield return pawn.HopInto(bus.Roof);
             BusRoute way = board.BusRouteTo(destination);
-            yield return bus.Drive(way, BusRoute.Seconds(way.Length) / speed);
+            // The piece rides along out of sight, so it gets out where the bus stands and whatever looks for it finds it there.
+            IEnumerator drive = bus.Drive(way, BusRoute.Seconds(way.Length) / speed);
+            while (drive.MoveNext())
+            {
+                pawn.RideAt(bus.Roof);
+                yield return drive.Current;
+            }
+
+            pawn.RideAt(bus.Roof);
             yield return pawn.HopOutOf(bus.Roof, destination);
             BusRoute home = board.BusRouteHome(destination);
             bus.DriveHome(home, BusRoute.Seconds(home.Length) / speed);

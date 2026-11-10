@@ -181,8 +181,20 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsTrue(BusTrip.CanCarry(board, pawn));
                 Assert.IsFalse(BusTrip.CanCarry(null, pawn));
                 Assert.IsFalse(BusTrip.CanCarry(board, null));
-                pawn.transform.localScale = Vector3.zero;
+
+                // In the bus the piece is out of sight where the bus is, and its turn's ring stays away with it.
+                Assert.IsFalse(pawn.Riding);
+                Assert.IsTrue(TurnMarker.Shows(pawn));
+                pawn.RideAt(bus.Roof);
+                Assert.IsTrue(pawn.Riding);
+                AssertNear(bus.Roof, pawn.transform.position);
+                AssertNear(Vector3.zero, pawn.transform.localScale);
+                Assert.IsFalse(TurnMarker.Shows(pawn), "no ring hangs in the air while its piece rides");
+                Assert.AreEqual(station, pawn.Square, "it keeps its square until it gets out");
                 pawn.PlaceOn(0);
+                Assert.IsFalse(pawn.Riding);
+                Assert.IsTrue(TurnMarker.Shows(pawn));
+                Assert.IsFalse(TurnMarker.Shows(null));
                 AssertNear(Vector3.one, pawn.transform.localScale, "a piece put back on a square has its size again");
             }
             finally
