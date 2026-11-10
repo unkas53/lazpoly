@@ -1024,7 +1024,7 @@ namespace Lazpoly.Presentation.Game
             if (CameraRig != null && _board.Bus != null && _pawns.TryGetValue(person, out PawnView rider) && rider != null)
             {
                 BusView bus = _board.Bus;
-                BusRoute way = _board.BusRouteTo((_board.StationSquare + _session.Board.Squares.Count / 2 - 3) % _session.Board.Squares.Count);
+                BusRoute way = _board.BusRouteTo((_board.StationSquare + _session.Board.Count / 2 - 3) % _session.Board.Count);
                 Vector3 stood = rider.transform.position, size = rider.transform.localScale;
                 CameraRig.SetView(BoardCameraRig.BaseYaw, BoardCameraRig.MinZoom);
                 CameraRig.Peek(bus.Roof);
