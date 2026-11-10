@@ -34,7 +34,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The front card's room for the "?" (inside its outline), in page units.</summary>
         public static readonly Vector2 MarkRoom = new Vector2(0.34f, 0.56f);
 
-        public const int PictureWidth = 256;
+        /// <summary>Like the tax document's: the cards are no bigger on the screen, and the three pictures are made at once when the board is built.</summary>
+        public const int PictureWidth = 192;
 
         private const float Layer = 0.003f;
 
@@ -88,7 +89,7 @@ namespace Lazpoly.Presentation.Tabletop
         public static bool IsGold(float x, float z)
         {
             // The pips: small diamonds in the front card's top left and bottom right, like a playing card's corners.
-            Vector2 card = ToCard(x, z, Vector2.zero, FrontLean);
+            Vector2 card = ToCard(x, z, Vector2.zero, FrontCos, FrontSin);
             if (Mathf.Abs(card.x + 0.175f) + Mathf.Abs(card.y - 0.28f) <= 0.035f) return true;
             if (Mathf.Abs(card.x - 0.175f) + Mathf.Abs(card.y + 0.28f) <= 0.035f) return true;
             if (InFront(x, z, 0f) || InBack(x, z, 0f)) return false;
@@ -96,22 +97,27 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>Whether the point lies on the front card, <paramref name="inset"/> in from its edge.</summary>
-        public static bool InFront(float x, float z, float inset) => InCard(ToCard(x, z, Vector2.zero, FrontLean), inset);
+        public static bool InFront(float x, float z, float inset) => InCard(ToCard(x, z, Vector2.zero, FrontCos, FrontSin), inset);
 
         /// <summary>Whether the point lies on the card behind, <paramref name="inset"/> in from its edge.</summary>
-        public static bool InBack(float x, float z, float inset) => InCard(ToCard(x, z, BackAt, BackLean), inset);
+        public static bool InBack(float x, float z, float inset) => InCard(ToCard(x, z, BackAt, BackCos, BackSin), inset);
+
+        // The leans' cosines and sines, worked out once: the pictures ask about some two million points.
+        private static readonly float FrontCos = Mathf.Cos(FrontLean * Mathf.Deg2Rad), FrontSin = Mathf.Sin(FrontLean * Mathf.Deg2Rad);
+        private static readonly float BackCos = Mathf.Cos(BackLean * Mathf.Deg2Rad), BackSin = Mathf.Sin(BackLean * Mathf.Deg2Rad);
 
         // The point in a card's own frame (x across it, y up it): its turn undone as in Quaternion.Euler(0, lean, 0).
-        private static Vector2 ToCard(float x, float z, Vector2 at, float lean)
+
+        private static Vector2 ToCard(float x, float z, Vector2 at, float cos, float sin)
         {
             float dx = x - at.x, dz = z - at.y;
-            float radians = lean * Mathf.Deg2Rad, cos = Mathf.Cos(radians), sin = Mathf.Sin(radians);
             return new Vector2(dx * cos - dz * sin, dx * sin + dz * cos);
         }
 
         // A rounded rectangle the card's size, shrunk by inset all round.
         private static bool InCard(Vector2 p, float inset)
         {
+            if (Mathf.Abs(p.x) > CardSize.x / 2f || Mathf.Abs(p.y) > CardSize.y / 2f) return false;
             float round = Mathf.Max(CardRound - inset, 0.005f);
             float qx = Mathf.Abs(p.x) - (CardSize.x / 2f - inset - round);
             float qy = Mathf.Abs(p.y) - (CardSize.y / 2f - inset - round);
