@@ -26,7 +26,7 @@ namespace Lazpoly.Presentation.Menu
         public static readonly Rect SettingsTop = new Rect(1750f, 40f, 70f, 76f);
 
         /// <summary>The logo, about square: from under the profile card down to the tagline.</summary>
-        public static readonly Rect Logo = new Rect(110f, 106f, 610f, 318f);
+        public static readonly Rect Logo = new Rect(110f, 120f, 610f, 304f);
         public static readonly Rect Tagline = new Rect(140f, 428f, 650f, 46f);
         public static readonly Rect Subtitle = new Rect(140f, 474f, 640f, 32f);
 

@@ -12,6 +12,6 @@ ChatGPT) depodan kaldırıldı; git geçmişinde durur.
 Oyundaki kopyalar `Tools/Art/make_logo.py` ile yazılır: resim gösterdiği kısma kırpılır (10 piksel pay kalır), neredeyse
 opak pikselleri tam opak yapılır ve PNG olarak iki yere yazılır: `Assets/_Lazpoly/UI/Resources/Lazpoly/Art/logo.bytes`
 (`MenuArt`: tahtanın çimenliği) ve `Menu/Lazpoly_Logo.bytes` (`KitArt`: ana menü, yükleme ekranları). Uygulama simgesi
-sahibin isteğiyle logodaki karakterdir: şapkalı başı yakasıyla (256x256) ve 48 piksel ve altı için daha sıkı kırpılmış
+sahibin isteğiyle logodaki karakterdir, altın çerçeveli yuvarlak bir madalyon içinde: şapkalı başı yakasıyla (256x256) ve 48 piksel ve altı için daha sıkı kırpılmış
 yüzü (64x64). Aynı betik oyuncu kartı kitindeki eski adı ve "L" mühürlerini de `Tools/Art/brand_kit.py` ile yeniler.
 Steam görselleri ve simgeleri: `Tools/Art/make_capsules.py`.

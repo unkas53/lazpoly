@@ -346,8 +346,8 @@ namespace Lazpoly.Presentation.Tests
             string smallMeta = File.ReadAllText(Path.Combine(project, "Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon-small.png.meta"));
             string smallGuid = System.Text.RegularExpressions.Regex.Match(smallMeta, @"guid: ([0-9a-f]{32})").Groups[1].Value;
             Assert.That(settings, Does.Contain("m_BuildTarget: Standalone"), "the desktop player lists its icon sizes");
-            Assert.That(settings, Does.Contain($"guid: {smallGuid}, type: 3}}\n      m_Width: 16"), "the 16 pixel icon is the medallion");
-            Assert.That(settings, Does.Contain($"guid: {guid}, type: 3}}\n      m_Width: 256"), "the 256 pixel icon is the whole logo");
+            Assert.That(settings, Does.Contain($"guid: {smallGuid}, type: 3}}\n      m_Width: 16"), "the 16 pixel icon is the character's face, cropped tighter");
+            Assert.That(settings, Does.Contain($"guid: {guid}, type: 3}}\n      m_Width: 256"), "the 256 pixel icon is the character in his medallion");
 
             Texture2D icon = MenuArt.Decode(File.ReadAllBytes(iconPath), "test icon");
             try
@@ -355,7 +355,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsNotNull(icon);
                 Assert.AreEqual(256, icon.width);
                 Assert.AreEqual(256, icon.height);
-                Assert.That(icon.GetPixel(1, 1).a, Is.LessThan(0.02f), "the icon's corner is see-through");
+                Assert.That(icon.GetPixel(1, 1).a, Is.LessThan(0.02f), "the icon's corner is see-through, outside the round medallion");
             }
             finally
             {
