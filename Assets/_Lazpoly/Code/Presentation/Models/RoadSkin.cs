@@ -38,6 +38,9 @@ namespace Lazpoly.Presentation.Models
         public const float LineAt = 0.58f;
         public const float LaneOuter = 0.94f;
 
+        /// <summary>The middle of the asphalt across the strip: where the bus drives (<see cref="Tabletop.BoardView.Lane"/>).</summary>
+        public const float LaneMiddle = (LaneInner + LaneOuter) / 2f;
+
         /// <summary>The painted line's width, as a share of the strip's width.</summary>
         public const float LineShare = 0.12f;
 
@@ -56,11 +59,20 @@ namespace Lazpoly.Presentation.Models
         /// <summary>How many of the sand's grains are small stones.</summary>
         public const float Stones = 0.035f;
 
-        /// <summary>How far from the road's middle the painted line runs along a straight side, for a strip that is <paramref name="strip"/> of the road's size wide.</summary>
-        public static float LineReach(float strip) => 1f - 2f * strip * (1f - LineAt);
+        /// <summary>
+        /// How far from the road's middle a track runs along a straight side, for a strip that is <paramref name="strip"/>
+        /// of the road's size wide; <paramref name="at"/> is where the track lies across the strip (0 lawn, 1 squares).
+        /// </summary>
+        public static float Reach(float strip, float at) => 1f - 2f * strip * (1f - at);
 
-        /// <summary>The radius of the line's bend at a corner: the lawn's own corner, as far out as the line runs from the lawn.</summary>
-        public static float LineBend(float strip) => (1f - 2f * strip) * LawnShape.Corner + 2f * strip * LineAt;
+        /// <summary>The radius of that track's bend at a corner: the lawn's own corner, as far out as the track runs from the lawn.</summary>
+        public static float Bend(float strip, float at) => (1f - 2f * strip) * LawnShape.Corner + 2f * strip * at;
+
+        /// <summary>How far from the road's middle the painted line runs along a straight side.</summary>
+        public static float LineReach(float strip) => Reach(strip, LineAt);
+
+        /// <summary>The radius of the line's bend at a corner.</summary>
+        public static float LineBend(float strip) => Bend(strip, LineAt);
 
         /// <summary>How long the line is over a quarter of the way round: a straight side and a bend.</summary>
         public static float QuarterLength(float strip) => 2f * (LineReach(strip) - LineBend(strip)) + Mathf.PI / 2f * LineBend(strip);

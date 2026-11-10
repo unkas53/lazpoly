@@ -24,8 +24,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The radius of the round the bus swings out of its parking place, until its nose points at the gate.</summary>
         public const float SwingRadius = 0.45f;
 
-        /// <summary>The bus on the road is this much of its size at the stop, so it fits the lane.</summary>
-        public const float RoadScale = 0.8f;
+        /// <summary>The bus on the road is this much of its size at the stop, so it fits the asphalt (at 0.8 it hung over both edges).</summary>
+        public const float RoadScale = 0.6f;
 
         /// <summary>The step from the squares down to the road is driven as a ramp: it starts this far inside the square's edge and ends this far out on the road.</summary>
         public const float RampOnSquare = 0.15f;

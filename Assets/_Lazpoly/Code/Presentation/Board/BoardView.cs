@@ -311,7 +311,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The station's bus, which takes a player along the road (the owner's wish, 2026-11-10); null when the diorama or the bus is not in the build.</summary>
         public BusView Bus => _bus;
 
-        /// <summary>The road's painted line round the lawn, in the board's frame: the bus drives along it.</summary>
+        /// <summary>The middle of the road's asphalt round the lawn, in the board's frame: the bus drives along it, over the painted line.</summary>
         public RoadPath Lane => _lane;
 
         /// <summary>The bus's way from its stop to the road and along it to the point nearest <paramref name="square"/>.</summary>
@@ -1339,7 +1339,7 @@ namespace Lazpoly.Presentation.Tabletop
             float strip = (1f - LawnShare) / 2f;
             ModelParts.Skin(road, RoadSkin.Create(strip));
             road.transform.localPosition = new Vector3(0f, RoadHeight / 2f, 0f);
-            _lane = new RoadPath(RoadSkin.LineReach(strip) * inner / 2f, RoadSkin.LineBend(strip) * inner / 2f);
+            _lane = new RoadPath(RoadSkin.Reach(strip, RoadSkin.LaneMiddle) * inner / 2f, RoadSkin.Bend(strip, RoadSkin.LaneMiddle) * inner / 2f);
 
             // A natural, matt meadow whose edge wanders instead of running dead straight (the owner's wish, 2026-11-10; it
             // was mowed diamonds inside a cream border on a straight-edged box).

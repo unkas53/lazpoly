@@ -76,8 +76,13 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(SquareType.Travel, data.Board[station].Type);
                 RoadPath lane = board.Lane;
                 float inner = board.Inner, strip = (1f - BoardView.LawnShare) / 2f;
-                Assert.AreEqual(RoadSkin.LineReach(strip) * inner / 2f, lane.Reach, 1e-4f, "the bus drives along the painted line");
-                Assert.AreEqual(RoadSkin.LineBend(strip) * inner / 2f, lane.Bend, 1e-4f);
+                Assert.AreEqual(RoadSkin.Reach(strip, RoadSkin.LaneMiddle) * inner / 2f, lane.Reach, 1e-4f, "the bus drives along the middle of the asphalt");
+                Assert.AreEqual(RoadSkin.Bend(strip, RoadSkin.LaneMiddle) * inner / 2f, lane.Bend, 1e-4f);
+                Assert.AreEqual((RoadSkin.LaneInner + RoadSkin.LaneOuter) / 2f, RoadSkin.LaneMiddle, 1e-6f);
+                Assert.AreEqual(RoadSkin.LineReach(strip), RoadSkin.Reach(strip, RoadSkin.LineAt), 1e-6f);
+                Assert.AreEqual(RoadSkin.LineBend(strip), RoadSkin.Bend(strip, RoadSkin.LineAt), 1e-6f);
+                // Both tracks bend round the same middle, so the bus keeps its place across the asphalt round the corners.
+                Assert.AreEqual(RoadSkin.LineReach(strip) - RoadSkin.LineBend(strip), RoadSkin.Reach(strip, RoadSkin.LaneMiddle) - RoadSkin.Bend(strip, RoadSkin.LaneMiddle), 1e-6f);
 
                 // The squares lie along the line in their own order: once round takes in every square once.
                 float round = 0f;
@@ -105,6 +110,10 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(board.SurfaceY + bus.StopRise, parkedHeight, 1e-4f);
                 Assert.Greater(lane.Reach + BusModel.Width * bus.Size * BusRoute.RoadScale / 2f, 0f);
                 Assert.Less(lane.Reach + BusModel.Width * bus.Size * BusRoute.RoadScale / 2f, edge, "on the road the bus stays off the squares");
+                // On the road the bus is no wider than the asphalt, counted to the middle of its sandy edges.
+                float asphalt = (RoadSkin.LaneOuter - RoadSkin.LaneInner - RoadSkin.Feather) * strip * inner;
+                Assert.LessOrEqual(BusModel.Width * bus.Size * BusRoute.RoadScale, asphalt, "the bus fits the asphalt");
+                Assert.GreaterOrEqual(BusModel.Width * bus.Size * BusRoute.RoadScale, asphalt * 0.6f, "without looking lost on it");
 
                 for (int square = 0; square < board.Layout.SquareCount; square++)
                 {

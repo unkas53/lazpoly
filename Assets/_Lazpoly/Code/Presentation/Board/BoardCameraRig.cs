@@ -39,6 +39,7 @@ namespace Lazpoly.Presentation.Tabletop
         private float _yaw = BaseYaw;
         private float _zoom = 1f;
         private Vector3? _peek;
+        private Vector3? _held;
 
         public float Yaw => _yaw;
         public float Zoom => _zoom;
@@ -71,6 +72,19 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>Slides the view part of the way towards a point on the board (a pinned square); null lets it go.</summary>
         public void Peek(Vector3? worldPoint) => _peek = worldPoint;
+
+        /// <summary>
+        /// Holds the view on a point of the board, whatever is pinned (the screenshot presets use it to show one spot
+        /// from near); null lets it go.
+        /// </summary>
+        public void Hold(Vector3? worldPoint) => _held = worldPoint;
+
+        /// <summary>Where the view aims while it is held on <paramref name="held"/>: on that point, kept on the board, at the aim's own height.</summary>
+        public static Vector3 HeldAim(Vector3 aim, Vector3 held, Vector3 boardCenter, float halfExtent)
+        {
+            Vector3 target = ClampToBoard(held, boardCenter, halfExtent);
+            return new Vector3(target.x, aim.y, target.z);
+        }
 
         /// <summary>A point held inside the board's square, so the view cannot be pulled off the plate.</summary>
         public static Vector3 ClampToBoard(Vector3 point, Vector3 boardCenter, float halfExtent)
@@ -117,7 +131,7 @@ namespace Lazpoly.Presentation.Tabletop
 
         private void Apply(bool snap)
         {
-            Vector3 aim = PeekAim(_aim, _peek, _boardCenter, _boardHalfExtent);
+            Vector3 aim = _held.HasValue ? HeldAim(_aim, _held.Value, _boardCenter, _boardHalfExtent) : PeekAim(_aim, _peek, _boardCenter, _boardHalfExtent);
             Vector3 position = Place(aim, Pitch, _yaw, Distance);
             Quaternion rotation = Quaternion.Euler(Pitch, _yaw, 0f);
             float size = SizeAt(_baseSize, _zoom);

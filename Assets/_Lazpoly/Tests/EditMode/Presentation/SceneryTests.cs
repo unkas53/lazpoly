@@ -616,6 +616,10 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(aim.y, peeked.y, "the aim keeps its height");
             Vector3 farPeek = BoardCameraRig.PeekAim(aim, new Vector3(100f, 0f, 3f), center, 6f);
             Assert.That(Vector3.Distance(farPeek, peeked), Is.LessThan(1e-4f), "a point off the board counts as its edge");
+
+            // Held on a point (the screenshot presets): right on it, at the aim's own height, never off the board.
+            Assert.AreEqual(new Vector3(5f, aim.y, -1f), BoardCameraRig.HeldAim(aim, new Vector3(5f, 0.9f, -1f), center, 6f));
+            Assert.AreEqual(new Vector3(7f, aim.y, -4f), BoardCameraRig.HeldAim(aim, new Vector3(40f, 0f, -50f), center, 6f));
         }
 
         [Test]
