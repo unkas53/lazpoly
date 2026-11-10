@@ -6,10 +6,13 @@ Assets/LazpolyMainMenu/Art and Sprites folders copied into one place) and writte
     Assets/_Lazpoly/UI/Resources/Lazpoly/Art/Menu/<name>.bytes
 which the game decodes with KitArt (Texture2D.LoadImage), like the logo. The city background has no
 see-through parts, so it is stored as JPEG (a tenth of the PNG's size);
-the buttons, panels, icons and the wide logo stay PNG for their transparency. The 9-slice borders of the
+the buttons, panels and icons stay PNG for their transparency. The kit's wide logo is no longer taken from the kit:
+make_logo.py writes the Cash Father logo in its place (Lazpoly_Logo.bytes). The 9-slice borders of the
 buttons and panels are not in the pictures: KitArt.Borders holds them (from the kit's SpriteManifest.json).
 The kits' character portraits are no longer used: since Faz 21 the characters are the 3D figures, and
 Tools/Art/make_figure_portraits.py draws their pictures from the figures themselves.
+The player card kit printed the game's old name (LAZPOLY) and an "L" seal and coin; brand_kit.py puts
+Cash Father and a "$" on them as they are imported.
 Run from the repository root: python3 Tools/Art/make_menu_art.py <kit folder>
 """
 import os
@@ -17,10 +20,13 @@ import sys
 
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import brand_kit  # noqa: E402
+
 TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "Menu")
 PHOTOS = ["Higgsfield_City_Background"]
 CUTOUTS = [
-    "Lazpoly_Logo", "Panel", "Chip", "Circle",
+    "Panel", "Chip", "Circle",
     "Primary_Normal", "Primary_Hover", "Primary_Pressed", "Primary_Disabled",
     "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
     "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
@@ -53,7 +59,7 @@ def write_meta(path):
 def main(source):
     os.makedirs(TARGET, exist_ok=True)
     for name in PHOTOS + CUTOUTS:
-        picture = Image.open(os.path.join(source, name + ".png"))
+        picture = brand_kit.repaint(name, Image.open(os.path.join(source, name + ".png")), os.getcwd())
         target = os.path.join(TARGET, name + ".bytes")
         if name in PHOTOS:
             picture.convert("RGB").save(target, "JPEG", quality=JPEG_QUALITY, optimize=True, progressive=False)

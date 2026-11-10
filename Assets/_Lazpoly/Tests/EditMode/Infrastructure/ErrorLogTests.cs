@@ -44,7 +44,7 @@ namespace Lazpoly.Infra.Tests
             log.Append(DateTime.Now, "Error", "second", "trace");
 
             string text = File.ReadAllText(log.Path);
-            StringAssert.Contains("RUN  Lazpoly 1.2.3 (Test)", text);
+            StringAssert.Contains("RUN  Cash Father 1.2.3 (Test)", text);
             Assert.Less(text.IndexOf("first", StringComparison.Ordinal), text.IndexOf("second", StringComparison.Ordinal));
         }
 

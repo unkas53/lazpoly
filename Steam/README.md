@@ -5,7 +5,7 @@ Gerçek App ID gelmeden yapılabilecek her şey hazır; aşağıdaki **App ID ge
 
 ## 1. App ID (App ID gerekli)
 
-1. Steam Direct ücretini öde, Steamworks'te Lazpoly uygulamasını aç; App ID ve Windows depot numarasını not al.
+1. Steam Direct ücretini öde, Steamworks'te Cash Father uygulamasını aç; App ID ve Windows depot numarasını not al.
 2. `Assets/_Lazpoly/Code/Platform/Steam/SteamSettings.cs` içinde `AppId`'yi yeni numara yap.
 3. Proje kökündeki `steam_appid.txt` dosyasına aynı numarayı yaz (yalnızca geliştirme içindir, mağaza derlemesine girmez).
 4. `app_build.vdf` ve `depot_build_windows.vdf` içindeki `APP_ID` ve `DEPOT_ID` yerlerine numaraları yaz.
@@ -54,7 +54,9 @@ Steamworks > Request Steam Product Keys'ten iste ya da Playtest uygulamasını a
 
 ## 5. Mağaza görselleri (Faz 7d)
 
-`Steam/Art/` içindeki görseller `python Tools/Art/make_capsules.py` ile üretilir (Pillow gerekir; dışarıdan resim kullanılmaz).
+`Steam/Art/` içindeki görseller `python Tools/Art/make_capsules.py` ile üretilir (Pillow gerekir). Logo proje sahibinin
+Cash Father logosudur (`Tools/Art/Logo/cash-father-logo.png`); gece göğü, altın parıltı ve şehir silueti kodla çizilir.
+Steam kuralı gereği `library_hero` ve `page_background` üstünde logo ya da yazı yoktur.
 Steamworks > Store Presence > Graphical Assets bölümüne yüklenecek dosyalar:
 
 | Dosya | Boyut | Yer |
@@ -78,7 +80,7 @@ beyan edilecek içerik:
 | İçerik | Nerede | Not |
 |---|---|---|
 | Bina modelleri (arsa, Ev 1-4, otel; sahipli şehir işareti ve binalar) | `Tools/Art/Models/Buildings`, oyunda `buildings.bytes` | Proje sahibi ChatGPT ile üretti (2026-11-04); ayrıntı `KAYNAK.md` |
-| Logo (ana menü bandı, tahtanın çimenliği, açılış ekranı, exe simgesi) | `Tools/Art/Logo`, oyunda `logo.bytes` | Proje sahibi ChatGPT ile üretti; kaynaktaki portre oyun kopyasında boyanarak kaldırıldı (`KAYNAK.md`) |
+| Cash Father logosu (ana menü, yükleme ekranları, tahtanın çimenliği, exe simgesi, Steam görselleri): taçlı altın "CASH", gümüş "FATHER", tahtta puro içen takım elbiseli adam, zarlar, para desteleri, sikkeler, gece şehri | `Tools/Art/Logo/cash-father-logo.png`, oyunda `logo.bytes` ve `Menu/Lazpoly_Logo.bytes` (`Tools/Art/make_logo.py`), `Steam/Art` (`Tools/Art/make_capsules.py`) | Proje sahibi 2026-11-10'da verdi (eski Lazpoly logosunun yerine); üretim aracı sahibe sorulacak, görünüşü yapay zekâ ile üretilmiş gibi (`Logo/KAYNAK.md`) |
 | Ana menü / lobi konsept ekranları | `Tools/Art/Design/Menu` | Yalnız başvuru (ChatGPT); oyunda yalnızca düzen ve tarz kodla kuruldu, görsel kullanılmadı |
 | Ana menü kiti: şehir arka planı, geniş logo | oyunda `Resources/Lazpoly/Art/Menu` (`Tools/Art/make_menu_art.py`) | Proje sahibinin kiti (2026-11-05): arka plan Higgsfield (nano_banana_2_1) ile üretildi; düğme, panel ve simgeler kitin kendi çizimi (SVG). Kitin karakter portreleri Faz 21'de oyundan çıktı |
 | Oyuncu kartı kiti: kart zeminleri (normal, sırada, iflas), çerçeve, şerit, para, ev ve süre çizgisi | oyunda `Resources/Lazpoly/Art/Menu` (`Tools/Art/make_menu_art.py`) | Proje sahibinin kiti (2026-11-05): kart parçaları kitin kendi çizimi (SVG) |

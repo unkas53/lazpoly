@@ -1,260 +1,126 @@
-"""Lazpoly logo ve Steam mağaza görsellerini üretir.
+"""Cash Father: Steam mağaza görsellerini ve logo dosyalarını üretir.
 
-Dışarıdan resim kullanmaz: akşamüstü deniz, fener, martılar ve masadaki tahta çizilerek
-her boyut aynı sahneden kesilir. Yazı tipi oyundaki Nunito (OFL).
+Logo proje sahibinin resmidir (Tools/Art/Logo/cash-father-logo.png, kaynağı Logo/KAYNAK.md); burada yalnızca
+kırpılır, küçültülür ve logonun gece şehri, altın ve siyah renklerinde kod ile çizilen bir zeminin üstüne konur:
+koyu bir gece göğü, logonun arkasında yumuşak altın bir parıltı ve altta ışıklı pencereli bir şehir silueti.
+Steam kuralı gereği library_hero ve page_background üstünde logo ya da yazı yoktur (Steam logoyu kendisi koyar).
 
 Kullanım:  python Tools/Art/make_capsules.py [çıktı klasörü]
 Varsayılan çıktı: Steam/Art
 """
-import math
 import os
+import random
 import sys
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import make_logo  # noqa: E402
+
 FONT = os.path.join(ROOT, "Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Fonts", "Nunito-Bold.ttf")
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "Steam", "Art")
 
-# Oyun içi paletle aynı: gece lacivert, kum, gün batımı turuncusu, turkuaz.
-NAVY = (13, 23, 33)
-DUSK = (52, 44, 78)
-AMBER = (250, 178, 61)
-SUNSET = (242, 118, 72)
-SAND = (245, 237, 219)
-SEA = (31, 102, 138)
-SEA_DEEP = (18, 56, 84)
-TEAL = (41, 148, 153)
-WOOD = (92, 58, 37)
-TILE = (236, 226, 200)
-RED = (196, 60, 48)
-WHITE = (250, 248, 240)
-
-SIZES = {
-    "header_capsule": (460, 215),
-    "small_capsule": (231, 87),
-    "main_capsule": (616, 353),
-    "library_capsule": (600, 900),
-    "library_hero": (3840, 1240),
-    "page_background": (1438, 810),
-}
+NIGHT_TOP = (8, 9, 14)
+NIGHT_LOW = (30, 26, 34)
+GOLD = (240, 186, 72)
+TOWER = (18, 18, 24)
+WINDOW = (255, 206, 110)
+CREAM = (250, 236, 200)
+TAGLINE = "Dünya şehirlerinde mülk oyunu"
 
 
 def lerp(a, b, t):
     return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
 
 
-def font(size):
-    return ImageFont.truetype(FONT, int(size))
-
-
-def sky(img, horizon):
-    w, h = img.size
+def night(w, h):
+    img = Image.new("RGBA", (w, h))
     d = ImageDraw.Draw(img)
-    for y in range(horizon):
-        t = y / max(horizon - 1, 1)
-        colour = lerp(NAVY, DUSK, t * 1.6) if t < 0.6 else lerp(DUSK, SUNSET, (t - 0.6) / 0.4)
-        d.line([(0, y), (w, y)], fill=colour)
-    for y in range(horizon, h):
-        t = (y - horizon) / max(h - horizon - 1, 1)
-        d.line([(0, y), (w, y)], fill=lerp(SEA, SEA_DEEP, t))
+    for y in range(h):
+        d.line([(0, y), (w, y)], fill=lerp(NIGHT_TOP, NIGHT_LOW, y / max(h - 1, 1)))
+    return img
 
 
-def sun(img, cx, cy, r):
-    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    g = ImageDraw.Draw(glow)
-    g.ellipse([cx - r * 3, cy - r * 3, cx + r * 3, cy + r * 3], fill=AMBER + (90,))
-    glow = glow.filter(ImageFilter.GaussianBlur(r * 1.2))
-    img.alpha_composite(glow)
-    d = ImageDraw.Draw(img)
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=AMBER)
-    # Sea reflection: broken streaks under the sun, on their own layer so the alpha blends.
-    streaks = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    sd = ImageDraw.Draw(streaks)
-    for i in range(8):
-        y = cy + r * (1.6 + i * 0.75)
-        half = r * (0.35 + i * 0.22)
-        sd.line([(cx - half, y), (cx + half, y)], fill=AMBER + (150 - i * 14,), width=max(2, r // 10))
-    img.alpha_composite(streaks)
+def glow(img, cx, cy, rx, ry, strength=110):
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(layer).ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=GOLD + (strength,))
+    img.alpha_composite(layer.filter(ImageFilter.GaussianBlur(max(rx, ry) * 0.45)))
 
 
-def hills(img, horizon):
+def skyline(img, base, height, seed):
+    """A row of dark towers along the bottom with a few lit windows; the same seed draws the same city."""
     w, h = img.size
+    rng = random.Random(seed)
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
-    for k, (height, shade) in enumerate([(0.22, (34, 44, 66)), (0.13, (22, 36, 52))]):
-        pts = [(0, horizon)]
-        for x in range(0, w + 40, 40):
-            y = horizon - height * horizon * (0.55 + 0.45 * math.sin(x / (w * 0.13) + k * 2.1) * math.cos(x / (w * 0.31) + k))
-            pts.append((x, y))
-        pts.append((w, horizon))
-        d.polygon(pts, fill=shade)
+    x = -rng.uniform(0, height * 0.2)
+    while x < w:
+        tw = height * rng.uniform(0.12, 0.26)
+        th = height * rng.uniform(0.35, 1.0)
+        top = base - th
+        d.rectangle([x, top, x + tw, h], fill=TOWER + (255,))
+        if rng.random() < 0.3:
+            d.rectangle([x + tw * 0.4, top - th * 0.12, x + tw * 0.6, top], fill=TOWER + (255,))
+        step = max(3.0, height * 0.035)
+        wy = top + step
+        while wy < base - step:
+            wx = x + step * 0.8
+            while wx < x + tw - step:
+                if rng.random() < 0.28:
+                    d.rectangle([wx, wy, wx + step * 0.45, wy + step * 0.55], fill=WINDOW + (rng.randint(120, 230),))
+                wx += step
+            wy += step * 1.1
+        x += tw + height * rng.uniform(0.0, 0.05)
     img.alpha_composite(layer)
 
 
-def lighthouse(img, x, base_y, height):
+def place_logo(img, logo, cx, cy, height):
+    scale = height / logo.height
+    if logo.width * scale > img.width * 0.94:
+        scale = img.width * 0.94 / logo.width
+    shrunk = logo.resize((max(1, round(logo.width * scale)), max(1, round(logo.height * scale))), Image.LANCZOS)
+    img.alpha_composite(shrunk, (round(cx - shrunk.width / 2), round(cy - shrunk.height / 2)))
+    return shrunk.size
+
+
+def tagline(img, cx, y, size):
     d = ImageDraw.Draw(img)
-    wb, wt = height * 0.16, height * 0.11
-    d.polygon([(x - wb, base_y), (x + wb, base_y), (x + wt, base_y - height), (x - wt, base_y - height)], fill=WHITE)
-    for i in range(3):
-        y0 = base_y - height * (0.15 + i * 0.3)
-        y1 = y0 - height * 0.12
-        d.polygon([(x - wb, y0), (x + wb, y0), (x + wt, y1), (x - wt, y1)], fill=RED)
-    top = base_y - height
-    lantern = height * 0.16
-    d.rectangle([x - wt * 1.2, top - lantern, x + wt * 1.2, top], fill=NAVY)
-    d.rectangle([x - wt * 0.9, top - lantern * 0.85, x + wt * 0.9, top - lantern * 0.15], fill=AMBER)
-    d.polygon([(x - wt * 1.5, top - lantern), (x + wt * 1.5, top - lantern), (x, top - lantern * 1.8)], fill=RED)
-    beam = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    b = ImageDraw.Draw(beam)
-    cy = top - lantern * 0.5
-    b.polygon([(x, cy), (x - height * 2.4, cy - height * 0.45), (x - height * 2.4, cy + height * 0.25)], fill=AMBER + (70,))
-    beam = beam.filter(ImageFilter.GaussianBlur(height * 0.03))
-    img.alpha_composite(beam)
-    # Rock under the tower.
-    d.ellipse([x - wb * 2.4, base_y - height * 0.08, x + wb * 2.4, base_y + height * 0.1], fill=(40, 32, 30))
+    f = ImageFont.truetype(FONT, int(size))
+    left, top, right, bottom = d.textbbox((0, 0), TAGLINE, font=f)
+    d.text((cx - (right - left) / 2 - left, y - top), TAGLINE, font=f, fill=CREAM)
 
 
-def gulls(img, spots, size):
-    d = ImageDraw.Draw(img)
-    for (x, y) in spots:
-        s = size
-        d.line([(x - s, y), (x - s * 0.4, y - s * 0.55), (x, y)], fill=SAND, width=max(2, int(s * 0.18)), joint="curve")
-        d.line([(x, y), (x + s * 0.4, y - s * 0.55), (x + s, y)], fill=SAND, width=max(2, int(s * 0.18)), joint="curve")
-
-
-def board(img, cx, top, width, depth):
-    """The game board in perspective: a cream ring of squares around a sea centre, on dark wood."""
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
-
-    def quad(u0, v0, u1, v1):
-        # u across (0..1), v back-to-front (0 = far edge). Far edge narrower.
-        def pt(u, v):
-            half = width * (0.62 + 0.38 * v) / 2
-            return (cx - half + half * 2 * u, top + depth * v)
-        return [pt(u0, v0), pt(u1, v0), pt(u1, v1), pt(u0, v1)]
-
-    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    ImageDraw.Draw(shadow).polygon(quad(-0.04, -0.03, 1.04, 1.08), fill=(0, 0, 0, 140))
-    layer.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(width * 0.02)))
-    d.polygon(quad(-0.03, -0.02, 1.03, 1.05), fill=WOOD)
-    d.polygon(quad(0, 0, 1, 1), fill=TILE)
-    d.polygon(quad(0.11, 0.11, 0.89, 0.89), fill=SEA)
-    # Square separators.
-    n = 11
-    for i in range(1, n):
-        u = i / n
-        p = quad(u, 0, u, 1)
-        d.line([p[0], p[3]], fill=lerp(TILE, WOOD, 0.45), width=2)
-    for i in range(1, n):
-        v = i / n
-        p = quad(0, v, 1, v)
-        d.line([p[0], p[1]], fill=lerp(TILE, WOOD, 0.45), width=2)
-    # Colour bands on the squares.
-    bands = [TEAL, SUNSET, AMBER, (120, 90, 170), (210, 70, 90), (90, 160, 90), (60, 120, 200), (230, 180, 60)]
-    for i in range(1, n - 1):
-        colour = bands[i % len(bands)]
-        d.polygon(quad(i / n, 0.11 - 0.025, (i + 1) / n, 0.11), fill=colour)
-        d.polygon(quad(i / n, 0.89, (i + 1) / n, 0.89 + 0.025), fill=bands[(i + 3) % len(bands)])
-        d.polygon(quad(0.11 - 0.025, i / n, 0.11, (i + 1) / n), fill=bands[(i + 5) % len(bands)])
-        d.polygon(quad(0.89, i / n, 0.89 + 0.025, (i + 1) / n), fill=bands[(i + 1) % len(bands)])
-    # Island in the sea.
-    island = quad(0.42, 0.44, 0.62, 0.66)
-    d.ellipse([island[0][0], island[0][1], island[2][0], island[2][1]], fill=(206, 184, 130))
-    d.ellipse([island[0][0] + 6, island[0][1] + 5, island[2][0] - 6, island[2][1] - 6], fill=(96, 142, 78))
-    # Houses and a mansion.
-    for (u, v, colour, size) in [(0.5, 0.52, RED, 0.035), (0.56, 0.58, RED, 0.03), (0.47, 0.6, WOOD, 0.045)]:
-        q = quad(u, v, u + size, v + size)
-        d.polygon(q, fill=colour)
-        d.polygon([q[0], q[1], ((q[0][0] + q[1][0]) / 2, q[0][1] - width * size * 0.6)], fill=(60, 40, 35))
-    # Pawns: a tea glass and a boat as simple silhouettes.
-    for (u, v, colour) in [(0.14, 0.3, TEAL), (0.86, 0.5, AMBER), (0.3, 0.95, SUNSET), (0.6, 0.05, (190, 90, 190))]:
-        q = quad(u, v, u + 0.05, v + 0.05)
-        x, y = (q[0][0] + q[2][0]) / 2, (q[0][1] + q[2][1]) / 2
-        r = width * 0.02
-        d.ellipse([x - r, y - r * 0.5, x + r, y + r * 0.5], fill=(0, 0, 0, 90))
-        d.rounded_rectangle([x - r * 0.7, y - r * 2.2, x + r * 0.7, y], radius=r * 0.4, fill=colour)
-        d.ellipse([x - r * 0.9, y - r * 3.2, x + r * 0.9, y - r * 1.6], fill=colour)
-    img.alpha_composite(layer)
-
-
-def title(img, cx, cy, size, tagline=True, align="center"):
-    d = ImageDraw.Draw(img)
-    f = font(size)
-    text = "LAZPOLY"
-    bbox = d.textbbox((0, 0), text, font=f)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    x = cx - tw / 2 if align == "center" else cx
-    y = cy - th / 2
-    shadow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    ImageDraw.Draw(shadow).text((x - bbox[0] + size * 0.04, y - bbox[1] + size * 0.06), text, font=f, fill=(0, 0, 0, 170))
-    img.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(size * 0.04)))
-    d.text((x - bbox[0], y - bbox[1]), text, font=f, fill=SAND)
-    d.rounded_rectangle([x, y + th + size * 0.12, x + tw, y + th + size * 0.12 + size * 0.07], radius=size * 0.03, fill=AMBER)
-    if tagline:
-        f2 = font(size * 0.3)
-        tag = "Dünya şehirlerinde mülk oyunu"
-        b2 = d.textbbox((0, 0), tag, font=f2)
-        tx = cx - (b2[2] - b2[0]) / 2 if align == "center" else cx
-        d.text((tx - b2[0], y + th + size * 0.32), tag, font=f2, fill=SAND)
-
-
-def scene(w, h, title_size, title_at, board_at, tagline=True, align="center"):
-    """Draws at double size and shrinks, so edges stay smooth."""
+def capsule(logo, w, h, logo_at=None, logo_height=0.0, with_tagline=False, seed=1):
+    """Drawn at double size and shrunk, so edges stay smooth. logo_at None: no logo (hero, page background)."""
     s = 2
     W, H = w * s, h * s
-    img = Image.new("RGBA", (W, H))
-    horizon = int(H * 0.46)
-    sky(img, horizon)
-    sun(img, int(W * 0.68), horizon - int(H * 0.03), int(H * 0.07))
-    hills(img, horizon)
-    lighthouse(img, int(W * 0.86), horizon + int(H * 0.04), int(min(H * 0.34, W * 0.3)))
-    gulls(img, [(W * 0.56, H * 0.09), (W * 0.62, H * 0.05), (W * 0.68, H * 0.11)], H * 0.02)
-    bx, by, bw, bd = board_at
-    board(img, int(W * bx), int(H * by), int(W * bw), int(H * bd))
-    # Darken the bottom a touch so the title and board separate from the sea.
-    veil = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    vd = ImageDraw.Draw(veil)
-    for y in range(int(H * 0.55), H):
-        a = int(110 * (y - H * 0.55) / (H * 0.45))
-        vd.line([(0, y), (W, y)], fill=(5, 8, 14, a))
-    img.alpha_composite(veil)
-    tx, ty = title_at
-    title(img, int(W * tx), int(H * ty), title_size * s, tagline, align)
+    img = night(W, H)
+    cx, cy = (W * logo_at[0], H * logo_at[1]) if logo_at else (W * 0.5, H * 0.45)
+    glow(img, cx, cy, W * 0.42, H * 0.36)
+    skyline(img, H * 1.0, H * (0.32 if logo_at else 0.42), seed)
+    if logo_at:
+        _, lh = place_logo(img, logo, cx, cy, H * logo_height)
+        if with_tagline:
+            tagline(img, cx, cy + lh / 2 + H * 0.02, max(16, H * 0.045))
     return img.resize((w, h), Image.LANCZOS).convert("RGB")
-
-
-def logo(size):
-    """Square app icon: the lighthouse on its rock against the dusk, inside a rounded tile."""
-    s = 2
-    S = size * s
-    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    tile = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    sky(tile, int(S * 0.6))
-    sun(tile, int(S * 0.3), int(S * 0.56), int(S * 0.09))
-    lighthouse(tile, int(S * 0.62), int(S * 0.72), int(S * 0.5))
-    gulls(tile, [(S * 0.25, S * 0.25), (S * 0.36, S * 0.2)], S * 0.04)
-    mask = Image.new("L", (S, S), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, S - 1, S - 1], radius=S * 0.2, fill=255)
-    img.paste(tile, (0, 0), mask)
-    return img.resize((size, size), Image.LANCZOS)
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    scene(460, 215, 62, (0.36, 0.26), (0.36, 0.5, 0.6, 0.45), tagline=False).save(os.path.join(OUT, "header_capsule.png"))
-    scene(231, 87, 30, (0.36, 0.3), (0.36, 0.55, 0.62, 0.4), tagline=False).save(os.path.join(OUT, "small_capsule.png"))
-    scene(616, 353, 84, (0.36, 0.24), (0.36, 0.48, 0.6, 0.48)).save(os.path.join(OUT, "main_capsule.png"))
-    scene(600, 900, 80, (0.44, 0.17), (0.5, 0.5, 0.95, 0.42)).save(os.path.join(OUT, "library_capsule.png"))
-    scene(3840, 1240, 360, (0.26, 0.3), (0.52, 0.6, 0.36, 0.4), align="center").save(os.path.join(OUT, "library_hero.png"))
-    scene(1438, 810, 160, (0.3, 0.2), (0.4, 0.5, 0.55, 0.45)).save(os.path.join(OUT, "page_background.png"))
-    # Library logo: transparent, title only (Steam lays it over the hero).
-    lg = Image.new("RGBA", (1280 * 2, 720 * 2), (0, 0, 0, 0))
-    title(lg, 1280, 640, 400, tagline=True)
-    lg.resize((1280, 720), Image.LANCZOS).save(os.path.join(OUT, "library_logo.png"))
-    logo(1024).save(os.path.join(OUT, "logo_1024.png"))
-    logo(256).save(os.path.join(OUT, "logo_256.png"))
+    logo = make_logo.load_logo(ROOT)
+    capsule(logo, 460, 215, (0.5, 0.5), 0.9).save(os.path.join(OUT, "header_capsule.png"))
+    capsule(logo, 231, 87, (0.5, 0.5), 0.94).save(os.path.join(OUT, "small_capsule.png"))
+    capsule(logo, 616, 353, (0.5, 0.44), 0.74, with_tagline=True).save(os.path.join(OUT, "main_capsule.png"))
+    capsule(logo, 600, 900, (0.5, 0.36), 0.42, with_tagline=True, seed=2).save(os.path.join(OUT, "library_capsule.png"))
+    capsule(logo, 3840, 1240, seed=3).save(os.path.join(OUT, "library_hero.png"))
+    capsule(logo, 1438, 810, seed=4).save(os.path.join(OUT, "page_background.png"))
+    # Library logo: the logo alone on a see-through ground (Steam lays it over the hero).
+    lg = Image.new("RGBA", (1280, 720), (0, 0, 0, 0))
+    place_logo(lg, logo, 640, 360, 700)
+    lg.save(os.path.join(OUT, "library_logo.png"))
+    make_logo.fit_square(logo, 1024).save(os.path.join(OUT, "logo_1024.png"))
+    make_logo.fit_square(logo, 256).save(os.path.join(OUT, "logo_256.png"))
     print("yazıldı:", OUT)
 
 

@@ -12,7 +12,7 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Perf
 {
     /// <summary>
-    /// The automatic performance run: started with <c>Lazpoly.exe -perf</c>, the menu opens a table of
+    /// The automatic performance run: started with <c>CashFather.exe -perf</c>, the menu opens a table of
     /// eight computer players at once, the probe measures for <see cref="Seconds"/>, the report lands in
     /// <c>lazpoly-perf.txt</c> next to the game and the game quits. The build step runs it after every build.
     /// The run leaves the player's save slot alone (see GameSceneController.SaveLocalGame).

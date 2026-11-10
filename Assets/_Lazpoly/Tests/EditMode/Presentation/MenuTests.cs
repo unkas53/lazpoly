@@ -271,15 +271,23 @@ namespace Lazpoly.Presentation.Tests
             try
             {
                 Assert.IsNotNull(logo, "the bytes are a picture");
-                Assert.AreEqual(640, logo.width);
-                Assert.AreEqual(640, logo.height);
+                // The Cash Father logo, trimmed to its picture: wide, as the menu and the lawn show it.
+                Assert.That(logo.height, Is.GreaterThanOrEqualTo(600), "sharp at 4K");
+                Assert.That((float)logo.width / logo.height, Is.InRange(1.4f, 1.7f), "the wide logo, not the old square one");
                 Assert.That(logo.GetPixel(2, 2).a, Is.LessThan(0.02f), "the corner is see-through");
                 Assert.That(logo.GetPixel(logo.width - 3, logo.height - 3).a, Is.LessThan(0.02f), "the other corner is see-through");
                 Assert.That(logo.GetPixel(logo.width / 2, logo.height / 2).a, Is.GreaterThan(0.98f), "the middle is painted");
-                // The medallion at the top right holds the navy mark now, not the portrait: no skin tones there.
-                Color medallion = logo.GetPixel(logo.width * 3 / 4, logo.height * 3 / 5);
-                Assert.That(medallion.a, Is.GreaterThan(0.98f), "the medallion is painted");
-                Assert.That(medallion.b, Is.GreaterThan(medallion.r), $"the medallion is blue, not a face: {medallion}");
+                Color medallion = logo.GetPixel(logo.width / 2, logo.height * 15 / 100);
+                Assert.That(medallion.a, Is.GreaterThan(0.98f), "the dollar medallion under the lettering is painted");
+                Assert.That(medallion.r > 0.6f && medallion.r > medallion.g && medallion.g > medallion.b, $"and gold: {medallion}");
+
+                Vector2 extent = BoardView.TitleExtent(logo);
+                Assert.AreEqual(BoardView.TitleSize, extent.x, "the lawn's logo is as wide as before");
+                Assert.AreEqual(BoardView.TitleSize * logo.height / logo.width, extent.y, 1e-5f, "and not stretched to a square");
+
+                var kit = Resources.Load<TextAsset>("Lazpoly/Art/Menu/" + MenuKit.Logo);
+                Assert.IsNotNull(kit, "the menu kit's wide logo is there too");
+                CollectionAssert.AreEqual(asset.bytes, kit.bytes, "the menu, the loading screens and the lawn show the same logo");
             }
             finally
             {
@@ -316,7 +324,7 @@ namespace Lazpoly.Presentation.Tests
             string settings = File.ReadAllText(Path.Combine(project, "ProjectSettings", "ProjectSettings.asset")).Replace("\r\n", "\n");
             Assert.That(settings, Does.Contain("m_ShowUnitySplashScreen: 0"), "the Unity splash is off");
             Assert.That(settings, Does.Contain("m_ShowUnitySplashLogo: 0"));
-            Assert.That(settings, Does.Contain("\n  productName: Lazpoly\n"), "the window title reads Lazpoly, capital L");
+            Assert.That(settings, Does.Contain("\n  productName: Cash Father\n"), "the window title reads the game's name");
             Assert.That(settings, Does.Contain("\n  companyName: DefaultCompany\n"), "the saves and settings stay where they are until the release moves them");
             // Before our first frame the player clears the window to the loading screen's paper, not to dark grey or white.
             Assert.That(settings, Does.Contain("m_SplashScreenBackgroundColor: {r: 1, g: 0.9921569, b: 0.9607843, a: 1}"));

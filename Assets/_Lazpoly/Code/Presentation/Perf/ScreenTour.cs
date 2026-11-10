@@ -12,7 +12,7 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Perf
 {
     /// <summary>
-    /// The screen tour: started with <c>Lazpoly.exe -shots</c>, the game opens its windows one after another and
+    /// The screen tour: started with <c>CashFather.exe -shots</c>, the game opens its windows one after another and
     /// keeps a picture of each in <c>lazpoly-shots</c> next to the game, then quits, so every window's look can
     /// be checked on a build without a hand on the mouse. The menu shows its home screen, characters, settings,
     /// how to play, each mode's sheet and the table rules; then a table of a person and three computers opens

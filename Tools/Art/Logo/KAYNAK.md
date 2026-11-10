@@ -1,14 +1,15 @@
 # Kaynak ve kullanım hakkı
 
-`lazpoly-logo.jpg` proje sahibi **mami** tarafından 2026-11-03'te yüklendi; kendi beyanına göre **ChatGPT** ile üretildi.
-Üç boyutlu çokgen "LAZPOLY" harfleri, zar, binalar, ev, ağaçlar ve masa tahtası içerir. Kaynakta sağ üstteki altın
-madalyonun içinde fotoğraf gerçekliğinde, sigaralı bir adam portresi vardı; gerçek bir kişiye benzeme (kişilik
-hakları, Steam içerik kuralları) ve sigaranın yaş derecelendirmesine etkisi nedeniyle proje sahibi kaldırılmasını
-istedi (2026-11-03 16:08). Kaynak dosya olduğu gibi durur; oyuna giden kopyada madalyonun içi `make_logo.py`
-tarafından yeniden boyanır (logonun kendi mavilerinde iki tonlu lacivert disk ve beyaz "L", Nunito Bold).
+`cash-father-logo.png` (1774x887, saydam zeminli PNG) proje sahibi **mami** tarafından 2026-11-10'da oyunun yeni adıyla
+birlikte verildi ("oyunumuzun adını CASH FATHER olarak değiştiriyoruz bu da yeni logomuz"). Taçlı altın "CASH",
+gümüş "FATHER" harfleri, altta "$" madalyonu ve yıldızlar; yanlarda zarlar, para desteleri ve altın sikkeler; arkada gece
+şehri; üstte altın-siyah bir tahtta oturan, güneş gözlüklü, puro içen, takım elbiseli bir adam. Üretim aracı henüz
+yazılmadı; görünüşü yapay zekâ ile üretilmiş gibi, Steam içerik beyanına eklenmeli (`Steam/README.md` §6).
 
-Oyundaki kopya: `Tools/Art/make_logo.py` önce madalyonu boyar, sonra beyaz zemini kenarlardan taşırmalı
-doldurmayla (eşik 236) şeffaflığa çevirir, kareye kırpar, 640x640'a küçültür ve
-`Assets/_Lazpoly/UI/Resources/Lazpoly/Art/logo.bytes` (PNG) olarak yazar. Oyun onu `MenuArt` ile açar: ana menünün
-yeşil bandında (sol üst) ve oyun tahtasının çimenliğinde (`BoardView`, `PicturePlate` + `Lazpoly/Picture`
-gölgelendiricisi) gösterir; dosya yoksa ikisi de adı yazıyla gösterir. Steam içerik beyanı: `Steam/README.md` §6.
+Eski logo (`lazpoly-logo.jpg`, ChatGPT ile üretilmişti) depodan kaldırıldı; git geçmişinde durur.
+
+Oyundaki kopyalar `Tools/Art/make_logo.py` ile yazılır: resim gösterdiği kısma kırpılır (10 piksel pay kalır), neredeyse
+opak pikselleri tam opak yapılır ve PNG olarak iki yere yazılır: `Assets/_Lazpoly/UI/Resources/Lazpoly/Art/logo.bytes`
+(`MenuArt`: tahtanın çimenliği) ve `Menu/Lazpoly_Logo.bytes` (`KitArt`: ana menü, yükleme ekranları). Aynı betik exe
+simgesini (logo kareye sığdırılmış, 256x256) ve küçük boyutlar için çizilmiş altın "$" sikkesini yazar, oyuncu kartı
+kitindeki eski adı ve "L" mühürlerini de `Tools/Art/brand_kit.py` ile yeniler. Steam görselleri: `Tools/Art/make_capsules.py`.

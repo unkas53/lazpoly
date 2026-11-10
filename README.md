@@ -1,4 +1,7 @@
-# Lazpoly
+# Cash Father
+
+Oyunun adı 2026-11-10'a kadar Lazpoly idi; kod, klasörler, ad alanları ve depo bu adı korur. Oyuncunun gördüğü ad
+(pencere, logo, exe `CashFather.exe`, Steam görselleri) Cash Father'dır.
 
 Steam için 3D, 2-8 oyunculu çevrim içi masa oyunu. Mimari ve yol haritası:
 https://claude.ai/artifact/3hqmWm5rQuN5tmmuMwSXNn

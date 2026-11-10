@@ -17,6 +17,9 @@ namespace Lazpoly.Editor
     public static class StoreBuild
     {
         public const string OutputFolder = "Builds/Store/windows";
+
+        /// <summary>The player's file name: the game's name without the space, so command lines need no quotes.</summary>
+        public const string ExeName = "CashFather.exe";
         private const string AllowDevelopmentAppIdFlag = "-allowDevelopmentAppId";
 
         [MenuItem("Lazpoly/Build Store Version")]
@@ -41,7 +44,7 @@ namespace Lazpoly.Editor
             var options = new BuildPlayerOptions
             {
                 scenes = scenes,
-                locationPathName = Path.Combine(OutputFolder, "Lazpoly.exe"),
+                locationPathName = Path.Combine(OutputFolder, ExeName),
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,
             };

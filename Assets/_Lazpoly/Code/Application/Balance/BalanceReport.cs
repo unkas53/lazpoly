@@ -21,7 +21,7 @@ namespace Lazpoly.App.Balance
             var text = new StringBuilder();
             int finished = result.Rounds.Count;
 
-            text.AppendLine("# Lazpoly denge raporu");
+            text.AppendLine("# Cash Father denge raporu");
             text.AppendLine();
             text.AppendLine($"{result.Games} oyun, {settings.Players} bilgisayar oyuncu, ilk tohum {settings.FirstSeed}. " +
                             $"Başlangıç parası {rules.StartingMoney}, " +

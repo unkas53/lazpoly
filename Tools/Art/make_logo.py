@@ -1,160 +1,100 @@
 #!/usr/bin/env python3
-"""Turns the Lazpoly logo picture (Tools/Art/Logo/lazpoly-logo.jpg, on a white ground) into the menu's logo asset.
+"""Turns the Cash Father logo (Tools/Art/Logo/cash-father-logo.png, see KAYNAK.md there) into the game's brand assets.
 
-The picture is a JPEG on plain white. Its top right held a photo-like portrait of a man with a cigarette in a
-gold medallion; the owner asked for the portrait to go (likeness and age-rating risk), so the medallion's inside
-is repainted first: a two-tone navy disc in the picture's own blues with a white "L" (Nunito Bold) on it. The menu shows the logo over the green masthead and the paper window,
-so the white ground has to go: every near-white pixel that connects to the picture's border is made transparent
-(a flood fill, so the white faces of the dice and the letters inside the picture stay), the edge gets one pixel
-of softening, and the result is written as a PNG whose bytes ship as a TextAsset:
-    Assets/_Lazpoly/UI/Resources/Lazpoly/Art/logo.bytes
-The game reads it with MenuArt (Texture2D.LoadImage). The same picture is also written as the player's icon
-(Assets/_Lazpoly/Art/Textures/lazpoly-icon.png, 256x256, set as the default icon in ProjectSettings).
+The picture comes with a see-through ground, so it is only trimmed to what it shows (a small margin kept), its
+nearly opaque pixels made fully opaque, and written as PNG bytes that ship as TextAssets:
+    Assets/_Lazpoly/UI/Resources/Lazpoly/Art/logo.bytes            (MenuArt: the lawn's logo, the fallback logo)
+    Assets/_Lazpoly/UI/Resources/Lazpoly/Art/Menu/Lazpoly_Logo.bytes (KitArt: the main menu, the loading screens)
+The same picture, fitted into a square, is the player's icon (Cash Father.exe, the window title):
+    Assets/_Lazpoly/Art/Textures/lazpoly-icon.png (256x256)
+and at the sizes where the whole logo is a smear (48 and under) a drawn coin in the logo's gold and black with a
+"$" on it, like the medallion under the lettering:
+    Assets/_Lazpoly/Art/Textures/lazpoly-icon-small.png (64x64)
+The player card kit printed the old name and an "L" on its pictures; brand_kit.py repaints them (also run here).
+The asset names keep their old "Lazpoly" spelling: they are internal, and keeping them keeps Unity's guids.
 Run from the repository root: python3 Tools/Art/make_logo.py
 """
 import os
 import sys
-from collections import deque
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
-SOURCE = os.path.join("Tools", "Art", "Logo", "lazpoly-logo.jpg")
-TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "logo.bytes")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import brand_kit  # noqa: E402
+
+SOURCE = os.path.join("Tools", "Art", "Logo", "cash-father-logo.png")
+TARGETS = [
+    os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "logo.bytes"),
+    os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "Menu", "Lazpoly_Logo.bytes"),
+]
 ICON = os.path.join("Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon.png")
-ICON_SIZE = 256     # The player's icon at 256 and 128 (Lazpoly.exe's big icon, the window title); Unity scales 128 from it.
+ICON_SIZE = 256
 SMALL_ICON = os.path.join("Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon-small.png")
-SMALL_ICON_SIZE = 64  # The 48, 32 and 16 pixel icons (task bar, Explorer lists): the medallion alone, since the whole logo is a smear that small.
-SIZE = 640          # The menu shows it 160 pixels tall at 1080p; 640 keeps it sharp on a 4K screen and in a bigger interface size.
-WHITE = 236         # A pixel whose darkest channel is at least this counts as the white ground.
-SHADOW_TOP = 850    # Rows from here down (under the lettering) may hold the picture's drop shadow.
-SHADOW_MIN = 150    # A shadow pixel is at least this bright...
-SHADOW_SPREAD = 20  # ...and grey: its channels no further apart than this.
+SMALL_ICON_SIZE = 64
+MARGIN = 10          # Pixels of see-through ground kept round the trimmed picture, so its soft edge is not cut.
+SOLID = 245          # Alpha from here up counts as opaque (the source's opaque parts carry 251-253).
 
-# The gold medallion round the portrait, measured on the 1254x1254 source (least-squares fit of the ring's gold pixels):
-# centre, the ring's inner radius and the radius of the disc painted over the portrait (a little under the ring).
-MEDALLION_CENTRE = (952, 520)
-MEDALLION_INNER = 100
-MEDALLION_FILL = 104
-NAVY_LIGHT = (28, 96, 160)    # The picture's lighter facet blue (top left of the disc).
-NAVY_DEEP = (10, 58, 106)     # Its deep blue (bottom right).
-MARK_FONT = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Fonts", "Nunito-Bold.ttf")
+GOLD_LIGHT = (255, 214, 102)
+GOLD = (222, 160, 40)
+GOLD_DEEP = (150, 94, 18)
+BLACK = (16, 14, 12)
+MARK_FONT = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Fonts", "Nunito-Black.ttf")
 
 
-def remove_portrait(image, root):
-    """Paints the medallion's inside over: a navy disc split light/deep along the diagonal, with a white L."""
-    cx, cy = MEDALLION_CENTRE
-    r = MEDALLION_FILL
-    box = (cx - r, cy - r, cx + r, cy + r)
+def load_logo(root):
+    """The logo trimmed to its picture, with opaque pixels fully opaque."""
+    image = Image.open(os.path.join(root, SOURCE)).convert("RGBA")
+    alpha = image.getchannel("A").point(lambda a: 255 if a >= SOLID else a)
+    image.putalpha(alpha)
+    left, top, right, bottom = alpha.point(lambda a: 255 if a > 8 else 0).getbbox()
+    box = (max(0, left - MARGIN), max(0, top - MARGIN), min(image.width, right + MARGIN), min(image.height, bottom + MARGIN))
+    return image.crop(box)
+
+
+def fit_square(picture, size):
+    """The picture scaled to fit a see-through square, centred."""
+    scale = size / max(picture.width, picture.height)
+    shrunk = picture.resize((max(1, round(picture.width * scale)), max(1, round(picture.height * scale))), Image.LANCZOS)
+    square = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    square.alpha_composite(shrunk, ((size - shrunk.width) // 2, (size - shrunk.height) // 2))
+    return square
+
+
+def coin(size, root):
+    """The small icon: a gold-rimmed black coin with a gold "$", drawn four times bigger and scaled down."""
+    big = size * 4
+    image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
-    draw.ellipse(box, fill=NAVY_DEEP)
-    disc = Image.new("L", image.size, 0)
-    ImageDraw.Draw(disc).ellipse(box, fill=255)
-    upper_left = Image.new("L", image.size, 0)
-    ImageDraw.Draw(upper_left).polygon([(cx - r, cy - r), (cx + r, cy - r), (cx - r, cy + r)], fill=255)
-    image.paste(Image.new("RGB", image.size, NAVY_LIGHT), (0, 0), ImageChops.multiply(disc, upper_left))
-    font = ImageFont.truetype(os.path.join(root, MARK_FONT), int(MEDALLION_INNER * 1.35))
-    left, top, right, bottom = draw.textbbox((0, 0), "L", font=font)
-    draw.text((cx - (right - left) / 2 - left, cy - (bottom - top) / 2 - top + MEDALLION_INNER * 0.02), "L", font=font, fill=(252, 252, 250))
+    m = big * 0.02
+    draw.ellipse((m, m, big - m, big - m), fill=GOLD_DEEP + (255,))
+    m2 = big * 0.05
+    draw.ellipse((m2, m2, big - m2, big - m2), fill=GOLD + (255,))
+    m3 = big * 0.09
+    draw.pieslice((m3, m3, big - m3, big - m3), 135, 315, fill=GOLD_LIGHT + (255,))
+    m4 = big * 0.15
+    draw.ellipse((m4, m4, big - m4, big - m4), fill=BLACK + (255,))
+    font = ImageFont.truetype(os.path.join(root, MARK_FONT), int(big * 0.62))
+    left, top, right, bottom = draw.textbbox((0, 0), "$", font=font)
+    draw.text((big / 2 - (right - left) / 2 - left, big / 2 - (bottom - top) / 2 - top), "$", font=font, fill=GOLD_LIGHT + (255,))
+    return image.resize((size, size), Image.LANCZOS)
 
 
 def main():
     root = os.getcwd()
-    source = os.path.join(root, SOURCE)
-    if not os.path.exists(source):
-        sys.exit(f"missing {source}; run from the repository root")
-    image = Image.open(source).convert("RGB")
-    remove_portrait(image, root)
-    width, height = image.size
-    pixels = image.load()
+    if not os.path.exists(os.path.join(root, SOURCE)):
+        sys.exit(f"missing {SOURCE}; run from the repository root")
+    logo = load_logo(root)
+    for target in TARGETS:
+        path = os.path.join(root, target)
+        logo.save(path, format="PNG", optimize=True)
+        print(f"wrote {target}: {logo.width}x{logo.height} PNG, {os.path.getsize(path) // 1024} KB")
 
-    ground = bytearray(width * height)
-    queue = deque()
-    for x in range(width):
-        queue.append((x, 0))
-        queue.append((x, height - 1))
-    for y in range(height):
-        queue.append((0, y))
-        queue.append((width - 1, y))
-    while queue:
-        x, y = queue.popleft()
-        if x < 0 or y < 0 or x >= width or y >= height or ground[y * width + x]:
-            continue
-        if min(pixels[x, y]) < WHITE:
-            continue
-        ground[y * width + x] = 1
-        queue.append((x + 1, y))
-        queue.append((x - 1, y))
-        queue.append((x, y + 1))
-        queue.append((x, y - 1))
+    fit_square(logo, ICON_SIZE).save(os.path.join(root, ICON), format="PNG", optimize=True)
+    print(f"wrote {ICON}: {ICON_SIZE}x{ICON_SIZE}")
+    coin(SMALL_ICON_SIZE, root).save(os.path.join(root, SMALL_ICON), format="PNG", optimize=True)
+    print(f"wrote {SMALL_ICON}: {SMALL_ICON_SIZE}x{SMALL_ICON_SIZE}")
 
-    # The picture's own soft drop shadow lies on the white below and beside the board: grey, fading into
-    # the ground. On the menu's green band and the lawn it would show as a pale smear, so a second fill
-    # takes it too, from the ground into grey pixels, below the lettering only (the letters' pale facets stay).
-    for x in range(width):
-        for y in range(SHADOW_TOP, height):
-            if ground[y * width + x]:
-                queue.append((x, y))
-    while queue:
-        x, y = queue.popleft()
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if nx < 0 or ny < SHADOW_TOP or nx >= width or ny >= height or ground[ny * width + nx]:
-                continue
-            p = pixels[nx, ny]
-            if min(p) < SHADOW_MIN or max(p) - min(p) > SHADOW_SPREAD:
-                continue
-            ground[ny * width + nx] = 1
-            queue.append((nx, ny))
-
-    alpha = Image.frombytes("L", (width, height), bytes(255 - 255 * g for g in ground))
-    alpha = alpha.filter(ImageFilter.GaussianBlur(0.6))
-    result = image.convert("RGBA")
-    result.putalpha(alpha)
-
-    # Trim to the picture, keep it square, then scale.
-    box = alpha.point(lambda a: 255 if a > 8 else 0).getbbox()
-    left, top, right, bottom = box
-    side = max(right - left, bottom - top)
-    cx, cy = (left + right) // 2, (top + bottom) // 2
-    crop = result.crop((cx - side // 2 - 8, cy - side // 2 - 8, cx + side // 2 + 8, cy + side // 2 + 8))
-    crop = crop.resize((SIZE, SIZE), Image.LANCZOS)
-
-    target = os.path.join(root, TARGET)
-    os.makedirs(os.path.dirname(target), exist_ok=True)
-    crop.save(target, format="PNG", optimize=True)
-    cleared = sum(ground) * 100 // (width * height)
-    print(f"wrote {TARGET}: {SIZE}x{SIZE} PNG, {os.path.getsize(target)} bytes, {cleared}% of the source was ground")
-
-    # The icon: the same picture, filling its square (the crop above already keeps an 8-pixel margin).
-    icon = os.path.join(root, ICON)
-    os.makedirs(os.path.dirname(icon), exist_ok=True)
-    crop.resize((ICON_SIZE, ICON_SIZE), Image.LANCZOS).save(icon, format="PNG", optimize=True)
-    print(f"wrote {ICON}: {ICON_SIZE}x{ICON_SIZE} PNG, {os.path.getsize(icon)} bytes")
-
-    small = os.path.join(root, SMALL_ICON)
-    make_small_icon().save(small, format="PNG", optimize=True)
-    print(f"wrote {SMALL_ICON}: {SMALL_ICON_SIZE}x{SMALL_ICON_SIZE} PNG, {os.path.getsize(small)} bytes")
-
-
-def make_small_icon():
-    """The medallion on its own, drawn big and scaled down: a gold ring, the two-tone navy disc and a white L."""
-    size = SMALL_ICON_SIZE * 4
-    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    margin = size * 0.03
-    ring = (margin, margin, size - margin, size - margin)
-    draw.ellipse(ring, fill=(214, 172, 74, 255))
-    inset = size * 0.085
-    disc = (inset, inset, size - inset, size - inset)
-    draw.ellipse(disc, fill=NAVY_DEEP + (255,))
-    mask = Image.new("L", image.size, 0)
-    ImageDraw.Draw(mask).ellipse(disc, fill=255)
-    upper_left = Image.new("L", image.size, 0)
-    ImageDraw.Draw(upper_left).polygon([(0, 0), (size, 0), (0, size)], fill=255)
-    image.paste(Image.new("RGBA", image.size, NAVY_LIGHT + (255,)), (0, 0), ImageChops.multiply(mask, upper_left))
-    font = ImageFont.truetype(os.path.join(os.getcwd(), MARK_FONT), int(size * 0.62))
-    left, top, right, bottom = draw.textbbox((0, 0), "L", font=font)
-    draw.text((size / 2 - (right - left) / 2 - left, size / 2 - (bottom - top) / 2 - top), "L", font=font, fill=(252, 252, 250, 255))
-    return image.resize((SMALL_ICON_SIZE, SMALL_ICON_SIZE), Image.LANCZOS)
+    brand_kit.repaint_folder(os.path.join(root, brand_kit.TARGET), root)
 
 
 if __name__ == "__main__":

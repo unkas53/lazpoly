@@ -72,7 +72,7 @@ namespace Lazpoly.Presentation.Perf
         {
             CultureInfo c = CultureInfo.InvariantCulture;
             var sb = new StringBuilder();
-            sb.AppendLine("# Lazpoly performans ölçümü");
+            sb.AppendLine("# Cash Father performans ölçümü");
             sb.AppendLine();
             sb.AppendLine($"{when.ToString("yyyy-MM-dd HH:mm", c)} · sürüm {sample.Version} · {sample.Device}");
             sb.AppendLine($"{sample.ScreenWidth}x{sample.ScreenHeight} · kalite {sample.Quality} · {sample.Players} bilgisayar oyuncu · {sample.FrameSeconds.Count} kare ölçüldü");

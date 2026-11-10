@@ -62,8 +62,12 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Where the title lies, further up the screen, in lawn widths.</summary>
         public const float TitleOffset = 0.40f;
 
-        /// <summary>The logo's side in lawn widths: its lettering sits above the dice score and its corners stay on the lawn.</summary>
+        /// <summary>The logo's width in lawn widths: its lettering sits above the dice score and its corners stay on the lawn.</summary>
         public const float TitleSize = 0.30f;
+
+        /// <summary>The logo's width and depth in lawn widths: <see cref="TitleSize"/> across, as deep as the picture's shape asks (the wide Cash Father logo is about two thirds as deep as it is wide).</summary>
+        public static Vector2 TitleExtent(Texture picture) =>
+            picture == null || picture.width <= 0 ? Vector2.one * TitleSize : new Vector2(TitleSize, TitleSize * picture.height / picture.width);
 
         /// <summary>
         /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
@@ -1548,11 +1552,11 @@ namespace Lazpoly.Presentation.Tabletop
             _title = title.transform;
             if (MenuArt.HasLogo && PicturePlate.IsAvailable)
             {
-                PicturePlate.Create("Logo", _title, MenuArt.Logo.texture, Vector2.one * (inner * TitleSize));
+                PicturePlate.Create("Logo", _title, MenuArt.Logo.texture, TitleExtent(MenuArt.Logo.texture) * inner);
                 return;
             }
 
-            CreateText("Lettering", "LAZPOLY", _title, Vector3.zero, 192, inner * 0.005f, TitleColor);
+            CreateText("Lettering", "CASH FATHER", _title, Vector3.zero, 192, inner * 0.005f, TitleColor);
         }
 
         /// <summary>Text lying in its parent's plane, readable from the parent's -Z side (<see cref="FlatFacing"/> turns the parent to the camera).</summary>

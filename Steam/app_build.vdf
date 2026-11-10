@@ -1,9 +1,9 @@
 "AppBuild"
 {
-	// APP_ID and DEPOT_ID are placeholders: replace them with the numbers Steamworks gives Lazpoly.
+	// APP_ID and DEPOT_ID are placeholders: replace them with the numbers Steamworks gives Cash Father.
 	// Upload with:  steamcmd +login <account> +run_app_build "<full path>\Steam\app_build.vdf" +quit
 	"AppID"	"APP_ID"
-	"Desc"	"Lazpoly"
+	"Desc"	"Cash Father"
 	"ContentRoot"	"..\Builds\Store\windows\"
 	"BuildOutput"	"..\Builds\Store\output\"
 	"SetLive"	""

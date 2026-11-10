@@ -440,7 +440,7 @@ namespace Lazpoly.Presentation.Menu
 
             UiBuilder tip = ui.Card(UiTheme.Field, 12);
             tip.Eyebrow(L("Masanı doldur"), UiTheme.Text);
-            tip.Label(L("Davet Steam sohbetine düşer; Lazpoly açıkken kabul eden doğrudan odaya gelir. Boş koltuk kalırsa oyun o kadar kişiyle başlar."),
+            tip.Label(L("Davet Steam sohbetine düşer; Cash Father açıkken kabul eden doğrudan odaya gelir. Boş koltuk kalırsa oyun o kadar kişiyle başlar."),
                 UiTextStyle.Small, UiTheme.Muted);
         }
 
@@ -532,7 +532,7 @@ namespace Lazpoly.Presentation.Menu
         public void InviteFriend(LobbyFriend friend)
         {
             _message = _lobby.Invite(friend.Id)
-                ? F($"{friend.Name} davet edildi. Lazpoly açıkken Steam sohbetindeki daveti kabul etsin ya da menüdeki listeden \"Katıl\" desin.")
+                ? F($"{friend.Name} davet edildi. Cash Father açıkken Steam sohbetindeki daveti kabul etsin ya da menüdeki listeden \"Katıl\" desin.")
                 : F($"{friend.Name} davet edilemedi.");
         }
 

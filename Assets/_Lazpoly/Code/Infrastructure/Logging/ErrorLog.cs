@@ -35,7 +35,7 @@ namespace Lazpoly.Infra.Logging
         /// <summary>Writes one header line when a run starts: version and platform, so a log can be matched to a build.</summary>
         public void BeginRun(DateTime time, string version, string platform)
         {
-            Write($"{Stamp(time)} RUN  Lazpoly {version} ({platform})" + Environment.NewLine);
+            Write($"{Stamp(time)} RUN  Cash Father {version} ({platform})" + Environment.NewLine);
         }
 
         /// <summary>Appends an error with its stack trace; blank lines in the trace are dropped.</summary>

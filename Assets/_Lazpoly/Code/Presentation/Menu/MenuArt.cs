@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// The menu's pictures: the Lazpoly logo the owner drew, shipped as PNG bytes in a TextAsset
+    /// The menu's pictures: the Cash Father logo the owner gave, shipped as PNG bytes in a TextAsset
     /// (Resources/Lazpoly/Art/logo.bytes, made by Tools/Art/make_logo.py from Tools/Art/Logo) and
     /// decoded once. When the asset is missing the menu shows its name in letters instead.
     /// </summary>

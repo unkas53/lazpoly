@@ -5,6 +5,7 @@ using Lazpoly.Core.State;
 using Lazpoly.Presentation.Data;
 using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.Game;
+using Lazpoly.Presentation.Menu;
 using Lazpoly.Presentation.Models;
 using Lazpoly.Presentation.Tabletop;
 using NUnit.Framework;
@@ -276,8 +277,9 @@ namespace Lazpoly.Presentation.Tests
                     Assert.That(Quaternion.Angle(hatch.transform.localRotation, BoardView.MoneyPileTurn(seat, yaw)), Is.LessThan(0.01f), $"seat {seat + 1}: turned as its case, so the money fits");
 
                     // Clear of the logo above the middle.
-                    float logoHalf = inner * BoardView.TitleSize / 2f, logoUp = inner * BoardView.TitleOffset;
-                    bool onLogo = Mathf.Abs(Vector3.Dot(spot, right)) - reach < logoHalf && Mathf.Abs(Vector3.Dot(spot, up) - logoUp) - reach < logoHalf;
+                    Vector2 logoHalf = BoardView.TitleExtent(MenuArt.Logo != null ? MenuArt.Logo.texture : null) * (inner / 2f);
+                    float logoUp = inner * BoardView.TitleOffset;
+                    bool onLogo = Mathf.Abs(Vector3.Dot(spot, right)) - reach < logoHalf.x && Mathf.Abs(Vector3.Dot(spot, up) - logoUp) - reach < logoHalf.y;
                     Assert.IsFalse(onLogo, $"seat {seat + 1}: clear of the logo");
                     for (int other = 0; other < seat; other++)
                     {

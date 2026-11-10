@@ -22,7 +22,10 @@ namespace Lazpoly.Boot
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Start()
         {
-            var settings = new SettingsService(new PlayerPrefsStorage());
+            var storage = new PlayerPrefsStorage();
+            // The game was called Lazpoly: a player's save and settings under that name come along on the first start.
+            if (!Application.isEditor) OldNameData.Adopt(storage, Application.persistentDataPath, Application.companyName, Application.productName);
+            var settings = new SettingsService(storage);
             var steam = new SteamService();
             var lobby = new SteamLobbyService(steam);
             var transport = new SteamTransport(steam, lobby.IsMember);
