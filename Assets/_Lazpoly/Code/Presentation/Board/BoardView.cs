@@ -576,7 +576,8 @@ namespace Lazpoly.Presentation.Tabletop
                 // A little floating island (the owner's wish, 2026-11-11), its meadow top the shelf's size.
                 Vector3 size = ShelfSize;
                 Transform island = IslandParts.Create(transform, $"Money shelf of seat {seat + 1}", new Vector2(size.x, size.z), seat).transform;
-                IslandDrift.Attach(island.Find(IslandParts.StonesName), seat);
+                IslandDrift.Attach(island.Find(IslandParts.StonesName), island.Find(IslandParts.VinesName), seat);
+                IslandFloat.Attach(island, _moneyPiles[seat].Root, seat);
                 _shelves.Add(island);
                 _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}"));
             }
@@ -656,6 +657,9 @@ namespace Lazpoly.Presentation.Tabletop
                 _shelves[seat].localPosition = outward * (HalfExtent + ShelfGapAt(seat, yaw) + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
                     - Vector3.up * ShelfDrop;
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);
+                // The island floats about where it has just been put, its safe with it.
+                IslandFloat afloat = _shelves[seat].GetComponent<IslandFloat>();
+                if (afloat != null) afloat.Rest();
                 if (seat >= _hatches.Count) continue;
                 _hatches[seat].transform.localPosition = HatchSpot(seat, _moneyPiles.Count, _inner * LawnShare / 2f, yaw) + Vector3.up * LawnHeight;
                 _hatches[seat].transform.localRotation = MoneyPileTurn(seat, yaw);

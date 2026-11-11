@@ -20,6 +20,7 @@ namespace Lazpoly.Presentation.Models
         public static readonly Color Flower = LawnSkin.Petal;
 
         public const string StonesName = "Drifting stones";
+        public const string VinesName = "Vines";
 
         /// <summary>How deep the whole island hangs under its top.</summary>
         public const float Depth = IslandShape.Depth;
@@ -32,7 +33,16 @@ namespace Lazpoly.Presentation.Models
             Transform at = root.transform;
             Skinned(at, "Meadow", IslandShape.Meadow(top, seed), IslandSkin.Grass(), Color.white, 0.05f);
             Skinned(at, "Rock", IslandShape.Rock(top, seed), IslandSkin.Rock(), Color.white, 0.12f);
-            Skinned(at, "Vines", IslandShape.Vines(top, seed), IslandSkin.Grass(), Vine, 0.05f);
+
+            // The vines, each its own part hanging from its foot, so each can sway by itself.
+            var vines = new GameObject(VinesName);
+            vines.transform.SetParent(at, false);
+            for (int i = 0; i < IslandShape.Vines; i++)
+            {
+                GameObject vine = Skinned(vines.transform, $"Vine {i + 1}", IslandShape.Vine(top, seed, i), IslandSkin.Grass(), Vine, 0.05f);
+                vine.transform.localPosition = IslandShape.VineFoot(top, seed, i);
+            }
+
             Skinned(at, "Tufts", IslandShape.Tufts(top, seed), IslandSkin.Grass(), Color.white, 0.05f);
             ModelParts.Create("Flowers", at, IslandShape.Flowers(top, seed), Flower, 0.1f);
 

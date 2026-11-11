@@ -8,8 +8,8 @@ namespace Lazpoly.Presentation.Models
     /// rounded rectangle wandering a little, with grass hanging over its edge in uneven tongues; under it a body of soil
     /// and rock that steps in ledge by ledge, growing rounder and leaning a little, down to a point, with smaller points
     /// hanging beside it and boulders bedded in its face; vines hanging from under the grass; tufts and flowers at the
-    /// meadow's edge; and loose stones adrift under it. Everything is cut in flat faces, so the table's light picks out
-    /// each one, like chiselled stone. The island's top is at y 0 and is exactly as wide and deep as asked; all the rest
+    /// meadow's edge; and loose stones adrift under it. The rock is cut in flat faces, so the table's light picks out
+    /// each one, like chiselled stone; the grass and the vines are rounded off, so it runs softly over them. The island's top is at y 0 and is exactly as wide and deep as asked; all the rest
     /// hangs below, inside that outline. A seed makes each island its own.
     /// </summary>
     public static class IslandShape
@@ -145,6 +145,7 @@ namespace Lazpoly.Presentation.Models
                 build.Quad(a1, b1, b2, a2, new Vector2(0.5f, 0.7f), new Vector2(0.5f, 0.7f), new Vector2(0.5f, vb), new Vector2(0.5f, va), inside);
             }
 
+            build.Soften();
             return Meshes[key] = build.Mesh(key);
         }
 
@@ -233,40 +234,51 @@ namespace Lazpoly.Presentation.Models
             return Meshes[key] = build.Mesh(key);
         }
 
-        /// <summary>Vines hanging from under the grass, each a thin strand tapering down with a few leaves on it.</summary>
-        public static Mesh Vines(Vector2 top, int seed)
-        {
-            string key = Key("vines", top, seed);
-            if (Meshes.TryGetValue(key, out Mesh cached) && cached != null) return cached;
-            var random = new System.Random(seed * 71 + 307);
-            float Range(float a, float b) => a + (float)random.NextDouble() * (b - a);
-            Vector2[] edge = MeadowEdge(top, seed);
-            var build = new Builder();
-            const int vines = 8;
-            for (int vine = 0; vine < vines; vine++)
-            {
-                int at = (int)((vine + Range(0.15f, 0.85f)) * edge.Length / vines) % edge.Length;
-                Vector2 foot = edge[at] * 0.93f;
-                float length = Range(0.4f, 0.85f), sway = Range(0f, 6.283f);
-                Vector2 inward = foot * (-0.06f / Mathf.Max(0.01f, foot.magnitude));
-                Vector3 previous = Flat(foot, -0.06f);
-                const int joints = 4;
-                for (int joint = 1; joint <= joints; joint++)
-                {
-                    float t = (float)joint / joints;
-                    // Hanging straight, drawn in a little towards the rock, swaying a touch from joint to joint.
-                    Vector3 here = Flat(foot + inward * t, -0.06f - length * t) + new Vector3(Mathf.Sin(sway + joint * 1.7f), 0f, Mathf.Cos(sway + joint * 1.3f)) * (0.02f * t);
-                    Tube(build, previous, here, Mathf.Lerp(0.03f, 0.012f, (t - 1f / joints)), Mathf.Lerp(0.03f, 0.012f, t), 5, 0.3f);
-                    if (joint < joints || length > 0.6f)
-                    {
-                        Vector3 leaf = here + new Vector3(Range(-0.02f, 0.02f), Range(-0.01f, 0.03f), Range(-0.02f, 0.02f));
-                        Gem(build, leaf, new Vector3(0.05f, 0.03f, 0.05f) * Range(0.8f, 1.15f), Range(0f, 6.283f), new Vector2(0.5f, Range(0.55f, 0.95f)), 4, random, 0f);
-                    }
+        /// <summary>How many vines hang from under the grass.</summary>
+        public const int Vines = 8;
 
-                    previous = here;
+        /// <summary>Where a vine is rooted, under the grass at the meadow's edge.</summary>
+        public static Vector3 VineFoot(Vector2 top, int seed, int vine)
+        {
+            var random = new System.Random(seed * 71 + 307 + vine * 1013);
+            Vector2[] edge = MeadowEdge(top, seed);
+            int at = (int)((vine + 0.15f + 0.7f * (float)random.NextDouble()) * edge.Length / Vines) % edge.Length;
+            return Flat(edge[at] * 0.93f, -0.06f);
+        }
+
+        /// <summary>
+        /// A vine hanging from its foot (<see cref="VineFoot"/>, here the origin, so it can sway about it): a thin strand
+        /// tapering down, drawn in a little towards the rock, with a few leaves on it.
+        /// </summary>
+        public static Mesh Vine(Vector2 top, int seed, int vine)
+        {
+            string key = Key($"vine{vine}", top, seed);
+            if (Meshes.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+            var random = new System.Random(seed * 71 + 311 + vine * 1013);
+            float Range(float a, float b) => a + (float)random.NextDouble() * (b - a);
+            Vector3 foot = VineFoot(top, seed, vine);
+            var out2 = new Vector2(foot.x, foot.z);
+            Vector2 inward = out2 * (-0.06f / Mathf.Max(0.01f, out2.magnitude));
+            float length = Range(0.4f, 0.85f), sway = Range(0f, 6.283f);
+            var build = new Builder();
+            Vector3 previous = Vector3.zero;
+            const int joints = 4;
+            for (int joint = 1; joint <= joints; joint++)
+            {
+                float t = (float)joint / joints;
+                // Hanging straight, drawn in a little towards the rock, wandering a touch from joint to joint.
+                Vector3 here = Flat(inward * t, -length * t) + new Vector3(Mathf.Sin(sway + joint * 1.7f), 0f, Mathf.Cos(sway + joint * 1.3f)) * (0.02f * t);
+                Tube(build, previous, here, Mathf.Lerp(0.03f, 0.012f, t - 1f / joints), Mathf.Lerp(0.03f, 0.012f, t), 5, 0.3f);
+                if (joint < joints || length > 0.6f)
+                {
+                    Vector3 leaf = here + new Vector3(Range(-0.02f, 0.02f), Range(-0.01f, 0.03f), Range(-0.02f, 0.02f));
+                    Gem(build, leaf, new Vector3(0.05f, 0.03f, 0.05f) * Range(0.8f, 1.15f), Range(0f, 6.283f), new Vector2(0.5f, Range(0.55f, 0.95f)), 4, random, 0f);
                 }
+
+                previous = here;
             }
 
+            build.Soften();
             return Meshes[key] = build.Mesh(key);
         }
 
@@ -296,6 +308,7 @@ namespace Lazpoly.Presentation.Models
                 }
             }
 
+            build.Soften();
             return Meshes[key] = build.Mesh(key);
         }
 
@@ -489,6 +502,29 @@ namespace Lazpoly.Presentation.Models
             {
                 Triangle(a, b, c, ua, ub, uc, inside);
                 Triangle(a, c, d, ua, uc, ud, inside);
+            }
+
+            /// <summary>
+            /// Rounds the solid off: corners that lie at the same place share one facing, the mean of their faces', so the
+            /// light runs softly over it, as over grass, instead of picking out each face, as on rock.
+            /// </summary>
+            public void Soften()
+            {
+                var sums = new Dictionary<(int, int, int), Vector3>();
+                var keys = new (int, int, int)[_vertices.Count];
+                for (int i = 0; i < _vertices.Count; i++)
+                {
+                    Vector3 at = _vertices[i];
+                    keys[i] = (Mathf.RoundToInt(at.x * 5000f), Mathf.RoundToInt(at.y * 5000f), Mathf.RoundToInt(at.z * 5000f));
+                    sums[keys[i]] = sums.TryGetValue(keys[i], out Vector3 sum) ? sum + _normals[i] : _normals[i];
+                }
+
+                for (int i = 0; i < _vertices.Count; i++)
+                {
+                    Vector3 sum = sums[keys[i]];
+                    float length = sum.magnitude;
+                    if (length > 1e-5f) _normals[i] = sum * (1f / length);
+                }
             }
 
             public Mesh Mesh(string name)

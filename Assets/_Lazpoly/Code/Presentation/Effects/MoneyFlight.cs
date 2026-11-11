@@ -59,6 +59,10 @@ namespace Lazpoly.Presentation.Effects
         private Vector3 _underB;
         private Vector3 _overB;
         private Vector3 _to;
+
+        // The safes the money leaves and lands in, and where each was when the flight began.
+        private Transform _payer, _receiver;
+        private Vector3 _payerAt, _receiverAt;
         private Quaternion _restA;
         private Quaternion _restB;
         private Vector3 _size;
@@ -190,6 +194,8 @@ namespace Lazpoly.Presentation.Effects
                 flight._toPlayer = toPlayer;
                 flight._speed = speed;
                 flight._from = payer.Root.TransformPoint(MoneyPile.SlotOffset(i, count));
+                flight._payer = payer.Root;
+                flight._payerAt = payer.Root.position;
                 flight._overA = payerHatch.Mouth + Vector3.up * Hover;
                 flight._underA = payerHatch.Mouth - Vector3.up * SinkDepth;
                 flight._restA = payer.Root.rotation;
@@ -199,6 +205,8 @@ namespace Lazpoly.Presentation.Effects
                     flight._underB = receiverHatch.Mouth - Vector3.up * SinkDepth;
                     flight._overB = receiverHatch.Mouth + Vector3.up * Hover;
                     flight._to = receiver.Root.TransformPoint(MoneyPile.SlotOffset(i, count));
+                    flight._receiver = receiver.Root;
+                    flight._receiverAt = receiver.Root.position;
                 }
 
                 // Its size in the safe, whatever the parent's scale.
@@ -239,6 +247,8 @@ namespace Lazpoly.Presentation.Effects
                 flight._underA = flight._underB;
                 flight._overB = hatch.Mouth + Vector3.up * Hover;
                 flight._to = receiver.Root.TransformPoint(MoneyPile.SlotOffset(i, count));
+                flight._receiver = receiver.Root;
+                flight._receiverAt = receiver.Root.position;
                 flight._restA = receiver.Root.rotation;
                 flight._restB = receiver.Root.rotation;
                 flight._size = Vector3.one * (MoneyPile.PieceScale * receiver.Root.lossyScale.x / Mathf.Max(parent.lossyScale.x, 1e-4f));
@@ -253,6 +263,9 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>Where a deal starts on a payment's timeline: every piece already under the table, the hatch about to open.</summary>
         public static float DealStartsAt(int count) => ReceiverOpensAt(count);
 
+        /// <summary>How far a safe has moved since the flight began (nothing for the bank's side, which has none).</summary>
+        private static Vector3 Moved(Transform safe, Vector3 from) => safe != null ? safe.position - from : Vector3.zero;
+
         private void Update()
         {
             _age += Time.deltaTime * _speed;
@@ -262,7 +275,9 @@ namespace Lazpoly.Presentation.Effects
                 return;
             }
 
-            transform.position = PositionAt(_age, _index, _count, _toPlayer, _from, _overA, _underA, _underB, _overB, _to);
+            // The safes float on their islands: the money leaves and lands where its safe is now.
+            transform.position = PositionAt(_age, _index, _count, _toPlayer, _from + Moved(_payer, _payerAt), _overA, _underA, _underB, _overB,
+                _to + Moved(_receiver, _receiverAt));
             transform.rotation = _toPlayer && _age >= RiseAt(_index, _count) ? _restB : _restA;
             transform.localScale = Hidden(_age, _index, _count, _toPlayer) ? Vector3.zero : _size;
         }
