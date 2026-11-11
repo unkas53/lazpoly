@@ -77,6 +77,63 @@ namespace Lazpoly.Presentation.Models
         }
 
         /// <summary>
+        /// A box with sharp edges whose four sides are each mapped on their own, for a skin that wraps round them: u runs
+        /// along the sides in world units over <paramref name="repeat"/> (on round the box, so the sides meet), v up a side
+        /// from its bottom (0) to its top (1). The top and the bottom take the middle of the skin's height.
+        /// </summary>
+        public static Mesh Slab(Vector3 size, float repeat)
+        {
+            if (size.x <= 0f || size.y <= 0f || size.z <= 0f) throw new ArgumentOutOfRangeException(nameof(size));
+            if (repeat <= 0f) throw new ArgumentOutOfRangeException(nameof(repeat));
+            string key = $"slab:{size.x:F3}:{size.y:F3}:{size.z:F3}:{repeat:F3}";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var vertices = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var triangles = new List<int>();
+            Vector3 half = size / 2f;
+            float along = 0f;
+            foreach (Vector3 n in new[] { Vector3.back, Vector3.right, Vector3.forward, Vector3.left })
+            {
+                // Clockwise seen from outside (Unity's front face): cross(u, v) is the face normal.
+                Vector3 u = Vector3.Cross(Vector3.up, n);
+                float length = Mathf.Abs(Vector3.Dot(u, size));
+                Vector3 origin = Vector3.Scale(n, half) - u * (length / 2f) - Vector3.up * half.y;
+                Quad(vertices, normals, uvs, triangles, origin, u * length, Vector3.up * size.y, n,
+                    new Vector2(along / repeat, 0f), new Vector2((along + length) / repeat, 1f));
+                along += length;
+            }
+
+            Quad(vertices, normals, uvs, triangles, new Vector3(-half.x, half.y, half.z), Vector3.right * size.x, Vector3.back * size.z, Vector3.up,
+                new Vector2(0f, 0.5f), new Vector2(size.x / repeat, 0.5f));
+            Quad(vertices, normals, uvs, triangles, new Vector3(-half.x, -half.y, -half.z), Vector3.right * size.x, Vector3.forward * size.z, Vector3.down,
+                new Vector2(0f, 0.5f), new Vector2(size.x / repeat, 0.5f));
+            return Store(key, vertices, normals, triangles, uvs);
+        }
+
+        private static void Quad(List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<int> triangles,
+            Vector3 origin, Vector3 u, Vector3 v, Vector3 normal, Vector2 uvFrom, Vector2 uvTo)
+        {
+            int k = vertices.Count;
+            vertices.Add(origin);
+            vertices.Add(origin + u);
+            vertices.Add(origin + v);
+            vertices.Add(origin + u + v);
+            for (int i = 0; i < 4; i++) normals.Add(normal);
+            uvs.Add(new Vector2(uvFrom.x, uvFrom.y));
+            uvs.Add(new Vector2(uvTo.x, uvFrom.y));
+            uvs.Add(new Vector2(uvFrom.x, uvTo.y));
+            uvs.Add(new Vector2(uvTo.x, uvTo.y));
+            triangles.Add(k);
+            triangles.Add(k + 1);
+            triangles.Add(k + 2);
+            triangles.Add(k + 2);
+            triangles.Add(k + 1);
+            triangles.Add(k + 3);
+        }
+
+        /// <summary>
         /// A shape turned around the Y axis. <paramref name="profile"/> holds (radius, height) points
         /// from bottom to top; start and end at radius 0 for a closed solid.
         /// </summary>

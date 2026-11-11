@@ -861,7 +861,7 @@ namespace Lazpoly.Presentation.Tests
         {
             // The owner's wish (2026-11-11): the plate under the squares as sharp as they are, and not sticking out past them.
             Assert.AreEqual(0f, BoardView.PlateMargin);
-            Assert.AreEqual(BoardView.TileEdgeRadius, BoardView.PlateEdgeRadius);
+            Assert.AreEqual(0.3f, BoardView.PlateThickness, 1e-6f, "half as thick as it was (the owner's wish, 2026-11-11)");
 
             BoardData data = BoardDataLoader.LoadFromResources();
             var holder = new GameObject("Board Test");
@@ -900,11 +900,62 @@ namespace Lazpoly.Presentation.Tests
                 Assert.That(plate.max.z, Is.EqualTo(squares.max.z).Within(1e-3f), "flush at the back");
                 Assert.That(plate.min.z, Is.EqualTo(squares.min.z).Within(1e-3f), "flush at the front");
                 Assert.That(plate.max.y, Is.EqualTo(0f).Within(1e-4f), "the squares lie on it");
+                Assert.That(plate.min.y, Is.EqualTo(-BoardView.PlateThickness).Within(1e-4f), "and it hangs its thickness below them");
+
+                Transform slab = board.transform.Find("Plate");
+                Assert.AreEqual(24, slab.GetComponent<MeshFilter>().sharedMesh.vertexCount, "a sharp box: four corners on each face, no rounding");
+                Assert.AreSame(PlateSkin.Side(), slab.GetComponent<Renderer>().sharedMaterial.mainTexture, "its sides wear the stone");
             }
             finally
             {
                 Object.DestroyImmediate(holder);
             }
+        }
+
+        [Test]
+        public void ThePlateIsAWarmGreyStoneShadedTowardsItsFoot()
+        {
+            // The owner's wish (2026-11-11): a stone colour, shaded professionally to suit the table.
+            Color.RGBToHSV(PlateSkin.Stone, out _, out float saturation, out float value);
+            Assert.Less(saturation, 0.15f, "a grey stone, not a sand or a wood");
+            Assert.That(value, Is.InRange(0.5f, 0.7f), "mid-light, below the cream squares");
+            Assert.GreaterOrEqual(PlateSkin.Stone.r, PlateSkin.Stone.b, "a warm grey, kin to the squares' creams");
+
+            float Mean(float v)
+            {
+                float sum = 0f;
+                for (int i = 0; i < 64; i++) sum += PlateSkin.Shade((i + 0.5f) / 64f, v);
+                return sum / 64f;
+            }
+
+            float foot = Mean(0.03f), low = Mean(0.25f), middle = Mean(0.6f), lip = Mean(0.91f), seam = Mean(0.995f);
+            Assert.Less(foot, low, "darkest at the foot");
+            Assert.Less(low, middle, "the shade grows towards the foot");
+            Assert.Greater(lip, middle, "the top lip catches the light");
+            Assert.Less(seam, lip - 0.15f, "a fine dark seam under the squares");
+            Assert.Greater(foot, 0.55f, "the foot is shaded, not black");
+
+            float lightest = 0f, darkest = 2f;
+            for (int i = 0; i < 200; i++)
+            {
+                float shade = PlateSkin.Shade(i / 200f, 0.6f);
+                lightest = Mathf.Max(lightest, shade);
+                darkest = Mathf.Min(darkest, shade);
+            }
+
+            Assert.Greater(lightest - darkest, 0.02f, "a grain and layers along the side");
+            Assert.Less(lightest - darkest, 0.3f, "but quiet");
+
+            for (int i = 0; i < 10; i++)
+            {
+                float v = (i + 0.5f) / 10f;
+                Color start = PlateSkin.ColourAt(0f, v), end = PlateSkin.ColourAt(1f, v);
+                Assert.That(Vector4.Distance(start, end), Is.LessThan(1e-3f), $"the stone wraps without a seam at height {v}");
+            }
+
+            Texture2D side = PlateSkin.Side();
+            Assert.AreEqual(TextureWrapMode.Repeat, side.wrapModeU);
+            Assert.AreEqual(TextureWrapMode.Clamp, side.wrapModeV);
         }
     }
 }

@@ -44,17 +44,17 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public const float TileEdgeRadius = 0.005f;
 
-        /// <summary>How far the plate hangs below the squares; its edge shows in the isometric view.</summary>
-        public const float PlateThickness = 0.6f;
+        /// <summary>
+        /// How far the plate hangs below the squares; its edge shows in the isometric view. Half as thick since 2026-11-11
+        /// (the owner's wish; it was 0.6).
+        /// </summary>
+        public const float PlateThickness = 0.3f;
 
         /// <summary>
         /// The plate's rim outside the squares: none since 2026-11-11 (the owner's wish: the plate ends flush with the
         /// squares' outer edge, nothing sticking out).
         /// </summary>
         public const float PlateMargin = 0f;
-
-        /// <summary>The plate's edges are as sharp as the squares' (the owner's wish, 2026-11-11; it was a soft 0.2).</summary>
-        public const float PlateEdgeRadius = TileEdgeRadius;
 
         /// <summary>Top of the lawn in the middle of the board, where the dice land.</summary>
         public const float LawnHeight = 0.08f;
@@ -120,7 +120,8 @@ namespace Lazpoly.Presentation.Tabletop
         public static readonly Color CupColor = TravelColor;
         public static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
-        private static readonly Color PlateColor = new Color(0.70f, 0.63f, 0.52f);
+        /// <summary>The plate and the money shelves are stone since 2026-11-11 (the owner's wish), see <see cref="PlateSkin"/>.</summary>
+        private static readonly Color PlateColor = PlateSkin.Stone;
         /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
         public static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
 
@@ -957,7 +958,9 @@ namespace Lazpoly.Presentation.Tabletop
             float width = 2f * Layout.OuterHalf + 2f * PlateMargin;
             HalfExtent = width / 2f;
             // The plate floats in the sky; its edge hangs below the squares.
-            GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.RoundedBox(new Vector3(width, PlateThickness, width), PlateEdgeRadius, 2), PlateColor, 0.25f);
+            // Sharp-edged stone (the owner's wish, 2026-11-11), its sides shaded in the picture (PlateSkin) and matt.
+            GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.Slab(new Vector3(width, PlateThickness, width), PlateSkin.Repeat), Color.white, 0.1f);
+            ModelParts.Skin(plate, PlateSkin.Side());
             plate.transform.localPosition = new Vector3(0f, -PlateThickness / 2f, 0f);
 
             _inner = 2f * Layout.HalfSize - Layout.Depth * 1.05f;
