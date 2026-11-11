@@ -39,16 +39,29 @@ namespace Lazpoly.Presentation.Tests
             CollectionAssert.AreEqual(new[] { MoneyPiece.Stack }, MoneyPile.Pieces(50000));
             CollectionAssert.AreEqual(new[] { MoneyPiece.Gold, MoneyPiece.Stack, MoneyPiece.Stack }, MoneyPile.Pieces(1500000));
             Assert.AreEqual(MoneyPile.MaxPieces, MoneyPile.Pieces(100000000).Length);
-            Assert.AreEqual(0f, MoneyPile.SlotOffset(0, 1).x, 1e-5f, "a lone piece in the middle");
-            for (int i = 0; i < MoneyPile.MaxPieces; i++)
+            Assert.AreEqual(Vector3.zero, Vector3.Scale(MoneyPile.SlotOffset(0, 1), new Vector3(1f, 0f, 1f)), "a lone piece in the middle");
+            Assert.AreEqual(0f, MoneyPile.SlotOffset(0, 2).z, 1e-5f, "two lie side by side across the middle");
+            Assert.AreEqual(0f, MoneyPile.SlotOffset(0, 2).x + MoneyPile.SlotOffset(1, 2).x, 1e-5f);
+            Vector3 inside = MoneyPile.Inside;
+            for (int count = 1; count <= MoneyPile.MaxPieces; count++)
             {
-                Vector3 slot = MoneyPile.SlotOffset(i, MoneyPile.MaxPieces);
-                Assert.AreEqual(0f, slot.z, 1e-5f, "one row, none behind another");
-                Assert.LessOrEqual(Mathf.Abs(slot.x) + MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale / 2f, MoneyPile.CaseSize.x / 2f - MoneyPile.CaseWall + 1e-4f, "inside the case's walls");
-                if (i > 0) Assert.AreEqual(MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale + MoneyPile.Gap, slot.x - MoneyPile.SlotOffset(i - 1, MoneyPile.MaxPieces).x, 1e-4f, "side by side, even gaps");
+                for (int i = 0; i < count; i++)
+                {
+                    Vector3 slot = MoneyPile.SlotOffset(i, count);
+                    Assert.AreEqual(MoneyPile.MoneyFloor, slot.y, 1e-5f, "on the lining");
+                    Assert.LessOrEqual(Mathf.Abs(slot.x) + MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale / 2f, inside.x / 2f + 1e-4f, "inside the safe's walls along");
+                    Assert.LessOrEqual(Mathf.Abs(slot.z) + MoneyBundle.Width(MoneyPiece.Stack) * MoneyPile.PieceScale / 2f, inside.z / 2f + 1e-4f, "and across");
+                    for (int other = 0; other < i; other++)
+                    {
+                        Vector3 gap = slot - MoneyPile.SlotOffset(other, count);
+                        Assert.IsTrue(Mathf.Abs(gap.x) >= MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale - 1e-4f
+                            || Mathf.Abs(gap.z) >= MoneyBundle.Width(MoneyPiece.Stack) * MoneyPile.PieceScale - 1e-4f, $"{count} pieces: {other} and {i} do not overlap");
+                    }
+                }
             }
 
-            Assert.AreEqual(0f, MoneyPile.SlotOffset(0, 3).x + MoneyPile.SlotOffset(2, 3).x, 1e-5f, "the row is centred on the tray");
+            Assert.Less(MoneyPile.SlotOffset(0, 4).z, MoneyPile.SlotOffset(2, 4).z, "the first two in the front row, towards the camera");
+            Assert.Less(MoneyBundle.Height(MoneyPiece.Stack) * MoneyPile.PieceScale + MoneyPile.MoneyFloor, MoneyPile.BodyHeight, "the money fits under the shut lid");
 
             float yaw = BoardCameraRig.BaseYaw, half = 8f;
             Vector3 up = BoardView.ScreenUp(yaw), right = BoardView.ScreenRight(yaw);
@@ -86,44 +99,38 @@ namespace Lazpoly.Presentation.Tests
                     Transform tray = board.MoneyPiles[seat].Root;
                     Assert.AreEqual(tray.position.y, shelf.max.y, 1e-3f, $"seat {seat + 1}: the tray lies on its shelf");
                     Assert.Less(shelf.max.y, 0f, $"seat {seat + 1}: the shelf a little under the plate's top");
-                    foreach (Transform part in new[] { board.MoneyPiles[seat].Case, board.MoneyPiles[seat].Lid })
-                    foreach (float x in new[] { -0.5f, 0.5f })
-                    foreach (float z in new[] { -0.5f, 0.5f })
-                    {
-                        Vector3 corner = part.TransformPoint(Vector3.Scale(MoneyPile.CaseSize, new Vector3(x, 0f, z)));
-                        Assert.IsTrue(shelf.min.x - 1e-3f <= corner.x && corner.x <= shelf.max.x + 1e-3f && shelf.min.z - 1e-3f <= corner.z && corner.z <= shelf.max.z + 1e-3f,
-                            $"seat {seat + 1}: the {part.name}'s corners on the shelf");
-                    }
-
-                    Transform lid = board.MoneyPiles[seat].Lid;
-                    Vector3 lidWay = board.transform.InverseTransformDirection(lid.position - tray.position);
-                    Assert.Greater(Vector3.Dot(lidWay, BoardView.MoneyEdgeOutward(seat, yaw)), MoneyPile.CaseDepth / 2f, $"seat {seat + 1}: the lid opens away from the board");
-                    Vector3 lidUp = board.transform.InverseTransformDirection(lid.up), lidOut = board.transform.InverseTransformDirection(lid.forward);
-                    float tilt = BoardView.LidTiltAt(seat, yaw);
-                    Assert.AreEqual(tilt, board.MoneyPiles[seat].Tilt, 1e-4f);
-                    Assert.AreEqual(tilt, Vector3.Angle(lidUp, Vector3.up), 0.1f, $"seat {seat + 1}: tipped up from flat as its edge wants");
-                    if (tilt > 0f) Assert.Greater(Vector3.Dot(lidOut, Vector3.up), 0f, $"seat {seat + 1}: its far end raised");
-                    Assert.Greater(Vector3.Dot(lidOut, BoardView.MoneyEdgeOutward(seat, yaw)), 0f, $"seat {seat + 1}: leaning away from the board");
-
-                    // The shelf is as big as the open case seen from above (the owner's wish, 2026-11-11): from the bottom half's
-                    // front wall to the open lid's far edge, and as long as the case.
+                    // The shelf is as big as the safe's foot (the owner's wish, 2026-11-11), the safe on it, shut.
                     Vector3 outward = board.transform.TransformDirection(BoardView.MoneyEdgeOutward(seat, yaw));
                     Vector3 along = Vector3.Cross(Vector3.up, outward);
                     float Reach(Bounds box, Vector3 way) => Vector3.Dot(box.center, way) + Vector3.Dot(box.extents, new Vector3(Mathf.Abs(way.x), Mathf.Abs(way.y), Mathf.Abs(way.z)));
-                    Bounds bottom = board.MoneyPiles[seat].Case.Find("Shell").GetComponent<Renderer>().bounds;
-                    Bounds lidShell = lid.Find("Lid shell").GetComponent<Renderer>().bounds;
-                    Assert.AreEqual(Reach(shelf, outward), Reach(lidShell, outward), 2e-3f, $"seat {seat + 1}: the shelf ends where the open lid does");
-                    Assert.AreEqual(Reach(shelf, -outward), Reach(bottom, -outward), 2e-3f, $"seat {seat + 1}: and starts at the case's front wall");
-                    Assert.AreEqual(Reach(shelf, along), Reach(bottom, along), 2e-3f, $"seat {seat + 1}: as long as the case");
-                    Assert.GreaterOrEqual(lidShell.min.y, shelf.max.y - 1e-3f, $"seat {seat + 1}: the lid rests on the shelf or above it, never in it");
+                    MoneyPile pile = board.MoneyPiles[seat];
+                    Bounds body = pile.Safe.Find("Body").GetComponent<Renderer>().bounds;
+                    foreach (Vector3 way in new[] { outward, -outward, along, -along })
+                        Assert.AreEqual(Reach(shelf, way), Reach(body, way), 2e-3f, $"seat {seat + 1}: the shelf flush with the safe");
+                    Assert.AreEqual(shelf.max.y, body.min.y, 1e-3f, $"seat {seat + 1}: the safe stands on it");
+                    Assert.AreEqual(0f, pile.Openness, 1e-4f, $"seat {seat + 1}: shut");
 
-                    Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSizeAt(seat, yaw).z / 2f);
+                    // The lid is hinged at the back, away from the camera, and opens up and back so it never hides the money.
+                    Vector3 screenUp = BoardView.ScreenUp(yaw);
+                    Vector3 hinge = board.transform.InverseTransformPoint(pile.Lid.position) - board.transform.InverseTransformPoint(tray.position);
+                    Vector3 back = board.transform.InverseTransformDirection(tray.forward);
+                    Assert.Greater(Vector3.Dot(back, screenUp), 0.5f, $"seat {seat + 1}: its back away from the camera, its dial towards it");
+                    Assert.AreEqual(MoneyPile.SafeSize.z / 2f, Vector3.Dot(hinge, back), 1e-3f, $"seat {seat + 1}: hinged on the back edge");
+                    Bounds shutLid = pile.Lid.Find("Lid top").GetComponent<Renderer>().bounds;
+                    pile.ShowLid(1f);
+                    Bounds openLid = pile.Lid.Find("Lid top").GetComponent<Renderer>().bounds;
+                    Assert.Greater(openLid.max.y, shutLid.max.y + MoneyPile.SafeSize.z * 0.8f, $"seat {seat + 1}: open, it stands up");
+                    Assert.Greater(Vector3.Dot(board.transform.InverseTransformPoint(openLid.center) - board.transform.InverseTransformPoint(body.center), screenUp), 0f,
+                        $"seat {seat + 1}: behind the safe");
+                    pile.ShowLid(0f);
+
+                    Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSize.z / 2f);
                     Assert.AreEqual(board.HalfExtent + BoardView.ShelfGapAt(seat, yaw), Vector3.Dot(inner, BoardView.MoneyEdgeOutward(seat, yaw)), 1e-3f, $"seat {seat + 1}: a small gap between the plate and the shelf");
                     Assert.GreaterOrEqual(BoardView.ShelfGapAt(seat, yaw), BoardView.ShelfGap, "the gap shows");
                 }
 
                 board.ShowSeatMoney(1, 0);
-                CollectionAssert.IsEmpty(board.MoneyPiles[1].Shown, "a player with nothing has an empty case");
+                CollectionAssert.IsEmpty(board.MoneyPiles[1].Shown, "a player with nothing has an empty safe");
             }
             finally
             {
@@ -182,6 +189,15 @@ namespace Lazpoly.Presentation.Tests
                 if (i > 0) Assert.Greater(MoneyFlight.SinkAt(i), MoneyFlight.SinkAt(i - 1), "one after another");
                 if (i > 0) Assert.Greater(MoneyFlight.RiseAt(i, count), MoneyFlight.RiseAt(i - 1, count));
 
+                // Out of the payer's safe, which is open while it rises, and into the other one, open while it comes down.
+                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.OutAt(i), i, count, true, from, overA, underA, underB, overB, to), from + Vector3.up * MoneyFlight.Lift), Is.LessThan(1e-3f), "straight up out of the safe");
+                Assert.That(Vector3.Distance(MoneyFlight.PositionAt(MoneyFlight.OverAt(i, count), i, count, true, from, overA, underA, underB, overB, to), to + Vector3.up * MoneyFlight.Lift), Is.LessThan(1e-3f), "over the other safe");
+                Assert.Greater(MoneyFlight.Lift + MoneyPile.MoneyFloor, MoneyPile.SafeSize.y, "clear of the shut lid's height");
+                for (float t = MoneyFlight.LeaveAt(i); t <= MoneyFlight.OutAt(i); t += 0.05f)
+                    Assert.AreEqual(1f, MoneyPile.OpennessAt(t, MoneyFlight.PayerSafeOpensAt, MoneyFlight.PayerSafeShutsAt(count)), 1e-4f, $"piece {i} rises out of an open safe");
+                for (float t = MoneyFlight.OverAt(i, count); t <= MoneyFlight.LandAt(i, count); t += 0.05f)
+                    Assert.AreEqual(1f, MoneyPile.OpennessAt(t, MoneyFlight.ReceiverSafeOpensAt(count), MoneyFlight.ReceiverSafeShutsAt(count)), 1e-4f, $"piece {i} goes down into an open safe");
+
                 // The payer's hatch is open while each piece goes down, the other one while each comes up.
                 for (float t = MoneyFlight.SinkAt(i); t <= MoneyFlight.GoneAt(i); t += 0.05f)
                     Assert.AreEqual(1f, MoneyHatch.OpennessAt(t, MoneyFlight.PayerOpensAt, MoneyFlight.PayerShutsAt(count)), 1e-4f, $"piece {i} goes down an open hatch");
@@ -194,6 +210,10 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(0f, MoneyHatch.OpennessAt(MoneyFlight.RiseAt(0, count) - MoneyHatch.SwingSeconds, MoneyFlight.ReceiverOpensAt(count), MoneyFlight.ReceiverShutsAt(count)), 1e-4f,
                 "the other hatch opens only after the payer's has shut");
             Assert.Greater(MoneyFlight.ReceiverOpensAt(count), MoneyFlight.PayerShutsAt(count));
+            Assert.AreEqual(0f, MoneyPile.OpennessAt(0f, MoneyFlight.PayerSafeOpensAt, MoneyFlight.PayerSafeShutsAt(count)), "the payer's safe shut at first");
+            Assert.AreEqual(0f, MoneyPile.OpennessAt(MoneyFlight.Seconds(count, false), MoneyFlight.PayerSafeOpensAt, MoneyFlight.PayerSafeShutsAt(count)), 1e-4f, "and shut again at the end");
+            Assert.AreEqual(0f, MoneyPile.OpennessAt(MoneyFlight.Seconds(count, true), MoneyFlight.ReceiverSafeOpensAt(count), MoneyFlight.ReceiverSafeShutsAt(count)), 1e-4f, "the other safe shut when it is over");
+            Assert.AreEqual(0f, MoneyPile.OpennessAt(MoneyFlight.UpAt(0, count), MoneyFlight.ReceiverSafeOpensAt(count), MoneyFlight.ReceiverSafeShutsAt(count)), 1e-4f, "and shut until the money comes near");
             Assert.LessOrEqual(MoneyFlight.Seconds(MoneyFlight.MaxPieces, true), 4.5f, "a payment never drags");
 
             var holder = new GameObject("Board Test");
@@ -224,7 +244,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheStartingMoneyComesUpThroughEachPlayersHatchIntoTheirCase()
+        public void TheStartingMoneyComesUpThroughEachPlayersHatchIntoTheirSafe()
         {
             const int count = 4;
             float start = MoneyFlight.DealStartsAt(count);
@@ -388,24 +408,6 @@ namespace Lazpoly.Presentation.Tests
             finally
             {
                 Object.DestroyImmediate(holder);
-            }
-        }
-
-        [Test]
-        public void FarCasesStandOpen135DegreesAndNearOnesLieFlat()
-        {
-            // The owner's wish (2026-11-11): the lid open 135 degrees. The near edges' lids open towards the camera, where
-            // tipped up they were seen edge on; they lie flat.
-            Assert.AreEqual(45f, MoneyPile.LidTilt, 1e-4f);
-            Assert.AreEqual(MoneyPile.CaseDepth, MoneyPile.LidReach(0f), 1e-5f, "a flat lid reaches its own depth");
-            Assert.Less(MoneyPile.LidReach(MoneyPile.LidTilt), MoneyPile.CaseDepth, "a lid tipped up reaches less far");
-            float yaw = BoardCameraRig.BaseYaw;
-            for (int seat = 0; seat < 8; seat++)
-            {
-                bool far = Vector3.Dot(BoardView.MoneyEdgeOutward(seat, yaw), BoardView.ScreenUp(yaw)) > 0f;
-                Assert.AreEqual(far ? MoneyPile.LidTilt : 0f, BoardView.LidTiltAt(seat, yaw), 1e-4f, $"seat {seat + 1}");
-                Assert.AreEqual(MoneyPile.OpenDepth(BoardView.LidTiltAt(seat, yaw)), BoardView.ShelfSizeAt(seat, yaw).z, 1e-5f, $"seat {seat + 1}: the shelf as deep as the open case");
-                Assert.AreEqual(MoneyPile.CaseSize.x, BoardView.ShelfSizeAt(seat, yaw).x, 1e-5f, $"seat {seat + 1}: and as long");
             }
         }
     }

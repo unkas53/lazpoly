@@ -67,18 +67,18 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// Each player's money lies on a shelf just outside the board's edge that faces their corner card (seats 1-4 take a
-        /// corner each, 5-8 share them), its money case along the edge: the case's bottom half's middle this far out from the
+        /// corner each, 5-8 share them), its money safe along the edge: the safe's middle this far out from the
         /// plate's edge (past the gap and the shelf's margin), and when two share an edge, this far either side of its middle
         /// along it.
         /// </summary>
-        public static float MoneyPileOut(int seat, float yaw) => ShelfGapAt(seat, yaw) + ShelfMargin + MoneyPile.CaseSize.z / 2f;
+        public static float MoneyPileOut(int seat, float yaw) => ShelfGapAt(seat, yaw) + ShelfMargin + MoneyPile.SafeSize.z / 2f;
         public const float MoneyPileSpread = 2.4f;
 
         /// <summary>
-        /// The shelf each money case stands on, so the money lies on the table and not in the air: in the plate's stone, a little
+        /// The shelf each money safe stands on, so the money lies on the table and not in the air: in the plate's stone, a little
         /// lower than the plate's top, this far out from the plate's edge (the owner wanted a small gap between them; it first
-        /// reached in under the plate), as big as the open case seen from above (the owner's wish, 2026-11-11: no rim round
-        /// it, <see cref="ShelfMargin"/> 0) and this thick.
+        /// reached in under the plate), as big as the money safe's foot (the owner's wish, 2026-11-11: no rim round it,
+        /// <see cref="ShelfMargin"/> 0) and this thick.
         /// </summary>
         public const float ShelfDrop = 0.03f;
         public const float ShelfGap = 0.5f;
@@ -558,7 +558,7 @@ namespace Lazpoly.Presentation.Tabletop
         private readonly List<MoneyHatch> _hatches = new List<MoneyHatch>();
 
         /// <summary>
-        /// Lays an open money case on a shelf at the table's edge for each seat, in the seat's colour, in seat order, and puts
+        /// Stands a money safe on a shelf at the table's edge for each seat, in the seat's colour, in seat order, and puts
         /// the seat's money hatch on the lawn on that edge's side.
         /// </summary>
         public void CreateMoneyPiles(IReadOnlyList<Color> seatColors)
@@ -588,18 +588,11 @@ namespace Lazpoly.Presentation.Tabletop
             else DestroyImmediate(thing);
         }
 
-        /// <summary>A seat's shelf's size: along the edge the case's length, across the open case's depth seen from above, and its thickness.</summary>
-        public static Vector3 ShelfSizeAt(int seat, float yaw) => new Vector3(
-            MoneyPile.CaseSize.x + 2f * ShelfMargin,
+        /// <summary>A shelf's size: the money safe's foot (along the edge its length, across its depth) and its thickness.</summary>
+        public static Vector3 ShelfSize => new Vector3(
+            MoneyPile.SafeSize.x + 2f * ShelfMargin,
             ShelfThickness,
-            ShelfMargin + MoneyPile.OpenDepth(LidTiltAt(seat, yaw)) + ShelfMargin);
-
-        /// <summary>
-        /// How far a seat's case lid is tipped up from flat: open <see cref="MoneyPile.LidOpening"/> degrees on the far edges
-        /// (the owner's wish, 2026-11-11). On the two edges nearest the camera the lid opens towards it, and tipped up it was
-        /// seen edge on, a thin strip over an empty shelf; there it lies flat.
-        /// </summary>
-        public static float LidTiltAt(int seat, float yaw) => Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f ? MoneyPile.LidTilt : 0f;
+            MoneyPile.SafeSize.z + 2f * ShelfMargin);
 
         /// <summary>The seats' shelves at the table's edge, in seat order.</summary>
         public IReadOnlyList<Transform> MoneyShelves => _shelves;
@@ -607,7 +600,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The seats' money at the table's edge, in seat order.</summary>
         public IReadOnlyList<MoneyPile> MoneyPiles => _moneyPiles;
 
-        /// <summary>Shows a seat's money in its case.</summary>
+        /// <summary>Shows a seat's money in its safe.</summary>
         public void ShowSeatMoney(int seat, int money)
         {
             if (seat >= 0 && seat < _moneyPiles.Count) _moneyPiles[seat].Show(money);
@@ -652,12 +645,11 @@ namespace Lazpoly.Presentation.Tabletop
         {
             for (int seat = 0; seat < _moneyPiles.Count; seat++)
             {
-                Vector3 shelf = ShelfSizeAt(seat, yaw);
+                Vector3 shelf = ShelfSize;
                 Transform root = _moneyPiles[seat].Root;
                 root.localPosition = MoneyPileSpot(seat, _moneyPiles.Count, HalfExtent, yaw);
                 root.localRotation = MoneyPileTurn(seat, yaw);
                 Vector3 outward = MoneyEdgeOutward(seat, yaw);
-                _moneyPiles[seat].OpenAway(outward, LidTiltAt(seat, yaw));
                 if (seat >= _shelves.Count) continue;
                 _shelves[seat].GetComponent<MeshFilter>().sharedMesh = MeshFactory.Slab(shelf, PlateSkin.Repeat);
                 _shelves[seat].localPosition = outward * (HalfExtent + ShelfGapAt(seat, yaw) + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
@@ -672,7 +664,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The seats' money hatches on the lawn, in seat order.</summary>
         public IReadOnlyList<MoneyHatch> MoneyHatches => _hatches;
 
-        /// <summary>A seat's money case, or null.</summary>
+        /// <summary>A seat's money safe, or null.</summary>
         public MoneyPile MoneyPileOf(int seat) => seat >= 0 && seat < _moneyPiles.Count ? _moneyPiles[seat] : null;
 
         /// <summary>A seat's money hatch, or null.</summary>
