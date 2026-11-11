@@ -99,8 +99,10 @@ namespace Lazpoly.Presentation.Tests
                     Vector3 lidWay = board.transform.InverseTransformDirection(lid.position - tray.position);
                     Assert.Greater(Vector3.Dot(lidWay, BoardView.MoneyEdgeOutward(seat, yaw)), MoneyPile.CaseDepth / 2f, $"seat {seat + 1}: the lid opens away from the board");
                     Vector3 lidUp = board.transform.InverseTransformDirection(lid.up), lidOut = board.transform.InverseTransformDirection(lid.forward);
-                    Assert.AreEqual(MoneyPile.LidTilt, Vector3.Angle(lidUp, Vector3.up), 0.1f, $"seat {seat + 1}: open 135 degrees, tipped up from flat");
-                    Assert.Greater(Vector3.Dot(lidOut, Vector3.up), 0f, $"seat {seat + 1}: its far end raised");
+                    float tilt = BoardView.LidTiltAt(seat, yaw);
+                    Assert.AreEqual(tilt, board.MoneyPiles[seat].Tilt, 1e-4f);
+                    Assert.AreEqual(tilt, Vector3.Angle(lidUp, Vector3.up), 0.1f, $"seat {seat + 1}: tipped up from flat as its edge wants");
+                    if (tilt > 0f) Assert.Greater(Vector3.Dot(lidOut, Vector3.up), 0f, $"seat {seat + 1}: its far end raised");
                     Assert.Greater(Vector3.Dot(lidOut, BoardView.MoneyEdgeOutward(seat, yaw)), 0f, $"seat {seat + 1}: leaning away from the board");
 
                     // The shelf is as big as the open case seen from above (the owner's wish, 2026-11-11): from the bottom half's
@@ -113,9 +115,9 @@ namespace Lazpoly.Presentation.Tests
                     Assert.AreEqual(Reach(shelf, outward), Reach(lidShell, outward), 2e-3f, $"seat {seat + 1}: the shelf ends where the open lid does");
                     Assert.AreEqual(Reach(shelf, -outward), Reach(bottom, -outward), 2e-3f, $"seat {seat + 1}: and starts at the case's front wall");
                     Assert.AreEqual(Reach(shelf, along), Reach(bottom, along), 2e-3f, $"seat {seat + 1}: as long as the case");
-                    Assert.Greater(lidShell.min.y, shelf.max.y, $"seat {seat + 1}: the lid stands clear of the shelf");
+                    Assert.GreaterOrEqual(lidShell.min.y, shelf.max.y - 1e-3f, $"seat {seat + 1}: the lid rests on the shelf or above it, never in it");
 
-                    Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSize.z / 2f);
+                    Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSizeAt(seat, yaw).z / 2f);
                     Assert.AreEqual(board.HalfExtent + BoardView.ShelfGapAt(seat, yaw), Vector3.Dot(inner, BoardView.MoneyEdgeOutward(seat, yaw)), 1e-3f, $"seat {seat + 1}: a small gap between the plate and the shelf");
                     Assert.GreaterOrEqual(BoardView.ShelfGapAt(seat, yaw), BoardView.ShelfGap, "the gap shows");
                 }
@@ -386,6 +388,24 @@ namespace Lazpoly.Presentation.Tests
             finally
             {
                 Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void FarCasesStandOpen135DegreesAndNearOnesLieFlat()
+        {
+            // The owner's wish (2026-11-11): the lid open 135 degrees. The near edges' lids open towards the camera, where
+            // tipped up they were seen edge on; they lie flat.
+            Assert.AreEqual(45f, MoneyPile.LidTilt, 1e-4f);
+            Assert.AreEqual(MoneyPile.CaseDepth, MoneyPile.LidReach(0f), 1e-5f, "a flat lid reaches its own depth");
+            Assert.Less(MoneyPile.LidReach(MoneyPile.LidTilt), MoneyPile.CaseDepth, "a lid tipped up reaches less far");
+            float yaw = BoardCameraRig.BaseYaw;
+            for (int seat = 0; seat < 8; seat++)
+            {
+                bool far = Vector3.Dot(BoardView.MoneyEdgeOutward(seat, yaw), BoardView.ScreenUp(yaw)) > 0f;
+                Assert.AreEqual(far ? MoneyPile.LidTilt : 0f, BoardView.LidTiltAt(seat, yaw), 1e-4f, $"seat {seat + 1}");
+                Assert.AreEqual(MoneyPile.OpenDepth(BoardView.LidTiltAt(seat, yaw)), BoardView.ShelfSizeAt(seat, yaw).z, 1e-5f, $"seat {seat + 1}: the shelf as deep as the open case");
+                Assert.AreEqual(MoneyPile.CaseSize.x, BoardView.ShelfSizeAt(seat, yaw).x, 1e-5f, $"seat {seat + 1}: and as long");
             }
         }
     }

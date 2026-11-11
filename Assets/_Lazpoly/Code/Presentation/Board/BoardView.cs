@@ -569,11 +569,11 @@ namespace Lazpoly.Presentation.Tabletop
             _moneyPiles.Clear();
             _shelves.Clear();
             _hatches.Clear();
-            Mesh shelfMesh = MeshFactory.Slab(ShelfSize, PlateSkin.Repeat); // sharp stone, as the plate (2026-11-11)
             for (int seat = 0; seat < seatColors.Count; seat++)
             {
                 _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
-                GameObject shelf = ModelParts.Create($"Money shelf of seat {seat + 1}", transform, shelfMesh, Color.white, 0.1f);
+                // Sharp stone, as the plate (2026-11-11); its mesh is sized to the open case where it is placed.
+                GameObject shelf = ModelParts.Create($"Money shelf of seat {seat + 1}", transform, null, Color.white, 0.1f);
                 ModelParts.Skin(shelf, PlateSkin.Side());
                 _shelves.Add(shelf.transform);
                 _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}"));
@@ -588,11 +588,18 @@ namespace Lazpoly.Presentation.Tabletop
             else DestroyImmediate(thing);
         }
 
-        /// <summary>A shelf's size: along the edge the case's length, across the open case's depth seen from above, and its thickness.</summary>
-        public static Vector3 ShelfSize => new Vector3(
+        /// <summary>A seat's shelf's size: along the edge the case's length, across the open case's depth seen from above, and its thickness.</summary>
+        public static Vector3 ShelfSizeAt(int seat, float yaw) => new Vector3(
             MoneyPile.CaseSize.x + 2f * ShelfMargin,
             ShelfThickness,
-            ShelfMargin + MoneyPile.OpenDepth + ShelfMargin);
+            ShelfMargin + MoneyPile.OpenDepth(LidTiltAt(seat, yaw)) + ShelfMargin);
+
+        /// <summary>
+        /// How far a seat's case lid is tipped up from flat: open <see cref="MoneyPile.LidOpening"/> degrees on the far edges
+        /// (the owner's wish, 2026-11-11). On the two edges nearest the camera the lid opens towards it, and tipped up it was
+        /// seen edge on, a thin strip over an empty shelf; there it lies flat.
+        /// </summary>
+        public static float LidTiltAt(int seat, float yaw) => Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f ? MoneyPile.LidTilt : 0f;
 
         /// <summary>The seats' shelves at the table's edge, in seat order.</summary>
         public IReadOnlyList<Transform> MoneyShelves => _shelves;
@@ -643,15 +650,16 @@ namespace Lazpoly.Presentation.Tabletop
 
         private void PlaceMoneyPiles(float yaw)
         {
-            Vector3 shelf = ShelfSize;
             for (int seat = 0; seat < _moneyPiles.Count; seat++)
             {
+                Vector3 shelf = ShelfSizeAt(seat, yaw);
                 Transform root = _moneyPiles[seat].Root;
                 root.localPosition = MoneyPileSpot(seat, _moneyPiles.Count, HalfExtent, yaw);
                 root.localRotation = MoneyPileTurn(seat, yaw);
                 Vector3 outward = MoneyEdgeOutward(seat, yaw);
-                _moneyPiles[seat].OpenAway(outward);
+                _moneyPiles[seat].OpenAway(outward, LidTiltAt(seat, yaw));
                 if (seat >= _shelves.Count) continue;
+                _shelves[seat].GetComponent<MeshFilter>().sharedMesh = MeshFactory.Slab(shelf, PlateSkin.Repeat);
                 _shelves[seat].localPosition = outward * (HalfExtent + ShelfGapAt(seat, yaw) + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
                     - Vector3.up * (ShelfDrop + shelf.y / 2f);
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);

@@ -99,19 +99,24 @@ namespace Lazpoly.Presentation.Tabletop
         /// How far the open lid reaches out past the bottom half's back wall, seen from above: its floor's far edge, tipped up
         /// by <see cref="LidTilt"/> on the hinge at the rim.
         /// </summary>
-        public static float LidReach => CaseHeight * Mathf.Sin(LidTilt * Mathf.Deg2Rad) + CaseDepth * Mathf.Cos(LidTilt * Mathf.Deg2Rad);
+        public static float LidReach(float tilt) => CaseHeight * Mathf.Sin(tilt * Mathf.Deg2Rad) + CaseDepth * Mathf.Cos(tilt * Mathf.Deg2Rad);
 
-        /// <summary>The open case's depth seen from above: the bottom half and the open lid beyond it.</summary>
-        public static float OpenDepth => CaseDepth + LidReach;
+        /// <summary>The open case's depth seen from above, its lid tipped up by <paramref name="tilt"/>: the bottom half and the lid beyond it.</summary>
+        public static float OpenDepth(float tilt) => CaseDepth + LidReach(tilt);
+
+        /// <summary>How far the lid is tipped up from flat now.</summary>
+        public float Tilt { get; private set; } = LidTilt;
 
         /// <summary>
         /// Opens the lid towards <paramref name="away"/> (in the pile's parent's frame, flat on the table): the side away from
-        /// the board, so the lid never covers a square.
+        /// the board, so the lid never covers a square; tipped up from flat by <paramref name="tilt"/>.
         /// </summary>
-        public void OpenAway(Vector3 away)
+        public void OpenAway(Vector3 away, float tilt = LidTilt)
         {
             Vector3 forward = Root.localRotation * Vector3.forward;
             Case.localRotation = Vector3.Dot(forward, away) >= 0f ? Quaternion.identity : Quaternion.Euler(0f, 180f, 0f);
+            Tilt = tilt;
+            Hinge.localRotation = Quaternion.Euler(-tilt, 0f, 0f);
         }
 
         /// <summary>The pieces lying on the tray now.</summary>
