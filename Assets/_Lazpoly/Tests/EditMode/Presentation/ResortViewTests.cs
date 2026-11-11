@@ -187,7 +187,7 @@ namespace Lazpoly.Presentation.Tests
                         lightest = Mathf.Max(lightest, paving.grayscale);
                     }
 
-                    Assert.Less(lightest, 0.45f, "dark grey paving all over");
+                    Assert.Less(lightest, 0.55f, "dark grey paving all over");
                     Assert.Greater(lightest - darkest, 0.08f, "with its stones and joints showing");
                     Assert.AreEqual((Color32)BoardView.FactoryInk, (Color32)board.NameLabel(resort).color, "the name in the light ink");
                     Assert.AreEqual((Color32)BoardView.FactoryInk, (Color32)board.PriceLabel(resort).color, "the price too");

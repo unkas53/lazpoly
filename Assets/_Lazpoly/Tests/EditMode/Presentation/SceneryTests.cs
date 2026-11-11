@@ -190,9 +190,9 @@ namespace Lazpoly.Presentation.Tests
 
             // The factory cities (the owner's wish, 2026-11-11): dark grey paving, a near-neutral grey, with a light ink on it.
             Color stone = BoardView.FactoryStone;
-            Assert.Less(Mathf.Max(stone.r, Mathf.Max(stone.g, stone.b)), 0.4f, "a dark grey");
+            Assert.That(Mathf.Max(stone.r, Mathf.Max(stone.g, stone.b)), Is.InRange(0.35f, 0.45f), "a dark grey, a step lighter than at first");
             Assert.Less(Mathf.Max(stone.r, Mathf.Max(stone.g, stone.b)) - Mathf.Min(stone.r, Mathf.Min(stone.g, stone.b)), 0.06f, "a grey, not a colour");
-            Assert.GreaterOrEqual(BoardView.Contrast(stone, BoardView.FactoryInk), 7f, "the name and the rent read on it");
+            Assert.GreaterOrEqual(BoardView.Contrast(stone, BoardView.FactoryInk), 4.5f, "the big bold name and the rent read on it");
         }
 
         [Test]

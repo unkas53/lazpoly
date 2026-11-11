@@ -150,9 +150,10 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A factory city's tile (the owner's wish, 2026-11-11): dark grey paving with larger stones than a town's
-        /// (<see cref="TileSkin.Factory"/>), its name and rent printed in a light ink that reads on it.
+        /// (<see cref="TileSkin.Factory"/>), its name and rent printed in a light ink that reads on it. A step lighter
+        /// than at first (the owner's wish, 2026-11-11: "biraz daha aç").
         /// </summary>
-        public static readonly Color FactoryStone = new Color(0.30f, 0.31f, 0.33f);
+        public static readonly Color FactoryStone = new Color(0.38f, 0.39f, 0.41f);
         public static readonly Color FactoryInk = new Color(0.95f, 0.93f, 0.88f);
 
         /// <summary>Where pawns stand: on the price line.</summary>
