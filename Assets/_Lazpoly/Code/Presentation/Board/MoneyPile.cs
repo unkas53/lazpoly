@@ -38,6 +38,9 @@ namespace Lazpoly.Presentation.Tabletop
         public const float LidThickness = 0.1f;
         public const float FootHeight = 0.05f;
 
+        /// <summary>A satin enamel: glossier read as plastic, with white glare on the lid under the table's light.</summary>
+        public const float PaintSmoothness = 0.42f;
+
         /// <summary>How round the safe's edges are: a heavy, softly bevelled box.</summary>
         public const float Bevel = 0.035f;
 
@@ -70,12 +73,12 @@ namespace Lazpoly.Presentation.Tabletop
             Color paint = Color.Lerp(color, Steel, 0.2f);
             Color panel = Color.Lerp(paint, Steel, 0.35f);
             Color lining = Color.Lerp(color, Color.black, 0.7f);
-            ModelParts.Create("Body", Safe, BodyMesh(), paint, 0.7f);
+            ModelParts.Create("Body", Safe, BodyMesh(), paint, PaintSmoothness);
             ModelParts.Create("Lining", Safe, LiningMesh(), lining, 0.05f);
             ModelParts.Create("Feet", Safe, FeetMesh(), Steel, 0.5f);
             ModelParts.Create("Guards", Safe, GuardMesh(), Steel, 0.6f);
             ModelParts.Create("Rivets", Safe, RivetMesh(), Chrome, 0.8f);
-            ModelParts.Create("Door panel", Safe, PanelMesh(), panel, 0.65f);
+            ModelParts.Create("Door panel", Safe, PanelMesh(), panel, PaintSmoothness - 0.05f);
             ModelParts.Create("Door trim", Safe, TrimMesh(), Steel, 0.65f);
             ModelParts.Create("Dial ring", Safe, DialRingMesh(), Steel, 0.6f);
             ModelParts.Create("Dial marks", Safe, DialMarkMesh(), Chrome, 0.8f);
@@ -88,8 +91,8 @@ namespace Lazpoly.Presentation.Tabletop
             Lid = new GameObject("Lid").transform;
             Lid.SetParent(Safe, false);
             Lid.localPosition = new Vector3(0f, BodyHeight, SafeSize.z / 2f);
-            ModelParts.Create("Lid top", Lid, LidMesh(), paint, 0.7f);
-            ModelParts.Create("Lid panel", Lid, LidPanelMesh(), panel, 0.65f);
+            ModelParts.Create("Lid top", Lid, LidMesh(), paint, PaintSmoothness);
+            ModelParts.Create("Lid panel", Lid, LidPanelMesh(), panel, PaintSmoothness - 0.05f);
             ModelParts.Create("Lid rim", Lid, LidRimMesh(), Steel, 0.6f);
             ModelParts.Create("Lid grip", Lid, LidGripMesh(), Chrome, 0.85f);
             ModelParts.Create("Lid lining", Lid, LidLiningMesh(), lining, 0.05f);
