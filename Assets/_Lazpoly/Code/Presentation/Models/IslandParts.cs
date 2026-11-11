@@ -21,15 +21,19 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>The meadow's and the soil's thickness.</summary>
         public const float GrassThickness = 0.07f;
-        public const float SoilThickness = 0.16f;
+        public const float SoilThickness = 0.22f;
 
-        /// <summary>The rock layers under the soil: each one's share of the top's size, and its height.</summary>
-        public static readonly float[] LayerShares = { 0.82f, 0.6f, 0.38f };
-        public static readonly float[] LayerHeights = { 0.2f, 0.2f, 0.18f };
+        /// <summary>
+        /// The rock layers under the soil: each one's share of the top's size, and its height. Deep, so that from the table's
+        /// camera, which sees only what hangs below the meadow's near edge, the rock and its point show (a shallow first try
+        /// read as a green mat under the safe).
+        /// </summary>
+        public static readonly float[] LayerShares = { 0.9f, 0.74f, 0.56f, 0.36f };
+        public static readonly float[] LayerHeights = { 0.3f, 0.3f, 0.28f, 0.26f };
 
         /// <summary>The point under the last layer: its height, and its radius as a share of the top's smaller side.</summary>
-        public const float SpikeHeight = 0.38f;
-        public const float SpikeShare = 0.2f;
+        public const float SpikeHeight = 0.75f;
+        public const float SpikeShare = 0.14f;
 
         /// <summary>How deep the whole island hangs under its top.</summary>
         public static float Depth
@@ -56,11 +60,11 @@ namespace Lazpoly.Presentation.Models
             float Range(float a, float b) => a + (float)random.NextDouble() * (b - a);
 
             // The meadow, a lip of deeper grass round it, and the soil under it.
-            Part(at, "Meadow", MeshFactory.RoundedBox(new Vector3(top.x, GrassThickness, top.y), 0.03f, 2), Grass, new Vector3(0f, -GrassThickness / 2f, 0f), Quaternion.identity, 0.05f);
+            Part(at, "Meadow", MeshFactory.RoundedBox(new Vector3(top.x, GrassThickness, top.y), 0.035f, 2), Grass, new Vector3(0f, -GrassThickness / 2f, 0f), Quaternion.identity, 0.05f);
             Part(at, "Meadow lip", MeshFactory.RoundedBox(new Vector3(top.x * 0.995f, 0.05f, top.y * 0.99f), 0.025f, 2), GrassDeep,
                 new Vector3(0f, -GrassThickness + 0.01f, 0f), Quaternion.identity, 0.05f);
             float y = -GrassThickness + Overlap / 2f;
-            Part(at, "Soil", MeshFactory.RoundedBox(new Vector3(top.x * 0.96f, SoilThickness, top.y * 0.93f), 0.06f, 2), Soil,
+            Part(at, "Soil", MeshFactory.RoundedBox(new Vector3(top.x * 0.98f, SoilThickness, top.y * 0.96f), 0.06f, 2), Soil,
                 new Vector3(0f, y - SoilThickness / 2f, 0f), Quaternion.identity, 0.05f);
             y -= SoilThickness - Overlap;
 
@@ -70,7 +74,7 @@ namespace Lazpoly.Presentation.Models
             {
                 float share = LayerShares[layer], height = LayerHeights[layer];
                 drift += new Vector2(Range(-0.05f, 0.05f) * top.x, Range(-0.05f, 0.05f) * top.y) * share;
-                Quaternion turn = Quaternion.Euler(0f, Range(-4f, 4f), 0f);
+                Quaternion turn = Quaternion.Euler(0f, Range(-2f, 2f) * (layer + 1), 0f);
                 Part(at, $"Rock {layer + 1}", MeshFactory.RoundedBox(new Vector3(top.x * share, height, top.y * share * Range(0.9f, 1f)), 0.07f, 2),
                     layer % 2 == 0 ? Rock : RockDark, new Vector3(drift.x, y - height / 2f, drift.y), turn, 0.15f);
                 y -= height - Overlap;
@@ -80,30 +84,33 @@ namespace Lazpoly.Presentation.Models
             Part(at, "Spike", MeshFactory.Cone(10), RockDark, new Vector3(drift.x, y + Overlap, drift.y), Quaternion.Euler(180f, Range(0f, 360f), 0f), 0.15f,
                 new Vector3(spike, SpikeHeight, spike * Range(0.8f, 1f)));
 
-            // Loose stones sticking out of the soil and the first layer, kept within the top's outline.
+            // Stones sticking out of the soil's and the first two layers' faces, kept within the top's outline.
             var stones = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 10; i++)
             {
-                float angle = i * 60f + Range(-20f, 20f);
+                int band = i % 3;
+                float reach = band == 0 ? 0.46f : LayerShares[band - 1] / 2f;
+                float depth = band == 0 ? -GrassThickness - SoilThickness * 0.5f : -GrassThickness - SoilThickness - LayerHeights[0] * (band - 0.5f);
+                float angle = i * 36f + Range(-12f, 12f);
                 Vector3 way = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
-                float size = Range(0.1f, 0.18f);
-                var spot = new Vector3(way.x * (top.x * 0.44f - size / 2f), Range(-0.34f, -0.18f), way.z * (top.y * 0.42f - size / 2f));
+                float size = Range(0.1f, 0.17f);
+                var spot = new Vector3(way.x * Mathf.Min(reach, 0.42f) * top.x, depth + Range(-0.05f, 0.05f), way.z * Mathf.Min(reach, 0.4f) * top.y);
                 stones.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(Vector3.one * size, size * 0.3f, 2),
                     Matrix4x4.TRS(spot, Quaternion.Euler(Range(0f, 40f), Range(0f, 360f), Range(0f, 40f)), new Vector3(1f, Range(0.6f, 0.9f), Range(0.8f, 1f)))));
             }
 
             Part(at, "Stones", MeshFactory.Combine($"island-stones:{seed}:{top.x:F2}:{top.y:F2}", stones), Rock, Vector3.zero, Quaternion.identity, 0.15f);
 
-            // Roots hanging out of the soil near the edge.
+            // Roots hanging out of the soil at its edge, down over the rock's face.
             var roots = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < 9; i++)
             {
-                float angle = i * (360f / 7f) + Range(-15f, 15f);
+                float angle = i * 40f + Range(-15f, 15f);
                 Vector3 way = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
-                float length = Range(0.12f, 0.26f);
-                var spot = new Vector3(way.x * top.x * 0.43f, -GrassThickness - SoilThickness + 0.04f, way.z * top.y * 0.4f);
+                float length = Range(0.25f, 0.5f);
+                var spot = new Vector3(way.x * top.x * 0.46f, -GrassThickness - SoilThickness + 0.05f, way.z * top.y * 0.44f);
                 roots.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Cylinder(6),
-                    Matrix4x4.TRS(spot, Quaternion.Euler(180f + Range(-15f, 15f), 0f, Range(-15f, 15f)), new Vector3(0.012f, length, 0.012f))));
+                    Matrix4x4.TRS(spot, Quaternion.Euler(180f + Range(-8f, 8f), 0f, Range(-8f, 8f)), new Vector3(0.022f, length, 0.022f))));
             }
 
             Part(at, "Roots", MeshFactory.Combine($"island-roots:{seed}:{top.x:F2}:{top.y:F2}", roots), Root, Vector3.zero, Quaternion.identity, 0.05f);
