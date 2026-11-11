@@ -419,7 +419,7 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void EachSafeStandsOnAFloatingIslandThatNarrowsToAPoint()
         {
-            // The owner's wish (2026-11-11): the safes' shelves are little floating islands.
+            // The owner's wishes (2026-11-11): the safes' shelves are little floating islands, professionally made.
             var holder = new GameObject("Board Test");
             try
             {
@@ -431,25 +431,36 @@ namespace Lazpoly.Presentation.Tests
                     Transform island = board.MoneyShelves[seat];
                     Bounds grass = Of(island, "Meadow");
                     Assert.AreEqual(BoardView.ShelfSize.x * BoardView.ShelfSize.z, grass.size.x * grass.size.z, 1e-2f, $"seat {seat + 1}: the meadow is the shelf's top");
-                    float Area(Bounds b) => b.size.x * b.size.z;
-                    Bounds previous = Of(island, "Soil");
-                    Assert.Less(previous.max.y, grass.max.y);
-                    for (int layer = 1; layer <= IslandParts.LayerShares.Length; layer++)
+                    Assert.Less(grass.min.y, grass.max.y - IslandShape.SkirtShort, $"seat {seat + 1}: grass hangs over the edge");
+                    Assert.GreaterOrEqual(grass.min.y, grass.max.y - IslandShape.SkirtLong - 1e-3f);
+
+                    Bounds rock = Of(island, "Rock");
+                    Assert.Less(rock.max.y, grass.max.y, $"seat {seat + 1}: the body under the meadow");
+                    Assert.AreEqual(grass.max.y - IslandParts.Depth, rock.min.y, 1e-3f, $"seat {seat + 1}: as deep as the island is said to be");
+                    Assert.AreSame(IslandSkin.Rock(), island.Find("Rock").GetComponent<Renderer>().sharedMaterial.mainTexture);
+                    Assert.AreSame(IslandSkin.Grass(), island.Find("Meadow").GetComponent<Renderer>().sharedMaterial.mainTexture);
+
+                    Assert.Less(Of(island, "Vines").min.y, grass.max.y - 0.3f, $"seat {seat + 1}: vines trail down");
+                    Assert.Greater(Of(island, "Tufts").max.y, grass.max.y + 0.08f, $"seat {seat + 1}: tufts stand on the meadow");
+                    Assert.Greater(Of(island, "Flowers").min.y, grass.max.y, $"seat {seat + 1}: and flowers");
+                    Assert.Less(Of(island, "Tufts").max.y, grass.max.y + MoneyPile.SafeSize.y / 2f, $"seat {seat + 1}: all of it low beside the safe");
+
+                    Transform stones = island.Find(IslandParts.StonesName);
+                    Assert.AreEqual(4, stones.childCount, $"seat {seat + 1}: loose stones adrift under it");
+                    Assert.IsNotNull(stones.GetComponent<IslandDrift>(), $"seat {seat + 1}: and they bob");
+                    var parts = new System.Collections.Generic.List<Bounds> { rock, Of(island, "Vines"), Of(island, "Tufts"), Of(island, "Flowers") };
+                    foreach (Transform stone in stones)
                     {
-                        Bounds rock = Of(island, $"Rock {layer}");
-                        Assert.Less(rock.center.y, previous.center.y, $"seat {seat + 1}: rock layer {layer} under the one above");
-                        Assert.Less(Area(rock), Area(previous), $"seat {seat + 1}: and narrower");
-                        previous = rock;
+                        Bounds b = stone.GetComponent<Renderer>().bounds;
+                        Assert.Less(b.max.y, grass.max.y - 1f, $"seat {seat + 1}: {stone.name} well under the meadow");
+                        Assert.Greater(b.min.y - IslandDrift.Rise, grass.max.y - IslandParts.Depth, $"seat {seat + 1}: {stone.name} no lower than the point");
+                        parts.Add(b);
                     }
 
-                    Bounds spike = Of(island, "Spike");
-                    Assert.Less(spike.min.y, previous.min.y, $"seat {seat + 1}: a point at the bottom");
-                    Assert.AreEqual(grass.max.y - IslandParts.Depth, spike.min.y, 0.03f, $"seat {seat + 1}: as deep as the island is said to be");
-                    foreach (string part in new[] { "Stones", "Roots", "Tufts", "Spike", "Soil" })
+                    foreach (Bounds b in parts)
                     {
-                        Bounds b = Of(island, part);
                         Assert.IsTrue(b.min.x >= grass.min.x - 0.02f && b.max.x <= grass.max.x + 0.02f && b.min.z >= grass.min.z - 0.02f && b.max.z <= grass.max.z + 0.02f,
-                            $"seat {seat + 1}: the {part} keep within the meadow's outline");
+                            $"seat {seat + 1}: everything keeps within the meadow's outline ({b})");
                     }
                 }
             }
@@ -457,6 +468,126 @@ namespace Lazpoly.Presentation.Tests
             {
                 Object.DestroyImmediate(holder);
             }
+        }
+
+        [Test]
+        public void AnIslandsBodyStepsInLedgeByLedgeToAPointAndEachIslandIsItsOwn()
+        {
+            var top = new Vector2(BoardView.ShelfSize.x, BoardView.ShelfSize.z);
+
+            // The body: widest under the grass, each ledge set in under the one above, nothing at the point.
+            Assert.AreEqual(IslandShape.BodyShare, IslandShape.ShareAt(0f), 1e-4f);
+            Assert.AreEqual(0f, IslandShape.ShareAt(IslandShape.Depth), 1e-4f);
+            Assert.Greater(IslandShape.ShareAt(IslandShape.Ledges[0]), IslandShape.ShareAt(IslandShape.SoilDepth), "the first ledge of rock juts out under the soil");
+            for (int ledge = 1; ledge < IslandShape.Ledges.Length; ledge++)
+            {
+                float above = IslandShape.Ledges[ledge - 1], here = IslandShape.Ledges[ledge];
+                Assert.Less(IslandShape.ShareAt(here), IslandShape.ShareAt(above) - 0.15f, $"ledge {ledge + 1} is well narrower than ledge {ledge}");
+                float cliff = IslandShape.ShareAt(above) - IslandShape.ShareAt(above + (here - above) * 0.6f);
+                float under = IslandShape.ShareAt(above + (here - above) * 0.6f) - IslandShape.ShareAt(here);
+                Assert.Less(cliff, under, $"ledge {ledge}: a steep face, then cut in sharply underneath");
+            }
+
+            // The meadow's edge touches the top's four sides and never passes them; two islands differ.
+            Vector2[] edge = IslandShape.MeadowEdge(top, 0), other = IslandShape.MeadowEdge(top, 1);
+            float right = 0f, left = 0f, far = 0f, near = 0f, differs = 0f;
+            for (int i = 0; i < edge.Length; i++)
+            {
+                right = Mathf.Max(right, edge[i].x);
+                left = Mathf.Min(left, edge[i].x);
+                far = Mathf.Max(far, edge[i].y);
+                near = Mathf.Min(near, edge[i].y);
+                differs = Mathf.Max(differs, (edge[i] - other[i]).magnitude);
+            }
+
+            Assert.AreEqual(top.x / 2f, right, 1e-4f);
+            Assert.AreEqual(-top.x / 2f, left, 1e-4f);
+            Assert.AreEqual(top.y / 2f, far, 1e-4f);
+            Assert.AreEqual(-top.y / 2f, near, 1e-4f);
+            Assert.Greater(differs, 0.005f, "each island has its own edge");
+            Assert.AreNotEqual(IslandShape.LeanAt(top, 0, IslandShape.Depth), IslandShape.LeanAt(top, 1, IslandShape.Depth), "and its own lean");
+            Assert.AreEqual(Vector2.zero, IslandShape.LeanAt(top, 0, 0f), "upright under the grass");
+
+            // Cut in flat faces, each looking out: its corners share one facing, and it is wound to look that way.
+            foreach (Mesh mesh in new[] { IslandShape.Meadow(top, 0), IslandShape.Rock(top, 0), IslandShape.Vines(top, 0), IslandShape.Tufts(top, 0), IslandShape.Flowers(top, 0), IslandShape.Drifter(0) })
+            {
+                Vector3[] vertices = mesh.vertices, normals = mesh.normals;
+                int[] triangles = mesh.triangles;
+                Assert.Greater(triangles.Length, 0, mesh.name);
+                Assert.AreEqual(vertices.Length, mesh.uv.Length, mesh.name);
+                for (int i = 0; i < triangles.Length; i += 3)
+                {
+                    Vector3 a = vertices[triangles[i]], b = vertices[triangles[i + 1]], c = vertices[triangles[i + 2]];
+                    Vector3 facing = normals[triangles[i]];
+                    Assert.AreEqual(facing, normals[triangles[i + 1]], mesh.name);
+                    Assert.AreEqual(facing, normals[triangles[i + 2]], mesh.name);
+                    Assert.Greater(Vector3.Dot(Vector3.Cross(b - a, c - a), facing), 0f, $"{mesh.name}: face {i / 3} is wound to look along its facing");
+                }
+            }
+
+            Assert.AreSame(IslandShape.Rock(top, 0), IslandShape.Rock(top, 0), "the same island is cut once");
+            Assert.AreNotSame(IslandShape.Rock(top, 0), IslandShape.Rock(top, 1));
+
+            // The meadow's top faces up and the body's faces look out from its middle.
+            Mesh rock = IslandShape.Rock(top, 0);
+            Vector3[] rockAt = rock.vertices, rockFacing = rock.normals;
+            int outward = 0;
+            for (int i = 0; i < rockAt.Length; i++)
+            {
+                if (Vector3.Dot(new Vector3(rockAt[i].x, 0f, rockAt[i].z), rockFacing[i]) > -0.05f) outward++;
+            }
+
+            Assert.Greater(outward, rockAt.Length * 0.8f, "the body's faces look out, not in");
+
+            // The paint: brown soil under the grass, the board's warm stone below, darker and hazier towards the point.
+            float V(float depth) => 1f - depth / IslandShape.Depth;
+            Color soil = Average(V(0.2f)), high = Average(V(0.45f)), low = Average(V(1.95f));
+            Assert.Greater(soil.r, soil.b + 0.12f, "soil is brown");
+            Assert.Greater(high.grayscale, soil.grayscale + 0.1f, "the stone is lighter than the soil");
+            Assert.Greater(high.r, high.b, "a warm stone, like the board's");
+            Assert.Less(low.grayscale, high.grayscale - 0.05f, "darker towards the point");
+            Assert.Greater(low.b - low.r, high.b - high.r + 0.03f, "with the sky's haze on it");
+            Assert.AreEqual(0f, ((Vector4)(IslandSkin.RockAt(0f, 0.6f) - IslandSkin.RockAt(1f, 0.6f))).magnitude, 1e-4f, "the picture meets itself round the island");
+            Assert.AreEqual(0f, ((Vector4)(LawnSkin.Light - IslandSkin.GrassAt(1f))).magnitude, 1e-4f, "the lawn's own green on top");
+            Assert.Less(IslandSkin.GrassAt(0f).grayscale, IslandSkin.GrassAt(0.7f).grayscale - 0.05f, "deeper at the tips of the hanging grass");
+            Assert.Less(IslandSkin.GrassAt(0.7f).grayscale, IslandSkin.GrassAt(1f).grayscale);
+
+            // The loose stones rise and sink a little, each in its own time, and turn.
+            float most = 0f;
+            for (float seconds = 0f; seconds < 20f; seconds += 0.05f) most = Mathf.Max(most, Mathf.Abs(IslandDrift.RiseAt(seconds, 0, 0)));
+            Assert.AreEqual(IslandDrift.Rise, most, 1e-3f);
+            Assert.AreNotEqual(IslandDrift.SecondsOf(0, 0), IslandDrift.SecondsOf(1, 0));
+            for (int stone = 0; stone < 4; stone++) Assert.That(IslandDrift.SecondsOf(stone, 3), Is.InRange(IslandDrift.QuickSeconds, IslandDrift.SlowSeconds));
+            var stones = new GameObject("Stones");
+            try
+            {
+                var child = new GameObject("Stone 1");
+                child.transform.SetParent(stones.transform, false);
+                child.transform.localPosition = new Vector3(1f, -1.5f, 0.5f);
+                IslandDrift drift = IslandDrift.Attach(stones.transform, 2);
+                float quarter = IslandDrift.SecondsOf(0, 2) / 4f;
+                drift.Show(quarter);
+                Vector3 one = child.transform.localPosition;
+                drift.Show(quarter * 3f);
+                Vector3 two = child.transform.localPosition;
+                Assert.AreEqual(1f, one.x, 1e-5f, "only up and down");
+                Assert.AreEqual(0.5f, one.z, 1e-5f);
+                Assert.AreEqual(-3f, one.y + two.y, 1e-4f, "about its rest");
+                Assert.That(Mathf.Abs(one.y + 1.5f), Is.LessThanOrEqualTo(IslandDrift.Rise + 1e-5f));
+                Assert.AreNotEqual(Quaternion.identity, child.transform.localRotation, "and turning");
+            }
+            finally
+            {
+                Object.DestroyImmediate(stones);
+            }
+        }
+
+        private static Color Average(float v)
+        {
+            Color sum = Color.clear;
+            const int samples = 64;
+            for (int i = 0; i < samples; i++) sum += IslandSkin.RockAt((i + 0.5f) / samples, v);
+            return sum / samples;
         }
     }
 }

@@ -95,8 +95,8 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void TheBackdropGlowsBehindTheBoardAndFillsTheView()
         {
-            Color middle = SkyBackdrop.ColourAt(SkyBackdrop.GlowCentre.x, SkyBackdrop.GlowCentre.y);
-            Color corner = SkyBackdrop.ColourAt(0f, 0f);
+            Color middle = SkySkin.ColourAt(SkySkin.GlowCentre.x, SkySkin.GlowCentre.y);
+            Color corner = SkySkin.ColourAt(0f, 0f);
             Assert.Greater(middle.grayscale, corner.grayscale + 0.1f, "light behind the board, deeper at the edges");
             Assert.Greater(corner.b, corner.r + 0.2f, "still a sky blue");
 
@@ -111,11 +111,73 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreSame(backdrop, SkyBackdrop.Attach(camera), "one backdrop per camera");
                 Assert.GreaterOrEqual(backdrop.transform.localScale.y, 10f, "it fills the view's height");
                 Assert.Less(backdrop.transform.localPosition.z, camera.farClipPlane, "inside the far end, so it is drawn");
+
+                // The near clouds ride in front of the sky and behind everything else.
+                Assert.IsNotNull(backdrop.Clouds, "a layer of clouds in front of the sky");
+                Assert.Less(backdrop.Clouds.position.z, backdrop.transform.position.z, "nearer than the sky");
+                Material sky = backdrop.GetComponent<Renderer>().sharedMaterial, clouds = backdrop.Clouds.GetComponent<Renderer>().sharedMaterial;
+                Assert.AreSame(SkySkin.Sky(), sky.mainTexture);
+                Assert.AreSame(SkySkin.Clouds(), clouds.mainTexture);
+                Assert.Less(sky.renderQueue, clouds.renderQueue, "the sky is drawn first");
+                Assert.Less(clouds.renderQueue, (int)UnityEngine.Rendering.RenderQueue.Transparent, "and both before the table's own see-through things");
+                Assert.AreEqual(camera.aspect * SkySkin.CloudHeight / SkySkin.CloudWidth, clouds.mainTextureScale.x, 1e-4f, "the clouds keep their shape whatever the window's");
             }
             finally
             {
                 Object.DestroyImmediate(holder);
             }
+        }
+
+        [Test]
+        public void TheSkyRisesFromDeepBlueToAPaleHazeWithCloudsClearOfTheBoard()
+        {
+            // The owner's wish (2026-11-11): a backdrop that suits the atmosphere.
+            Color bottom = SkySkin.ColourAt(0.02f, 0.02f), side = SkySkin.ColourAt(0.02f, 0.5f), top = SkySkin.ColourAt(0.02f, 0.98f);
+            Assert.Less(bottom.grayscale, side.grayscale, "deeper at the bottom");
+            Assert.Less(side.grayscale, top.grayscale, "paler towards the top");
+            foreach (Color colour in new[] { bottom, side, top }) Assert.Greater(colour.b, colour.r, "a sky blue all the way up");
+            Assert.Greater(top.r - top.b, side.r - side.b, "the haze at the top is warmer");
+
+            // The near clouds keep to the bottom and the top of the screen: none across the middle, where the board is.
+            float low = 0f, middle = 0f, high = 0f;
+            for (int i = 0; i < 64; i++)
+            {
+                float u = (i + 0.5f) / 64f;
+                low = Mathf.Max(low, SkySkin.CloudCover(u, 0.06f));
+                high = Mathf.Max(high, SkySkin.CloudCover(u, 0.93f));
+                for (float v = SkySkin.CloudsBelow; v <= SkySkin.CloudsAbove; v += 0.02f) middle = Mathf.Max(middle, SkySkin.CloudCover(u, v));
+            }
+
+            Assert.Greater(low, 0.9f, "solid clouds along the bottom");
+            Assert.Greater(high, 0.5f, "lighter ones along the top");
+            Assert.AreEqual(0f, middle, 1e-4f, "clear sky behind the board");
+            for (float v = 0.01f; v < 1f; v += 0.03f)
+                Assert.AreEqual(SkySkin.CloudCover(0.0002f, v), SkySkin.CloudCover(0.9998f, v), 0.1f, "the layer repeats sideways without a seam");
+            Assert.Greater(SkySkin.CloudShade.grayscale, 0.75f, "the clouds are light even in their shade, never grey");
+            Assert.Greater(SkySkin.CloudLight.grayscale, SkySkin.CloudShade.grayscale + 0.1f, "and lit on top");
+
+            // The pictures: the sky fills its picture, the cloud layer is see-through between its clouds and repeats sideways.
+            Texture2D skyPicture = SkySkin.Sky(), cloudPicture = SkySkin.Clouds();
+            Assert.AreEqual(SkySkin.Width, skyPicture.width);
+            Assert.AreEqual(SkySkin.Height, skyPicture.height);
+            Assert.AreEqual(TextureWrapMode.Repeat, cloudPicture.wrapModeU);
+            Assert.AreEqual(1f, skyPicture.GetPixel(10, 10).a, 1e-3f);
+            Assert.AreEqual(0f, cloudPicture.GetPixel(SkySkin.CloudWidth / 2, SkySkin.CloudHeight / 2).a, 1e-3f, "clear in the middle");
+
+            // Far islands and far clouds lie at the sides, out of the board's way.
+            foreach (SkySkin.FarIsland island in SkySkin.FarIslands) Assert.Greater(Mathf.Abs(island.U - 0.5f), 0.25f);
+
+            // Covering a view without stretching, and a drift that comes round.
+            Vector4 wide = SkyBackdrop.Cover(21f / 9f, 16f / 9f), tall = SkyBackdrop.Cover(4f / 3f, 16f / 9f), same = SkyBackdrop.Cover(16f / 9f, 16f / 9f);
+            Assert.AreEqual(1f, wide.x, 1e-4f);
+            Assert.AreEqual((16f / 9f) / (21f / 9f), wide.y, 1e-4f, "a wide window sees less of the picture's height");
+            Assert.AreEqual((1f - wide.y) / 2f, wide.w, 1e-4f, "cut evenly");
+            Assert.AreEqual(0.75f, tall.x, 1e-4f);
+            Assert.AreEqual(1f, tall.y, 1e-4f);
+            Assert.AreEqual(new Vector4(1f, 1f, 0f, 0f), same);
+            Assert.AreEqual(0f, SkyBackdrop.DriftAt(0f), 1e-5f);
+            Assert.AreEqual(0.25f, SkyBackdrop.DriftAt(SkyBackdrop.DriftSeconds * 1.25f), 1e-4f, "round and round");
+            Assert.GreaterOrEqual(SkyBackdrop.DriftSeconds, 240f, "slow");
         }
 
         [Test]

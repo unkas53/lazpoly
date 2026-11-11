@@ -575,7 +575,9 @@ namespace Lazpoly.Presentation.Tabletop
                 _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
                 // A little floating island (the owner's wish, 2026-11-11), its meadow top the shelf's size.
                 Vector3 size = ShelfSize;
-                _shelves.Add(IslandParts.Create(transform, $"Money shelf of seat {seat + 1}", new Vector2(size.x, size.z), seat).transform);
+                Transform island = IslandParts.Create(transform, $"Money shelf of seat {seat + 1}", new Vector2(size.x, size.z), seat).transform;
+                IslandDrift.Attach(island.Find(IslandParts.StonesName), seat);
+                _shelves.Add(island);
                 _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}"));
             }
 
