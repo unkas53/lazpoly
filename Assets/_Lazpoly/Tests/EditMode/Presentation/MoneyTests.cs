@@ -61,7 +61,7 @@ namespace Lazpoly.Presentation.Tests
             }
 
             Assert.Less(MoneyPile.SlotOffset(0, 4).z, MoneyPile.SlotOffset(2, 4).z, "the first two in the front row, towards the camera");
-            Assert.Less(MoneyBundle.Height(MoneyPiece.Stack) * MoneyPile.PieceScale + MoneyPile.MoneyFloor, MoneyPile.BodyHeight, "the money fits under the shut lid");
+            Assert.Less(MoneyBundle.Height(MoneyPiece.Stack) * MoneyPile.PieceScale + MoneyPile.MoneyFloor, MoneyPile.FootHeight + MoneyPile.BodyHeight, "the money fits under the shut lid");
 
             float yaw = BoardCameraRig.BaseYaw, half = 8f;
             Vector3 up = BoardView.ScreenUp(yaw), right = BoardView.ScreenRight(yaw);
@@ -99,15 +99,18 @@ namespace Lazpoly.Presentation.Tests
                     Transform tray = board.MoneyPiles[seat].Root;
                     Assert.AreEqual(tray.position.y, shelf.max.y, 1e-3f, $"seat {seat + 1}: the tray lies on its shelf");
                     Assert.Less(shelf.max.y, 0f, $"seat {seat + 1}: the shelf a little under the plate's top");
-                    // The shelf is as big as the safe's foot (the owner's wish, 2026-11-11), the safe on it, shut.
+                    // The shelf a little bigger than the safe all round (the owner's wish, 2026-11-11), the safe on its feet on it, shut.
                     Vector3 outward = board.transform.TransformDirection(BoardView.MoneyEdgeOutward(seat, yaw));
                     Vector3 along = Vector3.Cross(Vector3.up, outward);
                     float Reach(Bounds box, Vector3 way) => Vector3.Dot(box.center, way) + Vector3.Dot(box.extents, new Vector3(Mathf.Abs(way.x), Mathf.Abs(way.y), Mathf.Abs(way.z)));
                     MoneyPile pile = board.MoneyPiles[seat];
                     Bounds body = pile.Safe.Find("Body").GetComponent<Renderer>().bounds;
+                    Assert.Greater(BoardView.ShelfMargin, 0.05f, "the shelf shows round the safe");
                     foreach (Vector3 way in new[] { outward, -outward, along, -along })
-                        Assert.AreEqual(Reach(shelf, way), Reach(body, way), 2e-3f, $"seat {seat + 1}: the shelf flush with the safe");
-                    Assert.AreEqual(shelf.max.y, body.min.y, 1e-3f, $"seat {seat + 1}: the safe stands on it");
+                        Assert.AreEqual(Reach(shelf, way), Reach(body, way) + BoardView.ShelfMargin, 2e-3f, $"seat {seat + 1}: the shelf a margin past the safe");
+                    Bounds feet = pile.Safe.Find("Feet").GetComponent<Renderer>().bounds;
+                    Assert.AreEqual(shelf.max.y, feet.min.y, 1e-3f, $"seat {seat + 1}: the safe stands on its feet on it");
+                    Assert.AreEqual(feet.max.y, body.min.y, 1e-3f, $"seat {seat + 1}: the body on its feet");
                     Assert.AreEqual(0f, pile.Openness, 1e-4f, $"seat {seat + 1}: shut");
 
                     // The lid is hinged at the back, away from the camera, and opens up and back so it never hides the money.

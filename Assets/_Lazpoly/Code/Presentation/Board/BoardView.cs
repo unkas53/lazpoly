@@ -77,8 +77,8 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>
         /// The shelf each money safe stands on, so the money lies on the table and not in the air: in the plate's stone, a little
         /// lower than the plate's top, this far out from the plate's edge (the owner wanted a small gap between them; it first
-        /// reached in under the plate), as big as the money safe's foot (the owner's wish, 2026-11-11: no rim round it,
-        /// <see cref="ShelfMargin"/> 0) and this thick.
+        /// reached in under the plate), a little bigger than the money safe all round (the owner's wish, 2026-11-11:
+        /// <see cref="ShelfMargin"/>) and this thick.
         /// </summary>
         public const float ShelfDrop = 0.03f;
         public const float ShelfGap = 0.5f;
@@ -93,7 +93,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How far a seat's shelf stands off the plate: further on the edges nearest the camera (<see cref="NearShelfGap"/>).</summary>
         public static float ShelfGapAt(int seat, float yaw) =>
             Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f ? ShelfGap : NearShelfGap;
-        public const float ShelfMargin = 0f;
+        public const float ShelfMargin = 0.12f;
         public const float ShelfThickness = 0.3f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
@@ -588,7 +588,7 @@ namespace Lazpoly.Presentation.Tabletop
             else DestroyImmediate(thing);
         }
 
-        /// <summary>A shelf's size: the money safe's foot (along the edge its length, across its depth) and its thickness.</summary>
+        /// <summary>A shelf's size: the money safe's foot and <see cref="ShelfMargin"/> round it, and its thickness.</summary>
         public static Vector3 ShelfSize => new Vector3(
             MoneyPile.SafeSize.x + 2f * ShelfMargin,
             ShelfThickness,
