@@ -47,8 +47,14 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How far the plate hangs below the squares; its edge shows in the isometric view.</summary>
         public const float PlateThickness = 0.6f;
 
-        /// <summary>The plate's rim outside the squares.</summary>
-        public const float PlateMargin = 0.12f;
+        /// <summary>
+        /// The plate's rim outside the squares: none since 2026-11-11 (the owner's wish: the plate ends flush with the
+        /// squares' outer edge, nothing sticking out).
+        /// </summary>
+        public const float PlateMargin = 0f;
+
+        /// <summary>The plate's edges are as sharp as the squares' (the owner's wish, 2026-11-11; it was a soft 0.2).</summary>
+        public const float PlateEdgeRadius = TileEdgeRadius;
 
         /// <summary>Top of the lawn in the middle of the board, where the dice land.</summary>
         public const float LawnHeight = 0.08f;
@@ -951,7 +957,7 @@ namespace Lazpoly.Presentation.Tabletop
             float width = 2f * Layout.OuterHalf + 2f * PlateMargin;
             HalfExtent = width / 2f;
             // The plate floats in the sky; its edge hangs below the squares.
-            GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.RoundedBox(new Vector3(width, PlateThickness, width), 0.2f), PlateColor, 0.25f);
+            GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.RoundedBox(new Vector3(width, PlateThickness, width), PlateEdgeRadius, 2), PlateColor, 0.25f);
             plate.transform.localPosition = new Vector3(0f, -PlateThickness / 2f, 0f);
 
             _inner = 2f * Layout.HalfSize - Layout.Depth * 1.05f;

@@ -855,5 +855,56 @@ namespace Lazpoly.Presentation.Tests
                 Object.DestroyImmediate(holder);
             }
         }
+
+        [Test]
+        public void ThePlateEndsFlushWithTheSquaresWithSharpEdges()
+        {
+            // The owner's wish (2026-11-11): the plate under the squares as sharp as they are, and not sticking out past them.
+            Assert.AreEqual(0f, BoardView.PlateMargin);
+            Assert.AreEqual(BoardView.TileEdgeRadius, BoardView.PlateEdgeRadius);
+
+            BoardData data = BoardDataLoader.LoadFromResources();
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, data);
+                Assert.That(board.HalfExtent, Is.EqualTo(board.Layout.OuterHalf).Within(1e-4f), "the plate is as wide as the ring of squares");
+
+                Bounds plate = default, squares = default;
+                bool any = false;
+                foreach (Transform child in holder.GetComponentsInChildren<Transform>(true))
+                {
+                    if (child.parent != board.transform) continue;
+                    var filter = child.GetComponent<MeshFilter>();
+                    if (filter == null) continue;
+                    Bounds local = filter.sharedMesh.bounds;
+                    var box = new Bounds(board.transform.InverseTransformPoint(child.TransformPoint(local.center)), Vector3.zero);
+                    for (int corner = 0; corner < 8; corner++)
+                    {
+                        Vector3 sign = new Vector3((corner & 1) == 0 ? -1f : 1f, (corner & 2) == 0 ? -1f : 1f, (corner & 4) == 0 ? -1f : 1f);
+                        box.Encapsulate(board.transform.InverseTransformPoint(child.TransformPoint(local.center + Vector3.Scale(local.extents, sign))));
+                    }
+
+                    if (child.name == "Plate") plate = box;
+                    else if (child.name.StartsWith("Square "))
+                    {
+                        if (any) squares.Encapsulate(box);
+                        else squares = box;
+                        any = true;
+                    }
+                }
+
+                Assert.IsTrue(any, "the squares are found");
+                Assert.That(plate.max.x, Is.EqualTo(squares.max.x).Within(1e-3f), "flush on the right");
+                Assert.That(plate.min.x, Is.EqualTo(squares.min.x).Within(1e-3f), "flush on the left");
+                Assert.That(plate.max.z, Is.EqualTo(squares.max.z).Within(1e-3f), "flush at the back");
+                Assert.That(plate.min.z, Is.EqualTo(squares.min.z).Within(1e-3f), "flush at the front");
+                Assert.That(plate.max.y, Is.EqualTo(0f).Within(1e-4f), "the squares lie on it");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
     }
 }
