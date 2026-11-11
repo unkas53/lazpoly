@@ -623,7 +623,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// screen's sides: with the far edges' wider gap (<see cref="ShelfGap"/> 1.3) the outer safe's open lid reached
         /// under the second corner card of an 8-player game.
         /// </summary>
-        public const float FarEdgeSlide = 1f;
+        public const float FarEdgeSlide = 1.8f;
 
         /// <summary>The slide of a seat's safe along its edge (<see cref="FarEdgeSlide"/>): only on a far edge two seats share.</summary>
         public static Vector3 MoneyEdgeSlide(int seat, int seats, float yaw)
