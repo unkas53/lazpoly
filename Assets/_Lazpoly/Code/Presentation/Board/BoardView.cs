@@ -78,14 +78,15 @@ namespace Lazpoly.Presentation.Tabletop
         /// The shelf each money safe stands on, so the money lies on the table and not in the air: in the plate's stone, a little
         /// lower than the plate's top, this far out from the plate's edge (the owner wanted a small gap between them; it first
         /// reached in under the plate), a little bigger than the money safe all round (the owner's wish, 2026-11-11:
-        /// <see cref="ShelfMargin"/>) and this thick.
+        /// <see cref="ShelfMargin"/>) and this thick. On the far edges the gap is wider since 2026-11-11 (the owner's wish:
+        /// the safes at the top a little further from the table; it was 0.5).
         /// </summary>
         public const float ShelfDrop = 0.03f;
-        public const float ShelfGap = 0.5f;
+        public const float ShelfGap = 0.9f;
 
         /// <summary>
         /// On the two edges nearest the camera the plate's own side face, seen from above, hangs down over the gap: at
-        /// <see cref="ShelfGap"/> no sky showed there, at 1.59 a strip three times the far edges' did and the 8-player
+        /// 0.5 no sky showed there, at 1.59 a strip three times the far edges' did and the 8-player
         /// trays nearly touched the bottom corner cards. This gap shows a strip a little wider than the far edges' one.
         /// </summary>
         public const float NearShelfGap = 1.15f;
