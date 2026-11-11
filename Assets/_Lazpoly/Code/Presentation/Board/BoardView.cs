@@ -615,7 +615,24 @@ namespace Lazpoly.Presentation.Tabletop
         /// its shelf a little below the plate's top.
         /// </summary>
         public static Vector3 MoneyPileSpot(int seat, int seats, float halfExtent, float yaw) =>
-            MoneyEdgeOutward(seat, yaw) * (halfExtent + MoneyPileOut(seat, yaw)) + MoneyEdgeAlong(seat, seats, yaw) - Vector3.up * ShelfDrop;
+            MoneyEdgeOutward(seat, yaw) * (halfExtent + MoneyPileOut(seat, yaw)) + MoneyEdgeAlong(seat, seats, yaw) + MoneyEdgeSlide(seat, seats, yaw)
+            - Vector3.up * ShelfDrop;
+
+        /// <summary>
+        /// How far the two safes sharing a far edge are slid along it towards the board's far corner, away from the
+        /// screen's sides: with the far edges' wider gap (<see cref="ShelfGap"/> 1.3) the outer safe's open lid reached
+        /// under the second corner card of an 8-player game.
+        /// </summary>
+        public const float FarEdgeSlide = 1f;
+
+        /// <summary>The slide of a seat's safe along its edge (<see cref="FarEdgeSlide"/>): only on a far edge two seats share.</summary>
+        public static Vector3 MoneyEdgeSlide(int seat, int seats, float yaw)
+        {
+            Vector3 outward = MoneyEdgeOutward(seat, yaw), up = ScreenUp(yaw);
+            if (seats <= seat % 4 + 4 || Vector3.Dot(outward, up) <= 0f) return Vector3.zero;
+            Vector3 along = Vector3.Cross(Vector3.up, outward);
+            return (Vector3.Dot(along, up) > 0f ? along : -along) * FarEdgeSlide;
+        }
 
         /// <summary>The way out of the board across the edge a seat's money lies at (one of the board's axes).</summary>
         public static Vector3 MoneyEdgeOutward(int seat, float yaw)
@@ -655,7 +672,7 @@ namespace Lazpoly.Presentation.Tabletop
                 Vector3 outward = MoneyEdgeOutward(seat, yaw);
                 if (seat >= _shelves.Count) continue;
                 _shelves[seat].localPosition = outward * (HalfExtent + ShelfGapAt(seat, yaw) + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
-                    - Vector3.up * ShelfDrop;
+                    + MoneyEdgeSlide(seat, _moneyPiles.Count, yaw) - Vector3.up * ShelfDrop;
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);
                 // The island floats about where it has just been put, its safe with it.
                 IslandFloat afloat = _shelves[seat].GetComponent<IslandFloat>();

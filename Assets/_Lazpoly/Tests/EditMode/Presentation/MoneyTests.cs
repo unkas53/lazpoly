@@ -82,6 +82,26 @@ namespace Lazpoly.Presentation.Tests
             Assert.Greater(Vector3.Distance(first, fifth), 2f * BoardView.MoneyPileSpread - 0.01f, "two players on one edge lie apart");
             Assert.Less(Vector3.Distance(BoardView.MoneyPileSpot(0, 4, half, yaw), BoardView.MoneyPileSpot(0, 4, half, yaw)), 1e-4f);
 
+            // Two safes sharing a far edge are slid along it towards the board's far corner, clear of the corner cards
+            // (their lids reached under the second card of an 8-player game); near edges and unshared edges are not.
+            for (int seat = 0; seat < 8; seat++)
+            {
+                Vector3 slide = BoardView.MoneyEdgeSlide(seat, 8, yaw), outward = BoardView.MoneyEdgeOutward(seat, yaw);
+                Assert.AreEqual(Vector3.zero, BoardView.MoneyEdgeSlide(seat % 4, 4, yaw), $"seat {seat % 4 + 1}: alone on its edge, in the middle of it");
+                if (Vector3.Dot(outward, up) <= 0f)
+                {
+                    Assert.AreEqual(Vector3.zero, slide, $"seat {seat + 1}: a near edge stays as it was");
+                    continue;
+                }
+
+                Assert.AreEqual(BoardView.FarEdgeSlide, slide.magnitude, 1e-4f, $"seat {seat + 1}: slid on a shared far edge");
+                Assert.AreEqual(0f, Vector3.Dot(slide, outward), 1e-4f, $"seat {seat + 1}: along the edge");
+                Assert.Greater(Vector3.Dot(slide, up), 0f, $"seat {seat + 1}: towards the far corner");
+                Assert.AreEqual(seat % 2 == 0 ? 1f : -1f, Mathf.Sign(Vector3.Dot(slide, right)), $"seat {seat + 1}: away from its side of the screen");
+            }
+
+            Assert.AreEqual(2f * BoardView.MoneyPileSpread, Vector3.Distance(first, fifth), 1e-3f, "slid together, they keep their distance");
+
             var holder = new GameObject("Board Test");
             try
             {
