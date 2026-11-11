@@ -7,7 +7,8 @@ namespace Lazpoly.Presentation.Tabletop
     /// <summary>
     /// A player's money lying at the table's edge in front of their corner card, the owner's wish (Faz 25): an open money
     /// case in the player's colour along the board's edge (the owner asked for a case instead of the first plain tray), its
-    /// lid opened flat away from the board so it hides nothing, the owner's money stacks and gold bars in its bottom half,
+    /// lid opened away from the board so it hides no square, <see cref="LidOpening"/> degrees (the owner's wish, 2026-11-11;
+    /// it lay flat at first), the owner's money stacks and gold bars in its bottom half,
     /// neatly side by side in one row (two rows hid the back one behind the front one from the low camera), rising over
     /// its rim. It grows and shrinks with the
     /// money the table shows; payments leave from it and arrive in it. One gold bar stands for every full
@@ -36,6 +37,12 @@ namespace Lazpoly.Presentation.Tabletop
         public const float LiningThickness = 0.015f;
         public const float CaseDepth = 0.95f;
 
+        /// <summary>How far the lid stands open, in degrees from shut: 180 lies flat beside the bottom half.</summary>
+        public const float LidOpening = 135f;
+
+        /// <summary>How far the open lid is tipped up from lying flat.</summary>
+        public const float LidTilt = 180f - LidOpening;
+
         /// <summary>The handle stands this far out of the bottom half's front wall (the side away from the hinge).</summary>
         public const float HandleReach = 0.17f;
 
@@ -55,16 +62,26 @@ namespace Lazpoly.Presentation.Tabletop
             shape.transform.SetParent(Root, false);
             Case = shape.transform;
 
-            // In the case's own frame the lid lies at +z; OpenAway turns the whole case round when the lid must go the other way.
+            // In the case's own frame the lid opens towards +z; OpenAway turns the whole case round when the lid must go the other way.
             Color lining = Color.Lerp(color, Color.black, 0.45f);
             Color handle = Color.Lerp(color, Color.black, 0.6f);
             ModelParts.Create("Shell", Case, ShellMesh(), color, 0.4f);
-            ModelParts.Create("Lining", Case, LiningMesh(), lining, 0.1f);
+            ModelParts.Create("Lining", Case, LiningMesh(false), lining, 0.1f);
             ModelParts.Create("Handle", Case, HandleMesh(), handle, 0.45f);
-            ModelParts.Create("Brass", Case, BrassMesh(), Brass, 0.75f);
+            ModelParts.Create("Brass", Case, BrassMesh(false), Brass, 0.75f);
+            ModelParts.Create("Hinges", Case, HingeMesh(), Brass, 0.75f);
+
+            // The lid turns on the hinges along the bottom half's back rim, tipped up from flat by LidTilt.
+            Hinge = new GameObject("Hinge").transform;
+            Hinge.SetParent(Case, false);
+            Hinge.localPosition = new Vector3(0f, CaseHeight, CaseDepth / 2f);
+            Hinge.localRotation = Quaternion.Euler(-LidTilt, 0f, 0f);
             Lid = new GameObject("Lid").transform;
-            Lid.SetParent(Case, false);
-            Lid.localPosition = new Vector3(0f, 0f, CaseDepth);
+            Lid.SetParent(Hinge, false);
+            Lid.localPosition = new Vector3(0f, -CaseHeight, CaseDepth / 2f);
+            ModelParts.Create("Lid shell", Lid, ShellMesh(), color, 0.4f);
+            ModelParts.Create("Lid lining", Lid, LiningMesh(true), lining, 0.1f);
+            ModelParts.Create("Lid brass", Lid, BrassMesh(true), Brass, 0.75f);
         }
 
         public Transform Root { get; }
@@ -72,8 +89,20 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The case drawn round the money; the money itself lies under <see cref="Root"/>.</summary>
         public Transform Case { get; }
 
-        /// <summary>The middle of the open lid's floor, where the lid lies beside the bottom half.</summary>
+        /// <summary>The middle of the open lid's floor: the lid's own frame, its walls rising along its up.</summary>
         public Transform Lid { get; }
+
+        /// <summary>Where the lid turns: on the bottom half's back rim.</summary>
+        public Transform Hinge { get; }
+
+        /// <summary>
+        /// How far the open lid reaches out past the bottom half's back wall, seen from above: its floor's far edge, tipped up
+        /// by <see cref="LidTilt"/> on the hinge at the rim.
+        /// </summary>
+        public static float LidReach => CaseHeight * Mathf.Sin(LidTilt * Mathf.Deg2Rad) + CaseDepth * Mathf.Cos(LidTilt * Mathf.Deg2Rad);
+
+        /// <summary>The open case's depth seen from above: the bottom half and the open lid beyond it.</summary>
+        public static float OpenDepth => CaseDepth + LidReach;
 
         /// <summary>
         /// Opens the lid towards <paramref name="away"/> (in the pile's parent's frame, flat on the table): the side away from
@@ -145,34 +174,35 @@ namespace Lazpoly.Presentation.Tabletop
             _shown = wanted;
         }
 
-        /// <summary>The two halves' shells, floor and four walls each, the lid's lying open beside the bottom one.</summary>
+        /// <summary>One half's shell, a floor and four walls, round its own middle; the bottom half and the lid share it.</summary>
         private static Mesh ShellMesh()
         {
             Vector3 size = CaseSize;
             var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float z in new[] { 0f, CaseDepth })
+            Add(parts, new Vector3(size.x, CaseFloor, size.z), new Vector3(0f, CaseFloor / 2f, 0f));
+            foreach (float side in new[] { -1f, 1f })
             {
-                Add(parts, new Vector3(size.x, CaseFloor, size.z), new Vector3(0f, CaseFloor / 2f, z));
-                foreach (float side in new[] { -1f, 1f })
-                {
-                    Add(parts, new Vector3(size.x, CaseHeight, CaseWall), new Vector3(0f, CaseHeight / 2f, z + side * (size.z - CaseWall) / 2f));
-                    Add(parts, new Vector3(CaseWall, CaseHeight, size.z - 2f * CaseWall), new Vector3(side * (size.x - CaseWall) / 2f, CaseHeight / 2f, z));
-                }
+                Add(parts, new Vector3(size.x, CaseHeight, CaseWall), new Vector3(0f, CaseHeight / 2f, side * (size.z - CaseWall) / 2f));
+                Add(parts, new Vector3(CaseWall, CaseHeight, size.z - 2f * CaseWall), new Vector3(side * (size.x - CaseWall) / 2f, CaseHeight / 2f, 0f));
             }
 
             return MeshFactory.Combine("money-case-shell", parts);
         }
 
-        /// <summary>The lining on both floors, and a pocket on the lid's.</summary>
-        private static Mesh LiningMesh()
+        /// <summary>The lining on a half's floor, and on the lid a pocket by its far wall.</summary>
+        private static Mesh LiningMesh(bool lid)
         {
             Vector3 size = CaseSize;
             var inside = new Vector3(size.x - 2f * CaseWall, LiningThickness, size.z - 2f * CaseWall);
             var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float z in new[] { 0f, CaseDepth }) Add(parts, inside, new Vector3(0f, CaseFloor + LiningThickness / 2f, z));
-            var pocket = new Vector3(inside.x - 0.2f, 0.03f, inside.z * 0.45f);
-            Add(parts, pocket, new Vector3(0f, MoneyFloor + pocket.y / 2f, CaseDepth + (inside.z - pocket.z) / 2f - 0.05f));
-            return MeshFactory.Combine("money-case-lining", parts);
+            Add(parts, inside, new Vector3(0f, CaseFloor + LiningThickness / 2f, 0f));
+            if (lid)
+            {
+                var pocket = new Vector3(inside.x - 0.2f, 0.03f, inside.z * 0.45f);
+                Add(parts, pocket, new Vector3(0f, MoneyFloor + pocket.y / 2f, (inside.z - pocket.z) / 2f - 0.05f));
+            }
+
+            return MeshFactory.Combine(lid ? "money-case-lid-lining" : "money-case-lining", parts);
         }
 
         /// <summary>The handle on the bottom half's front wall (the side away from the lid): a grip on two posts.</summary>
@@ -185,20 +215,23 @@ namespace Lazpoly.Presentation.Tabletop
             return MeshFactory.Combine("money-case-handle", parts);
         }
 
-        /// <summary>Brass clasps on both halves' front edges and hinges between the halves.</summary>
-        private static Mesh BrassMesh()
+        /// <summary>Brass clasps on a half's front edge: the bottom half's by its handle, the lid's on its far wall.</summary>
+        private static Mesh BrassMesh(bool lid)
+        {
+            Vector3 size = CaseSize;
+            float z = lid ? size.z / 2f + 0.015f : -size.z / 2f - 0.015f;
+            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
+            foreach (float side in new[] { -1f, 1f }) Add(parts, new Vector3(0.16f, 0.07f, 0.03f), new Vector3(side * size.x * 0.3f, CaseHeight - 0.035f, z));
+            return MeshFactory.Combine(lid ? "money-case-lid-brass" : "money-case-brass", parts);
+        }
+
+        /// <summary>The hinges on the bottom half's back rim, where the lid turns.</summary>
+        private static Mesh HingeMesh()
         {
             Vector3 size = CaseSize;
             var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float side in new[] { -1f, 1f })
-            {
-                float x = side * size.x * 0.3f;
-                Add(parts, new Vector3(0.16f, 0.07f, 0.03f), new Vector3(x, CaseHeight - 0.035f, -size.z / 2f - 0.015f));
-                Add(parts, new Vector3(0.16f, 0.07f, 0.03f), new Vector3(x, CaseHeight - 0.035f, CaseDepth + size.z / 2f + 0.015f));
-                Add(parts, new Vector3(0.3f, 0.05f, 0.06f), new Vector3(side * size.x * 0.35f, CaseHeight - 0.01f, size.z / 2f));
-            }
-
-            return MeshFactory.Combine("money-case-brass", parts);
+            foreach (float side in new[] { -1f, 1f }) Add(parts, new Vector3(0.3f, 0.05f, 0.06f), new Vector3(side * size.x * 0.35f, CaseHeight - 0.01f, size.z / 2f));
+            return MeshFactory.Combine("money-case-hinges", parts);
         }
 
         private static void Add(List<KeyValuePair<Mesh, Matrix4x4>> parts, Vector3 size, Vector3 at) =>

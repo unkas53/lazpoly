@@ -95,9 +95,25 @@ namespace Lazpoly.Presentation.Tests
                             $"seat {seat + 1}: the {part.name}'s corners on the shelf");
                     }
 
-                    Vector3 lidWay = board.transform.InverseTransformDirection(board.MoneyPiles[seat].Lid.position - tray.position);
-                    Assert.Greater(Vector3.Dot(lidWay, BoardView.MoneyEdgeOutward(seat, yaw)), MoneyPile.CaseDepth - 1e-3f, $"seat {seat + 1}: the lid lies open away from the board");
-                    Assert.AreEqual(0f, Vector3.Dot(lidWay, Vector3.up), 1e-3f, $"seat {seat + 1}: flat on the shelf");
+                    Transform lid = board.MoneyPiles[seat].Lid;
+                    Vector3 lidWay = board.transform.InverseTransformDirection(lid.position - tray.position);
+                    Assert.Greater(Vector3.Dot(lidWay, BoardView.MoneyEdgeOutward(seat, yaw)), MoneyPile.CaseDepth / 2f, $"seat {seat + 1}: the lid opens away from the board");
+                    Vector3 lidUp = board.transform.InverseTransformDirection(lid.up), lidOut = board.transform.InverseTransformDirection(lid.forward);
+                    Assert.AreEqual(MoneyPile.LidTilt, Vector3.Angle(lidUp, Vector3.up), 0.1f, $"seat {seat + 1}: open 135 degrees, tipped up from flat");
+                    Assert.Greater(Vector3.Dot(lidOut, Vector3.up), 0f, $"seat {seat + 1}: its far end raised");
+                    Assert.Greater(Vector3.Dot(lidOut, BoardView.MoneyEdgeOutward(seat, yaw)), 0f, $"seat {seat + 1}: leaning away from the board");
+
+                    // The shelf is as big as the open case seen from above (the owner's wish, 2026-11-11): from the bottom half's
+                    // front wall to the open lid's far edge, and as long as the case.
+                    Vector3 outward = board.transform.TransformDirection(BoardView.MoneyEdgeOutward(seat, yaw));
+                    Vector3 along = Vector3.Cross(Vector3.up, outward);
+                    float Reach(Bounds box, Vector3 way) => Vector3.Dot(box.center, way) + Vector3.Dot(box.extents, new Vector3(Mathf.Abs(way.x), Mathf.Abs(way.y), Mathf.Abs(way.z)));
+                    Bounds bottom = board.MoneyPiles[seat].Case.Find("Shell").GetComponent<Renderer>().bounds;
+                    Bounds lidShell = lid.Find("Lid shell").GetComponent<Renderer>().bounds;
+                    Assert.AreEqual(Reach(shelf, outward), Reach(lidShell, outward), 2e-3f, $"seat {seat + 1}: the shelf ends where the open lid does");
+                    Assert.AreEqual(Reach(shelf, -outward), Reach(bottom, -outward), 2e-3f, $"seat {seat + 1}: and starts at the case's front wall");
+                    Assert.AreEqual(Reach(shelf, along), Reach(bottom, along), 2e-3f, $"seat {seat + 1}: as long as the case");
+                    Assert.Greater(lidShell.min.y, shelf.max.y, $"seat {seat + 1}: the lid stands clear of the shelf");
 
                     Vector3 inner = board.transform.InverseTransformPoint(shelf.center) - BoardView.MoneyEdgeOutward(seat, yaw) * (BoardView.ShelfSize.z / 2f);
                     Assert.AreEqual(board.HalfExtent + BoardView.ShelfGapAt(seat, yaw), Vector3.Dot(inner, BoardView.MoneyEdgeOutward(seat, yaw)), 1e-3f, $"seat {seat + 1}: a small gap between the plate and the shelf");

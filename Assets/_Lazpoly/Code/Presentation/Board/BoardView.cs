@@ -75,9 +75,10 @@ namespace Lazpoly.Presentation.Tabletop
         public const float MoneyPileSpread = 2.4f;
 
         /// <summary>
-        /// The shelf each money case stands on, so the money lies on the table and not in the air: in the plate's wood, a little
+        /// The shelf each money case stands on, so the money lies on the table and not in the air: in the plate's stone, a little
         /// lower than the plate's top, this far out from the plate's edge (the owner wanted a small gap between them; it first
-        /// reached in under the plate), this far round the open case and this thick.
+        /// reached in under the plate), as big as the open case seen from above (the owner's wish, 2026-11-11: no rim round
+        /// it, <see cref="ShelfMargin"/> 0) and this thick.
         /// </summary>
         public const float ShelfDrop = 0.03f;
         public const float ShelfGap = 0.5f;
@@ -92,7 +93,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>How far a seat's shelf stands off the plate: further on the edges nearest the camera (<see cref="NearShelfGap"/>).</summary>
         public static float ShelfGapAt(int seat, float yaw) =>
             Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f ? ShelfGap : NearShelfGap;
-        public const float ShelfMargin = 0.15f;
+        public const float ShelfMargin = 0f;
         public const float ShelfThickness = 0.3f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
@@ -120,8 +121,6 @@ namespace Lazpoly.Presentation.Tabletop
         public static readonly Color CupColor = TravelColor;
         public static readonly Color JailColor = new Color(0.74f, 0.72f, 0.70f);
         private static readonly Color LookoutColor = new Color(0.80f, 0.70f, 0.95f);
-        /// <summary>The plate and the money shelves are stone since 2026-11-11 (the owner's wish), see <see cref="PlateSkin"/>.</summary>
-        private static readonly Color PlateColor = PlateSkin.Stone;
         /// <summary>The paper every tile is printed on; a group's colour is mixed into it by <see cref="Pastel"/>.</summary>
         public static readonly Color PaperColor = new Color(0.95f, 0.92f, 0.85f);
 
@@ -570,11 +569,13 @@ namespace Lazpoly.Presentation.Tabletop
             _moneyPiles.Clear();
             _shelves.Clear();
             _hatches.Clear();
-            Mesh shelfMesh = MeshFactory.RoundedBox(ShelfSize, 0.08f, 2);
+            Mesh shelfMesh = MeshFactory.Slab(ShelfSize, PlateSkin.Repeat); // sharp stone, as the plate (2026-11-11)
             for (int seat = 0; seat < seatColors.Count; seat++)
             {
                 _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
-                _shelves.Add(ModelParts.Create($"Money shelf of seat {seat + 1}", transform, shelfMesh, PlateColor, 0.25f).transform);
+                GameObject shelf = ModelParts.Create($"Money shelf of seat {seat + 1}", transform, shelfMesh, Color.white, 0.1f);
+                ModelParts.Skin(shelf, PlateSkin.Side());
+                _shelves.Add(shelf.transform);
                 _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}"));
             }
 
@@ -587,11 +588,11 @@ namespace Lazpoly.Presentation.Tabletop
             else DestroyImmediate(thing);
         }
 
-        /// <summary>A shelf's size: along the edge round the case, across round the case and its open lid, and its thickness.</summary>
+        /// <summary>A shelf's size: along the edge the case's length, across the open case's depth seen from above, and its thickness.</summary>
         public static Vector3 ShelfSize => new Vector3(
             MoneyPile.CaseSize.x + 2f * ShelfMargin,
             ShelfThickness,
-            ShelfMargin + MoneyPile.CaseSize.z + MoneyPile.CaseDepth + ShelfMargin);
+            ShelfMargin + MoneyPile.OpenDepth + ShelfMargin);
 
         /// <summary>The seats' shelves at the table's edge, in seat order.</summary>
         public IReadOnlyList<Transform> MoneyShelves => _shelves;
