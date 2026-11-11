@@ -56,8 +56,8 @@ namespace Lazpoly.Presentation.Models
             float Range(float a, float b) => a + (float)random.NextDouble() * (b - a);
 
             // The meadow, a lip of deeper grass round it, and the soil under it.
-            Part(at, "Grass", MeshFactory.RoundedBox(new Vector3(top.x, GrassThickness, top.y), 0.03f, 2), Grass, new Vector3(0f, -GrassThickness / 2f, 0f), Quaternion.identity, 0.05f);
-            Part(at, "Grass lip", MeshFactory.RoundedBox(new Vector3(top.x * 0.995f, 0.05f, top.y * 0.99f), 0.025f, 2), GrassDeep,
+            Part(at, "Meadow", MeshFactory.RoundedBox(new Vector3(top.x, GrassThickness, top.y), 0.03f, 2), Grass, new Vector3(0f, -GrassThickness / 2f, 0f), Quaternion.identity, 0.05f);
+            Part(at, "Meadow lip", MeshFactory.RoundedBox(new Vector3(top.x * 0.995f, 0.05f, top.y * 0.99f), 0.025f, 2), GrassDeep,
                 new Vector3(0f, -GrassThickness + 0.01f, 0f), Quaternion.identity, 0.05f);
             float y = -GrassThickness + Overlap / 2f;
             Part(at, "Soil", MeshFactory.RoundedBox(new Vector3(top.x * 0.96f, SoilThickness, top.y * 0.93f), 0.06f, 2), Soil,

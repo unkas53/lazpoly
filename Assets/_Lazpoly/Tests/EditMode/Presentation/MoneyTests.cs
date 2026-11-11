@@ -95,7 +95,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(3, board.MoneyShelves.Count, "every tray stands on a shelf");
                 for (int seat = 0; seat < 3; seat++)
                 {
-                    Bounds shelf = board.MoneyShelves[seat].Find("Grass").GetComponent<Renderer>().bounds;
+                    Bounds shelf = board.MoneyShelves[seat].Find("Meadow").GetComponent<Renderer>().bounds;
                     Transform tray = board.MoneyPiles[seat].Root;
                     Assert.AreEqual(tray.position.y, shelf.max.y, 1e-3f, $"seat {seat + 1}: the tray lies on its shelf");
                     Assert.Less(shelf.max.y, 0f, $"seat {seat + 1}: the shelf a little under the plate's top");
@@ -429,7 +429,7 @@ namespace Lazpoly.Presentation.Tests
                 for (int seat = 0; seat < 2; seat++)
                 {
                     Transform island = board.MoneyShelves[seat];
-                    Bounds grass = Of(island, "Grass");
+                    Bounds grass = Of(island, "Meadow");
                     Assert.AreEqual(BoardView.ShelfSize.x * BoardView.ShelfSize.z, grass.size.x * grass.size.z, 1e-2f, $"seat {seat + 1}: the meadow is the shelf's top");
                     float Area(Bounds b) => b.size.x * b.size.z;
                     Bounds previous = Of(island, "Soil");
