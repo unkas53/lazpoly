@@ -8,7 +8,8 @@ namespace Lazpoly.PlayTests
 {
     /// <summary>
     /// Picks a legal command for whoever has to act next, so scene tests can drive a game
-    /// through every phase: buys when it can, lets trades lapse, settles debts.
+    /// through every phase: buys when it can, lets trades lapse, settles debts, pays rent rather than
+    /// shield it, and throws a card away when its hand is too full.
     /// </summary>
     internal static class PlayBot
     {
@@ -32,6 +33,12 @@ namespace Lazpoly.PlayTests
                     return new DeclineCupCommand(me);
                 case GamePhase.AwaitingTakeoverDecision:
                     return new DeclineTakeoverCommand(me);
+                case GamePhase.AwaitingCardDiscard:
+                    // A fifth Şans card in the hand: one has to go before the turn goes on.
+                    return new DiscardCardCommand(me, state.CurrentPlayer.Hand[0]);
+                case GamePhase.AwaitingRentShield:
+                    // Holding a rent shield on a rival's town: pays the rent and keeps the card.
+                    return new PayRentCommand(me);
                 case GamePhase.AwaitingDiceChoice:
                     return new ChooseDiceCommand(me, 1);
                 case GamePhase.AwaitingJailDecision:
