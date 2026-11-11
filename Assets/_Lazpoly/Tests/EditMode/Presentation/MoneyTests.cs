@@ -95,7 +95,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(3, board.MoneyShelves.Count, "every tray stands on a shelf");
                 for (int seat = 0; seat < 3; seat++)
                 {
-                    Bounds shelf = board.MoneyShelves[seat].GetComponent<Renderer>().bounds;
+                    Bounds shelf = board.MoneyShelves[seat].Find("Grass").GetComponent<Renderer>().bounds;
                     Transform tray = board.MoneyPiles[seat].Root;
                     Assert.AreEqual(tray.position.y, shelf.max.y, 1e-3f, $"seat {seat + 1}: the tray lies on its shelf");
                     Assert.Less(shelf.max.y, 0f, $"seat {seat + 1}: the shelf a little under the plate's top");
@@ -409,6 +409,49 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 Assert.Greater(MoneyHatch.LidColor.r, MoneyHatch.HoleDark.r + 0.05f, "the hole stays darker than the lid");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void EachSafeStandsOnAFloatingIslandThatNarrowsToAPoint()
+        {
+            // The owner's wish (2026-11-11): the safes' shelves are little floating islands.
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                board.CreateMoneyPiles(new[] { Color.red, Color.blue });
+                Bounds Of(Transform island, string part) => island.Find(part).GetComponent<Renderer>().bounds;
+                for (int seat = 0; seat < 2; seat++)
+                {
+                    Transform island = board.MoneyShelves[seat];
+                    Bounds grass = Of(island, "Grass");
+                    Assert.AreEqual(BoardView.ShelfSize.x * BoardView.ShelfSize.z, grass.size.x * grass.size.z, 1e-2f, $"seat {seat + 1}: the meadow is the shelf's top");
+                    float Area(Bounds b) => b.size.x * b.size.z;
+                    Bounds previous = Of(island, "Soil");
+                    Assert.Less(previous.max.y, grass.max.y);
+                    for (int layer = 1; layer <= IslandParts.LayerShares.Length; layer++)
+                    {
+                        Bounds rock = Of(island, $"Rock {layer}");
+                        Assert.Less(rock.center.y, previous.center.y, $"seat {seat + 1}: rock layer {layer} under the one above");
+                        Assert.Less(Area(rock), Area(previous), $"seat {seat + 1}: and narrower");
+                        previous = rock;
+                    }
+
+                    Bounds spike = Of(island, "Spike");
+                    Assert.Less(spike.min.y, previous.min.y, $"seat {seat + 1}: a point at the bottom");
+                    Assert.AreEqual(grass.max.y - IslandParts.Depth, spike.min.y, 0.03f, $"seat {seat + 1}: as deep as the island is said to be");
+                    foreach (string part in new[] { "Stones", "Roots", "Tufts", "Spike", "Soil" })
+                    {
+                        Bounds b = Of(island, part);
+                        Assert.IsTrue(b.min.x >= grass.min.x - 0.02f && b.max.x <= grass.max.x + 0.02f && b.min.z >= grass.min.z - 0.02f && b.max.z <= grass.max.z + 0.02f,
+                            $"seat {seat + 1}: the {part} keep within the meadow's outline");
+                    }
+                }
             }
             finally
             {

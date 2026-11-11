@@ -75,10 +75,11 @@ namespace Lazpoly.Presentation.Tabletop
         public const float MoneyPileSpread = 2.4f;
 
         /// <summary>
-        /// The shelf each money safe stands on, so the money lies on the table and not in the air: in the plate's stone, a little
+        /// The shelf each money safe stands on, so the money lies on the table and not in the air: a little floating island
+        /// since 2026-11-11 (the owner's wish; <see cref="IslandParts"/>, it was the plate's stone), its meadow top a little
         /// lower than the plate's top, this far out from the plate's edge (the owner wanted a small gap between them; it first
         /// reached in under the plate), a little bigger than the money safe all round (the owner's wish, 2026-11-11:
-        /// <see cref="ShelfMargin"/>) and this thick. On the far edges the gap is wider since 2026-11-11 (the owner's wish:
+        /// <see cref="ShelfMargin"/>). On the far edges the gap is wider since 2026-11-11 (the owner's wish:
         /// the safes at the top a little further from the table; it was 0.5).
         /// </summary>
         public const float ShelfDrop = 0.03f;
@@ -95,7 +96,6 @@ namespace Lazpoly.Presentation.Tabletop
         public static float ShelfGapAt(int seat, float yaw) =>
             Vector3.Dot(MoneyEdgeOutward(seat, yaw), ScreenUp(yaw)) > 0f ? ShelfGap : NearShelfGap;
         public const float ShelfMargin = 0.12f;
-        public const float ShelfThickness = 0.3f;
 
         /// <summary>Where the tea money's jar stands, as fractions of the lawn's inner width from the centre: a little below the pot's line and to its right, clear of the dice.</summary>
         public const float PotPileOffset = -0.04f;
@@ -573,10 +573,9 @@ namespace Lazpoly.Presentation.Tabletop
             for (int seat = 0; seat < seatColors.Count; seat++)
             {
                 _moneyPiles.Add(new MoneyPile(transform, $"Money of seat {seat + 1}", seatColors[seat]));
-                // Sharp stone, as the plate (2026-11-11); its mesh is sized to the open case where it is placed.
-                GameObject shelf = ModelParts.Create($"Money shelf of seat {seat + 1}", transform, null, Color.white, 0.1f);
-                ModelParts.Skin(shelf, PlateSkin.Side());
-                _shelves.Add(shelf.transform);
+                // A little floating island (the owner's wish, 2026-11-11), its meadow top the shelf's size.
+                Vector3 size = ShelfSize;
+                _shelves.Add(IslandParts.Create(transform, $"Money shelf of seat {seat + 1}", new Vector2(size.x, size.z), seat).transform);
                 _hatches.Add(MoneyHatch.Create(transform, $"Money hatch of seat {seat + 1}"));
             }
 
@@ -589,10 +588,10 @@ namespace Lazpoly.Presentation.Tabletop
             else DestroyImmediate(thing);
         }
 
-        /// <summary>A shelf's size: the money safe's foot and <see cref="ShelfMargin"/> round it, and its thickness.</summary>
+        /// <summary>A shelf's size: the money safe's foot and <see cref="ShelfMargin"/> round it, and how deep its island hangs.</summary>
         public static Vector3 ShelfSize => new Vector3(
             MoneyPile.SafeSize.x + 2f * ShelfMargin,
-            ShelfThickness,
+            IslandParts.Depth,
             MoneyPile.SafeSize.z + 2f * ShelfMargin);
 
         /// <summary>The seats' shelves at the table's edge, in seat order.</summary>
@@ -652,9 +651,8 @@ namespace Lazpoly.Presentation.Tabletop
                 root.localRotation = MoneyPileTurn(seat, yaw);
                 Vector3 outward = MoneyEdgeOutward(seat, yaw);
                 if (seat >= _shelves.Count) continue;
-                _shelves[seat].GetComponent<MeshFilter>().sharedMesh = MeshFactory.Slab(shelf, PlateSkin.Repeat);
                 _shelves[seat].localPosition = outward * (HalfExtent + ShelfGapAt(seat, yaw) + shelf.z / 2f) + MoneyEdgeAlong(seat, _moneyPiles.Count, yaw)
-                    - Vector3.up * (ShelfDrop + shelf.y / 2f);
+                    - Vector3.up * ShelfDrop;
                 _shelves[seat].localRotation = Quaternion.LookRotation(outward);
                 if (seat >= _hatches.Count) continue;
                 _hatches[seat].transform.localPosition = HatchSpot(seat, _moneyPiles.Count, _inner * LawnShare / 2f, yaw) + Vector3.up * LawnHeight;
