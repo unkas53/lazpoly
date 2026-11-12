@@ -41,11 +41,12 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// How deep in the camera's view each thing lies, as a share of the way to its far end: the sky last, the far
-        /// islands before it with room for their depth, the aeroplane before them, then the clouds; all far behind the table.
+        /// islands before it with room for their depth (the owner's model is as deep as it is wide, and stands larger
+        /// than the islands cut in code did), the aeroplane before them, then the clouds; all far behind the table.
         /// </summary>
-        public const float SkyDepth = 0.985f;
-        public const float IslandDepth = 0.94f;
-        public const float PlaneDepth = 0.895f;
+        public const float SkyDepth = 0.99f;
+        public const float IslandDepth = 0.943f;
+        public const float PlaneDepth = 0.892f;
         public const float CloudDepth = 0.88f;
 
         public const string ModelsName = "Sky Models";
