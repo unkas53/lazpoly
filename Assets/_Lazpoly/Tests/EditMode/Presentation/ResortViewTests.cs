@@ -46,6 +46,8 @@ namespace Lazpoly.Presentation.Tests
                 int[] halls = { 1, 1, 2, 1 };
                 int[] chimneys = { 1, 1, 2, 3 };
                 int[] offices = { 0, 0, 0, 1 };
+                int[] towers = { 0, 1, 1, 0 };
+                int[] silos = { 0, 0, 0, 2 };
                 int previous = 0;
                 for (int stage = 1; stage <= ResortParts.Stages; stage++)
                 {
@@ -53,6 +55,9 @@ namespace Lazpoly.Presentation.Tests
                     Assert.AreEqual(halls[stage - 1], Count(beach, "Hall"), $"stage {stage} halls");
                     Assert.AreEqual(chimneys[stage - 1], Count(beach, "Chimney"), $"stage {stage} chimneys");
                     Assert.AreEqual(offices[stage - 1], Count(beach, "Office"), $"stage {stage} office");
+                    Assert.AreEqual(towers[stage - 1], Count(beach, "Tower"), $"stage {stage} water tower");
+                    Assert.AreEqual(silos[stage - 1], Count(beach, "Silo"), $"stage {stage} silos");
+                    Assert.AreEqual(3 * chimneys[stage - 1], Count(beach, "Smoke"), $"stage {stage}: every chimney smokes");
                     Renderer[] parts = beach.GetComponentsInChildren<Renderer>(true);
                     Assert.Greater(parts.Length, previous, $"stage {stage} has more on it than the one before");
                     previous = parts.Length;
@@ -75,9 +80,53 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 GameObject full = holder.transform.Find("Beach 4").gameObject;
-                Assert.AreEqual(6, Count(full, "Window"), "the big works' office has two rows of windows");
+                GameObject office = full.transform.Find("Office").gameObject;
+                Assert.AreEqual(5 + 8, Count(office, "Window"), "the great works' office has two rows of windows in front (the door takes one) and on both sides");
+                Assert.AreEqual(1, Count(office, "Door"));
                 Assert.AreEqual(4, Count(full, ResortParts.OwnerPart) - 3 - 1, "its hall has four roof teeth (besides three chimney bands and the office roof)");
-                Assert.AreEqual(1, Count(holder.transform.Find("Beach 2").gameObject, "Tank"), "the factory has its tank");
+                Assert.AreEqual(1, Count(holder.transform.Find("Beach 2").gameObject, "Tank"), "the factory's tower has its tank");
+
+                // The redrawn mill (the owner's wish, 2026-11-12): a true saw-tooth roof, each tooth a brick wedge with a row
+                // of glass in its upright face and the owner's colour on its slope; pilasters and windows in front, one door.
+                GameObject mill = full.transform.Find("Hall").gameObject;
+                Assert.AreEqual(4, Count(mill, "Tooth"));
+                Assert.AreEqual(4, Count(mill, "Roof light"), "glass in every tooth's upright face");
+                Assert.AreEqual(4, Count(mill, ResortParts.OwnerPart), "the owner's colour on every slope");
+                Assert.AreEqual(1, Count(mill, "Door"));
+                Assert.AreEqual(Count(mill, "Pilaster") - 2, Count(mill, "Sill"), "a window in every bay of the front but the door's");
+                Assert.Greater(Count(mill, "Window"), Count(mill, "Sill"), "windows down the sides too");
+                foreach (Transform piece in mill.GetComponentsInChildren<Transform>(true))
+                {
+                    if (piece.name != ResortParts.OwnerPart) continue;
+                    Assert.That(Mathf.Abs(Mathf.DeltaAngle(0f, piece.localEulerAngles.z)), Is.InRange(15f, 35f), "the slope leans as a north-light roof does");
+                    Bounds roof = Extent(new[] { piece.GetComponent<Renderer>() });
+                    Assert.Less(roof.max.y, ResortParts.Height * 0.55f, "the roofs stay low: the chimneys are what stands tall");
+                }
+
+                // Few colours, the table's own: the jail's limestone and iron with brick, glass, steel.
+                Assert.AreEqual(CornerParts.Limestone, ResortParts.Stone);
+                Assert.AreEqual(CornerParts.Iron, ResortParts.Iron);
+                var colours = new HashSet<Color>();
+                foreach (Renderer part in full.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (part.name != ResortParts.OwnerPart && part.sharedMaterial != null) colours.Add(part.sharedMaterial.color);
+                }
+
+                Assert.LessOrEqual(colours.Count, 7, "the great works: brick, dark brick, stone, iron, glass, steel, smoke");
+
+                // The tallest chimney's smoke is the top of the tallest stage, and a chimney tapers from its stone foot.
+                Transform tallest = null;
+                foreach (Transform piece in full.GetComponentsInChildren<Transform>(true))
+                {
+                    if (piece.name == "Chimney" && (tallest == null || Extent(piece.GetComponentsInChildren<Renderer>()).max.y > Extent(tallest.GetComponentsInChildren<Renderer>()).max.y)) tallest = piece;
+                }
+
+                Assert.IsNotNull(tallest);
+                Assert.That(Extent(tallest.GetComponentsInChildren<Renderer>()).max.y, Is.InRange(ResortParts.Height * 0.9f, ResortParts.Height));
+                Bounds stack = Extent(new[] { tallest.Find("Stack").GetComponent<Renderer>() }), stoneFoot = Extent(new[] { tallest.Find("Foot").GetComponent<Renderer>() });
+                Assert.Greater(stoneFoot.size.x, stack.size.x, "the foot is wider than the stack");
+                Assert.AreEqual(ResortParts.ChimneyFoot, stoneFoot.max.y, 1e-3f);
+                Assert.AreEqual(stoneFoot.max.y, stack.min.y, 1e-3f, "the stack stands on its foot");
             }
             finally
             {

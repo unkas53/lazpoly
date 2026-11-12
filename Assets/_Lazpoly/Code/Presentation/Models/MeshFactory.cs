@@ -251,6 +251,41 @@ namespace Lazpoly.Presentation.Models
             return Store(key, vertices, null, triangles);
         }
 
+        /// <summary>
+        /// A wedge: one tooth of a saw-tooth roof. Base at y = 0, size (1, 1, 1); an upright face at -X, and from its top
+        /// one slope down to the base's edge at +X; the same section all along Z.
+        /// </summary>
+        public static Mesh Wedge()
+        {
+            const string key = "wedge";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+            {
+                int i = vertices.Count;
+                vertices.AddRange(new[] { a, b, c, d });
+                triangles.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
+            }
+
+            void Triangle(Vector3 a, Vector3 b, Vector3 c)
+            {
+                int i = vertices.Count;
+                vertices.AddRange(new[] { a, b, c });
+                triangles.AddRange(new[] { i, i + 1, i + 2 });
+            }
+
+            const float h = 0.5f;
+            Vector3 P(float x, float y, float z) => new Vector3(x, y, z);
+            Quad(P(-h, 0, h), P(-h, 1f, h), P(-h, 1f, -h), P(-h, 0, -h));   // upright face
+            Quad(P(-h, 1f, -h), P(-h, 1f, h), P(h, 0, h), P(h, 0, -h));     // slope
+            Triangle(P(-h, 0, -h), P(-h, 1f, -h), P(h, 0, -h));             // end at -z
+            Triangle(P(h, 0, h), P(-h, 1f, h), P(-h, 0, h));                // end at +z
+            Quad(P(-h, 0, h), P(-h, 0, -h), P(h, 0, -h), P(h, 0, h));       // underside
+            return Store(key, vertices, null, triangles);
+        }
+
         /// <summary>A cylinder with flat caps, base at y = 0, radius and height 1 (scale it as needed).</summary>
         public static Mesh Cylinder(int segments = 24) =>
             Lathe("cylinder", new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) }, segments);

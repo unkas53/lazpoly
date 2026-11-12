@@ -348,6 +348,8 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Payments still in the queue that an earlier flight already carried (more houses bought at once).</summary>
         private readonly HashSet<GameEvent> _flownAlong = new HashSet<GameEvent>();
+        // Gains that a player's payment has already carried to the receiver's safe: they do not come up from the bank again.
+        private readonly HashSet<GameEvent> _paidGains = new HashSet<GameEvent>();
 
         public Color ColorOf(int playerId) => _playerColors.TryGetValue(playerId, out Color color) ? color : Color.white;
 
@@ -1104,6 +1106,39 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The works of a factory city from near (2026-11-12): an owned one posed at each of its four stages in turn,
+            // the pieces out of the picture; then as its owner's holdings really have it.
+            if (CameraRig != null)
+            {
+                for (int worksSquare = 0; worksSquare < _session.Board.Count; worksSquare++)
+                {
+                    int worksOwner = _session.State.GetOwner(worksSquare);
+                    if (!_session.Board[worksSquare].IsResort || worksOwner == GameState.NoOwner) continue;
+                    var steppedAside = new List<PawnView>();
+                    foreach (PawnView figure in _pawns.Values)
+                    {
+                        if (!figure.gameObject.activeSelf) continue;
+                        figure.gameObject.SetActive(false);
+                        steppedAside.Add(figure);
+                    }
+
+                    CameraRig.SetView(BoardCameraRig.BaseYaw, BoardCameraRig.MinZoom);
+                    CameraRig.Hold(_board.SquarePosition(worksSquare));
+                    for (int works = 1; works <= Models.ResortParts.Stages; works++)
+                    {
+                        _board.SetResortStage(worksSquare, works);
+                        yield return ScreenTour.Take($"fabrika-{works}");
+                    }
+
+                    _board.SetResortStage(worksSquare, GameRules.ResortsOwned(_session.Board, _session.State, worksOwner));
+                    foreach (PawnView figure in steppedAside) figure.gameObject.SetActive(true);
+                    CameraRig.Hold(null);
+                    CameraRig.ResetView();
+                    yield return ScreenTour.Until(() => false, 1f);
+                    break;
+                }
+            }
+
             // The aeroplane that crosses the sky now and then (2026-11-12), held near each side of the whole view in turn;
             // the far islands show in the same pictures.
             SkyBackdrop sky = Camera.main != null ? Camera.main.GetComponentInChildren<SkyBackdrop>() : null;
@@ -1567,6 +1602,7 @@ namespace Lazpoly.Presentation.Game
             _playing = false;
             _pendingEvents.Clear();
             _flownAlong.Clear();
+            _paidGains.Clear();
             Markers?.HideTarget();
             SyncViewsToState();
             AddLog(L("Oyun durumu ev sahibinden yeniden alındı."));
@@ -1713,12 +1749,26 @@ namespace Lazpoly.Presentation.Game
                             if (taken != null) yield return ShowTakeover(taken, -money.Delta);
                         }
 
+                        // Money from the bank (passing Start, a card, the pot) comes up through the player's own hatch into
+                        // their safe (the owner's wish, 2026-11-12) and counts once it has landed.
+                        bool income = money.Delta > 0 && !_paidGains.Remove(money) && !_flownAlong.Remove(money) && ComesUpTheHatch(money);
+                        if (income)
+                        {
+                            ShowMoney(money);
+                            React(money.PlayerId, money.Delta);
+                            yield return ShowIncome(money);
+                        }
+
                         // The payer's money drops as the notes leave; a player paid by them gains once the flight has landed
-                        // (their event comes right after the payment's), and money from the bank shows at once.
+                        // (their event comes right after the payment's).
                         _shownMoney[money.PlayerId] = ShownMoneyOf(money.PlayerId) + money.Delta;
                         Revision++;
-                        ShowMoney(money);
-                        React(money.PlayerId, money.Delta);
+                        if (!income)
+                        {
+                            ShowMoney(money);
+                            React(money.PlayerId, money.Delta);
+                        }
+
                         if (money.Delta < 0) yield return ShowPayment(money);
                         break;
                     case PropertyOwnerChangedEvent owner:
@@ -2013,10 +2063,59 @@ namespace Lazpoly.Presentation.Game
                 }
             }
 
+            // The receiver's gain comes right after: this flight brings it, so it is not handed out by the bank as well.
+            if (!toBank && _pendingEvents.Count > 0 && _pendingEvents.Peek() is MoneyChangedEvent paidGain) _paidGains.Add(paidGain);
+
             // Out of the payer's case, down their hatch; up the other player's hatch into their case, or to the bank.
             float seconds = MoneyFlight.Fly(transform, amount, _board.MoneyPileOf(payer), _board.HatchOf(payer),
                 toBank ? null : _board.MoneyPileOf(receiver), toBank ? null : _board.HatchOf(receiver), Speed);
             yield return new WaitForSeconds(seconds);
+        }
+
+        /// <summary>
+        /// Money from the bank seen arriving (the owner's wish, 2026-11-12: "money from Şans cards and from passing Start
+        /// too"): the player's hatch opens, the money comes up and goes into their safe, as the starting money does, with
+        /// the sum written at the hatch. Gains that come together (the Start bonus and a fund's payout) make one flight.
+        /// The game waits for it.
+        /// </summary>
+        private IEnumerator ShowIncome(MoneyChangedEvent money)
+        {
+            int seat = _session.State.IndexOfPlayer(money.PlayerId);
+            if (seat < 0 || _board == null) yield break;
+            int amount = money.Delta;
+            foreach (MoneyChangedEvent along in GainedAlong(money, _pendingEvents))
+            {
+                _flownAlong.Add(along);
+                amount += along.Delta;
+            }
+
+            float seconds = MoneyFlight.Deal(transform, amount, _board.MoneyPileOf(seat), _board.HatchOf(seat), Speed);
+            if (seconds > 0f) yield return new WaitForSeconds(seconds);
+        }
+
+        /// <summary>
+        /// Whether a gain is seen coming up through the player's hatch when the bank pays it: every gain but a sale's
+        /// (buildings and towns sold back come in runs on the sell screen, and their money shows at once as before). A
+        /// gain another player paid is brought by that payment's own flight instead (<see cref="PaymentReceiver"/>).
+        /// </summary>
+        public static bool ComesUpTheHatch(MoneyChangedEvent gain) =>
+            gain != null && gain.Delta > 0 && gain.Reason != MoneyReason.BuildingSale && gain.Reason != MoneyReason.PropertySale;
+
+        /// <summary>
+        /// The bank's gains still waiting that come up with <paramref name="gain"/> in one flight: the same player's gains
+        /// right after it (a fund's payout after the Start bonus), up to the first other event.
+        /// </summary>
+        public static List<MoneyChangedEvent> GainedAlong(MoneyChangedEvent gain, IEnumerable<GameEvent> next)
+        {
+            var along = new List<MoneyChangedEvent>();
+            if (!ComesUpTheHatch(gain)) return along;
+            foreach (GameEvent gameEvent in next)
+            {
+                if (!(gameEvent is MoneyChangedEvent more) || more.PlayerId != gain.PlayerId || !ComesUpTheHatch(more)) break;
+                along.Add(more);
+            }
+
+            return along;
         }
 
         /// <summary>

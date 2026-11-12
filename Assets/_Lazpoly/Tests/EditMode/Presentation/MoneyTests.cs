@@ -489,6 +489,37 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void MoneyFromTheBankComesUpThePlayersOwnHatch()
+        {
+            // The owner's wish (2026-11-12): money from a Şans card and from passing Start comes up the hatch into the safe.
+            var start = new MoneyChangedEvent(1, 200000, MoneyReason.PassedStart);
+            var fund = new MoneyChangedEvent(1, 50000, MoneyReason.Fund);
+            var card = new MoneyChangedEvent(1, 100000, MoneyReason.Card);
+            Assert.IsTrue(GameSceneController.ComesUpTheHatch(start));
+            Assert.IsTrue(GameSceneController.ComesUpTheHatch(card));
+            Assert.IsTrue(GameSceneController.ComesUpTheHatch(fund));
+            Assert.IsTrue(GameSceneController.ComesUpTheHatch(new MoneyChangedEvent(2, 300000, MoneyReason.Pot)));
+            Assert.IsFalse(GameSceneController.ComesUpTheHatch(new MoneyChangedEvent(1, -100000, MoneyReason.Card)), "a card's fine goes down, as every payment");
+            Assert.IsFalse(GameSceneController.ComesUpTheHatch(new MoneyChangedEvent(1, 0, MoneyReason.Card)));
+            Assert.IsFalse(GameSceneController.ComesUpTheHatch(null));
+            Assert.IsFalse(GameSceneController.ComesUpTheHatch(new MoneyChangedEvent(1, 80000, MoneyReason.BuildingSale)), "sales come in runs on the sell screen: at once, as before");
+            Assert.IsFalse(GameSceneController.ComesUpTheHatch(new MoneyChangedEvent(1, 80000, MoneyReason.PropertySale)));
+
+            // Gains that come together make one flight: the Start bonus and the fund's payout right after it.
+            CollectionAssert.AreEqual(new[] { fund }, GameSceneController.GainedAlong(start, new GameEvent[] { fund, new PlayerMovedEvent(1, 30, 2, true), card }));
+            CollectionAssert.AreEqual(new[] { fund, card }, GameSceneController.GainedAlong(start, new GameEvent[] { fund, card }));
+            Assert.IsEmpty(GameSceneController.GainedAlong(start, new GameEvent[0]));
+            Assert.IsEmpty(GameSceneController.GainedAlong(start, new GameEvent[] { new MoneyChangedEvent(2, 50000, MoneyReason.Fund) }), "another player's money comes up their own hatch");
+            Assert.IsEmpty(GameSceneController.GainedAlong(start, new GameEvent[] { new MoneyChangedEvent(1, -50000, MoneyReason.Tax), fund }), "a payment in between ends the run");
+            Assert.IsEmpty(GameSceneController.GainedAlong(new MoneyChangedEvent(1, -50000, MoneyReason.Tax), new GameEvent[] { fund }));
+
+            // What comes up is the second half of a payment between players: the hatch opens at once and the game waits for it.
+            int count = MoneyFlight.Pieces(200000).Length;
+            Assert.AreEqual(2, count);
+            Assert.That(MoneyFlight.Seconds(count, true) - MoneyFlight.DealStartsAt(count), Is.InRange(1.2f, 2.5f), "a short wait as the bonus arrives");
+        }
+
+        [Test]
         public void APaymentGoesToThePlayerWhoGainsItOrToTheBank()
         {
             var rent = new MoneyChangedEvent(1, -120, MoneyReason.Rent);
