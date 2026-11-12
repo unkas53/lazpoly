@@ -32,8 +32,8 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Width of the trade window, which shows two property lists side by side.</summary>
         public const float WideWindowWidth = 760f;
 
-        /// <summary>Width of the property card, whose six level tiles sit in one row.</summary>
-        public const float PropertyCardWidth = 880f;
+        /// <summary>Width of the property card: its large picture, and beside it the six level tiles in one row.</summary>
+        public const float PropertyCardWidth = 984f;
 
         /// <summary>Height of the buttons that decide something on a card.</summary>
         public const float CardButtonHeight = 52f;

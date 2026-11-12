@@ -142,20 +142,34 @@ namespace Lazpoly.Presentation.Models
         /// The building of <paramref name="level"/> (0 the plot, 1-4 houses, <see cref="SquareDefinition.MaxBuildingLevel"/>
         /// the hotel) as an object with one part per slot, named after it, or null when the pack is missing.
         /// </summary>
-        public static GameObject Create(int level, string name, Transform parent)
+        /// <param name="whole">True keeps the whole model whatever the graphics quality: the cards' pictures are taken of these.</param>
+        public static GameObject Create(int level, string name, Transform parent, bool whole = false)
         {
             if (MeshFor(level, WallSlot) == null) return null;
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
             for (int slot = 0; slot < Slots.Length; slot++)
             {
-                Mesh mesh = MeshFor(level, slot);
+                Mesh mesh = whole ? MeshFor(level, slot, true) : MeshFor(level, slot);
                 if (mesh == null) continue;
                 GameObject part = ModelParts.Create(Slots[slot], root.transform, mesh, SlotColors[slot], SlotSmoothness[slot]);
-                Live.Add((part.GetComponent<MeshFilter>(), level, slot));
+                if (!whole) Live.Add((part.GetComponent<MeshFilter>(), level, slot));
             }
 
             return root;
+        }
+
+        /// <summary>How tall the model of <paramref name="level"/> stands, in model units; 0 when the pack is missing.</summary>
+        public static float HeightOf(int level)
+        {
+            float height = 0f;
+            for (int slot = 0; slot < Slots.Length; slot++)
+            {
+                Mesh mesh = MeshFor(level, slot, true);
+                if (mesh != null) height = Mathf.Max(height, mesh.bounds.max.y);
+            }
+
+            return height;
         }
 
         /// <summary>Paints a building's walls for its owner (lightened a little), or white when it has none; the other parts keep their colours.</summary>

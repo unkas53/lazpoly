@@ -94,14 +94,21 @@ namespace Lazpoly.Presentation.Tests
             {
                 for (int stage = 1; stage <= ResortParts.Stages; stage++)
                 {
-                    Transform beach = preview.Root.transform.Find($"Beach {stage}");
-                    Assert.IsNotNull(beach, $"stage {stage} is on the picture's stage");
-                    Assert.IsFalse(beach.gameObject.activeSelf, "it stands only while its picture is taken");
+                    Transform works = preview.Root.transform.Find(BuildingPreview.FactoryName(stage));
+                    Assert.IsNotNull(works, $"stage {stage} is on the picture's stage");
+                    Assert.IsFalse(works.gameObject.activeSelf, "it stands only while its picture is taken");
                 }
 
-                Assert.Less(BuildingPreview.ModelScale * ResortParts.Width, BuildingPreview.TileWidth, "the beach fits across the picture's tile");
-                Assert.Less(BuildingPreview.RowDepth + BuildingPreview.ModelScale * ResortParts.Depth / 2f, BuildingPreview.TileDepth / 2f, "and stays on it");
-                Assert.IsNull(preview.BeachPicture(2, Color.white, Color.red), "no pictures are drawn outside play mode");
+                preview.ShowFactory(3);
+                for (int stage = 1; stage <= ResortParts.Stages; stage++)
+                    Assert.AreEqual(stage == 3, preview.Root.transform.Find(BuildingPreview.FactoryName(stage)).gameObject.activeSelf);
+                preview.Show(1);
+                Assert.IsFalse(preview.Root.transform.Find(BuildingPreview.FactoryName(3)).gameObject.activeSelf, "a town's building takes the works' place");
+
+                Assert.Less(BuildingPreview.FactoryScale * ResortParts.Width, BuildingPreview.TileWidth, "the works fit across the picture's tile");
+                Assert.Less(BuildingPreview.RowDepth + BuildingPreview.FactoryScale * ResortParts.Depth / 2f, BuildingPreview.TileDepth / 2f, "and stay on it");
+                Assert.Less(BuildingPreview.TopOfFactory, 0.9f, "with sky over their smoke");
+                Assert.IsNull(preview.FactoryPicture(2, Color.white, Color.red), "no pictures are drawn outside play mode");
             }
             finally
             {

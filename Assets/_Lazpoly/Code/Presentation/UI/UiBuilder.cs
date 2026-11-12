@@ -172,6 +172,78 @@ namespace Lazpoly.Presentation.UI
             return new UiBuilder((RectTransform)element.transform, Changed);
         }
 
+        /// <summary>How much of the accent a chosen <see cref="Choice"/>'s ground takes, and how strong the edge line of the others is.</summary>
+        public const float ChosenWash = 0.14f;
+        public const float ChoiceEdge = 0.16f;
+
+        /// <summary>
+        /// One of a few choices side by side (the levels of a building): a flat rounded card with a thin edge line;
+        /// the chosen ones stand on a ground washed with the accent, ringed in it. Whatever is added to the returned
+        /// builder stacks inside. A click anywhere on it runs <paramref name="onClick"/>; with none it does not answer
+        /// the pointer at all. <paramref name="dimmed"/> sinks its ground, for a choice that is not open yet.
+        /// </summary>
+        public UiBuilder Choice(Action onClick, bool chosen, bool dimmed = false, int padding = 6, float spacing = 3f)
+        {
+            GameObject element = NewChild("Choice");
+            Color ground = dimmed ? UiTheme.Field : chosen ? Color.Lerp(UiTheme.Card, UiTheme.Accent, ChosenWash) : UiTheme.Card;
+            Button button = MakeButton(element, onClick, true, UiButtonStyle.Secondary, -1f, ground);
+            RemoveShadow(element);
+            ColorBlock colors = button.colors;
+            colors.disabledColor = Color.white; // A choice that cannot be clicked keeps its look; its content says why.
+            button.colors = colors;
+            button.interactable = onClick != null;
+
+            RectTransform ring = UiRoot.Stretch(element.transform, "Ring");
+            ring.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+            var line = ring.gameObject.AddComponent<Image>();
+            line.sprite = UiSprites.Ring;
+            line.type = Image.Type.Sliced;
+            line.color = chosen ? UiTheme.Accent : new Color(UiTheme.Text.r, UiTheme.Text.g, UiTheme.Text.b, ChoiceEdge);
+            line.raycastTarget = false;
+
+            AddColumnLayout(element, padding, spacing);
+            return new UiBuilder((RectTransform)element.transform, Changed);
+        }
+
+        /// <summary>
+        /// The close mark of a card with a dark band at its top: a faint disc with the kit's cross on it (a plain × without
+        /// the kit's pictures), <paramref name="size"/> across.
+        /// </summary>
+        public Button CloseMark(Action onClick, Color ink, float size = 40f)
+        {
+            GameObject element = NewChild("Button ×");
+            Button button = MakeButton(element, onClick, true, UiButtonStyle.Secondary, -1f, new Color(ink.r, ink.g, ink.b, 0.14f));
+            RemoveShadow(element);
+            var disc = (Image)button.targetGraphic;
+            disc.sprite = UiSprites.Circle;
+            disc.type = Image.Type.Simple;
+            Fix(element, size, size);
+
+            Sprite cross = KitArt.Get(CloseIcon);
+            if (cross != null)
+            {
+                RectTransform mark = UiRoot.Rect(element.transform, "Mark", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+                mark.sizeDelta = new Vector2(size * 0.5f, size * 0.5f);
+                var picture = mark.gameObject.AddComponent<Image>();
+                picture.sprite = cross;
+                picture.color = ink;
+                picture.raycastTarget = false;
+            }
+            else
+            {
+                Text text = TextChild(element.transform, "×", UiTextStyle.Body);
+                text.color = ink;
+                text.alignment = TextAnchor.MiddleCenter;
+                text.font = UiTheme.BoldFont;
+            }
+
+            return button;
+        }
+
+        /// <summary>The kit's pictures of a cross and of a check mark.</summary>
+        public const string CloseIcon = "Icon_Close";
+        public const string CheckIcon = "Icon_Check";
+
         /// <summary>A small picture, such as beside a title.</summary>
         public RectTransform Icon(UiIcon icon, float size = 28f, Color? color = null) =>
             UiIcons.Create(Container, icon, size, color ?? UiTheme.Accent);

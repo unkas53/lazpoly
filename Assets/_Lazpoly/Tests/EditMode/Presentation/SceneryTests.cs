@@ -763,8 +763,48 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsTrue(camera.orthographic);
                 Assert.That(Quaternion.Angle(camera.transform.localRotation, Quaternion.Euler(BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, 0f)), Is.LessThan(1e-3f),
                     "the pictures share the board's angle");
-                float halfDiagonal = Mathf.Sqrt(BuildingPreview.TileWidth * BuildingPreview.TileWidth + BuildingPreview.TileDepth * BuildingPreview.TileDepth) / 2f;
-                Assert.Greater(BuildingPreview.ViewSize, halfDiagonal * Mathf.Cos(45f * Mathf.Deg2Rad) * 1.1f, "the tile fits the picture with air around it");
+                Assert.That(camera.orthographicSize, Is.EqualTo(BuildingPreview.ViewHeight / 2f).Within(1e-4f));
+                Assert.That(camera.aspect, Is.EqualTo((float)BuildingPreview.PictureWidth / BuildingPreview.PictureHeight).Within(1e-4f), "upright, three wide and four tall");
+                Assert.Less(camera.farClipPlane, RoomDressing.ShadowDistance, "the sun's shadows reach the whole stage");
+
+                // The island lies turned 45 degrees to the camera: it fits across the picture with air at its sides, the tile on its meadow, grass showing round it.
+                float across = (BuildingPreview.IslandTop.x + BuildingPreview.IslandTop.y) * Mathf.Cos(45f * Mathf.Deg2Rad);
+                Assert.Less(across * 1.05f, BuildingPreview.ViewWidth, "the island fits the picture with air around it");
+                Assert.Greater(across, BuildingPreview.ViewWidth * 0.8f, "and fills most of its width");
+                Assert.Less(BuildingPreview.TileWidth + 0.3f, BuildingPreview.IslandTop.x, "grass shows beside the tile");
+                Assert.Less(BuildingPreview.TileDepth + 0.3f, BuildingPreview.IslandTop.y, "and before and behind it");
+                Transform island = preview.Root.transform.Find(BuildingPreview.IslandName);
+                Assert.IsNotNull(island, "the tile lies on a little floating island");
+                Assert.IsNotNull(island.Find("Meadow"));
+                Assert.That(island.Find("Rock").localScale.y, Is.EqualTo(BuildingPreview.RockSquash).Within(1e-4f), "its rock is pressed flatter: a base, not the subject");
+                Assert.IsNull(island.Find(IslandParts.VinesName), "no vines at this size");
+                Assert.IsNull(island.Find(IslandParts.StonesName), "and no loose stones");
+                float bottom = -BuildingPreview.RockSquash * IslandShape.Depth * Mathf.Cos(BoardCameraRig.Pitch * Mathf.Deg2Rad);
+                Assert.Greater(bottom, BuildingPreview.ViewBottom + 0.1f, "the island's point stays inside the picture");
+
+                // The picture's bottom edge is where ViewBottom says, and the hotel's roof fits under its top.
+                Assert.That(BuildingPreview.Aim.y * Mathf.Cos(BoardCameraRig.Pitch * Mathf.Deg2Rad) - BuildingPreview.ViewHeight / 2f,
+                    Is.EqualTo(BuildingPreview.ViewBottom).Within(1e-4f));
+                Assert.Less(Vector3.Distance(camera.transform.localPosition, BoardCameraRig.Place(BuildingPreview.Aim, BoardCameraRig.Pitch, BoardCameraRig.BaseYaw,
+                    BuildingPreview.CameraDistance)), 1e-4f);
+                if (BuildingModels.IsAvailable)
+                {
+                    float last = 0f;
+                    for (int level = 1; level < BuildingPreview.Levels; level++)
+                    {
+                        float top = BuildingPreview.TopOfLevel(level);
+                        Assert.GreaterOrEqual(top, last, $"level {level} stands at least as tall in the picture as the one before");
+                        last = top;
+                    }
+
+                    float roof = (BuildingPreview.TileThickness + BuildingModels.HeightOf(BuildingPreview.Levels - 1) * BuildingPreview.ModelScale)
+                        * Mathf.Cos(BoardCameraRig.Pitch * Mathf.Deg2Rad) + BuildingPreview.RoofRise;
+                    Assert.Less(roof, BuildingPreview.ViewBottom + BuildingPreview.ViewHeight, "the hotel's roof stays inside the picture");
+                    Assert.Greater(BuildingPreview.TopOfLevel(BuildingPreview.Levels - 1), 0.9f, "and nearly fills its height");
+                }
+
+                Assert.Less(BuildingPreview.TopOf(0f), 0.75f, "a bare plot leaves the upper part of the picture to the sky");
+                Assert.IsNull(camera.transform.Find(BuildingPreview.SkyName), "the sky is hung only when the first picture is taken");
 
                 for (int level = 0; level < BuildingPreview.Levels; level++)
                 {
@@ -773,7 +813,8 @@ namespace Lazpoly.Presentation.Tests
                     var standing = new List<string>();
                     foreach (Transform child in preview.Root.transform)
                     {
-                        if (child.gameObject.activeSelf && child.GetComponent<Camera>() == null && child.name != "Tile") standing.Add(child.name);
+                        if (child.gameObject.activeSelf && child.GetComponent<Camera>() == null && child.name != BuildingPreview.TileName
+                            && child.name != BuildingPreview.IslandName) standing.Add(child.name);
                     }
 
                     CollectionAssert.AreEqual(new[] { BuildingModels.Names[level] }, standing, $"level {level}: its one model stands on the stage");
@@ -788,6 +829,11 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Less(BuildingPreview.RowDepth + BuildingPreview.MansionSize.z / 2f, BuildingPreview.TileDepth / 2f, "the mansion stays on the tile");
 
                 Assert.IsNull(preview.Picture(1, Color.white), "no pictures are drawn outside play mode");
+                Assert.IsNull(preview.Picture(1, Color.white, Color.red));
+                Assert.AreEqual(0, preview.Kept);
+                Assert.AreNotEqual(BuildingPreview.Key('t', 1, Color.white, null), BuildingPreview.Key('t', 1, Color.white, Color.red), "a picture is kept per owner colour");
+                Assert.AreNotEqual(BuildingPreview.Key('t', 1, Color.white, null), BuildingPreview.Key('f', 1, Color.white, null));
+                Assert.AreNotEqual(BuildingPreview.Key('t', 1, Color.white, null), BuildingPreview.Key('t', 2, Color.white, null));
             }
             finally
             {

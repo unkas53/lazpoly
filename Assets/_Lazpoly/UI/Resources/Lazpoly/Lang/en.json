@@ -780,5 +780,11 @@
   "Bu şehir artık benim!": "This town is mine now!",
   "şehir devri": "takeover",
   "Şehir devralma": "Takeovers",
-  "Rakibin şehrine gelip kirasını ödedikten sonra paran yetiyorsa şehri binalarıyla birlikte devralabilirsin. Devir bedeli arsa ve evlerin değerinin %{0} oranıdır ve şehrin sahibine ödenir. Otelli şehirler ve Koruma kalkanlı şehirler devralınamaz.": "After paying the rent on a rival's city, if you still have the money you may take it over with its buildings. The price is {0}% of the land and houses' worth and goes to the city's owner. Cities with a hotel or a protection shield cannot be taken over."
+  "Rakibin şehrine gelip kirasını ödedikten sonra paran yetiyorsa şehri binalarıyla birlikte devralabilirsin. Devir bedeli arsa ve evlerin değerinin %{0} oranıdır ve şehrin sahibine ödenir. Otelli şehirler ve Koruma kalkanlı şehirler devralınamaz.": "After paying the rent on a rival's city, if you still have the money you may take it over with its buildings. The price is {0}% of the land and houses' worth and goes to the city's owner. Cities with a hotel or a protection shield cannot be taken over.",
+  "Bedel": "Price",
+  "Kalan": "Left",
+  "Ne kurmak istersin?": "What will you build?",
+  "Kaç kat çıkalım?": "How high shall we build?",
+  "Fabrika şehirlerin çoğaldıkça kira artar": "Rent grows with every factory city you hold",
+  "{0}. kademe": "Stage {0}"
 }

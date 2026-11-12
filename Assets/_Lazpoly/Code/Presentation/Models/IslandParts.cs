@@ -60,6 +60,24 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
+        /// <summary>
+        /// A small island for a picture (<see cref="BuildingPreview"/>): the meadow, the rock under it pressed to
+        /// <paramref name="squash"/> of its depth so it stays a base rather than the subject, the tufts and the flowers;
+        /// no vines and no loose stones, which would only be specks at that size.
+        /// </summary>
+        public static GameObject Islet(Transform parent, string name, Vector2 top, int seed, float squash)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            Transform at = root.transform;
+            Skinned(at, "Meadow", IslandShape.Meadow(top, seed), IslandSkin.Grass(), Color.white, 0.05f);
+            GameObject rock = Skinned(at, "Rock", IslandShape.Rock(top, seed), IslandSkin.Rock(), Color.white, 0.12f);
+            rock.transform.localScale = new Vector3(1f, Mathf.Clamp(squash, 0.1f, 1f), 1f);
+            Skinned(at, "Tufts", IslandShape.Tufts(top, seed), IslandSkin.Grass(), Color.white, 0.05f);
+            ModelParts.Create("Flowers", at, IslandShape.Flowers(top, seed), Flower, 0.1f);
+            return root;
+        }
+
         private static GameObject Skinned(Transform parent, string name, Mesh mesh, Texture texture, Color tint, float smoothness)
         {
             GameObject part = ModelParts.Create(name, parent, mesh, tint, smoothness);

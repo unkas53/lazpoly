@@ -2,6 +2,9 @@ using Lazpoly.Infra.Settings;
 using Lazpoly.Presentation.UI;
 using NUnit.Framework;
 using UnityEngine;
+using BuildingPreview = Lazpoly.Presentation.Models.BuildingPreview;
+using PropertyCard = Lazpoly.Presentation.Game.PropertyCard;
+using SquareCard = Lazpoly.Presentation.Game.SquareCard;
 
 namespace Lazpoly.Presentation.Tests
 {
@@ -74,11 +77,11 @@ namespace Lazpoly.Presentation.Tests
             }
         }
 
-        /// <summary>The property card: its band, six tiles, three lines and the big button, in reference pixels.</summary>
-        private const float PropertyCardHeight = 520f;
+        /// <summary>The property card: its band, the large picture (beside it the strip and the box, with a notice when the money falls short) and the big button, in reference pixels.</summary>
+        private const float PropertyCardHeight = 680f;
 
         /// <summary>The square card of a developed city: band, picture row, seven rent rows, group chips, notes and the button.</summary>
-        private const float SquareCardHeight = 720f;
+        private const float SquareCardHeight = 760f;
 
         [Test]
         public void TheSquareCardFitsEveryScreenWithItsPictureBesideTheFacts()
@@ -97,9 +100,19 @@ namespace Lazpoly.Presentation.Tests
         [Test]
         public void ThePropertyCardHoldsSixTilesInARowAndFitsEveryScreen()
         {
-            float tiles = 6f * Lazpoly.Presentation.Game.PropertyCard.TileWidth + 5f * UiTheme.Spacing;
-            Assert.LessOrEqual(tiles, UiLayout.PropertyCardWidth - 2f * (UiTheme.Padding + 8f), "the tiles overflow the window's padding");
-            Assert.LessOrEqual(Lazpoly.Presentation.Game.PropertyCard.PictureSize + 16f, Lazpoly.Presentation.Game.PropertyCard.TileWidth, "the picture overflows its tile");
+            float tiles = BuildingPreview.Levels * PropertyCard.TileWidth + (BuildingPreview.Levels - 1) * PropertyCard.StripGap;
+            float inside = UiLayout.PropertyCardWidth - 2f * (UiTheme.Padding + 8f);
+            Assert.LessOrEqual(PropertyCard.HeroWidth + PropertyCard.BodyGap + tiles, inside, "the picture and the tiles overflow the window's padding");
+            Assert.GreaterOrEqual(PropertyCard.HeroWidth + PropertyCard.BodyGap + tiles, inside - 8f, "and fill it");
+            Assert.LessOrEqual(PropertyCard.PictureWidth + 12f, PropertyCard.TileWidth, "the picture overflows its tile");
+            // Every picture on the cards keeps the upright shape the pictures are drawn in, so nothing is squeezed.
+            float shape = (float)BuildingPreview.PictureWidth / BuildingPreview.PictureHeight;
+            Assert.That(PropertyCard.HeroWidth / PropertyCard.HeroHeight, Is.EqualTo(shape).Within(1e-3f));
+            Assert.That(PropertyCard.PictureWidth / PropertyCard.PictureHeight, Is.EqualTo(shape).Within(1e-3f));
+            Assert.That(SquareCard.PictureSize / SquareCard.PictureHeight, Is.EqualTo(shape).Within(1e-3f));
+            // The band, the picture row and the button leave the window under the height the screens are checked against.
+            float height = 2f * (UiTheme.Padding + 8f) + PropertyCard.BandHeight + PropertyCard.HeroHeight + PropertyCard.ConfirmHeight + 2f * UiTheme.Spacing;
+            Assert.LessOrEqual(height + 60f, PropertyCardHeight, "with room for the notice when the money falls short");
             foreach (Vector2Int screen in Screens)
             {
                 foreach (float scale in Scales)

@@ -15,8 +15,9 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Game
 {
     /// <summary>
-    /// The card a click on a square opens in the middle of the screen: a title band in the group's
-    /// colour, a picture of the square as it stands (its tile with the houses or hotel on it), the
+    /// The card a click on a square opens in the middle of the screen: the dark band the property card has
+    /// (the name, its kind over it, the group's colour on a ribbon), a picture of the square as it stands
+    /// (its little island with the houses or hotel on it in the owner's colour), the
     /// facts beside it (owner, price, building cost, sale value, what is built), the whole rent
     /// table with the rent that applies now marked, the squares of the same colour with who holds
     /// each (a click on one opens its card), and the notes <see cref="SquareInfo"/> writes. Special
@@ -24,7 +25,10 @@ namespace Lazpoly.Presentation.Game
     /// </summary>
     public sealed class SquareCard
     {
-        public const float PictureSize = 150f;
+        /// <summary>The picture beside the facts: upright, like the property pictures themselves.</summary>
+        public const float PictureSize = 135f;
+        public const float PictureHeight = 180f;
+        public const float PictureRadius = 12f;
         public const float RentRowHeight = 26f;
 
         private readonly GameSceneController _controller;
@@ -48,8 +52,7 @@ namespace Lazpoly.Presentation.Game
             SquareInfo info = SquareInfo.Describe(board, session.Rules, state, squareIndex, _controller.GroupNameOf(squareIndex));
             Color band = property ? _controller.GroupColorOf(squareIndex) : UiTheme.Accent;
 
-            PropertyCard.Band(ui, info.Title, band, property ? _controller.GroupMarkOf(squareIndex) : null, close);
-            ui.Label(info.Kind, UiTextStyle.Small, UiTheme.Muted, TextAnchor.MiddleCenter);
+            PropertyCard.Band(ui, info.Title, info.Kind, band, property ? _controller.GroupMarkOf(squareIndex) : null, close);
 
             UiBuilder top = ui.Row(14f, expand: false);
             RenderPicture(top, square, squareIndex, property, band);
@@ -78,37 +81,39 @@ namespace Lazpoly.Presentation.Game
             ui.Actions(null, null, L("Kapat"), close);
         }
 
-        /// <summary>The square as it stands: its tile with what is built on it, a resort with its beach; special squares show a sign instead.</summary>
+        /// <summary>
+        /// The square as it stands: its little island with what is built on it in its owner's colour, a factory city with
+        /// its works; special squares show a sign instead.
+        /// </summary>
         private void RenderPicture(UiBuilder row, SquareDefinition square, int squareIndex, bool property, Color band)
         {
             RectTransform box = UiRoot.Rect(row.Container, "Picture", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
-            UiBuilder.Fix(box.gameObject, PictureSize, PictureSize);
-            UiRoot.Background(box, UiTheme.Field).raycastTarget = false;
+            UiBuilder.Fix(box.gameObject, PictureSize, PictureHeight);
             Texture picture = null;
-            if (property && square.IsResort)
+            if (property)
             {
-                // A factory city shows its factory at the stage its owner's factory cities reach, in their colour; for sale, the first stage unpainted.
                 GameState state = _controller.Session.State;
                 int owner = state.GetOwner(squareIndex);
-                bool owned = owner != GameState.NoOwner;
-                int held = owned ? GameRules.ResortsOwned(_controller.Session.Board, state, owner) : 1;
-                picture = _preview?.BeachPicture(held, BoardView.FactoryStone,
-                    owned ? _controller.ColorOf(owner) : ResortParts.Unowned);
-            }
-            else if (property)
-            {
-                int level = _controller.Session.State.GetBuildingLevel(squareIndex);
-                picture = _preview?.Picture(level, Color.Lerp(band, BoardView.PaperColor, BoardView.Pastel));
+                Color? colour = owner != GameState.NoOwner ? _controller.ColorOf(owner) : (Color?)null;
+                if (square.IsResort)
+                {
+                    // A factory city shows its works at the stage its owner's factory cities reach; for sale, the first stage unpainted.
+                    int held = colour.HasValue ? GameRules.ResortsOwned(_controller.Session.Board, state, owner) : 1;
+                    picture = _preview?.FactoryPicture(held, BoardView.FactoryStone, colour);
+                }
+                else
+                {
+                    picture = _preview?.Picture(state.GetBuildingLevel(squareIndex), Color.Lerp(band, BoardView.PaperColor, BoardView.Pastel), colour);
+                }
             }
 
             if (picture != null)
             {
-                var image = UiRoot.Rect(box, "Image", Vector2.zero, Vector2.one, new Vector2(4f, 4f), new Vector2(-4f, -4f)).gameObject.AddComponent<RawImage>();
-                image.texture = picture;
-                image.raycastTarget = false;
+                UiPictures.Show(box, picture, new Vector2(PictureSize, PictureHeight), PictureRadius);
                 return;
             }
 
+            UiRoot.Background(box, UiTheme.Field).raycastTarget = false;
             RectTransform icon = UiIcons.Create(box, IconFor(square.Type), PictureSize * 0.45f, property ? band : UiTheme.Accent);
             icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 0.5f);
             icon.anchoredPosition = Vector2.zero;

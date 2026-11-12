@@ -11,6 +11,10 @@ namespace Lazpoly.Presentation.UI
         private static Sprite _rounded;
         private static Sprite _circle;
         private static Sprite _pill;
+        private static Sprite _ring;
+
+        /// <summary>How thick the line of <see cref="Ring"/> is, in reference pixels.</summary>
+        public const float RingWidth = 2f;
 
         /// <summary>A filled circle, drawn simple (not sliced) so it stays round at any size.</summary>
         public static Sprite Circle
@@ -77,6 +81,29 @@ namespace Lazpoly.Presentation.UI
             float cy = Mathf.Clamp(y + 0.5f, radius, Size - radius);
             float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy));
             return Mathf.Clamp01(radius - distance + 0.5f);
+        }
+
+        /// <summary>The outline of <see cref="Rounded"/>, <see cref="RingWidth"/> thick and empty inside: sliced, it rings a card of any size.</summary>
+        public static Sprite Ring
+        {
+            get
+            {
+                if (_ring != null) return _ring;
+                _ring = Make("Lazpoly Ring", RingCoverage, new Vector4(Radius + 2, Radius + 2, Radius + 2, Radius + 2));
+                return _ring;
+            }
+        }
+
+        /// <summary>
+        /// How much of pixel (x, y) lies on the ring: inside the rounded rectangle but not inside the one set in by the
+        /// line's width (the same shape measured from the same middle, its corners that much tighter).
+        /// </summary>
+        public static float RingCoverage(int x, int y)
+        {
+            float cx = Mathf.Clamp(x + 0.5f, Radius, Size - Radius);
+            float cy = Mathf.Clamp(y + 0.5f, Radius, Size - Radius);
+            float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy));
+            return Mathf.Clamp01(Mathf.Clamp01(Radius - distance + 0.5f) - Mathf.Clamp01(Radius - RingWidth - distance + 0.5f));
         }
 
         /// <summary>A rounded rectangle whose short sides are half circles: sliced, it stretches into a pill of any length.</summary>
