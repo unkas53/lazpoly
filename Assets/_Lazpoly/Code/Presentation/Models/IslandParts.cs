@@ -188,35 +188,15 @@ namespace Lazpoly.Presentation.Models
             root.transform.SetParent(parent, false);
             GameObject model = FigureModels.Create(FigureModels.SkyIslandId, FarModelName, root.transform);
             Transform body = model.transform.Find(FigureModels.BodyPart);
-            (float size, Vector3 middle) = FarFit(body.GetComponent<MeshFilter>().sharedMesh);
+            float size = IslandShape.FarSpan / (IslandShape.FarModelHigh - IslandShape.FarModelLow);
             model.transform.localScale = Vector3.one * size;
-            model.transform.localPosition = -middle * size;
+            model.transform.localPosition = -IslandShape.FarModelMiddle * size;
             var part = body.GetComponent<MeshRenderer>();
             Haze(part.sharedMaterial, SkySkin.FarModelHaze);
             part.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             part.receiveShadows = false;
             return root;
         }
-
-        /// <summary>
-        /// How the model is fitted, reckoned once from its own shape: the size at which it stands
-        /// <see cref="IslandShape.FarSpan"/> high in the slanted view, and its middle there (the upright through the
-        /// middle of its footprint, at the height that shows half way between its lowest and its highest on the screen).
-        /// </summary>
-        private static (float size, Vector3 middle) FarFit(Mesh mesh)
-        {
-            if (_farFitted == mesh && mesh != null) return _farFit;
-            Bounds bounds = mesh.bounds;
-            var pivot = new Vector2(bounds.center.x, bounds.center.z);
-            Vector2 reach = IslandShape.SeenReach(mesh.vertices, pivot);
-            float span = Mathf.Max(1e-4f, reach.y - reach.x);
-            float height = (reach.x + reach.y) / 2f / Mathf.Cos(IslandShape.ViewPitch * Mathf.Deg2Rad);
-            _farFitted = mesh;
-            return _farFit = (IslandShape.FarSpan / span, new Vector3(pivot.x, height, pivot.y));
-        }
-
-        private static Mesh _farFitted;
-        private static (float size, Vector3 middle) _farFit;
 
         /// <summary>
         /// Sends a model's material into the haze, as a thing far off in the sky: its own colours dimmed by

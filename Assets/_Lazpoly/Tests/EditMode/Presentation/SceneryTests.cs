@@ -1344,8 +1344,19 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(island.transform.position.z, bounds.center.z, 1e-3f);
                 // As the slanted view shows it: as far above the point it is held by as below, and as high in all as the
                 // island cut in code, so the backdrop sizes either the same way.
+                // Measured from the model's file, not its mesh: a mesh handed to the graphics card cannot be read back.
+                FigureMesh file = null;
+                foreach (FigureMesh level in FigurePack.Parse(Resources.Load<TextAsset>(FigureModels.MeshResource(FigureModels.SkyIslandId)).bytes))
+                {
+                    if (level.Name == FigurePack.HighLevel) file = level;
+                }
+
+                Assert.IsNotNull(file);
+                Vector2 measured = IslandShape.SeenReach(file.Positions, Vector2.zero);
+                Assert.AreEqual(measured.x, IslandShape.FarModelLow, 2e-3f, "the numbers in the code are this model's: measure a new model again");
+                Assert.AreEqual(measured.y, IslandShape.FarModelHigh, 2e-3f);
                 var points = new List<Vector3>();
-                foreach (Vector3 vertex in body.GetComponent<MeshFilter>().sharedMesh.vertices) points.Add(body.transform.TransformPoint(vertex) - island.transform.position);
+                foreach (Vector3 vertex in file.Positions) points.Add(body.transform.TransformPoint(vertex) - island.transform.position);
                 Vector2 seen = IslandShape.SeenReach(points, Vector2.zero);
                 Assert.AreEqual(IslandShape.FarSpan, seen.y - seen.x, 1e-2f);
                 Assert.AreEqual(-seen.x, seen.y, 1e-2f);

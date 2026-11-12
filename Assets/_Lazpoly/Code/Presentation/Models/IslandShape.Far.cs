@@ -60,6 +60,20 @@ namespace Lazpoly.Presentation.Models
             return points.Count > 0 ? new Vector2(low, high) : Vector2.zero;
         }
 
+        /// <summary>
+        /// The owner's far-island model (<see cref="FigureModels.SkyIslandId"/>) as the slanted view shows it: how low
+        /// and how high it reaches on the screen (<see cref="SeenReach"/> about the upright through its footprint's
+        /// middle, which Tools/Art/make_corner_models.py puts at x = 0, z = 0), in the model's own units. Measured from
+        /// its file, since a model's mesh cannot be read back once it is handed to the graphics card; a test holds the
+        /// numbers to the file, so a new model brings new numbers.
+        /// </summary>
+        public const float FarModelLow = -0.0403f;
+        public const float FarModelHigh = 1.1132f;
+
+        /// <summary>The point the model is held by: on that upright, at the height that shows half way between its lowest and its highest on the screen.</summary>
+        public static Vector3 FarModelMiddle =>
+            new Vector3(0f, (FarModelLow + FarModelHigh) / 2f / Mathf.Cos(ViewPitch * Mathf.Deg2Rad), 0f);
+
         /// <summary>A far island's tree: where it stands on the top (x, z), how tall it is (y) and its crown's radius (w). The trees stand apart, well in from the edge.</summary>
         public static Vector4 FarTree(int seed, int tree)
         {
