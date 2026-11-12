@@ -12,7 +12,7 @@ namespace Lazpoly.Presentation.Models
     /// each one, like chiselled stone; the grass and the vines are rounded off, so it runs softly over them. The island's top is at y 0 and is exactly as wide and deep as asked; all the rest
     /// hangs below, inside that outline. A seed makes each island its own.
     /// </summary>
-    public static class IslandShape
+    public static partial class IslandShape
     {
         /// <summary>How deep the island hangs under its top.</summary>
         public const float Depth = 2.05f;

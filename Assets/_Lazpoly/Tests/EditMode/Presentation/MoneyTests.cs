@@ -412,6 +412,75 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void EachHatchIsAStoneCurbedMouthWithABrassStrappedLidAndGoldDeepInside()
+        {
+            // The owner's wish (2026-11-12): hatches that look professional, please the eye and suit the atmosphere.
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                board.CreateMoneyPiles(new[] { Color.red, Color.blue });
+                MoneyHatch hatch = board.HatchOf(0);
+                Color Paint(Transform part) => part.GetComponent<Renderer>().sharedMaterial.color;
+                Bounds Cut(Transform part) => part.GetComponent<MeshFilter>().sharedMesh.bounds;
+
+                // A curb of the table's stone with corner stones, and a steel sleeve down the hole.
+                Transform curb = hatch.transform.Find("Curb"), corners = hatch.transform.Find("Corner stones"), frame = hatch.transform.Find("Frame");
+                Assert.IsNotNull(curb);
+                Assert.IsNotNull(corners);
+                Assert.IsNotNull(frame);
+                Color.RGBToHSV(MoneyHatch.Stone, out _, out float saturation, out float value);
+                Assert.Less(saturation, 0.15f, "the table's grey stone");
+                Assert.Greater(value, PlateSkin.Stone.maxColorComponent, "a little lighter than the plate, out in the sun");
+                Assert.That(Paint(curb).r, Is.EqualTo(MoneyHatch.Stone.r).Within(0.01f));
+                Assert.That(Paint(frame).r, Is.EqualTo(MoneyPile.Steel.r).Within(0.01f), "the safes' steel");
+                Assert.That(Cut(curb).size.x, Is.EqualTo(MoneyHatch.Size.x).Within(1e-3f), "the curb is the hatch's whole length");
+                Assert.That(Cut(curb).size.z, Is.EqualTo(MoneyHatch.Size.z).Within(1e-3f), "and width");
+                Assert.That(Cut(corners).max.y, Is.EqualTo(MoneyHatch.FrameHeight + MoneyHatch.CornerRise).Within(1e-3f), "the corner stones stand a little over it");
+                Assert.Greater(MoneyHatch.HoleLength - 2f * MoneyHatch.Sleeve, MoneyBundle.Length(MoneyPiece.Stack) * MoneyPile.PieceScale, "a stack passes between the sleeve's walls lengthwise");
+                Assert.Greater(MoneyHatch.HoleWidth - 2f * MoneyHatch.Sleeve, MoneyBundle.Width(MoneyPiece.Stack) * MoneyPile.PieceScale, "and across");
+
+                // The lid: nearly black, a raised panel, brass straps and a coin, chrome studs and a ring, a lined underside.
+                Assert.AreEqual("Lid plate", hatch.Lid.GetChild(0).name, "the lid's own plate comes first: its colour is the lid's");
+                Assert.Less(MoneyHatch.PanelColor.maxColorComponent, 0.2f, "the panel stays nearly black too");
+                Assert.Greater(MoneyHatch.PanelColor.r, MoneyHatch.LidColor.r, "a shade lighter, so it reads as raised");
+                Assert.That(Paint(hatch.Lid.Find("Lid brass")).r, Is.EqualTo(MoneyPile.Brass.r).Within(0.01f), "brass like the safes' plates");
+                Assert.That(Paint(hatch.Lid.Find("Lid chrome")).r, Is.EqualTo(MoneyPile.Chrome.r).Within(0.01f), "chrome like their dials");
+                Assert.Greater(MoneyHatch.LidSize.x, MoneyHatch.HoleLength, "the lid covers the hole");
+                Assert.Greater(MoneyHatch.LidSize.z, MoneyHatch.HoleWidth);
+                Assert.Less(MoneyHatch.LidSize.x, MoneyHatch.Size.x - 0.1f, "and leaves the stone showing round it");
+                Assert.Less(MoneyHatch.LidSize.z, MoneyHatch.Size.z - 0.1f);
+                Bounds brass = Cut(hatch.Lid.Find("Lid brass")), lining = Cut(hatch.Lid.Find("Lid lining")), panel = Cut(hatch.Lid.Find("Lid panel"));
+                Assert.That(brass.size.x, Is.EqualTo(2f * MoneyHatch.StrapOffset + MoneyHatch.StrapWidth).Within(0.01f), "a strap near each end");
+                Assert.GreaterOrEqual(brass.size.z, MoneyHatch.LidSize.z, "running from the lid's front to its hinge");
+                Assert.Greater(brass.max.y, panel.max.y, "the straps and the coin stand proud of the panel");
+                Assert.Greater(panel.max.y, MoneyHatch.LidThickness, "which stands proud of the lid");
+                Assert.LessOrEqual(lining.max.y, 1e-4f, "the lining is on the lid's underside");
+                Assert.Less(lining.size.x, MoneyHatch.HoleLength - 2f * MoneyHatch.Sleeve, "and fits down the sleeve when the lid is shut");
+                Assert.Less(lining.size.z, MoneyHatch.HoleWidth - 2f * MoneyHatch.Sleeve);
+
+                // Down the hole: black at the walls, a dim glimmer of gold deep in the middle.
+                Assert.AreSame(HatchSkin.Hole(), hatch.transform.Find("Hole").GetComponent<Renderer>().sharedMaterial.mainTexture);
+                Color middle = HatchSkin.ColourAt(0.5f, 0.5f);
+                Assert.That(HatchSkin.ColourAt(0.02f, 0.5f).r, Is.EqualTo(HatchSkin.Dark.r).Within(1e-3f), "black at the walls");
+                Assert.That(HatchSkin.ColourAt(0f, 0f).r, Is.EqualTo(HatchSkin.Dark.r).Within(1e-3f));
+                Assert.Greater(middle.r, middle.b * 2f, "a warm glimmer");
+                Assert.Less(middle.maxColorComponent, 0.4f, "dim: a glimmer, not a lamp");
+                float last = middle.r;
+                for (int i = 1; i <= 10; i++)
+                {
+                    float r = HatchSkin.ColourAt(0.5f + i * 0.05f, 0.5f).r;
+                    Assert.LessOrEqual(r, last + 1e-4f, "it only fades towards the walls");
+                    last = r;
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void TheLawnHasNoSafeAndEveryHatchIsTheSameDarkColour()
         {
             var holder = new GameObject("Board Test");

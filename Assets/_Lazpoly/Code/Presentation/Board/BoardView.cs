@@ -56,6 +56,13 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public const float PlateMargin = 0f;
 
+        /// <summary>The floating island under the table: its name among the board's parts, and the seed that shapes it.</summary>
+        public const string TableIslandName = "Table island";
+        public const int TableIslandSeed = 3;
+
+        /// <summary>The island the table rests on, hung from the underside of the plate.</summary>
+        public Transform TableIsland { get; private set; }
+
         /// <summary>Top of the lawn in the middle of the board, where the dice land.</summary>
         public const float LawnHeight = 0.08f;
 
@@ -985,6 +992,10 @@ namespace Lazpoly.Presentation.Tabletop
             GameObject plate = ModelParts.Create("Plate", transform, MeshFactory.Slab(new Vector3(width, PlateThickness, width), PlateSkin.Repeat), Color.white, 0.1f);
             ModelParts.Skin(plate, PlateSkin.Side());
             plate.transform.localPosition = new Vector3(0f, -PlateThickness / 2f, 0f);
+            // Under the stone, the island the table rests on (the owner's wish, 2026-11-12). It hangs still: the table never moves.
+            TableIsland = IslandParts.Table(transform, TableIslandName, width, TableIslandSeed).transform;
+            TableIsland.localPosition = new Vector3(0f, -PlateThickness, 0f);
+            IslandDrift.Attach(TableIsland.Find(IslandParts.StonesName), TableIsland.Find(IslandParts.VinesName), TableIslandSeed);
 
             _inner = 2f * Layout.HalfSize - Layout.Depth * 1.05f;
             // The middle of the board is a lawn that carries the dice score and the pot; no logo (the owner's wish, 2026-11-10).

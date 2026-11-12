@@ -960,6 +960,75 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheTableRestsOnAFloatingIslandThatNeverReachesPastItsEdge()
+        {
+            // The owner's wish (2026-11-12): a floating island under the table too, suiting the atmosphere.
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                Transform island = board.TableIsland;
+                Assert.IsNotNull(island, "the table has its island");
+                Assert.AreEqual(BoardView.TableIslandName, island.name);
+                Assert.AreSame(board.transform, island.parent);
+                Assert.That(island.localPosition.y, Is.EqualTo(-BoardView.PlateThickness).Within(1e-4f), "hung from the underside of the stone");
+
+                float half = board.HalfExtent, under = -BoardView.PlateThickness;
+                Bounds Of(Transform part) => part.GetComponent<Renderer>().bounds;
+                Transform turfPart = island.Find(IslandParts.TurfName), rockPart = island.Find(IslandParts.RockName);
+                Bounds turf = Of(turfPart), rock = Of(rockPart);
+                Assert.That(turf.max.y, Is.EqualTo(under).Within(1e-3f), "the grass hangs from right under the table");
+                Assert.Less(turf.min.y, under - IslandShape.TableSkirtShort, "in tongues");
+                Assert.GreaterOrEqual(turf.min.y, under - IslandShape.TableSkirtLong - 1e-3f);
+                Assert.Greater(turf.max.x, half * 0.98f, "all the way out under the table's edge");
+                Assert.Less(rock.max.y, under, "the body lies under the stone");
+                Assert.That(rock.min.y, Is.EqualTo(under - IslandShape.TableDepth).Within(1e-3f), "down to its point");
+                Assert.AreSame(IslandSkin.Rock(), rockPart.GetComponent<Renderer>().sharedMaterial.mainTexture, "the little islands' rock");
+                Assert.AreSame(IslandSkin.Grass(), turfPart.GetComponent<Renderer>().sharedMaterial.mainTexture, "and their grass");
+
+                // The table's edge stays the widest thing (the owner's wish for the plate): nothing of the island shows past it or over it.
+                foreach (Renderer part in island.GetComponentsInChildren<Renderer>())
+                {
+                    Bounds b = part.bounds;
+                    float reach = Mathf.Max(Mathf.Max(b.max.x, -b.min.x), Mathf.Max(b.max.z, -b.min.z));
+                    Assert.LessOrEqual(reach, half + 1e-3f, $"{part.name} shows past the table's edge");
+                    Assert.LessOrEqual(b.max.y, under + 1e-3f, $"{part.name} rises into the table");
+                }
+
+                Transform vines = island.Find(IslandParts.VinesName), stones = island.Find(IslandParts.StonesName);
+                Assert.AreEqual(IslandShape.TableVines, vines.childCount, "vines hang from under the grass");
+                Assert.AreEqual(IslandShape.TableStones, stones.childCount, "loose stones drift beside the rock");
+                Assert.IsNotNull(stones.GetComponent<IslandDrift>(), "the stones drift and the vines sway");
+                Assert.IsNull(island.GetComponent<IslandFloat>(), "the island itself hangs still: the table never moves");
+
+                // The body: as wide as the table under the stone, narrowing to nothing at the point.
+                Assert.That(IslandShape.TableShareAt(0f), Is.EqualTo(IslandShape.TableShare).Within(1e-4f));
+                Assert.That(IslandShape.TableShareAt(IslandShape.TableDepth), Is.EqualTo(0f).Within(1e-4f));
+                for (int i = 0; i <= 80; i++) Assert.LessOrEqual(IslandShape.TableShareAt(i * IslandShape.TableDepth / 80f), IslandShape.TableShare + 1e-4f);
+                Assert.Less(IslandShape.TableShareAt(IslandShape.TableDepth * 0.75f), 0.6f, "well drawn in by three quarters of the way down");
+                Assert.Greater(IslandShape.TableShareAt(IslandShape.TableDepth * 0.3f), 0.85f, "but broad under the table, so the rock shows below its near edges");
+
+                // Its outline is the table's own sharp square on top and a circle at the point.
+                Vector2 corner = IslandShape.TableOutline(half, Mathf.PI / 4f, 0f);
+                Assert.That(corner.x, Is.EqualTo(half).Within(1e-3f));
+                Assert.That(corner.y, Is.EqualTo(half).Within(1e-3f));
+                Assert.That(IslandShape.TableOutline(half, Mathf.PI / 4f, 1f).magnitude, Is.EqualTo(half).Within(1e-3f));
+                Assert.That(Vector2.Distance(IslandShape.TableEdge(half, 0.25f), new Vector2(half, half)), Is.LessThan(1e-3f), "the edge turns its corner a quarter of the way round");
+                Assert.That(Vector2.Distance(IslandShape.TableEdge(half, 0.125f), new Vector2(half, 0f)), Is.LessThan(1e-3f));
+
+                // It wears the little islands' layers: soil on soil, ledge on ledge.
+                Assert.That(IslandShape.TableV(0f), Is.EqualTo(1f).Within(1e-4f));
+                Assert.That(IslandShape.TableV(IslandShape.TableSoil), Is.EqualTo(1f - IslandShape.SoilDepth / IslandShape.Depth).Within(1e-4f));
+                Assert.That(IslandShape.TableV(IslandShape.TableLedges[2]), Is.EqualTo(1f - IslandShape.Ledges[2] / IslandShape.Depth).Within(1e-4f));
+                Assert.That(IslandShape.TableV(IslandShape.TableDepth), Is.EqualTo(0f).Within(1e-4f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void ThePlateIsAWarmGreyStoneShadedTowardsItsFoot()
         {
             // The owner's wish (2026-11-11): a stone colour, shaded professionally to suit the table.

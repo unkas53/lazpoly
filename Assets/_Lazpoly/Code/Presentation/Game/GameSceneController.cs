@@ -1019,6 +1019,22 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The money hatches from near (2026-11-12): the person's own shut, then standing open.
+            if (CameraRig != null && _board.HatchOf(0) != null)
+            {
+                MoneyHatch hatch = _board.HatchOf(0);
+                CameraRig.SetView(BoardCameraRig.BaseYaw, BoardCameraRig.MinZoom);
+                CameraRig.Hold(hatch.Mouth);
+                hatch.Show(0f);
+                yield return ScreenTour.Take("kapak-kapali");
+                hatch.Show(1f);
+                yield return ScreenTour.Take("kapak-acik");
+                hatch.Show(0f);
+                CameraRig.Hold(null);
+                CameraRig.ResetView();
+                yield return ScreenTour.Until(() => false, 1f);
+            }
+
             // The bus ride (Faz 33), posed and seen from near: a piece half way into the bus at the stop, the bus on its way
             // down to the road, on the road round the lawn, stopped by a town half the board away with the piece half
             // way out, and the stop without its bus.

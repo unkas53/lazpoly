@@ -78,6 +78,44 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
+        public const string TurfName = "Turf";
+        public const string RockName = "Rock";
+
+        /// <summary>
+        /// The great island under the table (the owner's wish, 2026-11-12), hung from the underside of the table's stone:
+        /// its top is a square <paramref name="width"/> wide at y 0, flush with the table's own edge and never past it.
+        /// Grass hangs from under the edge, long vines trail down, and the rock steps in to a leaning point with loose
+        /// stones adrift beside it, all in the little islands' colours.
+        /// </summary>
+        public static GameObject Table(Transform parent, string name, float width, int seed)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            Transform at = root.transform;
+            Skinned(at, TurfName, IslandShape.TableTurf(width, seed), IslandSkin.Grass(), Color.white, 0.05f);
+            Skinned(at, RockName, IslandShape.TableRock(width, seed), IslandSkin.Rock(), Color.white, 0.12f);
+
+            var vines = new GameObject(VinesName);
+            vines.transform.SetParent(at, false);
+            for (int i = 0; i < IslandShape.TableVines; i++)
+            {
+                GameObject vine = Skinned(vines.transform, $"Vine {i + 1}", IslandShape.TableVine(width, seed, i), IslandSkin.Grass(), Vine, 0.05f);
+                vine.transform.localPosition = IslandShape.TableVineFoot(width, seed, i);
+            }
+
+            var stones = new GameObject(StonesName);
+            stones.transform.SetParent(at, false);
+            Vector4[] drifters = IslandShape.TableDrifters(width, seed);
+            for (int i = 0; i < drifters.Length; i++)
+            {
+                GameObject stone = Skinned(stones.transform, $"Stone {i + 1}", IslandShape.Drifter(seed * 10 + i), IslandSkin.Rock(), Color.white, 0.12f);
+                stone.transform.localPosition = new Vector3(drifters[i].x, drifters[i].y, drifters[i].z);
+                stone.transform.localScale = Vector3.one * drifters[i].w;
+            }
+
+            return root;
+        }
+
         private static GameObject Skinned(Transform parent, string name, Mesh mesh, Texture texture, Color tint, float smoothness)
         {
             GameObject part = ModelParts.Create(name, parent, mesh, tint, smoothness);
