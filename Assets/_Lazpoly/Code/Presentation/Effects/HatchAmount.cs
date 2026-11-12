@@ -9,8 +9,11 @@ namespace Lazpoly.Presentation.Effects
     /// The sum passing a money hatch, written in front of it (the owner's wish, 2026-11-12: "-50K, +100K"): the sum
     /// with a minus while a payment goes down the payer's hatch, with a plus while money comes up the receiver's. The
     /// line stands on the lawn just under the hatch on the screen, facing the camera like the rising money lines
-    /// (<see cref="FloatingText"/>) and with the same dark copy behind it; it appears as the lid starts to open, stays
-    /// while the hatch is open and fades once it has shut. One line per hatch: a new sum replaces the one still showing.
+    /// (<see cref="FloatingText"/>), with a dark edge all round so the pale inks read on the grass; it appears as the lid
+    /// starts to open, stays while the hatch is open and fades once it has shut. It starts under the hatch's edge that
+    /// faces the screen's middle and runs outwards from there (<see cref="Side"/>), so a long sum never reaches further
+    /// towards the middle, where the roll button stands, than the hatch itself. One line per hatch: a new sum replaces
+    /// the one still showing.
     /// The times are the hatch's own (<see cref="MoneyHatch.Swing"/>), so the writing and the lid never part.
     /// </summary>
     public sealed class HatchAmount : MonoBehaviour
@@ -35,11 +38,19 @@ namespace Lazpoly.Presentation.Effects
         public static readonly Color Up = new Color(0.80f, 0.96f, 0.66f);
         public static readonly Color Down = new Color(1.00f, 0.68f, 0.60f);
 
-        private static readonly Color ShadowInk = new Color(0.07f, 0.09f, 0.08f, 0.8f);
+        /// <summary>The dark edge round the letters: how far its four copies lie from the line, and how many they are.</summary>
+        public const float Edge = 0.028f;
+        public const int EdgeCopies = 4;
+
+        /// <summary>A hatch this far or more to one side of the table's middle on the screen writes its sum outwards from its inner edge.</summary>
+        public const float SideFrom = 0.3f;
+
+        private static readonly Color EdgeInk = new Color(0.05f, 0.07f, 0.06f, 0.9f);
 
         private MoneyHatch _hatch;
         private TextMesh _line;
-        private TextMesh _shadow;
+        private TextMesh[] _edges;
+        private int _side;
         private Color _ink;
         private float _from;
         private float _until;
@@ -77,15 +88,19 @@ namespace Lazpoly.Presentation.Effects
             string text = Text(amount);
             Color ink = Ink(amount);
             TextMesh line = Line(root.transform, text, ink);
-            var shade = new GameObject("Shadow");
-            shade.transform.SetParent(root.transform, false);
-            shade.transform.localPosition = new Vector3(0.02f, -0.02f, 0.01f);
-            TextMesh back = Line(shade.transform, text, ShadowInk);
+            var edges = new TextMesh[EdgeCopies];
+            for (int i = 0; i < EdgeCopies; i++)
+            {
+                var edge = new GameObject("Edge");
+                edge.transform.SetParent(root.transform, false);
+                edge.transform.localPosition = new Vector3(i % 2 == 0 ? Edge : -Edge, i < 2 ? Edge : -Edge, 0.01f);
+                edges[i] = Line(edge.transform, text, EdgeInk);
+            }
 
             var shown = root.AddComponent<HatchAmount>();
             shown._hatch = hatch;
             shown._line = line;
-            shown._shadow = back;
+            shown._edges = edges;
             shown._ink = ink;
             shown._from = opensAt;
             shown._until = ShutAt(opensAt, shutsAt);
@@ -125,16 +140,33 @@ namespace Lazpoly.Presentation.Effects
             Mathf.Lerp(0.6f, 1f, Ease.OutBack(Mathf.Clamp01((t - from) / PopSeconds)));
 
         /// <summary>
-        /// Where the line's middle stands for a hatch whose mouth is at <paramref name="mouth"/>, seen by a camera with
-        /// these axes: <see cref="Below"/> under the mouth on the screen, and brought towards the camera until it is
-        /// <see cref="Height"/> over the mouth (which leaves it where it is on the screen), both scaled by <paramref name="size"/>.
+        /// Where the line stands for a hatch whose mouth is at <paramref name="mouth"/>, seen by a camera with these
+        /// axes: <see cref="Below"/> under the mouth on the screen, and brought towards the camera until it is
+        /// <see cref="Height"/> over the mouth (which leaves it where it is on the screen), both scaled by
+        /// <paramref name="size"/>. For a hatch in the screen's middle (<paramref name="side"/> 0) that is the line's
+        /// middle; for one to the right (1) or left (-1) it is the line's inner end, under the hatch's inner edge.
         /// </summary>
-        public static Vector3 Spot(Vector3 mouth, Vector3 cameraUp, Vector3 cameraForward, float size = 1f)
+        public static Vector3 Spot(Vector3 mouth, Vector3 cameraUp, Vector3 cameraForward, float size = 1f, int side = 0)
         {
             float down = Mathf.Max(-cameraForward.y, 0.2f);
             float near = (Height + cameraUp.y * Below) / down;
-            return mouth - cameraUp * (Below * size) - cameraForward * (near * size);
+            Vector3 right = Vector3.Cross(cameraUp, cameraForward);
+            return mouth - cameraUp * (Below * size) - cameraForward * (near * size) - right * (side * MoneyHatch.OuterRadius * size);
         }
+
+        /// <summary>
+        /// Which side of the table's <paramref name="middle"/> a hatch lies on the screen: 1 to the right, -1 to the left,
+        /// 0 when it is nearer than <see cref="SideFrom"/> (times <paramref name="size"/>) to the middle's column.
+        /// </summary>
+        public static int Side(Vector3 mouth, Vector3 middle, Vector3 cameraRight, float size = 1f)
+        {
+            float across = Vector3.Dot(mouth - middle, cameraRight);
+            return Mathf.Abs(across) < SideFrom * size ? 0 : across > 0f ? 1 : -1;
+        }
+
+        /// <summary>How a line is anchored for its <see cref="Side"/>: by its inner end, or by its middle.</summary>
+        public static TextAnchor Anchor(int side) =>
+            side > 0 ? TextAnchor.MiddleLeft : side < 0 ? TextAnchor.MiddleRight : TextAnchor.MiddleCenter;
 
         private static TextMesh Line(Transform parent, string text, Color color)
         {
@@ -164,22 +196,35 @@ namespace Lazpoly.Presentation.Effects
             Pose(_age);
         }
 
+        /// <summary>Anchors the line and its edge for the side of the screen its hatch is on.</summary>
+        private void Turn(int side)
+        {
+            TextAnchor anchor = Anchor(side);
+            _side = side;
+            if (_line.anchor == anchor) return;
+            _line.anchor = anchor;
+            foreach (TextMesh edge in _edges) edge.anchor = anchor;
+        }
+
         private void Pose(float t)
         {
             Alpha = AlphaAt(t, _from, _until);
             Color ink = _ink;
             ink.a = Alpha;
             _line.color = UiBlend.ForVertices(ink);
-            Color shade = ShadowInk;
-            shade.a *= Alpha;
-            _shadow.color = UiBlend.ForVertices(shade);
+            Color dark = EdgeInk;
+            dark.a *= Alpha;
+            foreach (TextMesh edge in _edges) edge.color = UiBlend.ForVertices(dark);
             transform.localScale = Vector3.one * ScaleAt(t, _from);
 
             float size = _hatch.transform.lossyScale.x;
             Camera camera = Camera.main;
             if (camera != null)
             {
-                transform.position = Spot(_hatch.Mouth, camera.transform.up, camera.transform.forward, size);
+                Transform table = _hatch.transform.parent;
+                Vector3 mouth = _hatch.Mouth;
+                Turn(Side(mouth, table != null ? table.position : mouth, camera.transform.right, size));
+                transform.position = Spot(mouth, camera.transform.up, camera.transform.forward, size, _side);
                 transform.rotation = camera.transform.rotation;
             }
             else

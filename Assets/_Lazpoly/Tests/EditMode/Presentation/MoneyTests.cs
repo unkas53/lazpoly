@@ -355,6 +355,21 @@ namespace Lazpoly.Presentation.Tests
             Assert.That(letters, Is.InRange(0.3f, 0.45f), "about 20 pixels at 1080p in the whole view: read at a glance, smaller than the hatch");
             Assert.Less(Vector3.Distance(2f * HatchAmount.Spot(Vector3.zero, up, forward), HatchAmount.Spot(Vector3.zero, up, forward, 2f)), 1e-4f, "it follows the table's size");
 
+            // A hatch to one side of the screen's middle writes outwards from its inner edge, so a long sum never reaches
+            // further towards the middle (and the roll button there) than the hatch itself.
+            Assert.AreEqual(1, HatchAmount.Side(mouth + right * 2f, mouth, right));
+            Assert.AreEqual(-1, HatchAmount.Side(mouth - right * 2f + up, mouth, right));
+            Assert.AreEqual(0, HatchAmount.Side(mouth + up * 3f + right * 0.1f, mouth, right));
+            Assert.AreEqual(TextAnchor.MiddleLeft, HatchAmount.Anchor(1), "to the right it starts at the hatch's left edge");
+            Assert.AreEqual(TextAnchor.MiddleRight, HatchAmount.Anchor(-1));
+            Assert.AreEqual(TextAnchor.MiddleCenter, HatchAmount.Anchor(0));
+            Vector3 toRight = HatchAmount.Spot(mouth, up, forward, 1f, 1) - mouth, toLeft = HatchAmount.Spot(mouth, up, forward, 1f, -1) - mouth;
+            Assert.AreEqual(-MoneyHatch.OuterRadius, Vector3.Dot(toRight, right), 1e-4f, "under the hatch's inner edge");
+            Assert.AreEqual(MoneyHatch.OuterRadius, Vector3.Dot(toLeft, right), 1e-4f);
+            Assert.AreEqual(-HatchAmount.Below, Vector3.Dot(toRight, up), 1e-4f, "as far under the hatch as ever");
+            Assert.AreEqual(HatchAmount.Height, toLeft.y, 1e-4f);
+            Assert.That(HatchAmount.Edge, Is.InRange(0.02f, 0.04f), "a dark edge thick enough to hold pale ink on the grass, thin enough not to fill the letters");
+
             var holder = new GameObject("Board Test");
             try
             {
@@ -377,8 +392,9 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreEqual(0f, paid.Alpha, "not yet: the money is still on its way to the hatch");
                 Assert.AreEqual(0f, got.Alpha);
                 Assert.IsNull(board.HatchOf(2).GetComponentInChildren<HatchAmount>(), "nothing at a hatch the money does not pass");
-                foreach (TextMesh line in paid.GetComponentsInChildren<TextMesh>())
-                    Assert.AreEqual(TextAnchor.MiddleCenter, line.anchor);
+                TextMesh[] lines = paid.GetComponentsInChildren<TextMesh>();
+                Assert.AreEqual(1 + HatchAmount.EdgeCopies, lines.Length, "the line and its dark edge");
+                foreach (TextMesh line in lines) Assert.AreEqual("-260K", line.text);
 
                 // To the bank: only the payer's. A new sum at a hatch takes the place of the one still written there.
                 MoneyFlight.Fly(holder.transform, 100000, board.MoneyPileOf(2), board.HatchOf(2), null, null, 1f);

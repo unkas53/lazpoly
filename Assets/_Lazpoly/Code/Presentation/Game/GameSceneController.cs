@@ -1031,6 +1031,8 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Take("kapak-kapali");
                 hatch.Show(1f);
                 yield return ScreenTour.Take("kapak-acik");
+                // The hatch a little over the picture's middle, so the roll button there does not stand before the sum.
+                CameraRig.Hold(hatch.Mouth - _board.transform.TransformVector(BoardView.ScreenUp(BoardCameraRig.BaseYaw)) * 2.5f);
                 HatchAmount.Show(hatch, -50000, 0f, 60f, 1f);
                 yield return ScreenTour.Until(() => false, 0.5f);
                 yield return ScreenTour.Take("kapak-giden");
