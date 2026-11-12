@@ -29,16 +29,17 @@ namespace Lazpoly.Presentation.Tests
                 GameObject jail = CornerParts.Cell("Jail", holder.transform);
                 var counts = new Dictionary<string, int>();
                 var colours = new List<Color>();
-                foreach (Transform part in jail.transform)
+                foreach (Renderer drawn in jail.GetComponentsInChildren<Renderer>())
                 {
-                    counts[part.name] = counts.TryGetValue(part.name, out int seen) ? seen + 1 : 1;
-                    Color colour = Paint(part);
+                    counts[drawn.name] = counts.TryGetValue(drawn.name, out int seen) ? seen + 1 : 1;
+                    Color colour = Paint(drawn.transform);
                     if (!colours.Exists(known => Vector4.Distance(known, colour) < 0.01f)) colours.Add(colour);
                 }
 
                 Assert.AreEqual(4, counts["Pier"], "a pier at each corner");
-                Assert.AreEqual(6, counts["Bar"], "a few bars on the door and on the long side: the prisoners show between them");
-                Assert.AreEqual(2, counts["Rail"], "one rail across each");
+                Assert.AreEqual(6, counts["Bar"], "a few bars in the gate and on the long side: the prisoners show between them");
+                Assert.AreEqual(2, counts["Stile"], "the gate's two stiles");
+                Assert.AreEqual(4, counts["Rail"], "one rail across the long side, three on the gate");
                 foreach (string single in new[] { "Plinth", "Step", "Back wall", "Side wall", "Lintel", "Cornice", "Pediment", "Roof", "Lock" })
                     Assert.AreEqual(1, counts[single], single);
                 Assert.LessOrEqual(colours.Count, 5, "plain: two stones, slate, iron and the lock's steel, nothing more");
@@ -59,23 +60,60 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 // The door looks out at -X under the pediment; the long side at +Z is barred too; the other two are walls.
-                Assert.Less(jail.transform.Find("Lock").localPosition.x, -CornerParts.CellPierX, "the lock is on the door, outside the bars");
+                Transform gate = jail.transform.Find(CornerParts.GateName);
+                Assert.IsNotNull(gate, "the door is a gate of its own");
+                Assert.Less(jail.transform.InverseTransformPoint(gate.Find("Lock").position).x, -CornerParts.CellPierX, "the lock is on the gate, outside the bars");
                 Assert.Less(jail.transform.Find("Step").localPosition.x, -CornerParts.CellPierX, "a step before the door");
                 Assert.Greater(jail.transform.Find("Back wall").localPosition.x, 0f);
                 Assert.Less(jail.transform.Find("Side wall").localPosition.z, 0f);
-                int door = 0, side = 0;
+                int side = 0;
                 foreach (Transform part in jail.transform)
                 {
                     if (part.name != "Bar") continue;
                     Assert.AreEqual(CornerParts.CellFloor, part.localPosition.y, 1e-4f, "the bars stand on the floor");
                     Assert.AreEqual(CornerParts.CellWall, part.localScale.y, 1e-4f, "and reach the lintel");
-                    if (Mathf.Abs(part.localPosition.x + CornerParts.CellPierX) < 1e-4f) door++;
-                    if (Mathf.Abs(part.localPosition.z - CornerParts.CellPierZ) < 1e-4f) side++;
+                    Assert.AreEqual(CornerParts.CellPierZ, part.localPosition.z, 1e-4f, "along the long side");
+                    side++;
                 }
 
-                Assert.AreEqual(2, door);
                 Assert.AreEqual(4, side);
                 Assert.Less(jail.transform.Find("Bar").localScale.x, 0.013f, "thin bars");
+
+                // The gate (the owner's wish, 2026-11-12: the door opens and shuts): hung by the pier nearest the camera,
+                // shut it fills the door between the piers, clear of the floor and the lintel so it can swing.
+                Assert.Less(Vector3.Distance(CornerParts.GateHinge, gate.localPosition), 1e-5f);
+                Assert.AreEqual(-CornerParts.CellPierX, CornerParts.GateHinge.x, 1e-5f, "in the door's line");
+                Assert.Greater(CornerParts.GateHinge.z, 0.2f, "by the pier on the barred side, which is nearest the camera");
+                Assert.AreEqual(8, gate.childCount, "two stiles, two bars, three rails and the lock");
+                Assert.Less(Quaternion.Angle(Quaternion.identity, gate.localRotation), 0.01f, "shut when it is made");
+                foreach (Renderer drawn in gate.GetComponentsInChildren<Renderer>())
+                {
+                    Bounds bounds = drawn.bounds; // The holder is at the origin, unturned: world space is the jail's frame.
+                    Assert.Greater(bounds.min.z, -CornerParts.CellPierZ + 0.05f, $"{drawn.name} lies between the piers");
+                    Assert.Less(bounds.max.z, CornerParts.CellPierZ - 0.05f, $"{drawn.name} lies between the piers");
+                    Assert.That(bounds.center.x, Is.EqualTo(-CornerParts.CellPierX).Within(0.03f), $"{drawn.name} is in the door's line");
+                    Assert.Greater(bounds.min.y, CornerParts.CellFloor, $"{drawn.name} swings clear of the floor");
+                    Assert.Less(bounds.max.y, CornerParts.CellFloor + CornerParts.CellWall, $"{drawn.name} swings clear of the lintel");
+                }
+
+                // Open, it has swung outwards about its hinge, and stands on the camera's side of the door: a piece
+                // comes to the door round the other corner, and stands before it where the gate was.
+                CornerParts.SwingGate(jail.transform, 1f);
+                Assert.Less(Quaternion.Angle(Quaternion.Euler(0f, CornerParts.GateSwing, 0f), gate.localRotation), 0.01f);
+                Assert.That(CornerParts.GateSwing, Is.InRange(90f, 120f), "wide open");
+                foreach (Renderer drawn in gate.GetComponentsInChildren<Renderer>())
+                {
+                    Assert.Less(drawn.bounds.max.x, -CornerParts.CellPierX + 0.03f, $"{drawn.name} has swung outwards, not into the cell");
+                    Assert.Greater(drawn.bounds.min.z, CornerParts.CellDoor.z + 0.15f, $"{drawn.name} stands clear of the piece before the door");
+                }
+
+                CornerParts.SwingGate(jail.transform, 0.5f);
+                Assert.Less(Quaternion.Angle(Quaternion.Euler(0f, CornerParts.GateSwing / 2f, 0f), gate.localRotation), 0.01f);
+                CornerParts.SwingGate(jail.transform, 7f);
+                Assert.Less(Quaternion.Angle(Quaternion.Euler(0f, CornerParts.GateSwing, 0f), gate.localRotation), 0.01f, "no further than open");
+                CornerParts.SwingGate(jail.transform, 0f);
+                Assert.Less(Quaternion.Angle(Quaternion.identity, gate.localRotation), 0.01f);
+                Assert.DoesNotThrow(() => CornerParts.SwingGate(null, 1f));
 
                 // A low roof over a pediment that shows at both ends under the slates.
                 Transform slates = jail.transform.Find("Roof"), pediment = jail.transform.Find("Pediment");
@@ -184,6 +222,32 @@ namespace Lazpoly.Presentation.Tests
                     Assert.IsTrue(Mathf.Abs(on.x) > 0.49f + 0.08f || Mathf.Abs(on.z) > 0.42f + 0.08f, $"step {step}: the hop passes through the building at {on}");
                 }
 
+                // The gate: shut on a new board; the board swings it; open it stays on the tile.
+                Transform gate = scene.Find(CornerParts.GateName);
+                Assert.AreEqual(0f, board.CellGate);
+                Assert.Less(Quaternion.Angle(Quaternion.identity, gate.localRotation), 0.01f);
+                board.SetCellGate(1f);
+                Assert.AreEqual(1f, board.CellGate);
+                Assert.Less(Quaternion.Angle(Quaternion.Euler(0f, CornerParts.GateSwing, 0f), gate.localRotation), 0.01f);
+                foreach (Renderer leaf in gate.GetComponentsInChildren<Renderer>())
+                {
+                    Assert.LessOrEqual(Mathf.Abs(leaf.bounds.min.x - center.x), side / 2f, $"the open gate's {leaf.name} stays on the tile");
+                    Assert.LessOrEqual(Mathf.Abs(leaf.bounds.max.x - center.x), side / 2f, $"the open gate's {leaf.name} stays on the tile");
+                    Assert.LessOrEqual(Mathf.Abs(leaf.bounds.min.z - center.z), side / 2f, $"the open gate's {leaf.name} stays on the tile");
+                    Assert.LessOrEqual(Mathf.Abs(leaf.bounds.max.z - center.z), side / 2f, $"the open gate's {leaf.name} stays on the tile");
+                }
+
+                board.SetCellGate(0.4f);
+                Assert.AreEqual(0.4f, board.CellGate, 1e-6f);
+                board.SetCellGate(0f);
+                Assert.Less(Quaternion.Angle(Quaternion.identity, gate.localRotation), 0.01f);
+
+                // It is wide open before the piece hopping in comes within its reach, and shuts only when the piece hopping away has left it.
+                Vector3 coming = scene.InverseTransformPoint(PawnView.JailHopPoint(board.PawnSpot(jail), board.CellDoor, board.CellMiddle, PawnView.GateOpenBy));
+                Assert.Greater(new Vector2(coming.x - CornerParts.GateHinge.x, coming.z - CornerParts.GateHinge.z).magnitude, CornerParts.GateWidth + 0.1f, "the gate is open before the piece is near");
+                Vector3 gone = scene.InverseTransformPoint(PawnView.JailHopPoint(board.PawnSpot(jail), board.CellDoor, board.CellMiddle, 1f - PawnView.GateShutFrom));
+                Assert.Greater(new Vector2(gone.x - CornerParts.GateHinge.x, gone.z - CornerParts.GateHinge.z).magnitude, CornerParts.GateWidth + 0.1f, "the gate shuts after the piece has gone");
+
                 Assert.LessOrEqual(Mathf.Abs(board.CellDoor.x - center.x), side / 2f, "before the door, still on the tile");
                 Assert.LessOrEqual(Mathf.Abs(board.CellDoor.z - center.z), side / 2f, "before the door, still on the tile");
 
@@ -240,13 +304,14 @@ namespace Lazpoly.Presentation.Tests
                 Assert.IsTrue(second.Jailed);
                 AssertNear(stood, second.transform.position, "the hop starts where it stood");
                 AssertNear(Vector3.one, second.transform.localScale, "at its own size");
+                Assert.AreEqual(0f, board.CellGate, 1e-6f, "the gate starts to open with the hop");
                 Assert.IsFalse(second.EnterJail().MoveNext(), "it does not go in twice");
 
                 // Coming out: still the cell's until it lands; a piece that is free has nowhere to come out of.
                 IEnumerator leaving = pawn.LeaveJail();
                 Assert.IsTrue(leaving.MoveNext());
                 Assert.IsTrue(pawn.Jailed, "small until it is out of the door");
-                AssertNear(board.CellSpot(0), pawn.transform.position, "the step out starts at its place");
+                AssertNear(board.CellSpot(0), pawn.transform.position, "it waits at its place while the gate opens");
                 pawn.PlaceOn(0);
                 Assert.IsFalse(pawn.Jailed);
                 AssertNear(Vector3.one, pawn.transform.localScale, "a piece put on a square has its size again");
@@ -285,7 +350,19 @@ namespace Lazpoly.Presentation.Tests
             Vector3 half = PawnView.CellStep(door, spot, 0.5f, PawnView.JailedSize);
             Assert.AreEqual(1.5f, half.x, 1e-4f);
             Assert.That(half.y - 0.15f, Is.InRange(0.01f, 0.2f), "a low step, as small as the piece");
-            Assert.That(PawnView.JailHopSeconds + PawnView.JailStepSeconds, Is.InRange(0.5f, 1.2f), "quick: the game waits for it");
+            Assert.That(PawnView.JailHopSeconds + PawnView.JailStepSeconds + PawnView.JailGateSeconds, Is.InRange(0.5f, 1.4f), "quick: the game waits for it");
+
+            // The gate on the way in: shut at first, open well before the piece arrives, and it stays open.
+            Assert.AreEqual(0f, PawnView.GateOnTheWayIn(0f), 1e-6f);
+            Assert.AreEqual(1f, PawnView.GateOnTheWayIn(PawnView.GateOpenBy), 1e-6f);
+            Assert.AreEqual(1f, PawnView.GateOnTheWayIn(1f), 1e-6f);
+            Assert.That(PawnView.GateOnTheWayIn(PawnView.GateOpenBy / 2f), Is.InRange(0.3f, 0.7f), "it swings, it does not jump");
+            // On the way out: open while the piece is near, shut when it lands on its square.
+            Assert.AreEqual(1f, PawnView.GateOnTheWayOut(0f), 1e-6f);
+            Assert.AreEqual(1f, PawnView.GateOnTheWayOut(PawnView.GateShutFrom), 1e-6f);
+            Assert.AreEqual(0f, PawnView.GateOnTheWayOut(1f), 1e-6f);
+            Assert.Less(PawnView.GateOnTheWayOut(0.8f), PawnView.GateOnTheWayOut(0.6f));
+            Assert.That(PawnView.JailGateSeconds, Is.InRange(0.15f, 0.4f));
         }
     }
 }

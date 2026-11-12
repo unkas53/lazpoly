@@ -135,11 +135,30 @@ namespace Lazpoly.Presentation.Models
         public static readonly Vector3 CellDoor = new Vector3(-CellPierX - 0.26f, 0f, 0f);
 
         /// <summary>
+        /// The door's barred gate (the owner's wish, 2026-11-12: the door opens and shuts when a piece goes in or comes
+        /// out): a child of the jail hung at <see cref="GateHinge"/>, by the pier nearest the camera, so that open it
+        /// stands out of the way of a piece coming round the far corner. Shut it fills the door; open it has swung
+        /// <see cref="GateSwing"/> degrees outwards about the hinge.
+        /// </summary>
+        public const string GateName = "Gate";
+        public const float GateSwing = 100f;
+        public const float GateWidth = 0.49f;
+        public static readonly Vector3 GateHinge = new Vector3(-CellPierX, 0f, 0.25f);
+
+        /// <summary>Swings the gate of a jail made by <see cref="Cell"/>: 0 shut, 1 open.</summary>
+        public static void SwingGate(Transform cell, float open)
+        {
+            Transform gate = cell != null ? cell.Find(GateName) : null;
+            if (gate != null) gate.localRotation = Quaternion.Euler(0f, GateSwing * Mathf.Clamp01(open), 0f);
+        }
+
+        /// <summary>
         /// The jail (the owner's wish, 2026-11-12: a model that suits the table and pleases the eye, plain): a little
         /// limestone lock-up like a temple, four piers on a plinth under a lintel and a low slate roof whose pediment
-        /// looks out over the door at -X. The door and the long side at +Z are a few thin iron bars with one rail, a steel
-        /// lock on the door's; the other two sides are walls, so the locked-up pieces inside (<see cref="PrisonerSpots"/>)
-        /// show against stone, and the bars hide little of them. The board turns it so that the camera sees the door and the barred side.
+        /// looks out over the door at -X. The door is a barred gate on a hinge (<see cref="GateName"/>) with a steel lock,
+        /// the long side at +Z a few thin iron bars with one rail; the other two sides are walls, so the locked-up pieces
+        /// inside (<see cref="PrisonerSpots"/>) show against stone, and the bars hide little of them. The board turns it so
+        /// that the camera sees the door and the barred side.
         /// </summary>
         public static GameObject Cell(string name, Transform parent)
         {
@@ -165,19 +184,34 @@ namespace Lazpoly.Presentation.Models
             Part(root, "Pediment", MeshFactory.Prism(), Limestone, new Vector3(0f, top + 0.09f, 0f), new Vector3(0.94f, 0.135f, 0.77f));
             Part(root, "Roof", MeshFactory.Prism(), Slate, new Vector3(0f, top + 0.09f, 0f), new Vector3(0.90f, 0.16f, 0.84f));
 
-            foreach (float z in new[] { -0.085f, 0.085f })
+            // The gate, in its hinge's frame: shut it runs from the hinge towards -z. A stile at the hinge and one at the
+            // latch, two bars between, and three rails; the lock sits on the middle rail by the latch.
+            GameObject gate = Root(GateName, root.transform);
+            gate.transform.localPosition = GateHinge;
+            const float gateFoot = CellFloor + 0.02f, gateHeight = CellWall - 0.04f;
+            foreach (float along in new[] { 0.012f, GateWidth - 0.012f })
             {
-                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(-CellPierX, CellFloor, z), new Vector3(bar, CellWall, bar));
+                Part(gate, "Stile", MeshFactory.Cylinder(8), Iron, new Vector3(0f, gateFoot, -along), new Vector3(bar, gateHeight, bar));
             }
+
+            foreach (float along in new[] { GateWidth / 2f - 0.085f, GateWidth / 2f + 0.085f })
+            {
+                Part(gate, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(0f, gateFoot, -along), new Vector3(bar, gateHeight, bar));
+            }
+
+            foreach (float height in new[] { gateFoot + railThick / 2f, rail, gateFoot + gateHeight - railThick / 2f })
+            {
+                Part(gate, "Rail", block, Iron, new Vector3(0f, height, -GateWidth / 2f), new Vector3(railThick, railThick, GateWidth));
+            }
+
+            Part(gate, "Lock", block, Steel, new Vector3(-0.022f, rail, -GateWidth + 0.07f), new Vector3(0.04f, 0.10f, 0.075f));
 
             for (int i = 0; i < 4; i++)
             {
                 Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3((i - 1.5f) * 0.134f, CellFloor, CellPierZ), new Vector3(bar, CellWall, bar));
             }
 
-            Part(root, "Rail", block, Iron, new Vector3(-CellPierX, rail, 0f), new Vector3(railThick, railThick, 0.52f));
             Part(root, "Rail", block, Iron, new Vector3(0f, rail, CellPierZ), new Vector3(0.68f, railThick, railThick));
-            Part(root, "Lock", block, Steel, new Vector3(-CellPierX - 0.022f, rail, 0f), new Vector3(0.04f, 0.10f, 0.075f));
             return root;
         }
 

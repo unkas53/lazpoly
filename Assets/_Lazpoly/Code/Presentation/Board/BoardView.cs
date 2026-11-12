@@ -1374,6 +1374,16 @@ namespace Lazpoly.Presentation.Tabletop
             return _jailScene.TransformPoint(spots[(slot % spots.Length + spots.Length) % spots.Length]);
         }
 
+        /// <summary>How far the jail's gate stands open: 0 shut, 1 open (<see cref="CornerParts.SwingGate"/>).</summary>
+        public float CellGate { get; private set; }
+
+        /// <summary>Swings the jail's gate: 0 shut, 1 open. Nothing on a board without the jail.</summary>
+        public void SetCellGate(float open)
+        {
+            CellGate = Mathf.Clamp01(open);
+            if (_jailScene != null) CornerParts.SwingGate(_jailScene, CellGate);
+        }
+
         /// <summary>The jail's middle on its tile (world space): a piece hopping to the door swings round it.</summary>
         public Vector3 CellMiddle => _jailScene != null ? _jailScene.position : CellDoor;
 

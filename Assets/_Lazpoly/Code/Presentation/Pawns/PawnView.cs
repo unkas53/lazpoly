@@ -91,6 +91,16 @@ namespace Lazpoly.Presentation.Pawns
         public const float JailHopSeconds = 0.55f;
         public const float JailStepSeconds = 0.3f;
 
+        /// <summary>
+        /// The jail's gate (the owner's wish, 2026-11-12: the door opens and shuts as a piece goes in or comes out): on
+        /// the way in it swings open during the first <see cref="GateOpenBy"/> of the hop, before the piece nears the door,
+        /// and shuts behind the piece in <see cref="JailGateSeconds"/>; on the way out it opens first in that time, and
+        /// shuts over the last part of the hop away, from <see cref="GateShutFrom"/>, once the piece is clear of it.
+        /// </summary>
+        public const float JailGateSeconds = 0.25f;
+        public const float GateOpenBy = 0.6f;
+        public const float GateShutFrom = 0.4f;
+
         /// <summary>How far that hop swings out round the building's corner, as a share of its length: the piece never passes through the stone.</summary>
         public const float JailSwing = 0.7f;
 
@@ -201,10 +211,12 @@ namespace Lazpoly.Presentation.Pawns
                 transform.position = JailHopPoint(from, door, _board.CellMiddle, t);
                 _size = JailingSize(t, small);
                 SetStretch(1f);
+                _board.SetCellGate(GateOnTheWayIn(t));
                 yield return null;
             }
 
             _size = small;
+            _board.SetCellGate(1f);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailStepSeconds)
             {
                 transform.position = CellStep(door, spot, t, small);
@@ -214,6 +226,14 @@ namespace Lazpoly.Presentation.Pawns
 
             transform.position = spot;
             SetStretch(1f);
+            // The gate shuts behind it.
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailGateSeconds)
+            {
+                _board.SetCellGate(1f - Ease.InOutCubic(t));
+                yield return null;
+            }
+
+            _board.SetCellGate(0f);
         }
 
         /// <summary>Comes out free: a step from its place in the cell out of the door, and one hop back onto the square, growing to its size.</summary>
@@ -230,6 +250,14 @@ namespace Lazpoly.Presentation.Pawns
             float speed = Mathf.Max(Speed, 0.1f);
             float small = _size;
             Vector3 spot = transform.position, door = _board.CellDoor, to = Target(_square);
+            // The gate opens before it.
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailGateSeconds)
+            {
+                _board.SetCellGate(Ease.InOutCubic(t));
+                yield return null;
+            }
+
+            _board.SetCellGate(1f);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailStepSeconds)
             {
                 transform.position = CellStep(spot, door, t, small);
@@ -241,9 +269,11 @@ namespace Lazpoly.Presentation.Pawns
                 transform.position = JailHopPoint(to, door, _board.CellMiddle, 1f - t);
                 _size = JailingSize(1f - t, small);
                 SetStretch(1f);
+                _board.SetCellGate(GateOnTheWayOut(t));
                 yield return null;
             }
 
+            _board.SetCellGate(0f);
             Release();
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / SquashSeconds)
             {
@@ -271,6 +301,12 @@ namespace Lazpoly.Presentation.Pawns
             point.y += Mathf.Sin(t * Mathf.PI) * HopHeight * 2f;
             return point;
         }
+
+        /// <summary>How far the gate stands open (0 shut, 1 open) a share <paramref name="t"/> of the hop towards the door: open by <see cref="GateOpenBy"/>.</summary>
+        public static float GateOnTheWayIn(float t) => Ease.InOutCubic(Mathf.Clamp01(t / GateOpenBy));
+
+        /// <summary>How far the gate stands open a share <paramref name="t"/> of the hop away from the door: open until <see cref="GateShutFrom"/>, shut at the end.</summary>
+        public static float GateOnTheWayOut(float t) => 1f - Ease.InOutCubic(Mathf.Clamp01((t - GateShutFrom) / (1f - GateShutFrom)));
 
         /// <summary>How big the piece is a share <paramref name="t"/> of the way from the square to the cell's door: its own size at first, <paramref name="small"/> at the door; it shrinks late, so the hop reads.</summary>
         public static float JailingSize(float t, float small)

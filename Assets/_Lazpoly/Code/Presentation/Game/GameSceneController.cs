@@ -1051,11 +1051,14 @@ namespace Lazpoly.Presentation.Game
 
                 if (visitor != null)
                 {
-                    // Solid, as the piece on turn is when it is sent to jail.
+                    // Solid and without its ring, as the piece on turn is when it is sent to jail; the gate stands open for it.
                     visitor.SetFaded(false);
-                    visitor.transform.position = PawnView.JailHopPoint(_board.PawnSpot(jailSquare), _board.CellDoor, _board.CellMiddle, 0.7f);
-                    visitor.transform.localScale = Vector3.one * PawnView.JailingSize(0.7f, visitor.CellSize);
+                    if (_turnMarker != null) _turnMarker.Follow(null, Color.white);
+                    visitor.transform.position = PawnView.JailHopPoint(_board.PawnSpot(jailSquare), _board.CellDoor, _board.CellMiddle, 0.85f);
+                    visitor.transform.localScale = Vector3.one * PawnView.JailingSize(0.85f, visitor.CellSize);
+                    _board.SetCellGate(PawnView.GateOnTheWayIn(0.85f));
                     yield return ScreenTour.Take("hapis-giris");
+                    _board.SetCellGate(0f);
                     visitor.PlaceOn(visitor.Square);
                     MarkTurn(_session.State.CurrentPlayer.Id);
                 }
@@ -1391,8 +1394,9 @@ namespace Lazpoly.Presentation.Game
             _shownPlayed = _session.State.PlayedSeconds;
             _bankruptPending.Clear();
             GameState state = _session.State;
-            // A ride cut short: the bus is back at its stop.
+            // A ride cut short: the bus is back at its stop. The jail's gate is shut.
             if (_board.Bus != null) _board.Bus.Park();
+            _board.SetCellGate(0f);
             foreach (PlayerState player in state.Players)
             {
                 _shownMoney[player.Id] = player.Money;
