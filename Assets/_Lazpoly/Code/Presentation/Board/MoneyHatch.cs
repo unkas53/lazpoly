@@ -7,57 +7,58 @@ namespace Lazpoly.Presentation.Tabletop
 {
     /// <summary>
     /// A player's money hatch on the table, the owner's wish (Faz 25): paid money goes down through the payer's hatch, and
-    /// money a player gets comes up through theirs. Since 2026-11-12 (the owner's wish: more professional, pleasing, suiting
-    /// the atmosphere) it is a little vault mouth set in the meadow: a curb of the table's own limestone with corner stones,
-    /// a steel sleeve down the hole, and a lid in the safes' manner, almost black (one colour for every player, the owner's
-    /// wish), with a raised panel, two brass straps running back to barrel hinges, chrome studs, a brass coin in its middle
-    /// and a pull ring at its front. The lid is hinged on its back edge (away from the camera, so the open lid never hides
-    /// the hole) and shows its lined underside when it stands open; down the hole is darkness with a glimmer of gold
-    /// (<see cref="HatchSkin"/>). <see cref="Swing"/> opens it at one moment and closes it at another; the swing itself is
-    /// pure (<see cref="OpennessAt"/>).
+    /// money a player gets comes up through theirs. Since 2026-11-12 (the owner's wish: plainer and more elegant, "it could
+    /// even be a manhole cover") it is a round cast-iron cover set in the meadow: a low iron collar with a lip, and in it a
+    /// lid that is almost black (one colour for every player, the owner's wish) with nothing on it but the casting's own
+    /// relief: a rim, a ring, a boss in the middle and short bars between rim and ring. The lid is hinged at its back (away
+    /// from the camera, so the open lid never hides the hole) and shows its ribbed underside when it stands open; down the
+    /// hole is darkness with a glimmer of gold (<see cref="HatchSkin"/>). <see cref="Swing"/> opens it at one moment and
+    /// closes it at another; the swing itself is pure (<see cref="OpennessAt"/>).
     /// </summary>
     public sealed class MoneyHatch : MonoBehaviour
     {
-        /// <summary>The hole: long enough for a money stack lying as it lies in the case, along the hatch's x.</summary>
-        public const float HoleLength = 0.9f;
-        public const float HoleWidth = 0.6f;
+        /// <summary>The round hole: wide enough for a money stack lying flat to pass whichever way it is turned.</summary>
+        public const float HoleRadius = 0.46f;
+        public const float HoleLength = 2f * HoleRadius;
+        public const float HoleWidth = 2f * HoleRadius;
 
-        /// <summary>The stone curb round the hole, how high it stands on the grass, and the lid's thickness.</summary>
-        public const float Rim = 0.13f;
-        public const float FrameHeight = 0.07f;
-        public const float LidThickness = 0.04f;
+        /// <summary>The collar round the hole: its width, how high the lid's seat lies over the grass, and the lid's thickness (the lip stands that much over the seat).</summary>
+        public const float Rim = 0.07f;
+        public const float FrameHeight = 0.03f;
+        public const float LidThickness = 0.03f;
 
-        /// <summary>How far the lid lies over the curb on every side, and how thick the steel sleeve down the hole is.</summary>
-        public const float LidSeat = 0.045f;
-        public const float Sleeve = 0.022f;
+        /// <summary>How far the lid lies over the seat all round, and the gap between its edge and the collar's lip.</summary>
+        public const float LidSeat = 0.03f;
+        public const float LidGap = 0.006f;
 
-        /// <summary>The brass straps: how far each lies from the lid's middle, and how wide it is.</summary>
-        public const float StrapOffset = 0.3f;
-        public const float StrapWidth = 0.075f;
+        /// <summary>The casting's relief on the lid: how far it stands proud, and how many bars lie between the rim and the ring.</summary>
+        public const float Relief = 0.008f;
+        public const int Bars = 12;
 
-        /// <summary>The brass coin in the lid's middle: its radius.</summary>
-        public const float CoinRadius = 0.115f;
+        /// <summary>The relief's rings, as shares of the lid's radius: the rim's inner edge, the ring's two edges, the boss.</summary>
+        public const float RimFrom = 0.85f;
+        public const float RingTo = 0.62f;
+        public const float RingFrom = 0.55f;
+        public const float Boss = 0.24f;
 
-        /// <summary>How far the corner stones stand over the curb, and how far the hole's floor lies over the grass.</summary>
-        public const float CornerRise = 0.014f;
+        /// <summary>How far the hole's floor lies over the grass.</summary>
         public const float HoleLift = 0.003f;
 
         /// <summary>How far the lid swings open (a little past upright, leaning back) and how long a swing takes at normal speed.</summary>
         public const float OpenAngle = 105f;
         public const float SwingSeconds = 0.25f;
 
-        /// <summary>The curb: the table's limestone, a little lighter in the sun on the grass; its corner stones a shade deeper.</summary>
-        public static readonly Color Stone = Color.Lerp(PlateSkin.Stone, Color.white, 0.18f);
-        public static readonly Color CornerStone = Color.Lerp(PlateSkin.Stone, Color.white, 0.06f);
-
         public static readonly Color HoleDark = HatchSkin.Dark;
 
         /// <summary>Every hatch's lid: nearly black, a shade lighter than the hole so the open lid still reads.</summary>
         public static readonly Color LidColor = new Color(0.11f, 0.11f, 0.12f);
 
-        /// <summary>The lid's raised panel, a shade lighter than the lid, and the steel that lines its underside.</summary>
-        public static readonly Color PanelColor = new Color(0.165f, 0.165f, 0.18f);
-        public static readonly Color Lining = new Color(0.26f, 0.27f, 0.30f);
+        /// <summary>The relief cast on the lid, a shade lighter than the lid so it reads as raised; and the lid's underside.</summary>
+        public static readonly Color ReliefColor = new Color(0.165f, 0.165f, 0.18f);
+        public static readonly Color Underside = new Color(0.15f, 0.155f, 0.17f);
+
+        /// <summary>The collar: the safes' dark steel, a little lighter than the lid it holds.</summary>
+        public static readonly Color Iron = MoneyPile.Steel;
 
         private Transform _lid;
         private float _openAt = -1f;
@@ -65,11 +66,15 @@ namespace Lazpoly.Presentation.Tabletop
         private float _age;
         private float _speed = 1f;
 
-        /// <summary>The whole hatch's size on the table: the hole and its curb.</summary>
-        public static Vector3 Size => new Vector3(HoleLength + 2f * Rim, FrameHeight, HoleWidth + 2f * Rim);
+        /// <summary>The lid's radius, and the collar's outer one.</summary>
+        public const float LidRadius = HoleRadius + LidSeat;
+        public const float OuterRadius = HoleRadius + Rim;
 
-        /// <summary>The lid's size: the hole and its seat on the curb.</summary>
-        public static Vector3 LidSize => new Vector3(HoleLength + 2f * LidSeat, LidThickness, HoleWidth + 2f * LidSeat);
+        /// <summary>The whole hatch's size on the table: the collar's width both ways, and its lip's height.</summary>
+        public static Vector3 Size => new Vector3(2f * OuterRadius, FrameHeight + LidThickness, 2f * OuterRadius);
+
+        /// <summary>The lid's size: the hole and its seat on the collar.</summary>
+        public static Vector3 LidSize => new Vector3(2f * LidRadius, LidThickness, 2f * LidRadius);
 
         /// <summary>How open the lid is now, from 0 (shut) to 1 (open).</summary>
         public float Openness { get; private set; }
@@ -77,29 +82,26 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The lid, turning on its hinge.</summary>
         public Transform Lid => _lid;
 
-        /// <summary>The middle of the hole at the curb's top (world space): money goes down and comes up here.</summary>
+        /// <summary>The middle of the hole at the lid's seat (world space): money goes down and comes up here.</summary>
         public Vector3 Mouth => transform.TransformPoint(new Vector3(0f, FrameHeight, 0f));
 
         public static MoneyHatch Create(Transform parent, string name)
         {
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
-            ModelParts.Create("Curb", root.transform, CurbMesh(), Stone, 0.12f);
-            ModelParts.Create("Corner stones", root.transform, CornerMesh(), CornerStone, 0.12f);
-            ModelParts.Create("Frame", root.transform, FrameMesh(), MoneyPile.Steel, 0.6f);
+            ModelParts.Create("Collar", root.transform, CollarMesh(), Iron, 0.45f);
             GameObject hole = ModelParts.Create("Hole", root.transform, HoleMesh(), Color.white, 0.05f);
             ModelParts.Skin(hole, HatchSkin.Hole());
             hole.transform.localPosition = new Vector3(0f, HoleLift, 0f);
 
-            // The hinge runs along the lid's back edge; in its frame the lid lies forward (-z) of it over the hole when shut.
+            // The hinge lies at the back of the lid's top, level with the lip; in its frame the lid lies forward (-z) of it
+            // and under it when shut, so the open lid stands on the lip instead of cutting through it.
             var hinge = new GameObject("Lid");
             hinge.transform.SetParent(root.transform, false);
-            hinge.transform.localPosition = new Vector3(0f, FrameHeight, LidSize.z / 2f);
-            ModelParts.Create("Lid plate", hinge.transform, LidPlateMesh(), LidColor, 0.45f); // first: the lid's colour is read from it
-            ModelParts.Create("Lid panel", hinge.transform, LidPanelMesh(), PanelColor, 0.35f);
-            ModelParts.Create("Lid brass", hinge.transform, LidBrassMesh(), MoneyPile.Brass, 0.75f);
-            ModelParts.Create("Lid chrome", hinge.transform, LidChromeMesh(), MoneyPile.Chrome, 0.85f);
-            ModelParts.Create("Lid lining", hinge.transform, LidLiningMesh(), Lining, 0.5f);
+            hinge.transform.localPosition = new Vector3(0f, FrameHeight + LidThickness, LidRadius + LidGap);
+            ModelParts.Create("Lid plate", hinge.transform, LidPlateMesh(), LidColor, 0.4f); // first: the lid's colour is read from it
+            ModelParts.Create("Lid relief", hinge.transform, LidReliefMesh(), ReliefColor, 0.4f);
+            ModelParts.Create("Lid underside", hinge.transform, LidUndersideMesh(), Underside, 0.35f);
 
             var hatch = root.AddComponent<MoneyHatch>();
             hatch._lid = hinge.transform;
@@ -143,130 +145,135 @@ namespace Lazpoly.Presentation.Tabletop
             if (_age >= _closeAt + SwingSeconds) _openAt = -1f;
         }
 
-        /// <summary>The curb: a stone along each side of the hole.</summary>
-        private static Mesh CurbMesh()
+        /// <summary>
+        /// The collar, turned round the hole: up its outer side, in over a chamfered lip, down to the seat the lid lies
+        /// on, in to the hole and down its wall; and the knuckle of the lid's hinge on the lip at the back.
+        /// </summary>
+        private static Mesh CollarMesh()
         {
-            Vector3 size = Size;
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float side in new[] { -1f, 1f })
+            const float chamfer = 0.008f, knuckle = 0.12f, radius = 0.02f;
+            float top = FrameHeight + LidThickness, seat = LidRadius + LidGap;
+            // The knuckle lies on the lip behind the lid, inside the collar's own round.
+            Mesh ring = MeshFactory.Lathe("money-hatch-collar", Sharp(
+                new Vector2(HoleRadius, 0f), new Vector2(OuterRadius, 0f), new Vector2(OuterRadius, top - chamfer), new Vector2(OuterRadius - chamfer, top),
+                new Vector2(seat, top), new Vector2(seat, FrameHeight), new Vector2(HoleRadius, FrameHeight), new Vector2(HoleRadius, 0f)), 48);
+            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>
             {
-                Box(parts, new Vector3(HoleLength, FrameHeight, Rim), new Vector3(0f, FrameHeight / 2f, side * (size.z - Rim) / 2f), 0.012f);
-                Box(parts, new Vector3(Rim, FrameHeight, HoleWidth), new Vector3(side * (size.x - Rim) / 2f, FrameHeight / 2f, 0f), 0.012f);
-            }
-
-            return MeshFactory.Combine("money-hatch-curb", parts);
-        }
-
-        /// <summary>The four corner stones, a little larger and taller than the curb they join.</summary>
-        private static Mesh CornerMesh()
-        {
-            Vector3 size = Size;
-            float height = FrameHeight + CornerRise, side = Rim + 0.012f;
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float x in new[] { -1f, 1f })
-            foreach (float z in new[] { -1f, 1f })
-                Box(parts, new Vector3(side, height, side), new Vector3(x * (size.x - Rim) / 2f, height / 2f, z * (size.z - Rim) / 2f), 0.012f);
-            return MeshFactory.Combine("money-hatch-corners", parts);
-        }
-
-        /// <summary>The steel: the sleeve lining the hole's four walls, and the two barrels of the lid's hinges on the back curb.</summary>
-        private static Mesh FrameMesh()
-        {
-            float height = FrameHeight + 0.004f;
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float side in new[] { -1f, 1f })
-            {
-                Box(parts, new Vector3(HoleLength, height, Sleeve), new Vector3(0f, height / 2f, side * (HoleWidth - Sleeve) / 2f), 0.004f);
-                Box(parts, new Vector3(Sleeve, height, HoleWidth - 2f * Sleeve), new Vector3(side * (HoleLength - Sleeve) / 2f, height / 2f, 0f), 0.004f);
-                // A barrel lying along the hinge, behind each strap.
-                const float barrel = 0.13f, radius = 0.022f;
-                parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Cylinder(12),
-                    Matrix4x4.TRS(new Vector3(side * StrapOffset + barrel / 2f, FrameHeight, LidSize.z / 2f), Quaternion.Euler(0f, 0f, 90f), new Vector3(radius, barrel, radius))));
-            }
-
-            return MeshFactory.Combine("money-hatch-frame", parts);
+                new KeyValuePair<Mesh, Matrix4x4>(ring, Matrix4x4.identity),
+                // A cylinder's axis is its y: laid along the hinge, it runs from its foot towards -x.
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Cylinder(12),
+                    Matrix4x4.TRS(new Vector3(knuckle / 2f, top, OuterRadius - radius - 0.004f), Quaternion.Euler(0f, 0f, 90f), new Vector3(radius, knuckle, radius))),
+            };
+            return MeshFactory.Combine("money-hatch-collar", parts);
         }
 
         private static Mesh _hole;
 
-        /// <summary>The hole's floor: a flat sheet facing up, its picture laid over all of it.</summary>
+        /// <summary>The hole's floor: a round sheet facing up, its picture laid over all of it.</summary>
         private static Mesh HoleMesh()
         {
             if (_hole != null) return _hole;
-            float x = HoleLength / 2f, z = HoleWidth / 2f;
+            const int segments = 40;
+            var vertices = new List<Vector3> { Vector3.zero };
+            var normals = new List<Vector3> { Vector3.up };
+            var uvs = new List<Vector2> { new Vector2(0.5f, 0.5f) };
+            var triangles = new List<int>();
+            for (int i = 0; i < segments; i++)
+            {
+                float angle = i * 2f * Mathf.PI / segments;
+                var way = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                vertices.Add(new Vector3(way.x, 0f, way.y) * HoleRadius);
+                normals.Add(Vector3.up);
+                uvs.Add(new Vector2(0.5f, 0.5f) + way * 0.5f);
+                triangles.Add(0);
+                triangles.Add(1 + (i + 1) % segments);
+                triangles.Add(1 + i);
+            }
+
             var mesh = new Mesh { name = "money-hatch-hole" };
-            mesh.SetVertices(new List<Vector3> { new Vector3(-x, 0f, -z), new Vector3(-x, 0f, z), new Vector3(x, 0f, z), new Vector3(x, 0f, -z) });
-            mesh.SetNormals(new List<Vector3> { Vector3.up, Vector3.up, Vector3.up, Vector3.up });
-            mesh.SetUVs(0, new List<Vector2> { new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(1f, 0f) });
-            mesh.SetTriangles(new List<int> { 0, 1, 2, 0, 2, 3 }, 0);
+            mesh.SetVertices(vertices);
+            mesh.SetNormals(normals);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
             return _hole = mesh;
         }
 
-        // The lid's parts, in the hinge's frame: the hinge along x at the origin, the lid lying forward (-z) of it, its underside at y 0.
+        // The lid's parts, in the hinge's frame: the hinge along x at the origin, the lid lying forward (-z) of it, its top at y 0.
+
+        /// <summary>The middle of the lid's top in the hinge's frame.</summary>
+        private static Vector3 LidMiddle => new Vector3(0f, 0f, -(LidRadius + LidGap));
 
         private static Mesh LidPlateMesh()
         {
-            Vector3 lid = LidSize;
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            Box(parts, lid, new Vector3(0f, LidThickness / 2f, -lid.z / 2f), 0.012f);
+            const float chamfer = 0.006f;
+            Mesh disc = MeshFactory.Lathe("money-hatch-lid", Sharp(
+                new Vector2(0f, 0f), new Vector2(LidRadius, 0f), new Vector2(LidRadius, LidThickness - chamfer), new Vector2(LidRadius - chamfer, LidThickness),
+                new Vector2(0f, LidThickness)), 48);
+            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>
+            {
+                new KeyValuePair<Mesh, Matrix4x4>(disc, Matrix4x4.Translate(LidMiddle + Vector3.down * LidThickness)),
+            };
             return MeshFactory.Combine("money-hatch-lid", parts);
         }
 
-        /// <summary>The raised panel on the lid's top, in from its edge.</summary>
-        private static Mesh LidPanelMesh()
+        /// <summary>The casting's relief on the lid's top: the rim, the ring, the boss, and the bars between rim and ring.</summary>
+        private static Mesh LidReliefMesh()
         {
-            Vector3 lid = LidSize;
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            Box(parts, new Vector3(lid.x - 0.14f, 0.012f, lid.z - 0.14f), new Vector3(0f, LidThickness + 0.004f, -lid.z / 2f), 0.005f);
-            return MeshFactory.Combine("money-hatch-lid-panel", parts);
-        }
-
-        /// <summary>The brass: two straps over the lid from front to hinge (and under it, on the lining), and the coin in the lid's middle.</summary>
-        private static Mesh LidBrassMesh()
-        {
-            Vector3 lid = LidSize;
-            float middle = -lid.z / 2f;
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float side in new[] { -1f, 1f })
+            const float sunk = 0.002f, barWidth = 0.034f;
+            float height = Relief + sunk;
+            Vector3 foot = LidMiddle + Vector3.down * sunk;
+            float rim = LidRadius - 0.03f;
+            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>
             {
-                Box(parts, new Vector3(StrapWidth, 0.02f, lid.z + 0.004f), new Vector3(side * StrapOffset, LidThickness + 0.008f, middle), 0.006f);
-                Box(parts, new Vector3(StrapWidth, 0.008f, HoleWidth - 0.1f), new Vector3(side * StrapOffset, -0.014f, middle), 0.003f);
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Ring(RimFrom, 1f), Matrix4x4.TRS(foot, Quaternion.identity, new Vector3(rim, height, rim))),
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Ring(RingFrom / RingTo, 1f),
+                    Matrix4x4.TRS(foot, Quaternion.identity, new Vector3(LidRadius * RingTo, height, LidRadius * RingTo))),
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Disc(1f), Matrix4x4.TRS(foot, Quaternion.identity, new Vector3(LidRadius * Boss, height, LidRadius * Boss))),
+            };
+
+            // The bars run from the ring out to the rim, set between the hinge's line and the cross's, so none lies under the knuckle.
+            float from = LidRadius * RingTo - 0.004f, to = rim * RimFrom + 0.004f;
+            Mesh bar = MeshFactory.RoundedBox(new Vector3(to - from, height, barWidth), 0.003f, 2);
+            for (int i = 0; i < Bars; i++)
+            {
+                Quaternion turn = Quaternion.Euler(0f, (i + 0.5f) * 360f / Bars, 0f);
+                parts.Add(new KeyValuePair<Mesh, Matrix4x4>(bar, Matrix4x4.TRS(foot + turn * new Vector3((from + to) / 2f, height / 2f, 0f), turn, Vector3.one)));
             }
 
-            // The coin: a raised rim round a flat face.
-            var coin = new Vector3(0f, LidThickness + 0.008f, middle + 0.02f);
-            parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Ring(0.72f, 0.016f, 24), Matrix4x4.TRS(coin, Quaternion.identity, new Vector3(CoinRadius, 1f, CoinRadius))));
-            parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Disc(0.009f, 24), Matrix4x4.TRS(coin, Quaternion.identity, new Vector3(CoinRadius * 0.74f, 1f, CoinRadius * 0.74f))));
-            return MeshFactory.Combine("money-hatch-lid-brass", parts);
+            return MeshFactory.Combine("money-hatch-lid-relief", parts);
         }
 
-        /// <summary>The chrome: three studs down each strap and the pull ring at the lid's front.</summary>
-        private static Mesh LidChromeMesh()
+        /// <summary>
+        /// The lid's underside, which faces the table when the lid stands open: a plate that fits down the hole when the
+        /// lid is shut, stiffened by a rib ring and a boss.
+        /// </summary>
+        private static Mesh LidUndersideMesh()
         {
-            Vector3 lid = LidSize;
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            foreach (float side in new[] { -1f, 1f })
-            foreach (float z in new[] { -0.07f, -lid.z / 2f, -lid.z + 0.07f })
+            const float plate = 0.008f, rib = 0.008f;
+            float radius = HoleRadius - 0.03f;
+            Vector3 under = LidMiddle + Vector3.down * (LidThickness + plate);
+            Vector3 ribs = under + Vector3.down * rib;
+            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>
             {
-                parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Sphere(8),
-                    Matrix4x4.TRS(new Vector3(side * StrapOffset, LidThickness + 0.018f, z), Quaternion.identity, new Vector3(0.02f, 0.012f, 0.02f))));
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Disc(1f), Matrix4x4.TRS(under, Quaternion.identity, new Vector3(radius, plate, radius))),
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Ring(0.88f, 1f), Matrix4x4.TRS(ribs, Quaternion.identity, new Vector3(radius * 0.8f, rib, radius * 0.8f))),
+                new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Disc(1f), Matrix4x4.TRS(ribs, Quaternion.identity, new Vector3(radius * 0.22f, rib, radius * 0.22f))),
+            };
+            return MeshFactory.Combine("money-hatch-lid-underside", parts);
+        }
+
+        /// <summary>A profile for <see cref="MeshFactory.Lathe"/> with every point doubled, so each face keeps its own flat shading.</summary>
+        private static List<Vector2> Sharp(params Vector2[] points)
+        {
+            var profile = new List<Vector2>(points.Length * 2);
+            foreach (Vector2 point in points)
+            {
+                profile.Add(point);
+                profile.Add(point);
             }
 
-            parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.Ring(0.6f, 0.014f, 20),
-                Matrix4x4.TRS(new Vector3(0f, LidThickness + 0.01f, -lid.z + 0.09f), Quaternion.identity, new Vector3(0.05f, 1f, 0.05f))));
-            return MeshFactory.Combine("money-hatch-lid-chrome", parts);
+            return profile;
         }
-
-        /// <summary>The steel plate lining the lid's underside, which faces the table when the lid stands open; it fits down the hole when shut.</summary>
-        private static Mesh LidLiningMesh()
-        {
-            var parts = new List<KeyValuePair<Mesh, Matrix4x4>>();
-            Box(parts, new Vector3(HoleLength - 0.08f, 0.012f, HoleWidth - 0.08f), new Vector3(0f, -0.006f, -LidSize.z / 2f), 0.004f);
-            return MeshFactory.Combine("money-hatch-lid-lining", parts);
-        }
-
-        private static void Box(List<KeyValuePair<Mesh, Matrix4x4>> parts, Vector3 size, Vector3 at, float radius) =>
-            parts.Add(new KeyValuePair<Mesh, Matrix4x4>(MeshFactory.RoundedBox(size, Mathf.Min(radius, Mathf.Min(size.x, Mathf.Min(size.y, size.z)) / 2f), 2), Matrix4x4.Translate(at)));
     }
 }

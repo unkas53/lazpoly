@@ -1112,5 +1112,146 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(TextureWrapMode.Repeat, side.wrapModeU);
             Assert.AreEqual(TextureWrapMode.Clamp, side.wrapModeV);
         }
+
+        [Test]
+        public void AFarIslandIsALittleIslandWithTreesGonePaleInTheHaze()
+        {
+            // The owner's wish (2026-11-12): the islands in the background three-dimensional too.
+            var holder = new GameObject("Far Island Test");
+            try
+            {
+                foreach (SkySkin.FarIsland far in SkySkin.FarIslands)
+                {
+                    int seed = far.Seed;
+                    GameObject island = IslandParts.Far(holder.transform, $"Far {seed}", seed);
+                    Transform model = island.transform.Find(IslandParts.FarModelName);
+                    Assert.IsNotNull(model);
+                    Assert.AreEqual(IslandShape.FarMiddle, model.localPosition.y, 1e-5f, "the model hangs about its own middle");
+                    Transform meadow = model.Find("Meadow"), rock = model.Find(IslandParts.RockName), trunks = model.Find(IslandParts.TrunksName), crowns = model.Find(IslandParts.CrownsName);
+                    Assert.IsNotNull(meadow);
+                    Assert.IsNotNull(rock);
+                    Assert.IsNotNull(trunks);
+                    Assert.IsNotNull(crowns);
+                    Assert.Greater(model.Find(IslandParts.StonesName).childCount, 0, "loose stones adrift beside the rock");
+                    Assert.IsNull(model.Find(IslandParts.VinesName), "plain: no vines, which would only be specks");
+
+                    // The little islands' own shapes, at the far island's size, in pictures gone pale.
+                    Assert.AreSame(IslandShape.Meadow(IslandShape.FarTop, seed), meadow.GetComponent<MeshFilter>().sharedMesh);
+                    Assert.AreSame(IslandShape.Rock(IslandShape.FarTop, seed), rock.GetComponent<MeshFilter>().sharedMesh);
+                    Assert.AreSame(SkySkin.FarGrassPicture(), meadow.GetComponent<Renderer>().sharedMaterial.mainTexture);
+                    Assert.AreSame(SkySkin.FarRockPicture(), rock.GetComponent<Renderer>().sharedMaterial.mainTexture);
+                    Color leaf = crowns.GetComponent<Renderer>().sharedMaterial.color;
+                    Assert.That(leaf.g, Is.EqualTo(SkySkin.Hazed(SkySkin.FarLeaf).g).Within(0.01f));
+                    Assert.Greater(leaf.g, leaf.r, "green crowns");
+
+                    // The trees: a few, standing apart well inside the meadow, their crowns no higher than a tree may be.
+                    for (int i = 0; i < IslandShape.FarTrees; i++)
+                    {
+                        Vector4 tree = IslandShape.FarTree(seed, i);
+                        Assert.That(tree.y, Is.InRange(IslandShape.FarTreeLow, IslandShape.FarTreeHigh), "its height");
+                        Assert.AreEqual(tree.y * IslandShape.FarCrown, tree.w, 1e-5f, "its crown's radius");
+                        Assert.Less(Mathf.Abs(tree.x) + tree.w, IslandShape.FarTop.x / 2f, "its crown stays over the meadow");
+                        Assert.Less(Mathf.Abs(tree.z) + tree.w, IslandShape.FarTop.y / 2f);
+                        for (int other = 0; other < i; other++)
+                        {
+                            Vector4 near = IslandShape.FarTree(seed, other);
+                            Assert.Greater(new Vector2(tree.x - near.x, tree.z - near.z).magnitude, 0.3f, "trees stand apart");
+                        }
+                    }
+
+                    Bounds crown = crowns.GetComponent<MeshFilter>().sharedMesh.bounds, trunk = trunks.GetComponent<MeshFilter>().sharedMesh.bounds;
+                    Assert.LessOrEqual(crown.max.y, IslandShape.FarTreeHigh + 1e-3f);
+                    Assert.Greater(crown.max.y, IslandShape.FarTreeLow);
+                    Assert.AreEqual(0f, trunk.min.y, 1e-4f, "the trunks stand on the meadow");
+                    Assert.Greater(trunk.max.y, crown.min.y, "and reach into their crowns");
+
+                    // About its own middle, so it can be placed and turned by that point; and no shadows that far off.
+                    float low = float.MaxValue, high = float.MinValue;
+                    foreach (MeshRenderer part in island.GetComponentsInChildren<MeshRenderer>())
+                    {
+                        Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, part.shadowCastingMode, $"{part.name} casts no shadow");
+                        Assert.IsFalse(part.receiveShadows, $"{part.name} takes none");
+                        low = Mathf.Min(low, part.bounds.min.y);
+                        high = Mathf.Max(high, part.bounds.max.y);
+                    }
+
+                    Assert.AreEqual(island.transform.position.y, (low + high) / 2f, 0.25f, "its middle is where it is held");
+                    Assert.That(high - low, Is.InRange(2.6f, IslandShape.Depth + IslandShape.FarTreeHigh + 0.1f));
+                }
+
+                // How high it stands in the game's slanted view: what the backdrop sizes it by.
+                float pitch = BoardCameraRig.Pitch * Mathf.Deg2Rad;
+                float seen = (IslandShape.Depth + IslandShape.FarTreeHigh) * Mathf.Cos(pitch) + IslandShape.FarTop.y * Mathf.Sin(pitch);
+                Assert.AreEqual(seen, IslandShape.FarSpan, 0.15f);
+                Assert.AreEqual((IslandShape.Depth - IslandShape.FarTreeHigh) / 2f, IslandShape.FarMiddle, 1e-5f);
+
+                // The haze: every colour part of the way to the sky's blue, the pictures the little islands' own gone pale.
+                Color black = SkySkin.Hazed(Color.black);
+                Assert.AreEqual(SkySkin.FarHaze.b * SkySkin.FarIslandHaze, black.b, 1e-4f);
+                Assert.AreEqual(1f, black.a, 1e-6f);
+                Texture2D farRock = SkySkin.FarRockPicture(), farGrass = SkySkin.FarGrassPicture();
+                Assert.AreEqual(TextureWrapMode.Repeat, farRock.wrapModeU, "the rock's picture runs round the island");
+                Assert.AreEqual(TextureWrapMode.Clamp, farRock.wrapModeV);
+                int at = SkySkin.FarRockSize / 2;
+                Color expected = SkySkin.Hazed(IslandSkin.RockAt((at + 0.5f) / SkySkin.FarRockSize, (at + 0.5f) / SkySkin.FarRockSize));
+                Assert.That(Vector4.Distance(expected, farRock.GetPixel(at, at)), Is.LessThan(0.01f));
+                Color near = IslandSkin.GrassAt(0.9f), pale = farGrass.GetPixel(1, Mathf.FloorToInt(0.9f * IslandSkin.GrassHeight));
+                Assert.Greater(pale.b, near.b + 0.05f, "the grass has taken the sky's blue");
+                Assert.Greater(pale.g, pale.b, "and is still green");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void TheAeroplaneIsASmallPalePlainMachineWithATurningPropeller()
+        {
+            // The owner's wish (2026-11-12): a plane crossing the background now and then.
+            var holder = new GameObject("Plane Test");
+            try
+            {
+                GameObject plane = PlaneParts.Create(holder.transform, "Plane");
+                Transform body = plane.transform.Find(PlaneParts.BodyName), trim = plane.transform.Find(PlaneParts.TrimName);
+                Transform glass = plane.transform.Find(PlaneParts.GlassName), propeller = plane.transform.Find(PlaneParts.PropellerName);
+                Assert.IsNotNull(body);
+                Assert.IsNotNull(trim);
+                Assert.IsNotNull(glass);
+                Assert.IsNotNull(propeller);
+                Assert.AreEqual(4, plane.GetComponentsInChildren<MeshRenderer>().Length, "plain: four parts and no more");
+
+                var whole = new Bounds(plane.transform.position, Vector3.zero);
+                foreach (MeshRenderer part in plane.GetComponentsInChildren<MeshRenderer>())
+                {
+                    whole.Encapsulate(part.bounds);
+                    Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, part.shadowCastingMode, $"{part.name} casts no shadow");
+                    Assert.IsFalse(part.receiveShadows);
+                }
+
+                Assert.AreEqual(PlaneParts.Length, whole.size.z, 0.01f, "from tail to spinner along z");
+                Assert.AreEqual(PlaneParts.Span, whole.size.x, 0.01f, "wings across x");
+                Assert.Less(whole.size.y, 0.3f, "low: fin and all");
+                Assert.AreEqual(0f, whole.center.z, 0.01f, "about its own middle");
+                Assert.Greater(propeller.localPosition.z, PlaneParts.Length * 0.4f, "the propeller at the nose");
+                Assert.Less(trim.GetComponent<MeshFilter>().sharedMesh.bounds.min.z, -0.3f, "the fin at the tail");
+
+                Color paint = body.GetComponent<Renderer>().sharedMaterial.color, red = trim.GetComponent<Renderer>().sharedMaterial.color;
+                Assert.Greater(paint.grayscale, 0.8f, "pale");
+                Assert.That(paint.b, Is.EqualTo(SkySkin.Hazed(PlaneParts.Paint).b).Within(0.01f), "gone into the haze like the far islands");
+                Assert.Greater(red.r, red.b + 0.05f, "a soft red trim");
+                Color.RGBToHSV(red, out _, out float saturation, out _);
+                Assert.Less(saturation, 0.5f, "soft: nothing loud in the background");
+
+                Assert.AreEqual(0f, PlaneParts.PropellerAt(0f), 1e-4f);
+                Assert.AreEqual(90f, PlaneParts.PropellerAt(0.25f / PlaneParts.PropellerTurns), 1e-2f, "a quarter turn");
+                PlaneParts.Spin(plane.transform, 0.25f / PlaneParts.PropellerTurns);
+                Assert.That(Quaternion.Angle(Quaternion.Euler(0f, 0f, 90f), propeller.localRotation), Is.LessThan(0.05f), "it turns about the plane's length");
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
     }
 }

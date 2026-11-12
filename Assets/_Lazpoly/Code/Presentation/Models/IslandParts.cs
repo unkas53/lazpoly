@@ -123,6 +123,51 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
+        public const string FarModelName = "Model";
+        public const string TrunksName = "Trunks";
+        public const string CrownsName = "Crowns";
+
+        /// <summary>
+        /// A far island in the sky (the owner's wish, 2026-11-12: the islands in the background three-dimensional): the
+        /// little islands' meadow and rock at <see cref="IslandShape.FarTop"/>, a few round trees on the meadow and
+        /// loose stones adrift beside the rock, all in pictures and colours gone pale in the haze
+        /// (<see cref="SkySkin.Hazed"/>). The whole hangs about its own middle (the model lifted by
+        /// <see cref="IslandShape.FarMiddle"/>), so it can be placed, sized and turned by that point. It casts and takes
+        /// no shadows: it is far beyond the table's light.
+        /// </summary>
+        public static GameObject Far(Transform parent, string name, int seed)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            var model = new GameObject(FarModelName);
+            model.transform.SetParent(root.transform, false);
+            model.transform.localPosition = new Vector3(0f, IslandShape.FarMiddle, 0f);
+            Transform at = model.transform;
+            Vector2 top = IslandShape.FarTop;
+            Skinned(at, "Meadow", IslandShape.Meadow(top, seed), SkySkin.FarGrassPicture(), Color.white, 0.05f);
+            Skinned(at, RockName, IslandShape.Rock(top, seed), SkySkin.FarRockPicture(), Color.white, 0.1f);
+            ModelParts.Create(TrunksName, at, IslandShape.FarTrunks(seed), SkySkin.Hazed(SkySkin.FarTrunk), 0.05f);
+            ModelParts.Create(CrownsName, at, IslandShape.FarCrowns(seed), SkySkin.Hazed(SkySkin.FarLeaf), 0.05f);
+
+            var stones = new GameObject(StonesName);
+            stones.transform.SetParent(at, false);
+            Vector4[] drifters = IslandShape.Drifters(top, seed);
+            for (int i = 0; i < drifters.Length; i++)
+            {
+                GameObject stone = Skinned(stones.transform, $"Stone {i + 1}", IslandShape.Drifter(seed * 10 + i), SkySkin.FarRockPicture(), Color.white, 0.1f);
+                stone.transform.localPosition = new Vector3(drifters[i].x, drifters[i].y, drifters[i].z);
+                stone.transform.localScale = Vector3.one * drifters[i].w;
+            }
+
+            foreach (MeshRenderer part in root.GetComponentsInChildren<MeshRenderer>())
+            {
+                part.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                part.receiveShadows = false;
+            }
+
+            return root;
+        }
+
         private static GameObject Skinned(Transform parent, string name, Mesh mesh, Texture texture, Color tint, float smoothness)
         {
             GameObject part = ModelParts.Create(name, parent, mesh, tint, smoothness);

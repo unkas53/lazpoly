@@ -127,23 +127,66 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Less(near.renderQueue, (int)UnityEngine.Rendering.RenderQueue.Transparent, "and all before the table's own see-through things");
                 Assert.AreEqual(camera.aspect * SkySkin.CloudHeight / SkySkin.CloudWidth, near.mainTextureScale.x, 1e-4f, "the clouds keep their shape whatever the window's");
 
-                // The far islands sit at the sides between the sky and the clouds, unstretched, and rise and sink a little.
+                // The far islands hang at the sides between the sky and the clouds: models (the owner's wish, 2026-11-12:
+                // three-dimensional), unstretched, upright in the world, rising and sinking a little and turning slowly.
                 Assert.AreEqual(SkySkin.FarIslands.Count, backdrop.FarIslands.Count);
                 for (int i = 0; i < backdrop.FarIslands.Count; i++)
                 {
                     Transform island = backdrop.FarIslands[i];
+                    backdrop.Show(0f);
                     Assert.Less(island.position.z, backdrop.transform.position.z, "in front of the sky");
                     Assert.Greater(island.position.z, backdrop.FarClouds.position.z, "behind the clouds");
+                    Assert.IsNotNull(island.Find(IslandParts.FarModelName).Find(IslandParts.RockName), "a model, not a picture");
+                    Assert.IsNotNull(island.GetComponentInChildren<IslandDrift>(), "its loose stones drift");
                     Vector3 size = island.lossyScale;
-                    Assert.AreEqual((float)SkySkin.IslandWidth / SkySkin.IslandHeight, size.x / size.y, 1e-3f, "its picture keeps its shape");
-                    Assert.AreEqual(SkySkin.FarIslands[i].Size * 10f, size.y, 1e-3f, "its size is a share of the view's height");
-                    Assert.Greater(Mathf.Abs(island.localPosition.x), 0.3f, "at the side of the screen");
+                    Assert.AreEqual(size.x, size.y, 1e-4f, "it keeps its shape");
+                    Assert.AreEqual(size.x, size.z, 1e-4f);
+                    Assert.AreEqual(SkySkin.FarIslands[i].Size * 10f / IslandShape.FarSpan, size.y, 1e-3f, "its size is a share of the view's height");
+                    Assert.Greater(Mathf.Abs(island.localPosition.x), 0.35f * 10f * camera.aspect, "at the side of the screen");
+                    Assert.Less(Vector3.Angle(island.up, Vector3.up), 0.01f, "upright in the world");
                     float quarter = SkyBackdrop.IslandSecondsOf(i) * (0.25f - 0.37f * i);
                     backdrop.Show(quarter);
                     float up = island.position.y;
                     backdrop.Show(quarter + SkyBackdrop.IslandSecondsOf(i) / 2f);
                     Assert.AreEqual(2f * SkyBackdrop.IslandRise * 10f, up - island.position.y, 1e-3f, "it rises and sinks by a little");
+                    backdrop.Show(0f);
+                    float turned = island.eulerAngles.y;
+                    backdrop.Show(20f);
+                    float turn = Mathf.Abs(Mathf.DeltaAngle(turned, island.eulerAngles.y));
+                    Assert.AreEqual(360f * 20f / (SkyBackdrop.IslandTurnSeconds * (1f + 0.31f * i)), turn, 0.05f, "it turns about its upright, so its depth shows");
+                    Assert.Less(turn / 20f, 2f, "slowly: under two degrees a second");
+                    Assert.Less(Vector3.Angle(island.up, Vector3.up), 0.01f, "and stays upright");
                 }
+
+                Assert.Less(Mathf.DeltaAngle(0f, SkyBackdrop.IslandTurnAt(10f, 0)) * Mathf.DeltaAngle(137f, SkyBackdrop.IslandTurnAt(10f, 1)), 0f, "the two turn opposite ways");
+
+                // The aeroplane (the owner's wish, 2026-11-12): out of sight until its time, then level and nose first straight
+                // across the view, behind the clouds and before the far islands; the next one comes back the other way.
+                Transform plane = backdrop.Plane;
+                Assert.IsNotNull(plane);
+                backdrop.Show(0f);
+                Assert.IsFalse(plane.gameObject.activeSelf, "no plane at first");
+                backdrop.Show(SkyPlane.FirstAt + SkyPlane.CrossSeconds / 2f);
+                Assert.IsTrue(plane.gameObject.activeSelf, "one crossing");
+                Assert.AreEqual(0f, plane.localPosition.x, 1e-3f, "half way: in the middle of the view");
+                Assert.AreEqual((SkyPlane.HeightOf(0) - 0.5f) * 10f, plane.localPosition.y, 1e-3f, "at its pass's height");
+                Assert.Greater(plane.position.z, backdrop.FarClouds.position.z, "behind the clouds");
+                Assert.Less(plane.position.z, backdrop.FarIslands[0].position.z, "before the far islands");
+                Assert.AreEqual(SkyPlane.Size * 10f / PlaneParts.Length, plane.lossyScale.x, 1e-4f, "its length is a share of the view's height");
+                Assert.Less(Vector3.Angle(plane.forward, camera.transform.right), 0.01f, "nose first to the right");
+                Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.01f, "level");
+                backdrop.Show(SkyPlane.FirstAt + SkyPlane.CrossSeconds + 1f);
+                Assert.IsFalse(plane.gameObject.activeSelf, "gone until the next one");
+                backdrop.Show(SkyPlane.FirstAt + SkyPlane.EverySeconds + SkyPlane.CrossSeconds * 0.25f);
+                Assert.IsTrue(plane.gameObject.activeSelf);
+                Assert.Less(Vector3.Angle(plane.forward, -camera.transform.right), 0.01f, "the next comes back the other way");
+                Assert.Greater(plane.localPosition.x, 0f, "from the right");
+                backdrop.HoldPlane(0, 0.15f);
+                Assert.IsTrue(plane.gameObject.activeSelf, "held for a picture whatever the time");
+                Assert.AreEqual((SkyPlane.SpotAt(0, 0.15f).x - 0.5f) * 10f * camera.aspect, plane.localPosition.x, 1e-3f);
+                backdrop.HoldPlane(-1, 0f);
+                backdrop.Show(0f);
+                Assert.IsFalse(plane.gameObject.activeSelf, "and let go again");
 
                 // The clouds drift, the near layer faster.
                 backdrop.Show(0f);
@@ -205,17 +248,10 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(0f, nearPicture.GetPixel(SkySkin.CloudWidth / 2, SkySkin.CloudHeight / 2).a, 1e-3f, "clear in the middle");
             Assert.AreEqual(0f, farPicture.GetPixel(SkySkin.CloudWidth / 2, SkySkin.CloudHeight / 2).a, 1e-3f);
 
-            // The far islands: few, at the sides, pale in the haze, their pictures clear round them.
+            // The far islands: few, at the sides, gone pale in the haze yet still solid things.
             Assert.LessOrEqual(SkySkin.FarIslands.Count, 2, "plain: no more than a couple");
-            Assert.Less(SkySkin.FarIslandSolid, 0.7f, "gone into the haze");
-            for (int i = 0; i < SkySkin.FarIslands.Count; i++)
-            {
-                Assert.Greater(Mathf.Abs(SkySkin.FarIslands[i].U - 0.5f), 0.35f);
-                Texture2D picture = SkySkin.FarIslandPicture(i);
-                Assert.AreEqual(0f, picture.GetPixel(1, 1).a, 1e-3f, "clear at its corner");
-                Assert.AreEqual(0f, picture.GetPixel(SkySkin.IslandWidth - 2, SkySkin.IslandHeight - 2).a, 1e-3f);
-                Assert.Greater(picture.GetPixel(SkySkin.IslandWidth / 2, SkySkin.IslandHeight / 2).a, 0.3f, "rock in its middle");
-            }
+            Assert.That(SkySkin.FarIslandHaze, Is.InRange(0.25f, 0.5f), "gone into the haze");
+            for (int i = 0; i < SkySkin.FarIslands.Count; i++) Assert.Greater(Mathf.Abs(SkySkin.FarIslands[i].U - 0.5f), 0.35f);
 
             // Covering a view without stretching.
             Vector4 wide = SkyBackdrop.Cover(21f / 9f, 16f / 9f), tall = SkyBackdrop.Cover(4f / 3f, 16f / 9f), same = SkyBackdrop.Cover(16f / 9f, 16f / 9f);
@@ -357,6 +393,95 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual((panelTop + 1f) / 2f, (minY + maxY) / 2f, 0.02f, "The board is not centred in the free area above the panel.");
             float freeHalfHeight = (1f - panelTop) / 2f;
             Assert.Greater(Mathf.Max(maxX, (maxY - minY) / 2f / freeHalfHeight), BoardCameraFraming.Fill - 0.02f, "The board could be bigger.");
+        }
+
+        [Test]
+        public void EverythingInTheSkyKeepsItsOwnDepthFarBehindTheTable()
+        {
+            // The game's view: flat, 100 deep, at its widest zoom about 22 high. The table and all on it lie within 50 of the camera.
+            var holder = new GameObject("Backdrop Camera");
+            try
+            {
+                Camera camera = holder.AddComponent<Camera>();
+                camera.orthographic = true;
+                camera.orthographicSize = 11f;
+                camera.farClipPlane = 100f;
+                camera.transform.rotation = Quaternion.Euler(BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, 0f);
+                SkyBackdrop backdrop = SkyBackdrop.Attach(camera);
+                Assert.IsNotNull(backdrop, "the picture shader is missing from Resources");
+                float Deep(Vector3 point) => camera.transform.InverseTransformPoint(point).z;
+                float sky = Deep(backdrop.transform.position), clouds = Deep(backdrop.FarClouds.position);
+                Assert.Less(sky, camera.farClipPlane, "the sky inside the far end");
+                Assert.Greater(Deep(backdrop.NearClouds.position), 80f, "the clouds far behind the table");
+                foreach (float seconds in new[] { 0f, 37f, SkyPlane.FirstAt + 3f, SkyPlane.FirstAt + SkyPlane.EverySeconds + 20f })
+                {
+                    backdrop.Show(seconds);
+                    float nearest = float.MaxValue;
+                    foreach (Transform island in backdrop.FarIslands)
+                    {
+                        Assert.Less(Vector3.Angle(island.up, Vector3.up), 0.01f, "upright in the world though the camera looks down: its meadow shows");
+                        foreach (Renderer part in island.GetComponentsInChildren<Renderer>())
+                        {
+                            Bounds bounds = part.bounds;
+                            float reach = bounds.extents.magnitude, middle = Deep(bounds.center);
+                            Assert.Less(middle + reach, sky, $"{island.name} {part.name}: wholly before the sky");
+                            Assert.Greater(middle - reach, clouds, $"{island.name} {part.name}: wholly behind the clouds");
+                            nearest = Mathf.Min(nearest, middle - reach);
+                        }
+                    }
+
+                    if (!backdrop.Plane.gameObject.activeSelf) continue;
+                    foreach (Renderer part in backdrop.Plane.GetComponentsInChildren<Renderer>())
+                    {
+                        Bounds bounds = part.bounds;
+                        float reach = bounds.extents.magnitude, middle = Deep(bounds.center);
+                        Assert.Less(middle + reach, nearest, $"plane {part.name}: before the far islands");
+                        Assert.Greater(middle - reach, clouds, $"plane {part.name}: behind the clouds");
+                    }
+
+                    Assert.Less(Mathf.Abs(backdrop.Plane.forward.y), 1e-4f, "the plane flies level in the world");
+                    Assert.Less(Vector3.Angle(backdrop.Plane.up, Vector3.up), 0.01f);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
+        public void AnAeroplaneCrossesTheSkyOnlyNowAndThenSlowAndSmall()
+        {
+            // The owner's wish (2026-11-12): a plane passing in the background now and then. Calm, since the eye belongs on the board.
+            Assert.AreEqual(-1, SkyPlane.PassAt(0f), "none at first");
+            Assert.AreEqual(-1f, SkyPlane.ProgressAt(SkyPlane.FirstAt - 0.5f));
+            Assert.AreEqual(0, SkyPlane.PassAt(SkyPlane.FirstAt));
+            Assert.AreEqual(0f, SkyPlane.ProgressAt(SkyPlane.FirstAt), 1e-4f, "the first sets out");
+            Assert.AreEqual(0.5f, SkyPlane.ProgressAt(SkyPlane.FirstAt + SkyPlane.CrossSeconds / 2f), 1e-4f);
+            Assert.AreEqual(-1f, SkyPlane.ProgressAt(SkyPlane.FirstAt + SkyPlane.CrossSeconds + 0.1f), "then the sky is empty");
+            Assert.AreEqual(1, SkyPlane.PassAt(SkyPlane.FirstAt + SkyPlane.EverySeconds + 1f));
+            Assert.AreEqual(0.25f, SkyPlane.ProgressAt(SkyPlane.FirstAt + 7f * SkyPlane.EverySeconds + SkyPlane.CrossSeconds / 4f), 1e-3f, "and so on, game long");
+            Assert.GreaterOrEqual(SkyPlane.EverySeconds, 90f, "now and then: not more than one in a minute and a half");
+            Assert.LessOrEqual(SkyPlane.CrossSeconds / SkyPlane.EverySeconds, 0.4f, "the sky is empty most of the time");
+            Assert.Less((1f + 2f * SkyPlane.Margin) / SkyPlane.CrossSeconds, 0.04f, "slow: under a twenty-fifth of the view a second");
+            Assert.Less(SkyPlane.Size, 0.06f, "small");
+
+            float islandsTop = 0f;
+            foreach (SkySkin.FarIsland island in SkySkin.FarIslands) islandsTop = Mathf.Max(islandsTop, island.V + island.Size / 2f);
+            for (int pass = 0; pass < 6; pass++)
+            {
+                Assert.AreNotEqual(SkyPlane.Rightward(pass), SkyPlane.Rightward(pass + 1), "there and back by turns");
+                Vector2 from = SkyPlane.SpotAt(pass, 0f), to = SkyPlane.SpotAt(pass, 1f), half = SkyPlane.SpotAt(pass, 0.5f);
+                Assert.AreEqual(from.y, to.y, 1e-6f, "straight and level across the view");
+                Assert.AreEqual(0.5f, half.x, 1e-4f);
+                Assert.AreEqual(SkyPlane.Rightward(pass) ? -SkyPlane.Margin : 1f + SkyPlane.Margin, from.x, 1e-4f, "it starts just outside one side");
+                Assert.AreEqual(SkyPlane.Rightward(pass) ? 1f + SkyPlane.Margin : -SkyPlane.Margin, to.x, 1e-4f, "and ends just outside the other");
+                Assert.Greater(from.y - SkyPlane.Size / 2f, islandsTop, "over the far islands");
+                Assert.Less(from.y, 0.9f, "under the top of the screen");
+            }
+
+            // Its whole length is outside even a narrow (4:3) view when it starts: it never pops in.
+            Assert.Greater(SkyPlane.Margin, SkyPlane.Size / 2f / (4f / 3f));
         }
     }
 }

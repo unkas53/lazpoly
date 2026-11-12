@@ -704,7 +704,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// share the edge: the top ones stay clear of the clock sign, the bottom ones of the dice and the pot. Far enough in
         /// that the whole frame stays on the flat grass wherever the lawn's wandering edge comes in (<see cref="LawnShape.Inward"/>).
         /// </summary>
-        public const float HatchInset = 0.80f;
+        public const float HatchInset = 0.90f;
         public const float HatchSpread = 1.25f;
 
         /// <summary>

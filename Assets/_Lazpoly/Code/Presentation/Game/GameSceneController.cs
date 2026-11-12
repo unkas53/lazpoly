@@ -1035,6 +1035,18 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The aeroplane that crosses the sky now and then (2026-11-12), held near each side of the whole view in turn;
+            // the far islands show in the same pictures.
+            SkyBackdrop sky = Camera.main != null ? Camera.main.GetComponentInChildren<SkyBackdrop>() : null;
+            if (sky != null)
+            {
+                sky.HoldPlane(0, 0.15f);
+                yield return ScreenTour.Take("ucak-soldan");
+                sky.HoldPlane(1, 0.2f);
+                yield return ScreenTour.Take("ucak-sagdan");
+                sky.HoldPlane(-1, 0f);
+            }
+
             // The bus ride (Faz 33), posed and seen from near: a piece half way into the bus at the stop, the bus on its way
             // down to the road, on the road round the lawn, stopped by a town half the board away with the piece half
             // way out, and the stop without its bus.
