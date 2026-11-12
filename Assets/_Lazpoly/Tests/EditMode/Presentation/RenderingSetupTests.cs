@@ -174,12 +174,15 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Less(plane.position.z, backdrop.FarIslands[0].position.z, "before the far islands");
                 Assert.AreEqual(SkyPlane.Size * 10f / PlaneParts.Length, plane.lossyScale.x, 1e-4f, "its length is a share of the view's height");
                 Assert.Less(Vector3.Angle(plane.forward, camera.transform.right), 0.01f, "nose first to the right");
-                Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.01f, "level");
+                Assert.AreEqual(SkyPlane.Bank, Vector3.Angle(plane.up, Vector3.up), 0.05f, "banked a little");
+                Assert.Greater(Vector3.Dot(plane.up, camera.transform.forward), 0f, "away from the camera, so its side shows");
                 backdrop.Show(SkyPlane.FirstAt + SkyPlane.CrossSeconds + 1f);
                 Assert.IsFalse(plane.gameObject.activeSelf, "gone until the next one");
                 backdrop.Show(SkyPlane.FirstAt + SkyPlane.EverySeconds + SkyPlane.CrossSeconds * 0.25f);
                 Assert.IsTrue(plane.gameObject.activeSelf);
                 Assert.Less(Vector3.Angle(plane.forward, -camera.transform.right), 0.01f, "the next comes back the other way");
+                Assert.AreEqual(SkyPlane.Bank, Vector3.Angle(plane.up, Vector3.up), 0.05f);
+                Assert.Greater(Vector3.Dot(plane.up, camera.transform.forward), 0f, "banked away from the camera this way too");
                 Assert.Greater(plane.localPosition.x, 0f, "from the right");
                 backdrop.HoldPlane(0, 0.15f);
                 Assert.IsTrue(plane.gameObject.activeSelf, "held for a picture whatever the time");
@@ -440,7 +443,10 @@ namespace Lazpoly.Presentation.Tests
                     }
 
                     Assert.Less(Mathf.Abs(backdrop.Plane.forward.y), 1e-4f, "the plane flies level in the world");
-                    Assert.Less(Vector3.Angle(backdrop.Plane.up, Vector3.up), 0.01f);
+                    Assert.AreEqual(SkyPlane.Bank, Vector3.Angle(backdrop.Plane.up, Vector3.up), 0.05f, "banked a little");
+                    Vector3 level = camera.transform.forward;
+                    level.y = 0f;
+                    Assert.Greater(Vector3.Dot(backdrop.Plane.up, level), 0f, "away from the camera");
                 }
             }
             finally
@@ -465,6 +471,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.LessOrEqual(SkyPlane.CrossSeconds / SkyPlane.EverySeconds, 0.4f, "the sky is empty most of the time");
             Assert.Less((1f + 2f * SkyPlane.Margin) / SkyPlane.CrossSeconds, 0.04f, "slow: under a twenty-fifth of the view a second");
             Assert.Less(SkyPlane.Size, 0.06f, "small");
+            Assert.That(SkyPlane.Bank, Is.InRange(10f, 25f), "banked enough to show its side, not so much that it seems to turn");
 
             float islandsTop = 0f;
             foreach (SkySkin.FarIsland island in SkySkin.FarIslands) islandsTop = Mathf.Max(islandsTop, island.V + island.Size / 2f);

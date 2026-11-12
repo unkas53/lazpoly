@@ -11,7 +11,14 @@ namespace Lazpoly.Presentation.Models
     public static partial class IslandShape
     {
         /// <summary>A far island's top (x across, z deep), in its own units; it is sized on the screen by <see cref="FarSpan"/>.</summary>
-        public static readonly Vector2 FarTop = new Vector2(3.2f, 2.4f);
+        public static readonly Vector2 FarTop = new Vector2(2.8f, 2.2f);
+
+        /// <summary>
+        /// How much deeper a far island's rock hangs than a little island's: seen from the game's slanted view a rock of
+        /// the little islands' depth shows only as a thin strip under so wide a meadow, and the island does not read as
+        /// floating. Drawn out, its point hangs well clear below the meadow's near edge.
+        /// </summary>
+        public const float FarRockStretch = 1.5f;
 
         /// <summary>How many trees stand on it, how tall the shortest and the tallest may be, and a crown's radius as a share of its tree's height.</summary>
         public const int FarTrees = 3;
@@ -20,13 +27,13 @@ namespace Lazpoly.Presentation.Models
         public const float FarCrown = 0.36f;
 
         /// <summary>How far under its top a far island's middle lies: half way between the tallest tree's top and the rock's point.</summary>
-        public const float FarMiddle = (Depth - FarTreeHigh) / 2f;
+        public const float FarMiddle = (Depth * FarRockStretch - FarTreeHigh) / 2f;
 
         /// <summary>
         /// How high a far island stands on the screen in the game's slanted view, in its own units: from the trees' tops
-        /// to the rock's point as the 35° camera sees them, and the top's depth besides.
+        /// to the rock's point as the 35° camera sees them.
         /// </summary>
-        public const float FarSpan = 4f;
+        public const float FarSpan = 3.6f;
 
         /// <summary>A far island's tree: where it stands on the top (x, z), how tall it is (y) and its crown's radius (w). The trees stand apart, well in from the edge.</summary>
         public static Vector4 FarTree(int seed, int tree)
@@ -34,7 +41,7 @@ namespace Lazpoly.Presentation.Models
             var random = new System.Random(seed * 151 + tree * 37 + 907);
             float Range(float a, float b) => a + (float)random.NextDouble() * (b - a);
             float angle = seed * 0.7f + tree * 2f * Mathf.PI / FarTrees + Range(-0.4f, 0.4f);
-            Vector2 at = Outline(FarTop / 2f, angle, 1f) * Range(0.25f, 0.55f);
+            Vector2 at = Outline(FarTop / 2f, angle, 1f) * Range(0.3f, 0.55f);
             float height = Range(FarTreeLow, FarTreeHigh);
             return new Vector4(at.x, height, at.y, height * FarCrown);
         }

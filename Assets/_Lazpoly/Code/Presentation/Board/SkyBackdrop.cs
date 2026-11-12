@@ -37,7 +37,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// </summary>
         public const float SkyDepth = 0.985f;
         public const float IslandDepth = 0.94f;
-        public const float PlaneDepth = 0.90f;
+        public const float PlaneDepth = 0.895f;
         public const float CloudDepth = 0.88f;
 
         public const string ModelsName = "Sky Models";
@@ -211,8 +211,8 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// The aeroplane: out of sight between crossings; on one, level in the world and flying straight across the
-        /// view, so the slanted camera sees it from a little above, its propeller turning.
+        /// The aeroplane: out of sight between crossings; on one, flying level and straight across the view, banked a
+        /// little away from the camera (<see cref="SkyPlane.Bank"/>) so the slanted view shows its side, its propeller turning.
         /// </summary>
         private void ShowPlane(float seconds, float far, float aspect)
         {
@@ -228,7 +228,11 @@ namespace Lazpoly.Presentation.Tabletop
             _plane.localScale = Vector3.one * (SkyPlane.Size * tall / PlaneParts.Length);
             Vector3 way = _camera.transform.right * (SkyPlane.Rightward(pass) ? 1f : -1f);
             way.y = 0f;
-            _plane.rotation = Quaternion.LookRotation(way.sqrMagnitude > 1e-6f ? way.normalized : Vector3.right, Vector3.up);
+            way = way.sqrMagnitude > 1e-6f ? way.normalized : Vector3.right;
+            // Its top leans away from the camera, about its own line of flight.
+            Vector3 away = Vector3.Cross(way, Vector3.up) * (SkyPlane.Rightward(pass) ? 1f : -1f);
+            Vector3 top = Quaternion.AngleAxis(SkyPlane.Bank, Vector3.Cross(Vector3.up, away)) * Vector3.up;
+            _plane.rotation = Quaternion.LookRotation(way, top);
             PlaneParts.Spin(_plane, seconds);
         }
     }

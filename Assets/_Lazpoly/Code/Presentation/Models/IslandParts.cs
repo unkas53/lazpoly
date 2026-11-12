@@ -129,7 +129,8 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>
         /// A far island in the sky (the owner's wish, 2026-11-12: the islands in the background three-dimensional): the
-        /// little islands' meadow and rock at <see cref="IslandShape.FarTop"/>, a few round trees on the meadow and
+        /// little islands' meadow and rock at <see cref="IslandShape.FarTop"/> (the rock drawn out deeper by
+        /// <see cref="IslandShape.FarRockStretch"/>), a few round trees on the meadow and
         /// loose stones adrift beside the rock, all in pictures and colours gone pale in the haze
         /// (<see cref="SkySkin.Hazed"/>). The whole hangs about its own middle (the model lifted by
         /// <see cref="IslandShape.FarMiddle"/>), so it can be placed, sized and turned by that point. It casts and takes
@@ -145,7 +146,9 @@ namespace Lazpoly.Presentation.Models
             Transform at = model.transform;
             Vector2 top = IslandShape.FarTop;
             Skinned(at, "Meadow", IslandShape.Meadow(top, seed), SkySkin.FarGrassPicture(), Color.white, 0.05f);
-            Skinned(at, RockName, IslandShape.Rock(top, seed), SkySkin.FarRockPicture(), Color.white, 0.1f);
+            // The rock drawn out downwards (and its loose stones with it), so it shows under the meadow from the slanted view.
+            GameObject rock = Skinned(at, RockName, IslandShape.Rock(top, seed), SkySkin.FarRockPicture(), Color.white, 0.1f);
+            rock.transform.localScale = new Vector3(1f, IslandShape.FarRockStretch, 1f);
             ModelParts.Create(TrunksName, at, IslandShape.FarTrunks(seed), SkySkin.Hazed(SkySkin.FarTrunk), 0.05f);
             ModelParts.Create(CrownsName, at, IslandShape.FarCrowns(seed), SkySkin.Hazed(SkySkin.FarLeaf), 0.05f);
 
@@ -155,7 +158,7 @@ namespace Lazpoly.Presentation.Models
             for (int i = 0; i < drifters.Length; i++)
             {
                 GameObject stone = Skinned(stones.transform, $"Stone {i + 1}", IslandShape.Drifter(seed * 10 + i), SkySkin.FarRockPicture(), Color.white, 0.1f);
-                stone.transform.localPosition = new Vector3(drifters[i].x, drifters[i].y, drifters[i].z);
+                stone.transform.localPosition = new Vector3(drifters[i].x, drifters[i].y * IslandShape.FarRockStretch, drifters[i].z);
                 stone.transform.localScale = Vector3.one * drifters[i].w;
             }
 

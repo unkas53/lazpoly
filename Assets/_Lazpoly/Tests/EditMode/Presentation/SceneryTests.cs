@@ -1138,6 +1138,8 @@ namespace Lazpoly.Presentation.Tests
                     // The little islands' own shapes, at the far island's size, in pictures gone pale.
                     Assert.AreSame(IslandShape.Meadow(IslandShape.FarTop, seed), meadow.GetComponent<MeshFilter>().sharedMesh);
                     Assert.AreSame(IslandShape.Rock(IslandShape.FarTop, seed), rock.GetComponent<MeshFilter>().sharedMesh);
+                    Assert.AreEqual(new Vector3(1f, IslandShape.FarRockStretch, 1f), rock.localScale, "the rock drawn out deeper, so it shows under the meadow");
+                    Assert.AreEqual(-IslandShape.Depth * IslandShape.FarRockStretch + IslandShape.FarMiddle, rock.GetComponent<Renderer>().bounds.min.y - island.transform.position.y, 0.02f);
                     Assert.AreSame(SkySkin.FarGrassPicture(), meadow.GetComponent<Renderer>().sharedMaterial.mainTexture);
                     Assert.AreSame(SkySkin.FarRockPicture(), rock.GetComponent<Renderer>().sharedMaterial.mainTexture);
                     Color leaf = crowns.GetComponent<Renderer>().sharedMaterial.color;
@@ -1176,14 +1178,18 @@ namespace Lazpoly.Presentation.Tests
                     }
 
                     Assert.AreEqual(island.transform.position.y, (low + high) / 2f, 0.25f, "its middle is where it is held");
-                    Assert.That(high - low, Is.InRange(2.6f, IslandShape.Depth + IslandShape.FarTreeHigh + 0.1f));
+                    Assert.That(high - low, Is.InRange(3.6f, IslandShape.Depth * IslandShape.FarRockStretch + IslandShape.FarTreeHigh + 0.1f));
                 }
 
                 // How high it stands in the game's slanted view: what the backdrop sizes it by.
                 float pitch = BoardCameraRig.Pitch * Mathf.Deg2Rad;
-                float seen = (IslandShape.Depth + IslandShape.FarTreeHigh) * Mathf.Cos(pitch) + IslandShape.FarTop.y * Mathf.Sin(pitch);
-                Assert.AreEqual(seen, IslandShape.FarSpan, 0.15f);
-                Assert.AreEqual((IslandShape.Depth - IslandShape.FarTreeHigh) / 2f, IslandShape.FarMiddle, 1e-5f);
+                float seen = (IslandShape.Depth * IslandShape.FarRockStretch + IslandShape.FarTreeHigh) * Mathf.Cos(pitch);
+                Assert.AreEqual(seen, IslandShape.FarSpan, 0.2f);
+                Assert.AreEqual((IslandShape.Depth * IslandShape.FarRockStretch - IslandShape.FarTreeHigh) / 2f, IslandShape.FarMiddle, 1e-5f);
+                // The rock's point hangs well below the meadow's near edge and its hanging grass in that view: it reads as floating.
+                float point = IslandShape.Depth * IslandShape.FarRockStretch * Mathf.Cos(pitch);
+                float edge = IslandShape.FarTop.x / 2f * Mathf.Sin(pitch) + IslandShape.SkirtLong * Mathf.Cos(pitch);
+                Assert.Greater(point - edge, 0.3f * IslandShape.FarSpan, "a third of what shows is rock, whichever way the island is turned");
 
                 // The haze: every colour part of the way to the sky's blue, the pictures the little islands' own gone pale.
                 Color black = SkySkin.Hazed(Color.black);

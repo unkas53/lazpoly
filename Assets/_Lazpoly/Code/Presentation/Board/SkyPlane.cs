@@ -19,6 +19,12 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The plane's length as a share of the view's height.</summary>
         public const float Size = 0.045f;
 
+        /// <summary>
+        /// How far the plane is banked away from the camera, in degrees: seen from the game's slanted view a level plane
+        /// shows mostly its top, a cross of wings and body; banked a little, its side and fin show and it reads as a plane.
+        /// </summary>
+        public const float Bank = 18f;
+
         /// <summary>How far outside the view's sides a crossing starts and ends, as a share of the view's width: more than half the plane's length, so it never pops in.</summary>
         public const float Margin = 0.04f;
 
