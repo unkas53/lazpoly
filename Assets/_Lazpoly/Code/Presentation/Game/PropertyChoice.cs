@@ -149,7 +149,7 @@ namespace Lazpoly.Presentation.Game
             if (level - Level > Allowed)
             {
                 if (level >= SquareDefinition.MaxBuildingLevel)
-                    return Level == GameRules.MaxHouses ? L("Yeniden gelince") : L("4 evle yeniden gelince");
+                    return Level == GameRules.MaxHouses ? L("Yeniden gelince") : L("4 evden sonra");
                 return Laps == 0 ? L("İlk turdan sonra") : F($"Bu gelişte en çok {Allowed}");
             }
 

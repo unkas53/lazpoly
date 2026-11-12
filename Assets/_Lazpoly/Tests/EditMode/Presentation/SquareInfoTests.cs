@@ -67,6 +67,10 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("1,4K", ValueOf(built, "Otel"));
             CollectionAssert.Contains(built.Notes, "Sahibi Ayşe.");
             CollectionAssert.Contains(built.Notes, "Bu renk: 2 kare; Ayşe 2.");
+            // The card draws the owner's row and the group's chips itself, so it leaves those two notes out and keeps the rest.
+            CollectionAssert.DoesNotContain(built.CardNotes.ToList(), "Sahibi Ayşe.");
+            CollectionAssert.DoesNotContain(built.CardNotes.ToList(), "Bu renk: 2 kare; Ayşe 2.");
+            Assert.AreEqual(built.Notes.Count - 2, built.CardNotes.Count());
         }
 
 

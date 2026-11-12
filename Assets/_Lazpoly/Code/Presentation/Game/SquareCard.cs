@@ -31,6 +31,9 @@ namespace Lazpoly.Presentation.Game
         public const float PictureRadius = 12f;
         public const float RentRowHeight = 26f;
 
+        /// <summary>The most chips of a group that sit side by side with room for a holder's name on one line.</summary>
+        public const int ChipsInRow = 3;
+
         private readonly GameSceneController _controller;
         private readonly BuildingPreview _preview;
 
@@ -76,8 +79,8 @@ namespace Lazpoly.Presentation.Game
             }
 
             if (rents.Count > 0) RenderRentTable(ui, rents);
-            if (property) RenderGroup(ui, board, state, square.GroupId, squareIndex, open);
-            foreach (string note in info.Notes) ui.Label(note, UiTextStyle.Small, UiTheme.Muted);
+            if (property) RenderGroup(ui, board, state, square, squareIndex, open);
+            foreach (string note in info.CardNotes) ui.Label(note, UiTextStyle.Small, UiTheme.Muted);
             ui.Actions(null, null, L("Kapat"), close);
         }
 
@@ -186,15 +189,28 @@ namespace Lazpoly.Presentation.Game
             }
         }
 
-        /// <summary>The squares of the same colour side by side, each with its holder; this square's own chip is tinted, the others open their card.</summary>
-        private void RenderGroup(UiBuilder ui, BoardDefinition board, GameState state, int groupId, int squareIndex, Action<int> open)
+        /// <summary>How many chips go in each row for a group of <paramref name="squares"/>: all of them while they fit, else two even rows.</summary>
+        public static int ChipsPerRow(int squares) => squares <= ChipsInRow ? Math.Max(1, squares) : (squares + 1) / 2;
+
+        /// <summary>The line over a group's chips: the colour's squares, or the factory cities, which share no colour.</summary>
+        public static string GroupHeading(bool factories, int squares) =>
+            factories ? F($"Fabrika şehirleri: {squares}") : F($"Bu renk: {squares} kare");
+
+        /// <summary>
+        /// The squares of the same group, each with its holder; this square's own chip is tinted, the others open their card.
+        /// A colour's two or three sit side by side; the four factory cities take two rows, so a holder's name stays on one line.
+        /// </summary>
+        private void RenderGroup(UiBuilder ui, BoardDefinition board, GameState state, SquareDefinition square, int squareIndex, Action<int> open)
         {
-            var squares = new List<int>(GameRules.GroupSquares(board, groupId));
+            var squares = new List<int>(GameRules.GroupSquares(board, square.GroupId));
             if (squares.Count < 2) return;
-            ui.Label(F($"Bu renk: {squares.Count} kare"), UiTextStyle.Small, UiTheme.Muted).font = UiTheme.BoldFont;
-            UiBuilder row = ui.Row(6f);
-            foreach (int other in squares)
+            ui.Label(GroupHeading(square.IsResort, squares.Count), UiTextStyle.Small, UiTheme.Muted).font = UiTheme.BoldFont;
+            int perRow = ChipsPerRow(squares.Count);
+            UiBuilder row = null;
+            for (int i = 0; i < squares.Count; i++)
             {
+                if (i % perRow == 0) row = ui.Row(6f);
+                int other = squares[i];
                 bool self = other == squareIndex;
                 int pick = other;
                 UiBuilder chip = row.Tile(self || open == null ? null : (Action)(() => open(pick)), self ? Color.Lerp(UiTheme.Card, UiTheme.Accent, 0.22f) : UiTheme.Card, 8);

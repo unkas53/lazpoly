@@ -86,5 +86,15 @@ namespace Lazpoly.Presentation.UI
             float scale = CanvasScale(screenWidth, screenHeight, uiScale);
             return (width + 2f * Margin) * scale <= screenWidth && (height + 2f * Margin) * scale <= screenHeight;
         }
+
+        /// <summary>
+        /// How much a window <paramref name="height"/> tall is scaled down to stay on a screen <paramref name="screenHeight"/>
+        /// tall (both in reference pixels) with the margin above and below it; 1 when it fits as it is.
+        /// </summary>
+        public static float FitScale(float height, float screenHeight)
+        {
+            float room = screenHeight - 2f * Margin;
+            return height <= room || height <= 0f || room <= 0f ? 1f : room / height;
+        }
     }
 }

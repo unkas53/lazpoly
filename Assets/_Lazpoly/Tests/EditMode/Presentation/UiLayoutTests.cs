@@ -80,8 +80,36 @@ namespace Lazpoly.Presentation.Tests
         /// <summary>The property card: its band, the large picture (beside it the strip and the box, with a notice when the money falls short) and the big button, in reference pixels.</summary>
         private const float PropertyCardHeight = 680f;
 
-        /// <summary>The square card of a developed city: band, picture row, seven rent rows, group chips, notes and the button.</summary>
+        /// <summary>
+        /// The square card of a developed city: band, picture row, seven rent rows, group chips, a note and the button.
+        /// A card with more notes (cup, shield, strike) can grow past this; then the window is scaled to the screen.
+        /// </summary>
         private const float SquareCardHeight = 760f;
+
+        [Test]
+        public void AWindowTallerThanTheScreenIsScaledDownToFitWithItsMargins()
+        {
+            Assert.AreEqual(1f, UiLayout.FitScale(600f, 1080f));
+            Assert.AreEqual(1f, UiLayout.FitScale(1080f - 2f * UiLayout.Margin, 1080f), "a window that just fits is left alone");
+            float fit = UiLayout.FitScale(900f, 792f);
+            Assert.Less(fit, 1f);
+            Assert.That(900f * fit + 2f * UiLayout.Margin, Is.EqualTo(792f).Within(1e-3f), "the scaled window fills the screen less its margins");
+            Assert.AreEqual(1f, UiLayout.FitScale(0f, 792f), "an empty window is left alone");
+            Assert.AreEqual(1f, UiLayout.FitScale(900f, 0f), "and so is one on a layer not laid out yet");
+        }
+
+        [Test]
+        public void AGroupsChipsSitInOneRowUpToThreeAndInTwoEvenRowsBeyond()
+        {
+            Assert.AreEqual(2, SquareCard.ChipsPerRow(2));
+            Assert.AreEqual(3, SquareCard.ChipsPerRow(3));
+            Assert.AreEqual(2, SquareCard.ChipsPerRow(4), "the four factory cities take two rows of two, so a holder's name stays on one line");
+            Assert.AreEqual(3, SquareCard.ChipsPerRow(5));
+            Assert.AreEqual(1, SquareCard.ChipsPerRow(0));
+            Lazpoly.Presentation.Texts.Lang.Set(Language.Turkish);
+            Assert.AreEqual("Bu renk: 3 kare", SquareCard.GroupHeading(false, 3));
+            Assert.AreEqual("Fabrika şehirleri: 4", SquareCard.GroupHeading(true, 4), "factory cities share no colour");
+        }
 
         [Test]
         public void TheSquareCardFitsEveryScreenWithItsPictureBesideTheFacts()
@@ -105,6 +133,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.LessOrEqual(PropertyCard.HeroWidth + PropertyCard.BodyGap + tiles, inside, "the picture and the tiles overflow the window's padding");
             Assert.GreaterOrEqual(PropertyCard.HeroWidth + PropertyCard.BodyGap + tiles, inside - 8f, "and fill it");
             Assert.LessOrEqual(PropertyCard.PictureWidth + 12f, PropertyCard.TileWidth, "the picture overflows its tile");
+            Assert.GreaterOrEqual(PropertyCard.NoteHeight, 2f * PropertyCard.NoteFontSize * 1.37f, "a tile's note has room for two lines of its type");
             // Every picture on the cards keeps the upright shape the pictures are drawn in, so nothing is squeezed.
             float shape = (float)BuildingPreview.PictureWidth / BuildingPreview.PictureHeight;
             Assert.That(PropertyCard.HeroWidth / PropertyCard.HeroHeight, Is.EqualTo(shape).Within(1e-3f));

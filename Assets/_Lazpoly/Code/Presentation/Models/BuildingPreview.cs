@@ -46,8 +46,8 @@ namespace Lazpoly.Presentation.Models
         public const float TileDepth = 1.24f;
         public const float TileThickness = 0.07f;
 
-        /// <summary>The building model's size on the tile, a little behind its middle so its steps stay on the tile; a works is wider, so smaller.</summary>
-        public const float ModelScale = 1.4f;
+        /// <summary>The building model's size on the tile, a little behind its middle so its steps stay on the tile and as large as leaves sky over the hotel's roof; a works is wider, so smaller.</summary>
+        public const float ModelScale = 1.3f;
         public const float FactoryScale = 1.15f;
         public const float RowDepth = 0.05f;
 

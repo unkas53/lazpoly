@@ -44,6 +44,29 @@ namespace Lazpoly.Presentation.Texts
         public List<SquareInfoRow> Rows { get; } = new List<SquareInfoRow>();
         public List<string> Notes { get; } = new List<string>();
 
+        private readonly HashSet<string> _repeats = new HashSet<string>();
+
+        /// <summary>
+        /// The notes a card writes under its facts: all of <see cref="Notes"/> but those that only say what the card
+        /// draws itself (the owner's row, the group's chips), which are for a reader of the text alone.
+        /// </summary>
+        public IEnumerable<string> CardNotes
+        {
+            get
+            {
+                foreach (string note in Notes)
+                {
+                    if (!_repeats.Contains(note)) yield return note;
+                }
+            }
+        }
+
+        private void Repeat(string note)
+        {
+            Notes.Add(note);
+            _repeats.Add(note);
+        }
+
         public static SquareInfo Describe(BoardDefinition board, RulesConfig rules, GameState state, int squareIndex, string groupName)
         {
             SquareDefinition square = board[squareIndex];
@@ -173,14 +196,14 @@ namespace Lazpoly.Presentation.Texts
             if (cup) info.Rows.Add(new SquareInfoRow(L("Kupa"), F($"kira +%{state.CupPercent}"), live, rent: true));
 
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
-            info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
+            info.Repeat(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
             if (cup) info.Notes.Add(F($"Şampiyonlar Kupası bu şehirde: kirası %{state.CupPercent} fazla."));
             if (state.HasShield(squareIndex)) info.Notes.Add(L("Koruma kalkanı var: bu şehre yapılan ilk saldırı durur, kalkan kalkar."));
             if (state.IsStruck(squareIndex))
             {
                 info.Notes.Add(F($"Kira grevi: {EventDescriber.NameOf(state, state.StrikerOf(squareIndex))} oyuncusunun {state.StrikeTurnsLeft(squareIndex)} sırası daha bitene kadar kira alınmaz."));
             }
-            info.Notes.Add(GroupNote(board, state, square.GroupId));
+            info.Repeat(GroupNote(board, state, square.GroupId));
             if (square.IsDevelopable) info.Notes.Add(L("Sahibi şehre yeniden gelince ev kurar: başlangıçtan geçene kadar bir, sonra dörde kadar; dört evden sonra otel."));
             return info;
         }
@@ -202,7 +225,7 @@ namespace Lazpoly.Presentation.Texts
 
             info.Rows.Add(new SquareInfoRow(L("Satış değeri"), M(square.SaleValue)));
             string ownerName = owner == GameState.NoOwner ? null : state.FindPlayer(owner)?.Name;
-            info.Notes.Add(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
+            info.Repeat(ownerName == null ? L("Sahibi yok: buraya gelen satın alabilir.") : F($"Sahibi {ownerName}."));
             info.Notes.Add(L("Fabrika şehrine bina kurulmaz. Sahibinin elindeki her yeni fabrika şehriyle fabrikası büyür ve kirası iki katına çıkar: bir, iki, dört ya da sekiz kat."));
             return info;
         }

@@ -36,7 +36,7 @@ namespace Lazpoly.Presentation.Game
         public const float PictureWidth = 84f;
         public const float PictureHeight = 112f;
         public const float PictureRadius = 8f;
-        public const float NoteHeight = 30f;
+        public const float NoteHeight = 36f;
         public const int NoteFontSize = 13;
 
         /// <summary>The gaps: between the large picture and the right side, and between the strip's tiles.</summary>

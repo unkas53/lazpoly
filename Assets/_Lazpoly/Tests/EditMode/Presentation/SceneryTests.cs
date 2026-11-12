@@ -801,6 +801,7 @@ namespace Lazpoly.Presentation.Tests
                         * Mathf.Cos(BoardCameraRig.Pitch * Mathf.Deg2Rad) + BuildingPreview.RoofRise;
                     Assert.Less(roof, BuildingPreview.ViewBottom + BuildingPreview.ViewHeight, "the hotel's roof stays inside the picture");
                     Assert.Greater(BuildingPreview.TopOfLevel(BuildingPreview.Levels - 1), 0.9f, "and nearly fills its height");
+                    Assert.Less(BuildingPreview.TopOfLevel(BuildingPreview.Levels - 1), 0.95f, "with a little sky left over the roof");
                 }
 
                 Assert.Less(BuildingPreview.TopOf(0f), 0.75f, "a bare plot leaves the upper part of the picture to the sky");

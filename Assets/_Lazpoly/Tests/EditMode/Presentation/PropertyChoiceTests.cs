@@ -65,7 +65,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsNull(choice.Locked(1));
             Assert.AreEqual("İlk turdan sonra", choice.Locked(2));
             Assert.AreEqual("İlk turdan sonra", choice.Locked(4));
-            Assert.AreEqual("4 evle yeniden gelince", choice.Locked(5));
+            Assert.AreEqual("4 evden sonra", choice.Locked(5));
             Assert.IsTrue(choice.CanPick(1));
             Assert.IsFalse(choice.CanPick(2));
             Assert.AreEqual(1, choice.Clamp(7));
@@ -98,7 +98,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(4, choice.Most);
             Assert.AreEqual(260, choice.CostOf(4));
             Assert.IsNull(choice.Locked(4));
-            Assert.AreEqual("4 evle yeniden gelince", choice.Locked(5), "the hotel waits for a later visit");
+            Assert.AreEqual("4 evden sonra", choice.Locked(5), "the hotel waits for a later visit");
         }
 
         [Test]
@@ -141,7 +141,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(0, choice.CostOf(2), "staying put costs nothing");
             Assert.AreEqual(100, choice.CostOf(4));
             Assert.AreEqual(3, choice.DefaultPick);
-            Assert.AreEqual("4 evle yeniden gelince", choice.Locked(5));
+            Assert.AreEqual("4 evden sonra", choice.Locked(5));
         }
 
         [Test]
