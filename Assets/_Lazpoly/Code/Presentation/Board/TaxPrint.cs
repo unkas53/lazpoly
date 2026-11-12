@@ -26,15 +26,18 @@ namespace Lazpoly.Presentation.Tabletop
         public const float BillRound = 0.05f;
         public const float Outline = 0.035f;
 
-        /// <summary>The bill's room for the "%" (inside its outline, above the written lines), in page units.</summary>
-        public static readonly Vector2 MarkRoom = new Vector2(0.42f, 0.40f);
+        /// <summary>
+        /// The bill's room for the "%" (inside its outline, above the written lines), in page units. A label is fitted by
+        /// its line's height, of which the sign itself takes about half, so the room is taller than the sign will be.
+        /// </summary>
+        public static readonly Vector2 MarkRoom = new Vector2(0.42f, 0.50f);
 
         /// <summary>The two written lines under the "%": how thick, how high on the page, and from where to where (the second stops short).</summary>
         public const float LineThickness = 0.03f;
-        public const float FirstLine = -0.25f;
-        public const float SecondLine = -0.33f;
+        public const float FirstLine = -0.29f;
+        public const float SecondLine = -0.37f;
         public const float LineFrom = -0.19f;
-        public const float FirstLineTo = 0.19f;
+        public const float FirstLineTo = 0.15f;
         public const float SecondLineTo = 0.03f;
 
         /// <summary>The coins, seen from the side, one on another at the bill's lower right: each one's size, the deep edge round it, and where their middles are.</summary>

@@ -161,7 +161,9 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsFalse(TaxPrint.IsDeep(TaxPrint.FirstLineTo - 0.03f, TaxPrint.SecondLine), "which stops short");
             Assert.Less(TaxPrint.MarkRoom.x, 2f * (TaxPrint.BillHalf - TaxPrint.Outline));
             Assert.Less(TaxPrint.MarkRoom.y / 2f, TaxPrint.BillTop - TaxPrint.Outline, "the \"%\" stays under the bill's top edge");
-            Assert.Greater(-TaxPrint.MarkRoom.y / 2f, TaxPrint.FirstLine + TaxPrint.LineThickness, "and over the writing");
+            Assert.Greater(-TaxPrint.MarkRoom.y / 2f, TaxPrint.FirstLine + TaxPrint.LineThickness / 2f, "and over the writing");
+            Assert.Greater(TaxPrint.SecondLine - TaxPrint.LineThickness / 2f, TaxPrint.BillBottom + TaxPrint.Tooth + 1.5f * TaxPrint.Outline, "the writing stays inside the outline at the torn edge");
+            Assert.Less(TaxPrint.FirstLineTo + TaxPrint.LineThickness, TaxPrint.Coins[2].x - TaxPrint.CoinSize.x / 2f - TaxPrint.CoinEdge, "and clear of the coins");
             float tooth = 2f * TaxPrint.BillHalf / TaxPrint.Teeth;
             Assert.AreEqual(TaxPrint.BillBottom + TaxPrint.Tooth, TaxPrint.TornEdge(-TaxPrint.BillHalf + tooth), 1e-4f, "between two teeth the edge is high");
             Assert.AreEqual(TaxPrint.BillBottom - TaxPrint.Tooth, TaxPrint.TornEdge(-TaxPrint.BillHalf + tooth / 2f), 1e-4f, "a tooth's point is low");
