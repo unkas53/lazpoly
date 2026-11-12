@@ -27,6 +27,9 @@ namespace Lazpoly.Presentation.UI
         /// <summary>Raised when any button or toggle made by a builder is pressed; the audio player clicks on it.</summary>
         public static event Action Pressed;
 
+        /// <summary>Tells the listeners of <see cref="Pressed"/> that something built by hand was pressed (a plate that is its own tick box), so it clicks like the rest.</summary>
+        public static void Press() => Pressed?.Invoke();
+
         /// <summary>Removes everything this builder added.</summary>
         public void Clear()
         {

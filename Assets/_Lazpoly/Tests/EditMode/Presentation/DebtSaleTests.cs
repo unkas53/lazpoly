@@ -96,6 +96,40 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void AutoPickTicksWhatTheAutomaticSaleWouldSellAndSellsNothing()
+        {
+            // The owner's wish (2026-11-12): "Otomatik Seç" in place of "Otomatik Satış"; selling by itself only when time runs out.
+            GameEngine engine = Owing(100, out int me);
+            var sale = new DebtSale();
+            sale.Toggle(Cheap);
+            IReadOnlyList<GameCommand> plan = DebtSettlement.Plan(engine.Board, engine.Rules, engine.State, me);
+            IReadOnlyList<int> suggested = DebtSettlement.SquaresSold(plan);
+            Assert.Greater(suggested.Count, 0);
+            int version = sale.Version;
+            sale.Pick(suggested);
+            CollectionAssert.AreEqual(suggested, sale.Picked, "exactly the plan's towns, whatever was ticked before");
+            Assert.Greater(sale.Version, version, "the screen redraws");
+            Assert.IsNotNull(engine.State.Debt, "nothing is sold or paid by picking");
+            foreach (int town in new[] { Cheap, Dear, Solo }) Assert.AreEqual(me, engine.State.GetOwner(town));
+
+            // "Sat" then sends what the automatic sale would have sent.
+            IReadOnlyList<GameCommand> commands = sale.Commands(engine.Board, engine.Rules, engine.State, me);
+            Assert.AreEqual(plan.Count, commands.Count);
+            Assert.IsInstanceOf<PayDebtCommand>(commands[commands.Count - 1], "the suggested towns cover the debt");
+            Assert.GreaterOrEqual(DebtSale.Left(10, sale.Proceeds(engine.Board, engine.Rules, engine.State, me), 100), 0);
+
+            Assert.AreEqual(-30, DebtSale.Left(10, 60, 100), "what is still missing");
+            Assert.AreEqual(20, DebtSale.Left(10, 110, 100), "what is left after paying");
+            Assert.AreEqual("+120K", DebtSaleView.TagText(120000));
+            Assert.Throws<System.ArgumentNullException>(() => sale.Pick(null));
+
+            // When the time runs out the sale still happens by itself.
+            IReadOnlyList<GameCommand> timedOut = Lazpoly.App.Session.TimeoutPolicy.CommandsFor(engine.Board, engine.Rules, engine.State, me);
+            Assert.AreEqual(plan.Count, timedOut.Count);
+            Assert.IsInstanceOf<SellPropertyCommand>(timedOut[0]);
+        }
+
+        [Test]
         public void NothingIsSentForTownsThatAreNotTheirsOrWithoutADebt()
         {
             GameEngine engine = Owing(100, out int me);

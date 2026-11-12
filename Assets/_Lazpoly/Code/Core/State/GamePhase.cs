@@ -40,5 +40,11 @@ namespace Lazpoly.Core.State
 
         /// <summary>The current player paid rent on a rival's town and may take it over at 150% of its worth, or move on (Faz 31).</summary>
         AwaitingTakeoverDecision = 13,
+
+        /// <summary>
+        /// The current player drew a card to keep and decides on the spot (the owner's wish, 2026-11-12): they use it at
+        /// once when it may be used here, or put it in their hand.
+        /// </summary>
+        AwaitingCardUse = 14,
     }
 }

@@ -264,6 +264,58 @@ namespace Lazpoly.PlayTests
         }
 
         [UnityTest]
+        public IEnumerator ACardJustDrawnIsUsedFromItsOwnButton()
+        {
+            // The owner's wish (2026-11-12): a card that may be kept comes with "Kullan" and "Sakla" on it. A saved game
+            // where the player on turn has just drawn the lookout.
+            BoardData data = BoardDataLoader.LoadFromResources();
+            LocalGame game = LocalGame.Create(data.Board, data.Rules, LocalGameSetup.DefaultSeats(2), new Dictionary<int, AiDifficulty>(), 7UL);
+            SavedGame save = game.Save(data.Checksum);
+            save.Table = save.Table.WithTurnSeconds(0); // No clock: the card is not kept for them while the test looks.
+            GameStateSnapshot snapshot = save.Snapshot;
+            int drawer = snapshot.Players[snapshot.CurrentPlayerIndex].Id;
+            int lookout = -1;
+            for (int i = 0; i < data.Board.Cards.Count && lookout < 0; i++)
+            {
+                if (data.Board.Cards[i].Kind == CardKind.Lookout) lookout = i;
+            }
+
+            Assert.GreaterOrEqual(lookout, 0, "The deck has no lookout.");
+            snapshot.Players[snapshot.CurrentPlayerIndex].Hand.Add(lookout);
+            snapshot.TurnNumber = 3;
+            snapshot.Phase = GamePhase.AwaitingCardUse;
+            LocalGameSetup.SetResume(save);
+
+            SceneManager.LoadScene("Game");
+            yield return null;
+            yield return null;
+            var controller = Object.FindAnyObjectByType<GameSceneController>();
+            var hud = controller.GetComponent<GameHud>();
+            while (controller.IsBusy) yield return null;
+            yield return null;
+            yield return null;
+            Assert.AreEqual(GamePhase.AwaitingCardUse, controller.Session.State.Phase);
+
+            CenterNotice card = hud.DrawnCard;
+            Assert.IsTrue(card.Shown, "The drawn card is not up.");
+            Assert.IsTrue(card.Interactive, "The drawn card takes no clicks.");
+            Assert.IsNotNull(Find(card.Rect, "Sakla"), "Keeping is not offered.");
+            Assert.IsNotNull(Find(card.Rect, "Kullan"), "Using is not offered.");
+            AssertMouseReaches("Kullan");
+            AssertMouseReaches("Sakla");
+            Assert.IsTrue(Press(card.Rect, "Kullan"));
+            Assert.IsNull(controller.LastRejection);
+            while (controller.IsBusy) yield return null;
+            yield return null;
+
+            GameState state = controller.Session.State;
+            Assert.AreNotEqual(GamePhase.AwaitingCardUse, state.Phase, "The card still waits.");
+            Assert.IsTrue(state.FindPlayer(drawer).HasLookout, "The card was not used.");
+            Assert.AreEqual(0, state.FindPlayer(drawer).Hand.Count, "The used card stayed in the hand.");
+            Assert.IsFalse(card.Interactive, "The card still asks.");
+        }
+
+        [UnityTest]
         public IEnumerator APlayerWhoCannotPayTicksTownsOnTheBoardAndSellsThem()
         {
             // A saved game where the first player owes the second 100 in rent with 10 in hand and three towns.
@@ -314,8 +366,25 @@ namespace Lazpoly.PlayTests
                 Assert.IsTrue(tag.gameObject.activeInHierarchy, $"Town {town}'s tag is not on screen.");
             }
 
-            // Tick towns on their tags until they cover the debt, then sell.
+            // "Otomatik Seç" only ticks the towns the automatic sale would sell (the owner's wish, 2026-11-12): nothing
+            // is sold until "Sat" is pressed.
             GameState state = controller.Session.State;
+            Assert.IsNull(Find(hud.transform, "Otomatik Satış"), "Selling by itself is left to the clock.");
+            Assert.IsTrue(Press(hud.transform, "Otomatik Seç"));
+            yield return null;
+            Assert.Greater(sale.Sale.Picked.Count, 0, "Nothing was ticked.");
+            Assert.AreEqual(GamePhase.AwaitingDebtPayment, controller.Session.State.Phase, "Picking sold or paid something.");
+            foreach (int town in towns) Assert.AreEqual(debtor, controller.Session.State.GetOwner(town), $"Town {town} was sold by picking.");
+            foreach (int town in new List<int>(sale.Sale.Picked))
+            {
+                Assert.IsTrue(sale.TagOf(town).GetComponentInChildren<Toggle>().isOn, $"Town {town}'s tick does not show.");
+                sale.Toggle(town);
+            }
+
+            yield return null;
+            Assert.AreEqual(0, sale.Sale.Picked.Count);
+
+            // Tick towns on their tags until they cover the debt, then sell.
             var ticked = new List<int>();
             int gain = 0;
             foreach (int town in towns)

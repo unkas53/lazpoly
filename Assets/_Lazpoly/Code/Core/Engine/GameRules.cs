@@ -132,6 +132,9 @@ namespace Lazpoly.Core.Engine
                 case PlayCardCommand c:
                     return CanPlayCard(board, state, player, c.Card, c.Target, c.Option);
 
+                case KeepCardCommand _:
+                    return OnTurn(state, player, GamePhase.AwaitingCardUse);
+
                 case DiscardCardCommand c:
                 {
                     RejectionReason turn = OnTurn(state, player, GamePhase.AwaitingCardDiscard);
@@ -168,6 +171,24 @@ namespace Lazpoly.Core.Engine
 
             return -1;
         }
+
+        /// <summary>
+        /// The card the player on turn has just drawn and decides on (<see cref="GamePhase.AwaitingCardUse"/>): the newest
+        /// card of their hand; -1 in any other phase.
+        /// </summary>
+        public static int DrawnCard(GameState state)
+        {
+            if (state == null || state.Phase != GamePhase.AwaitingCardUse) return -1;
+            IReadOnlyList<int> hand = state.CurrentPlayer.Hand;
+            return hand.Count == 0 ? -1 : hand[hand.Count - 1];
+        }
+
+        /// <summary>
+        /// Whether a card of <paramref name="kind"/> can ever be used as it is drawn: all but the three that answer a
+        /// moment of their own (the lawyer in jail, the rent shield when rent is due, the chauffeur in place of the roll).
+        /// </summary>
+        public static bool UsedAtDraw(CardKind kind) =>
+            kind != CardKind.Lawyer && kind != CardKind.RentShield && kind != CardKind.Chauffeur;
 
         /// <summary>The square of the board's champions' cup, or -1.</summary>
         public static int CupCorner(BoardDefinition board)
@@ -214,6 +235,8 @@ namespace Lazpoly.Core.Engine
             CardDefinition definition = board.Cards[card];
             bool beforeRoll = state.Phase == GamePhase.WaitingForRoll && state.LastDie1 == 0 && !state.RodeThisTurn;
             bool inJail = state.Phase == GamePhase.AwaitingJailDecision;
+            // As it is drawn, only the drawn card itself may be used (the owner's wish, 2026-11-12).
+            bool atDraw = state.Phase == GamePhase.AwaitingCardUse && card == DrawnCard(state);
             switch (definition.Kind)
             {
                 case CardKind.RentShield:
@@ -223,11 +246,13 @@ namespace Lazpoly.Core.Engine
                     if (!inJail) return RejectionReason.WrongPhase;
                     break;
                 case CardKind.Chauffeur:
-                case CardKind.Lookout:
                     if (!beforeRoll) return RejectionReason.WrongPhase;
                     break;
+                case CardKind.Lookout:
+                    if (!beforeRoll && !atDraw) return RejectionReason.WrongPhase;
+                    break;
                 default:
-                    if (!beforeRoll && !inJail) return RejectionReason.WrongPhase;
+                    if (!beforeRoll && !inJail && !atDraw) return RejectionReason.WrongPhase;
                     break;
             }
 

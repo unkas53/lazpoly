@@ -36,6 +36,9 @@ namespace Lazpoly.Core.Tests
                     var ride = new TravelCommand(me, dice.NextInt(0, board.Count));
                     return dice.NextInt(0, 2) == 0 && Legal(engine, ride) ? ride : (GameCommand)new DeclineTravelCommand(me);
 
+                case GamePhase.AwaitingCardUse:
+                    return new KeepCardCommand(me);
+
                 case GamePhase.AwaitingDiceChoice:
                     return new ChooseDiceCommand(me, dice.NextInt(0, 2));
 

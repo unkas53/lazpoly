@@ -15,12 +15,12 @@ namespace Lazpoly.Net.Messages
     public static class MessageCodec
     {
         /// <summary>
-        /// 23: a ride from the bus station is its own kind of move (the bus carries the pawn). 21: the strategic cards (Faz 30): playing, letting go and the rent shield's choice; cards kept in hand, shields,
+        /// 24: a card drawn to keep is used at once or kept (its phase and the keep command). 23: a ride from the bus station is its own kind of move (the bus carries the pawn). 21: the strategic cards (Faz 30): playing, letting go and the rent shield's choice; cards kept in hand, shields,
         /// strikes, funds and the waiting rent in the state. 20: the cup's raise grows by its step up to a limit (Faz 29). 15: a build or buy command carries how many levels go up at once. 14: the champions' cup (its commands, event and the cup's town, raise and picks in the state). 13: the jail (its commands, event and each player's turns to wait). 12: every player's character travels with the game state. 11: a ride walks (passing Start pays) and may
         /// not end on another player's town. 10: the engine
         /// ends an insolvent player's game at once and the turn ends by itself. Mixed builds must not share a table.
         /// </summary>
-        public const int ProtocolVersion = 23;
+        public const int ProtocolVersion = 24;
 
         private enum CommandTag : byte
         {
@@ -33,6 +33,7 @@ namespace Lazpoly.Net.Messages
             HostCup = 22, DeclineCup = 23,
             PlayCard = 24, DiscardCard = 25, PayRent = 26,
             TakeOver = 27, DeclineTakeover = 28,
+            KeepCard = 29,
         }
 
         private enum EventTag : byte
@@ -198,6 +199,7 @@ namespace Lazpoly.Net.Messages
                 case DeclineCupCommand _: w.WriteByte((byte)CommandTag.DeclineCup); break;
                 case PlayCardCommand _: w.WriteByte((byte)CommandTag.PlayCard); break;
                 case DiscardCardCommand _: w.WriteByte((byte)CommandTag.DiscardCard); break;
+                case KeepCardCommand _: w.WriteByte((byte)CommandTag.KeepCard); break;
                 case PayRentCommand _: w.WriteByte((byte)CommandTag.PayRent); break;
                 case TakeOverCommand _: w.WriteByte((byte)CommandTag.TakeOver); break;
                 case DeclineTakeoverCommand _: w.WriteByte((byte)CommandTag.DeclineTakeover); break;
@@ -287,6 +289,7 @@ namespace Lazpoly.Net.Messages
                 case CommandTag.DeclineCup: return new DeclineCupCommand(playerId);
                 case CommandTag.PlayCard: return new PlayCardCommand(playerId, r.ReadInt(), r.ReadInt(), r.ReadInt());
                 case CommandTag.DiscardCard: return new DiscardCardCommand(playerId, r.ReadInt());
+                case CommandTag.KeepCard: return new KeepCardCommand(playerId);
                 case CommandTag.PayRent: return new PayRentCommand(playerId);
                 case CommandTag.TakeOver: return new TakeOverCommand(playerId);
                 case CommandTag.DeclineTakeover: return new DeclineTakeoverCommand(playerId);

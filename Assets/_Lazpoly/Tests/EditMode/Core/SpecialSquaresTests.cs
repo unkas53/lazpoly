@@ -380,6 +380,7 @@ namespace Lazpoly.Core.Tests
             GameEngine engine = NewGame(Board(CardDefinition.Collect("Prize", 1), CardDefinition.Lookout("Binoculars")), 1, 3, 1, 1, 2);
             Accept(engine, new RollDiceCommand(Alice));
             Assert.IsFalse(Player(engine, Alice).HasLookout, "kept in hand since Faz 30");
+            Accept(engine, new KeepCardCommand(Alice));
             CollectionAssert.AreEqual(new[] { 1 }, Player(engine, Alice).Hand);
             Accept(engine, new EndTurnCommand(Alice));
             Accept(engine, new RollDiceCommand(Bob));

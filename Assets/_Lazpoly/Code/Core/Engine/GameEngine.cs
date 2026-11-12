@@ -154,7 +154,16 @@ namespace Lazpoly.Core.Engine
                     RollInJail(player);
                     break;
                 case PlayCardCommand c:
+                {
+                    // A card used as it is drawn ends the move it was drawn on; from the hand the turn goes on where it was.
+                    bool drawn = State.Phase == GamePhase.AwaitingCardUse;
                     PlayCard(player, c);
+                    if (drawn) FinishMove();
+                    break;
+                }
+                case KeepCardCommand _:
+                    if (player.Hand.Count > GameRules.HandLimit) Emit(new PhaseChangedEvent(GamePhase.AwaitingCardDiscard));
+                    else FinishMove();
                     break;
                 case DiscardCardCommand c:
                     Emit(new CardDiscardedEvent(player.Id, c.Card));
@@ -408,10 +417,10 @@ namespace Lazpoly.Core.Engine
             CardDefinition card = Board.Cards[index];
             if (card.IsKept)
             {
-                // Kept for later; a hand past its limit lets one card go before the move goes on.
+                // The player decides on the spot: use it now, or keep it for later (the owner's wish, 2026-11-12). A hand
+                // past its limit lets one card go once the card is kept.
                 Emit(new CardDrawnEvent(player.Id, index, kept: true));
-                if (player.Hand.Count <= GameRules.HandLimit) return false;
-                Emit(new PhaseChangedEvent(GamePhase.AwaitingCardDiscard));
+                Emit(new PhaseChangedEvent(GamePhase.AwaitingCardUse));
                 return true;
             }
 

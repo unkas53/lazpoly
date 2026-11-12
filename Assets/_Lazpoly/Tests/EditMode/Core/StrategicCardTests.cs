@@ -133,7 +133,14 @@ namespace Lazpoly.Core.Tests
 
             Assert.IsTrue(result.Events.OfType<CardDrawnEvent>().Single().Kept);
             CollectionAssert.AreEqual(new[] { Shield }, Player(engine, Alice).Hand);
-            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "nothing happens now");
+            Assert.AreEqual(GamePhase.AwaitingCardUse, engine.State.Phase, "the player decides on the spot: use it or keep it");
+            Assert.AreEqual(Shield, GameRules.DrawnCard(engine.State));
+            Assert.AreEqual(RejectionReason.NotYourTurn, Reason(engine, new KeepCardCommand(Bob)));
+            Accept(engine, new KeepCardCommand(Alice));
+            CollectionAssert.AreEqual(new[] { Shield }, Player(engine, Alice).Hand);
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "kept: nothing happens now");
+            Assert.AreEqual(-1, GameRules.DrawnCard(engine.State));
+            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new KeepCardCommand(Alice)));
             CollectionAssert.DoesNotContain(GameRules.DrawableCards(engine.Board, engine.State), Shield, "out of the deck while kept");
             Assert.AreEqual(engine.Board.Cards.Count - 1, GameRules.DrawableCards(engine.Board, engine.State).Count);
         }
@@ -148,6 +155,9 @@ namespace Lazpoly.Core.Tests
             }, 1, 2, 6);
 
             Accept(engine, new RollDiceCommand(Alice));
+            Assert.AreEqual(GamePhase.AwaitingCardUse, engine.State.Phase);
+            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new DiscardCardCommand(Alice, Chauffeur)), "first the drawn card: use or keep");
+            Accept(engine, new KeepCardCommand(Alice));
             Assert.AreEqual(GamePhase.AwaitingCardDiscard, engine.State.Phase);
             Assert.AreEqual(GameRules.HandLimit + 1, Player(engine, Alice).Hand.Count);
             Assert.AreEqual(Shield, Player(engine, Alice).Hand.Last(), "the drawable deck skips the four held cards");
@@ -157,6 +167,118 @@ namespace Lazpoly.Core.Tests
             CollectionAssert.AreEqual(new[] { Lawyer, Fund, Audit, Shield }, Player(engine, Alice).Hand);
             Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
             CollectionAssert.Contains(GameRules.DrawableCards(engine.Board, engine.State), Chauffeur, "back in the deck");
+        }
+
+        // ---- Use it or keep it, as it is drawn (the owner's wish, 2026-11-12) ----
+
+        [Test]
+        public void ADrawnCardCanBeUsedOnTheSpot()
+        {
+            GameEngine engine = Game(s =>
+            {
+                Seat(s, Alice).Position = 0;
+                s.Owners[B1] = Bob;
+            }, 1, 2, ForceSale);
+            Accept(engine, new RollDiceCommand(Alice));
+            Assert.AreEqual(GamePhase.AwaitingCardUse, engine.State.Phase);
+            CollectionAssert.AreEqual(new[] { B1 }, GameRules.CardTargets(engine.Board, engine.State, Player(engine, Alice), ForceSale));
+            Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, ForceSale, A1)), "nobody's town");
+
+            int before = Player(engine, Bob).Money;
+            CommandResult used = Accept(engine, new PlayCardCommand(Alice, ForceSale, B1));
+            Assert.AreEqual(ForceSale, used.Events.OfType<CardPlayedEvent>().Single().CardIndex);
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(B1));
+            Assert.Greater(Player(engine, Bob).Money, before, "the town's worth went to its owner");
+            Assert.AreEqual(0, Player(engine, Alice).Hand.Count, "used, so it never stayed in the hand");
+            Assert.IsTrue(engine.State.CardPlayedThisTurn, "it is the turn's one card");
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "the move it was drawn on is over");
+            CollectionAssert.Contains(GameRules.DrawableCards(engine.Board, engine.State), ForceSale, "back in the deck");
+        }
+
+        [Test]
+        public void OnlyTheDrawnCardAndOnlyOneCardATurn()
+        {
+            GameEngine engine = Game(s =>
+            {
+                Seat(s, Alice).Position = 0;
+                Seat(s, Alice).Hand.Add(Audit);
+            }, 1, 2, Fund);
+            Accept(engine, new RollDiceCommand(Alice));
+            Assert.AreEqual(Fund, GameRules.DrawnCard(engine.State), "the drawable deck skips the held audit");
+            Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new PlayCardCommand(Alice, Audit, Bob)), "an older card waits for the start of a turn");
+            Accept(engine, new PlayCardCommand(Alice, Fund));
+            Assert.AreEqual(1030, Player(engine, Alice).Money, "the fund's cash");
+            CollectionAssert.AreEqual(new[] { Audit }, Player(engine, Alice).Hand);
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase);
+
+            // A card played before the roll was the turn's card: one drawn after it can only be kept.
+            GameEngine played = Game(s =>
+            {
+                Seat(s, Alice).Position = 0;
+                Seat(s, Alice).Hand.Add(Fund);
+                s.Owners[A1] = Alice;
+            }, 1, 2, Shield);
+            Accept(played, new PlayCardCommand(Alice, Fund));
+            Accept(played, new RollDiceCommand(Alice));
+            Assert.AreEqual(Shield, GameRules.DrawnCard(played.State));
+            Assert.AreEqual(RejectionReason.CardAlreadyPlayed, Reason(played, new PlayCardCommand(Alice, Shield, A1)));
+            Accept(played, new KeepCardCommand(Alice));
+            CollectionAssert.AreEqual(new[] { Shield }, Player(played, Alice).Hand);
+        }
+
+        [Test]
+        public void CardsWithAMomentOfTheirOwnCanOnlyBeKept()
+        {
+            foreach (int card in new[] { Lawyer, RentShield, Chauffeur })
+            {
+                GameEngine engine = Game(s => Seat(s, Alice).Position = 0, 1, 2, card);
+                Accept(engine, new RollDiceCommand(Alice));
+                Assert.AreEqual(card, GameRules.DrawnCard(engine.State));
+                Assert.IsFalse(GameRules.UsedAtDraw(engine.Board.Cards[card].Kind));
+                Assert.AreEqual(RejectionReason.WrongPhase, Reason(engine, new PlayCardCommand(Alice, card, card == Chauffeur ? A1 : -1)));
+                Assert.AreEqual(0, GameRules.CardTargets(engine.Board, engine.State, Player(engine, Alice), card).Count);
+                Accept(engine, new KeepCardCommand(Alice));
+                CollectionAssert.AreEqual(new[] { card }, Player(engine, Alice).Hand);
+            }
+
+            GameEngine spy = Game(s => Seat(s, Alice).Position = 0, 1, 2, Spyglass);
+            Accept(spy, new RollDiceCommand(Alice));
+            Assert.IsTrue(GameRules.UsedAtDraw(CardKind.Lookout));
+            Accept(spy, new PlayCardCommand(Alice, Spyglass));
+            Assert.IsTrue(Player(spy, Alice).HasLookout, "the lookout waits for the next roll");
+            Assert.AreEqual(GamePhase.TurnEnd, spy.State.Phase);
+        }
+
+        [Test]
+        public void ADoubleRollsAgainWhetherTheCardIsUsedOrKept()
+        {
+            foreach (bool use in new[] { true, false })
+            {
+                GameEngine engine = Game(s => Seat(s, Alice).Position = A1, 1, 1, Fund);
+                Accept(engine, new RollDiceCommand(Alice));
+                Assert.AreEqual(GamePhase.AwaitingCardUse, engine.State.Phase);
+                Accept(engine, use ? (GameCommand)new PlayCardCommand(Alice, Fund, -1, 1) : new KeepCardCommand(Alice));
+                Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "the double's second roll");
+                Assert.AreEqual(use ? 100 : 0, Player(engine, Alice).FundPayout);
+                Assert.AreEqual(use ? 960 : 1000, Player(engine, Alice).Money);
+            }
+        }
+
+        [Test]
+        public void AFifthCardUsedOnTheSpotLetsNothingGo()
+        {
+            GameEngine engine = Game(s =>
+            {
+                Seat(s, Alice).Position = 0;
+                Seat(s, Alice).Hand.AddRange(new[] { Lawyer, Chauffeur, Fund, Audit });
+                s.Owners[A1] = Alice;
+            }, 1, 2, 6);
+            Accept(engine, new RollDiceCommand(Alice));
+            Assert.AreEqual(Shield, GameRules.DrawnCard(engine.State));
+            Accept(engine, new PlayCardCommand(Alice, Shield, A1));
+            Assert.IsTrue(engine.State.HasShield(A1));
+            CollectionAssert.AreEqual(new[] { Lawyer, Chauffeur, Fund, Audit }, Player(engine, Alice).Hand);
+            Assert.AreEqual(GamePhase.TurnEnd, engine.State.Phase, "the hand is at its limit again: nothing to let go");
         }
 
         [Test]

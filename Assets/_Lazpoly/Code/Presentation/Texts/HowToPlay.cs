@@ -47,7 +47,7 @@ namespace Lazpoly.Presentation.Texts
             if (HasType(board, SquareType.Card)) sections.Add(Section(CardSquaresTitle(board), L("Bu kareye gelen desteden rastgele bir kart çeker: para kazanabilir, ceza ödeyebilir, başka bir kareye gidebilir ya da dürbün bulabilir.")));
             if (HasKeptCards(board))
             {
-                sections.Add(Section(L("Strateji kartları"), F($"Avukat, Kira Kalkanı, Koruma, İmarsız Yapı gibi kartlar ele alınır; herkes kimin elinde kaç kart olduğunu görür. Elde en çok {GameRules.HandLimit} kart durur, fazlası çekilince biri bırakılır. Her sırada yalnızca bir kart, zar atmadan önce oynanır (Kira Kalkanı kira gelince). Saldırı kartları rakip şehirleri vurur; Koruma kalkanı ilk saldırıyı durdurup kalkar. Kartlar takas edilmez.")));
+                sections.Add(Section(L("Strateji kartları"), F($"Avukat, Kira Kalkanı, Koruma, İmarsız Yapı gibi kartlar çekilince hemen kullanılır ya da saklanır; herkes kimin elinde kaç kart olduğunu görür. Elde en çok {GameRules.HandLimit} kart durur, fazlası çekilince biri bırakılır. Her sırada yalnızca bir kart oynanır: çekildiği anda ya da zar atmadan önce (Kira Kalkanı kira gelince). Saldırı kartları rakip şehirleri vurur; Koruma kalkanı ilk saldırıyı durdurup kalkar. Kartlar takas edilmez.")));
             }
 
             if (board.HasPot) sections.Add(Section(L("Çay Molası"), L("Vergiler ve kart cezaları çay kumbarasında birikir. Çay Molası'na gelen kumbaradaki her şeyi alır.")));

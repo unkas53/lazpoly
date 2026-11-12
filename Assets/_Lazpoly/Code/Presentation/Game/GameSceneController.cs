@@ -44,6 +44,15 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Pause after a card is drawn so it can be read before it acts.</summary>
         public const float CardReadSeconds = 1.6f;
 
+        /// <summary>
+        /// How long a drawn card stays up in the middle. The table waits as long, so the card's money moves only once
+        /// the card has closed (the owner's wish, 2026-11-12).
+        /// </summary>
+        public const float CardSeconds = CardReadSeconds + 1.6f;
+
+        /// <summary>How long the table waits on a card a person here drew to keep: its buttons ("Kullan", "Sakla") come up as it has swelled in.</summary>
+        public const float CardOfferSeconds = 0.35f;
+
         /// <summary>Pause after the dice settle, so the result is read before the pawn moves.</summary>
         public const float RollReadSeconds = 0.55f;
 
@@ -251,8 +260,55 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Where each pawn last stopped on the table, as shown (the state may already be further on).</summary>
         private readonly Dictionary<int, int> _shownSquares = new Dictionary<int, int>();
 
-        /// <summary>Real time the shown card was drawn, so the HUD can fade it.</summary>
+        /// <summary>The game time the shown card was drawn, so the HUD can fade it.</summary>
         public float ShownCardTime { get; private set; }
+
+        /// <summary>What the shown card pays its player (over zero) or costs them (under zero), written on the card; 0 for a card that moves no money.</summary>
+        public int ShownCardMoney { get; private set; }
+
+        /// <summary>Takes the drawn card down at once: the person it asked has answered.</summary>
+        public void DismissCard()
+        {
+            if (ShownCard < 0) return;
+            ShownCard = -1;
+            Revision++;
+        }
+
+        /// <summary>
+        /// What a card just shown moves for <paramref name="playerId"/>, from the events that follow it: the money it
+        /// pays or takes at once, or the debt it opens when the player cannot pay; only a drawn card's own money when
+        /// <paramref name="cardOnly"/>. The count stops where the card's own effect ends: at a move, a roll, another
+        /// card or the next decision.
+        /// </summary>
+        public static int CardMoney(int playerId, IEnumerable<GameEvent> next, bool cardOnly)
+        {
+            int sum = 0;
+            if (next == null) return sum;
+            foreach (GameEvent after in next)
+            {
+                switch (after)
+                {
+                    case MoneyChangedEvent moved when moved.PlayerId == playerId && (!cardOnly || moved.Reason == MoneyReason.Card):
+                        sum += moved.Delta;
+                        break;
+                    case DebtIncurredEvent owed when owed.PlayerId == playerId && (!cardOnly || owed.Reason == MoneyReason.Card):
+                        sum -= owed.Amount;
+                        break;
+                    case PlayerMovedEvent _:
+                    case DiceRolledEvent _:
+                    case CardDrawnEvent _:
+                    case CardPlayedEvent _:
+                    case PhaseChangedEvent _:
+                    case TurnStartedEvent _:
+                        return sum;
+                }
+            }
+
+            return sum;
+        }
+
+        /// <summary>Whether a person at this machine plays <paramref name="playerId"/> themselves.</summary>
+        private bool PersonHere(int playerId) => _session.CanControl(playerId) && !_session.IsAiPlaying(playerId);
 
         /// <summary>The last trade that ended, how it ended and the game time it did, for the result card in the middle; null before any.</summary>
         public TradeOffer ShownTrade { get; private set; }
@@ -268,6 +324,9 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>Whether the card shown in <see cref="ShownPlay"/> was an attack a protection card's shield stopped.</summary>
         public bool ShownPlayBlocked { get; private set; }
+
+        /// <summary>What the card shown in <see cref="ShownPlay"/> pays or costs its player, written on the card; 0 when it moves none of their money.</summary>
+        public int ShownPlayMoney { get; private set; }
 
         /// <summary>The last takeover of a rival's town (Faz 31), for its card in the middle; the square is -1 before any.</summary>
         public int ShownTakeoverSquare { get; private set; } = -1;
@@ -1241,12 +1300,22 @@ namespace Lazpoly.Presentation.Game
                 ShownCard = drawn;
                 ShownCardPlayer = person;
                 ShownCardSquare = deckSquare;
-                ShownCardTime = Time.unscaledTime;
+                ShownCardTime = Time.time;
+                ShownCardMoney = kind == CardKind.Collect ? _session.Board.Cards[drawn].Amount : 0;
                 Revision++;
                 yield return ScreenTour.Until(() => false, 0.4f);
                 yield return ScreenTour.Take(kind == CardKind.Collect ? "sans-karti" : "sans-strateji-karti");
                 ShownCard = -1;
                 Revision++;
+            }
+
+            // A card just drawn that may be kept, with its two buttons (the owner's wish, 2026-11-12).
+            if (demolish >= 0)
+            {
+                hud.StageCardOffer(demolish);
+                yield return ScreenTour.Until(() => false, 0.4f);
+                yield return ScreenTour.Take("kart-kullan-sakla");
+                hud.StageCardOffer(CardHand.NoCard);
             }
 
             int rival = GameState.NoOwner;
@@ -1378,6 +1447,15 @@ namespace Lazpoly.Presentation.Game
             // The screenshot is written over the next frame; quitting at once would lose it.
             yield return null;
             yield return null;
+            if (PerfRun.InDebt && _hud != null && _hud.DebtSale != null && _hud.DebtSale.Shown)
+            {
+                // The sale screen has no place in the tour, so its pictures are kept here: as it opens, and with the
+                // towns "Otomatik Seç" ticks.
+                yield return ScreenTour.Take("satis-ekrani");
+                _hud.DebtSale.AutoPick();
+                yield return ScreenTour.Take("satis-otomatik-sec");
+            }
+
             Application.Quit();
         }
 
@@ -1707,7 +1785,10 @@ namespace Lazpoly.Presentation.Game
                         // meets a shield says so on the same card.
                         ShownPlay = played;
                         ShownPlayBlocked = CardPlay.Blocked(_pendingEvents.Count > 0 ? _pendingEvents.Peek() : null);
+                        ShownPlayMoney = ShownPlayBlocked ? 0 : CardMoney(played.PlayerId, _pendingEvents, cardOnly: false);
                         ShownPlayTime = Time.time;
+                        // A card used as it was drawn takes the drawn card's place in the middle.
+                        ShownCard = -1;
                         Say(played.PlayerId, CardPlay.Name(_session.Board, played.CardIndex) + "!");
                         Revision++;
                         yield return new WaitForSeconds(CardPlay.Seconds);
@@ -1729,10 +1810,13 @@ namespace Lazpoly.Presentation.Game
                         ShownCard = card.CardIndex;
                         ShownCardPlayer = card.PlayerId;
                         ShownCardSquare = _shownSquares.TryGetValue(card.PlayerId, out int drawnOn) ? drawnOn : _session.State.FindPlayer(card.PlayerId)?.Position ?? -1;
-                        ShownCardTime = Time.unscaledTime;
+                        ShownCardTime = Time.time;
+                        ShownCardMoney = card.Kept ? 0 : CardMoney(card.PlayerId, _pendingEvents, cardOnly: true);
                         Revision++;
-                        // A moment to read the card before its effect plays.
-                        yield return new WaitForSeconds(CardReadSeconds / Mathf.Max(Settings.AnimationSpeed, 0.1f));
+                        // The card stays up its whole time and only then its effect plays: the money moves once the card
+                        // has closed (the owner's wish, 2026-11-12). A card a person here decides on comes with its buttons
+                        // instead, and stays until they answer.
+                        yield return new WaitForSeconds(card.Kept && PersonHere(card.PlayerId) ? CardOfferSeconds : CardSeconds);
                         break;
                     case MoneyChangedEvent money:
                         // A takeover's card comes first, for the whole table; then the price flies to the owner and the town

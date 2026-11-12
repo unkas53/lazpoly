@@ -37,6 +37,28 @@ namespace Lazpoly.Presentation.Game
             if (picked != IsPicked(square)) Toggle(square);
         }
 
+        /// <summary>
+        /// Ticks exactly <paramref name="squares"/> (the towns the automatic sale would sell: "Otomatik Seç"), whatever
+        /// was ticked before. Nothing is sold by it.
+        /// </summary>
+        public void Pick(IEnumerable<int> squares)
+        {
+            if (squares == null) throw new ArgumentNullException(nameof(squares));
+            _picked.Clear();
+            foreach (int square in squares)
+            {
+                if (!_picked.Contains(square)) _picked.Add(square);
+            }
+
+            Version++;
+        }
+
+        /// <summary>
+        /// What is left once the debt is paid from the money in hand and what the ticked towns bring; under zero, how
+        /// much is still missing.
+        /// </summary>
+        public static int Left(int money, int proceeds, int debt) => money + proceeds - debt;
+
         public void Clear()
         {
             if (_picked.Count == 0) return;

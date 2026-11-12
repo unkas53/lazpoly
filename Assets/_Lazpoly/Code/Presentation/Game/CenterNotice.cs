@@ -9,7 +9,9 @@ namespace Lazpoly.Presentation.Game
     /// A card in the middle of the screen that stays up for <see cref="Seconds"/> and fades out over the last
     /// <see cref="FadeOutSeconds"/> (a trade's result, a player who cannot pay; the owner's wish, Faz 23). The table
     /// waits the same time, so play goes on only once the card is gone. A card can stay up for another time (the trade
-    /// agreement card, 4 s). It never takes the mouse, and the roll button waits until it has closed.
+    /// agreement card, 4 s). It never takes the mouse, and the roll button waits until it has closed; only a card that
+    /// asks something (<see cref="Interactive"/>: a drawn card's "Kullan" and "Sakla") shows its <see cref="Actions"/>
+    /// and takes clicks. A card that moves money says how much in a large line under its title (<see cref="SetMoney"/>).
     /// The card is drawn as a playing card (the owner's wish, 2026-11-09): a cream face with a soft shadow, the card's
     /// picture on top in its colour family (<see cref="CardArt"/>), a small family line, the title in the family's colour
     /// and the text under it in large dark letters. It grows with its text, so nothing is cut and no space is left over.
@@ -33,6 +35,14 @@ namespace Lazpoly.Presentation.Game
         public const int BodySize = 24;
         public const int FamilySize = 15;
 
+        /// <summary>The sum a card moves ("+100K", "-50K"), in the largest letters on the card, on a pale plate of its ink.</summary>
+        public const int MoneySize = 44;
+        public const float MoneyPlate = 0.13f;
+
+        /// <summary>The inks of a sum on the cream face: money gained, money lost.</summary>
+        public static readonly Color GainInk = CardArt.ToneColor(CardTone.Money);
+        public static readonly Color LossInk = CardArt.ToneColor(CardTone.Attack);
+
         /// <summary>The dark ink of the text on the cream face; it reads the same in every colour setting.</summary>
         public static readonly Color Ink = new Color(0.17f, 0.15f, 0.14f);
 
@@ -54,7 +64,17 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The card's picture; hidden while it has none.</summary>
         public Image Picture { get; }
 
+        /// <summary>The sum the card moves, on its plate between the title and the text; hidden while there is none.</summary>
+        public Text Money { get; }
+
+        /// <summary>Where a card that asks something puts its buttons, under its text; hidden unless <see cref="Interactive"/>.</summary>
+        public RectTransform Actions { get; }
+
         public RectTransform Rect => _rect;
+
+        private readonly GameObject _moneyRow;
+        private readonly Image _moneyPlate;
+        private int _money;
 
         public CenterNotice(Transform canvas, string name, float seconds = Seconds)
         {
@@ -100,8 +120,82 @@ namespace Lazpoly.Presentation.Game
             Family = Line("Family", FamilySize, UiTheme.BoldFont, CardArt.ToneColor(CardTone.Grey));
             Family.gameObject.SetActive(false);
             Title = Line("Title", TitleSize, UiTheme.BlackFont, CardArt.ToneColor(CardTone.Defence));
+            _moneyRow = MoneyRow(out _moneyPlate, out Text money);
+            Money = money;
+            _moneyRow.SetActive(false);
             Body = Line("Body", BodySize, UiTheme.Font, Ink);
             Body.lineSpacing = 1.08f;
+
+            Actions = UiRoot.Rect(_rect, "Actions", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            UiBuilder.AddColumnLayout(Actions.gameObject, 0, Gap);
+            Actions.gameObject.SetActive(false);
+        }
+
+        /// <summary>The sum's row: a plate that hugs the sum, in the middle of the card.</summary>
+        private GameObject MoneyRow(out Image plate, out Text money)
+        {
+            RectTransform row = UiRoot.Rect(_rect, "Money", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            Hug(row.gameObject, new RectOffset(0, 0, 2, 2));
+            RectTransform rect = UiRoot.Rect(row, "Plate", Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            plate = rect.gameObject.AddComponent<Image>();
+            plate.sprite = UiSprites.Rounded;
+            plate.type = Image.Type.Sliced;
+            plate.raycastTarget = false;
+            Hug(rect.gameObject, new RectOffset(30, 30, 2, 6));
+            money = Line("Sum", MoneySize, UiTheme.BlackFont, GainInk, rect);
+            money.horizontalOverflow = HorizontalWrapMode.Overflow;
+            return row.gameObject;
+        }
+
+        /// <summary>Lays a row out so its child keeps its own size in the row's middle.</summary>
+        private static void Hug(GameObject row, RectOffset padding)
+        {
+            var layout = row.AddComponent<HorizontalLayoutGroup>();
+            layout.padding = padding;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+        }
+
+        /// <summary>A sum as a card writes it: "+100K" gained, "-50K" lost, in the game's short money form.</summary>
+        public static string MoneyText(int amount) => HatchAmount.Text(amount);
+
+        /// <summary>The ink of a sum: <see cref="GainInk"/> for money gained, <see cref="LossInk"/> for money lost.</summary>
+        public static Color MoneyInk(int amount) => amount > 0 ? GainInk : LossInk;
+
+        /// <summary>Writes the sum the card moves for its player under the title; 0 takes the line away.</summary>
+        public void SetMoney(int amount)
+        {
+            bool show = amount != 0;
+            if (_moneyRow.activeSelf != show) _moneyRow.SetActive(show);
+            if (!show || (amount == _money && Money.text.Length > 0)) return;
+            _money = amount;
+            Color ink = MoneyInk(amount);
+            Money.text = MoneyText(amount);
+            Money.color = ink;
+            ink.a = MoneyPlate;
+            _moneyPlate.color = ink;
+        }
+
+        /// <summary>The sum written on the card now; 0 when it shows none.</summary>
+        public int MoneyShown => _moneyRow.activeSelf ? _money : 0;
+
+        /// <summary>
+        /// Whether the card asks something: it then shows its <see cref="Actions"/> and takes the mouse, and stays up as
+        /// long as it is shown (<see cref="Hold"/>). A card that only tells never does.
+        /// </summary>
+        public bool Interactive
+        {
+            get => _group.interactable;
+            set
+            {
+                if (_group.interactable == value) return;
+                _group.interactable = value;
+                _group.blocksRaycasts = value;
+                Actions.gameObject.SetActive(value);
+            }
         }
 
         private Image Backdrop(string name, string picture, Vector2 offsetMin, Vector2 offsetMax, Color color)
@@ -116,9 +210,9 @@ namespace Lazpoly.Presentation.Game
             return image;
         }
 
-        private Text Line(string name, int size, Font font, Color color)
+        private Text Line(string name, int size, Font font, Color color, RectTransform parent = null)
         {
-            RectTransform rect = UiRoot.Rect(_rect, name, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            RectTransform rect = UiRoot.Rect(parent != null ? parent : _rect, name, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
             var text = rect.gameObject.AddComponent<Text>();
             text.font = font;
             text.fontSize = size;
@@ -164,7 +258,17 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether the card is drawn at all now.</summary>
         public bool Shown => _group.alpha > 0f;
 
-        public void Hide() => _group.alpha = 0f;
+        public void Hide()
+        {
+            _group.alpha = 0f;
+            Interactive = false;
+        }
+
+        /// <summary>How old a card that waits for an answer is drawn: past its fade in, well before its fade out.</summary>
+        public const float HeldAge = 1f;
+
+        /// <summary>Shows the card whole for as long as this is called: it waits for an answer and has no time of its own.</summary>
+        public void Hold(float age) => Show(Mathf.Clamp(age, 0f, Mathf.Min(HeldAge, Lasts - FadeOutSeconds)));
 
         public void Show(float age)
         {

@@ -381,8 +381,21 @@ namespace Lazpoly.Presentation.Game
         /// The drawn card in the middle for a few seconds, as a card of its own (the owner's wish, 2026-11-09): its picture,
         /// the deck it came from with who drew it ("ŞANS · Ayşe"), its name and what it says. It never takes the mouse.
         /// </summary>
-        private void BuildCardPopup() =>
-            _drawNotice = new CenterNotice(_canvas.transform, "Card Popup", GameSceneController.CardReadSeconds + 1.6f);
+        private void BuildCardPopup()
+        {
+            _drawNotice = new CenterNotice(_canvas.transform, "Card Popup", GameSceneController.CardSeconds);
+            // A card a person here drew to keep asks them on the spot: "Kullan" or "Sakla" (the owner's wish, 2026-11-12).
+            _offerView = new UiView(new UiBuilder(_drawNotice.Actions), ui => _cards.RenderOffer(ui, _controller.Session.State));
+        }
+
+        private UiView _offerView;
+        private bool _offering;
+
+        /// <summary>The drawn card in the middle, so tests can read it and press its buttons.</summary>
+        public CenterNotice DrawnCard => _drawNotice;
+
+        /// <summary>For the screen tour: puts a card of the person's hand up as if just drawn, with its buttons; <see cref="CardHand.NoCard"/> takes it down.</summary>
+        public void StageCardOffer(int card) => _cards.StagedOffer = card;
 
         /// <summary>A trade's result in the middle (the owner's wish, Faz 23): who offered what to whom, and whether it was taken.</summary>
         private void UpdateTradePopup()
@@ -493,6 +506,7 @@ namespace Lazpoly.Presentation.Game
             if (blocked) _playNotice.Paint(CardArt.ShieldHeld, CardTone.Defence, CardArt.Family(kind));
             else _playNotice.Paint(CardArt.PictureFor(kind), CardArt.ToneFor(kind), CardArt.Family(kind));
             // A blocked attack did nothing: the shield's line takes the effect's place.
+            _playNotice.SetMoney(_controller.ShownPlayMoney);
             _playNotice.Body.text = CardPlay.Headline(board, _controller.Session.State, played) + "\n" +
                                     (blocked ? CardPlay.BlockedText : CardPlay.Effect(board, played));
             _playNotice.Show(age);
@@ -840,25 +854,46 @@ namespace Lazpoly.Presentation.Game
 
         private void UpdateCardPopup()
         {
-            int card = _controller.ShownCard;
-            float age = Time.unscaledTime - _controller.ShownCardTime;
+            GameState state = _controller.Session.State;
             BoardDefinition board = _controller.Session.Board;
-            if (card < 0 || card >= board.Cards.Count || !CenterNotice.Showing(age, _drawNotice.Lasts))
+            // A card a person here drew to keep stays up with its buttons until they answer, then goes at once; while its
+            // town is picked on the board it makes room.
+            bool asking = _cards.Offering(state);
+            if (_offering && !asking) _controller.DismissCard();
+            _offering = asking;
+            int card = asking ? _cards.Offered(state) : _controller.ShownCard;
+            float age = Time.time - _controller.ShownCardTime;
+            bool up = asking ? _cards.Aiming(state) == CardHand.NoCard : CenterNotice.Showing(age, _drawNotice.Lasts);
+            if (card < 0 || card >= board.Cards.Count || !up)
             {
                 _drawNotice.Hide();
                 return;
             }
 
-            string player = _controller.Session.State.FindPlayer(_controller.ShownCardPlayer)?.Name;
-            int square = _controller.ShownCardSquare;
+            string player = state.FindPlayer(asking ? state.CurrentPlayer.Id : _controller.ShownCardPlayer)?.Name;
+            int square = asking && _cards.StagedOffer == CardHand.NoCard ? state.CurrentPlayer.Position : _controller.ShownCardSquare;
             string deck = square >= 0 && square < board.Count && board[square].Type == SquareType.Card ? Lang.Upper(L(board[square].Name)) : L("SOKAK HABERİ");
             CardDefinition drawn = board.Cards[card];
             _drawNotice.Paint(CardArt.PictureFor(drawn.Kind), CardArt.ToneFor(drawn.Kind), player == null ? deck : $"{deck} · {player}");
             _drawNotice.Title.text = CardArt.Title(drawn.Kind);
-            _drawNotice.Body.text = drawn.IsKept
-                ? CardPlay.Body(board, card) + "\n" + L("Kart ele alındı: sıranın başında, zar atmadan önce oynanır.")
+            // What the card pays or costs, on the card itself (the owner's wish, 2026-11-12).
+            _drawNotice.SetMoney(asking ? 0 : _controller.ShownCardMoney);
+            // Someone else's card to keep says what comes next; a person's own gets its two buttons instead.
+            int drawer = _controller.ShownCardPlayer;
+            bool own = asking || (_controller.Session.CanControl(drawer) && !_controller.Session.IsAiPlaying(drawer));
+            _drawNotice.Body.text = drawn.IsKept && !own
+                ? CardPlay.Body(board, card) + "\n" + L("Saklanabilen kart: hemen kullanılır ya da ele alınır.")
                 : CardPlay.Body(board, card);
-            _drawNotice.Show(age);
+            _drawNotice.Interactive = asking;
+            if (asking)
+            {
+                _offerView.Refresh(HashCode.Combine(_controller.Revision, card, state.Phase, state.CardPlayedThisTurn));
+                _drawNotice.Hold(age);
+            }
+            else
+            {
+                _drawNotice.Show(age);
+            }
         }
 
         private void LateUpdate()

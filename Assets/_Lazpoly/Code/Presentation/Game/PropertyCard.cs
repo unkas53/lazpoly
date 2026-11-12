@@ -137,7 +137,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>
         /// The top of a card about a square: the kit's dark band with a ribbon and (when the group has one) a letter mark
         /// in the group's colour at the left, a small line in brass capitals over the name in heavy capitals, and the
-        /// close mark at the right; the square card opens the same way.
+        /// close mark at the right (none for a card that cannot be closed: no <paramref name="close"/>); the square card
+        /// and the sale card open the same way.
         /// </summary>
         public static void Band(UiBuilder ui, string title, string subtitle, Color color, string mark, Action close)
         {
@@ -167,7 +168,7 @@ namespace Lazpoly.Presentation.Game
             UiBuilder.Fix(name, height: 42f);
             UiBuilder.ShrinkToFit(name); // A long name gets smaller, never a second line.
 
-            band.CloseMark(close, UiPalette.Ink.OnMasthead);
+            if (close != null) band.CloseMark(close, UiPalette.Ink.OnMasthead);
         }
 
         /// <summary>

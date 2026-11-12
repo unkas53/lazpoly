@@ -176,7 +176,8 @@ namespace Lazpoly.Core.Commands
     /// <summary>
     /// Plays a card from the player's hand (Faz 30): <see cref="Card"/> is its deck index, <see cref="Target"/> the square
     /// or player it aims at (-1 when it aims at nothing) and <see cref="Option"/> the choice it offers (the fund: 0 takes the
-    /// cash, 1 invests). One card a turn, at the turn's start; the rent shield when rent is due.
+    /// cash, 1 invests). One card a turn, at the turn's start or as it is drawn (<see cref="State.GamePhase.AwaitingCardUse"/>);
+    /// the rent shield when rent is due.
     /// </summary>
     public sealed class PlayCardCommand : GameCommand
     {
@@ -190,6 +191,15 @@ namespace Lazpoly.Core.Commands
         public int Card { get; }
         public int Target { get; }
         public int Option { get; }
+    }
+
+    /// <summary>
+    /// Puts the card just drawn into the hand for later instead of using it at once (the owner's wish, 2026-11-12); a
+    /// hand then past its limit lets one card go.
+    /// </summary>
+    public sealed class KeepCardCommand : GameCommand
+    {
+        public KeepCardCommand(int playerId) : base(playerId) { }
     }
 
     /// <summary>Lets a card of a full hand go (the one just drawn or an older one); it goes back into the deck.</summary>

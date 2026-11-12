@@ -44,6 +44,19 @@ namespace Lazpoly.App.AI
             return null;
         }
 
+        /// <summary>
+        /// With a card just drawn (the owner's wish, 2026-11-12): uses it at once when it is worth playing now, as it would
+        /// weigh it from the hand at the start of a turn; otherwise keeps it.
+        /// </summary>
+        public static GameCommand UseOrKeep(BoardDefinition board, RulesConfig rules, GameState state, PlayerState me, int reserve)
+        {
+            var keep = new KeepCardCommand(me.Id);
+            int card = GameRules.DrawnCard(state);
+            if (card < 0 || state.CardPlayedThisTurn) return keep;
+            PlayCardCommand play = Consider(board, rules, state, me, reserve, card);
+            return play != null && GameRules.Validate(board, rules, state, play) == RejectionReason.None ? play : (GameCommand)keep;
+        }
+
         /// <summary>Whether to use the rent shield on the rent waiting: when it is a big bite of the cash, or more than the cash.</summary>
         public static GameCommand AnswerRent(BoardDefinition board, RulesConfig rules, GameState state, PlayerState me)
         {

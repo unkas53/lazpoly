@@ -16,7 +16,8 @@ namespace Lazpoly.Presentation.Game
     /// <summary>
     /// The strategic cards a person here holds (Faz 30): the hand window with a way to play each card that may be played
     /// now, picking a card's town on the board (the hand closes and the towns it may hit light up), letting one card go
-    /// when a fifth is drawn, and the rent shield's question when rent is due. One card a turn, before the roll.
+    /// when a fifth is drawn, and the rent shield's question when rent is due. One card a turn, before the roll, or as
+    /// it is drawn: a card drawn to keep comes with "Kullan" and "Sakla" on it (the owner's wish, 2026-11-12).
     /// </summary>
     public sealed class CardHand
     {
@@ -61,9 +62,93 @@ namespace Lazpoly.Presentation.Game
             return null;
         }
 
-        /// <summary>The moment the turn's card may be played: before the roll, or on a turn in jail; one card a turn.</summary>
+        /// <summary>
+        /// The moment the turn's card may be played: before the roll, on a turn in jail, or as a card is drawn (then only
+        /// that card, which the rules see to); one card a turn.
+        /// </summary>
         private bool PlayMoment(GameState state) =>
-            (WaitsHere(state, GamePhase.WaitingForRoll) || WaitsHere(state, GamePhase.AwaitingJailDecision)) && !state.CardPlayedThisTurn;
+            (WaitsHere(state, GamePhase.WaitingForRoll) || WaitsHere(state, GamePhase.AwaitingJailDecision) || WaitsHere(state, GamePhase.AwaitingCardUse)) &&
+            !state.CardPlayedThisTurn;
+
+        /// <summary>A card the screen tour puts up as if it had just been drawn, for the picture of its buttons; <see cref="NoCard"/> in a game.</summary>
+        public int StagedOffer { get; set; } = NoCard;
+
+        /// <summary>True while a person here decides on the card they just drew: "Kullan" or "Sakla".</summary>
+        public bool Offering(GameState state) =>
+            StagedOffer != NoCard || (WaitsHere(state, GamePhase.AwaitingCardUse) && GameRules.DrawnCard(state) >= 0);
+
+        /// <summary>The card that decision is about, or <see cref="NoCard"/>.</summary>
+        public int Offered(GameState state) => StagedOffer != NoCard ? StagedOffer : Offering(state) ? GameRules.DrawnCard(state) : NoCard;
+
+        /// <summary>
+        /// Why the player on turn cannot use <paramref name="card"/> on the spot, as its card says under its text; null
+        /// when they can. The lawyer, the rent shield and the chauffeur answer a moment of their own; a second card in a
+        /// turn waits for the next; and some cards have nowhere to go yet (no town to protect, no rival town to hit).
+        /// </summary>
+        public static string UseBlock(BoardDefinition board, GameState state, int card)
+        {
+            CardDefinition definition = board.Cards[card];
+            switch (definition.Kind)
+            {
+                case CardKind.Lawyer: return L("Bu kart yalnızca hapisteyken kullanılır.");
+                case CardKind.RentShield: return L("Bu kart yalnızca kira öderken kullanılır.");
+                case CardKind.Chauffeur: return L("Bu kart yalnızca sıranın başında, zar atmadan önce kullanılır.");
+            }
+
+            if (state.CardPlayedThisTurn) return L("Bu sırada bir kart oynadın; bu kart sonraki sıralar için saklanır.");
+            PlayerState player = state.CurrentPlayer;
+            if (GameRules.CardTargets(board, state, player, card).Count > 0) return null;
+            if (definition.Kind == CardKind.Fund && GameRules.CardTargets(board, state, player, card, 1).Count > 0) return null;
+            return L("Bu kartı şimdi kullanabileceğin bir yer yok.");
+        }
+
+        /// <summary>
+        /// The buttons on a card just drawn (<see cref="Offering"/>): the ways to use it at once ("Kullan", which goes on
+        /// to pick its town on the board when it aims at one; the fund's two choices; a rival each for the audit) and
+        /// "Sakla", which puts it in the hand. A card that cannot be used now says why and can only be kept.
+        /// </summary>
+        public void RenderOffer(UiBuilder ui, GameState state)
+        {
+            int card = Offered(state);
+            if (card == NoCard) return;
+            PlayerState player = state.CurrentPlayer;
+            CardDefinition definition = Board.Cards[card];
+            bool staged = StagedOffer != NoCard;
+            var keep = new KeepCardCommand(player.Id);
+            Action save = staged ? (Action)(() => { }) : () => _controller.Submit(keep);
+            bool canKeep = staged || _controller.IsAllowed(keep);
+
+            string block = UseBlock(Board, state, card);
+            if (block != null) ui.Label(block, UiTextStyle.Small, CenterNotice.Ink, TextAnchor.MiddleCenter);
+            if (!staged && player.Hand.Count > GameRules.HandLimit)
+            {
+                ui.Label(F($"Elin dolu: saklarsan {GameRules.HandLimit} karttan fazlası için bir kart bırakırsın."), UiTextStyle.Small, CenterNotice.Ink,
+                    TextAnchor.MiddleCenter);
+            }
+
+            bool plain = block != null || (definition.Kind != CardKind.Fund && definition.Aim != CardTarget.Rival);
+            if (!plain)
+            {
+                // The fund's two choices, or a rival each for the audit; "Sakla" under them.
+                RenderPlay(ui, state, card);
+                ui.Button(L("Sakla"), save, canKeep, UiButtonStyle.Secondary, UiLayout.CardButtonHeight);
+            }
+            else
+            {
+                UiBuilder row = ui.Row();
+                var play = new PlayCardCommand(player.Id, card);
+                if (block != null) row.Button(L("Kullan"), null, false, UiButtonStyle.Primary, UiLayout.CardButtonHeight);
+                else if (definition.Aim == CardTarget.None)
+                {
+                    row.Button(L("Kullan"), () => _controller.Submit(play), _controller.IsAllowed(play), UiButtonStyle.Primary, UiLayout.CardButtonHeight);
+                }
+                else row.Button(L("Kullan"), () => Aim(state, card), true, UiButtonStyle.Primary, UiLayout.CardButtonHeight);
+
+                row.Button(L("Sakla"), save, canKeep, block != null ? UiButtonStyle.Primary : UiButtonStyle.Secondary, UiLayout.CardButtonHeight);
+            }
+
+            if (!staged && _controller.LastRejection != null) ui.Notice(_controller.LastRejection);
+        }
 
         /// <summary>Whether <paramref name="card"/> of the player on turn may be played now at some target (with either fund choice).</summary>
         private bool Playable(GameState state, int card)
@@ -270,7 +355,8 @@ namespace Lazpoly.Presentation.Game
             {
                 StopAiming();
                 unpick();
-                Open = true;
+                // Back to where the card was picked up: the hand, or the card just drawn with its two buttons.
+                Open = state.Phase != GamePhase.AwaitingCardUse;
             });
         }
 

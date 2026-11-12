@@ -171,6 +171,7 @@ namespace Lazpoly.Presentation.Tests
             IReadOnlyList<KeyValuePair<string, string>> sections = HowToPlay.Sections(Board, _data.Rules);
             KeyValuePair<string, string> cards = sections.Single(s => s.Key == "Strateji kartları");
             StringAssert.Contains("en çok 4 kart", cards.Value);
+            StringAssert.Contains("hemen kullanılır ya da saklanır", cards.Value, "the owner's wish, 2026-11-12");
             StringAssert.Contains("takas edilmez", cards.Value);
         }
 
@@ -254,6 +255,134 @@ namespace Lazpoly.Presentation.Tests
             {
                 Object.DestroyImmediate(canvas);
             }
+        }
+
+        [Test]
+        public void ACardSaysTheMoneyItMovesAndTheMoneyWaitsForItToClose()
+        {
+            // The owner's wish (2026-11-12): what a Şans card pays or costs is written on the card, and the money moves
+            // only once the card has closed.
+            var prize = new MoneyChangedEvent(1, 100000, MoneyReason.Card);
+            Assert.AreEqual(100000, GameSceneController.CardMoney(1, new GameEvent[] { prize, new PhaseChangedEvent(GamePhase.TurnEnd) }, true));
+            Assert.AreEqual(-50000, GameSceneController.CardMoney(1,
+                new GameEvent[] { new MoneyChangedEvent(1, -50000, MoneyReason.Card), new MoneyChangedEvent(2, 50000, MoneyReason.Card) }, true),
+                "the receiver's gain is not the drawer's");
+            Assert.AreEqual(-80000, GameSceneController.CardMoney(1,
+                new GameEvent[] { new DebtIncurredEvent(1, GameState.NoOwner, 80000, MoneyReason.Card), new PhaseChangedEvent(GamePhase.AwaitingDebtPayment) }, true),
+                "a fine that cannot be paid yet is still what the card costs");
+            Assert.AreEqual(0, GameSceneController.CardMoney(1,
+                new GameEvent[] { new PlayerMovedEvent(1, 3, 0, true), new MoneyChangedEvent(1, 200000, MoneyReason.PassedStart) }, true),
+                "a card that moves the pawn writes no sum");
+            Assert.AreEqual(0, GameSceneController.CardMoney(1, new GameEvent[] { new MoneyChangedEvent(1, 200000, MoneyReason.PassedStart) }, true),
+                "only the card's own money");
+            Assert.AreEqual(0, GameSceneController.CardMoney(1, new GameEvent[] { new PhaseChangedEvent(GamePhase.AwaitingCardUse), prize }, true),
+                "a card that may be kept moves nothing yet");
+            Assert.AreEqual(0, GameSceneController.CardMoney(1, null, true));
+
+            // A card played from the hand: whatever it moves for its player, until the next thing happens.
+            Assert.AreEqual(-40000, GameSceneController.CardMoney(1,
+                new GameEvent[] { new MoneyChangedEvent(1, -40000, MoneyReason.Fund), new FundChangedEvent(1, 100000), new DiceRolledEvent(1, 2, 3), prize }, false));
+            Assert.AreEqual(0, GameSceneController.CardMoney(1, new GameEvent[] { new MoneyChangedEvent(2, -60000, MoneyReason.Audit) }, false),
+                "an audit takes the rival's money, not the player's");
+
+            Assert.AreEqual("+100K", CenterNotice.MoneyText(100000));
+            Assert.AreEqual("-50K", CenterNotice.MoneyText(-50000));
+            Assert.AreEqual(CenterNotice.GainInk, CenterNotice.MoneyInk(1));
+            Assert.AreEqual(CenterNotice.LossInk, CenterNotice.MoneyInk(-1));
+            Assert.AreNotEqual(CenterNotice.GainInk, CenterNotice.LossInk);
+
+            Assert.Greater(GameSceneController.CardSeconds, 2.5f, "time to read the card before its money moves");
+            Assert.Less(GameSceneController.CardOfferSeconds, 0.6f, "a card that asks shows its buttons almost at once");
+        }
+
+        [Test]
+        public void ACardInTheMiddleWritesItsSumAndTakesClicksOnlyWhenItAsks()
+        {
+            var canvas = new GameObject("Canvas", typeof(RectTransform), typeof(Canvas));
+            try
+            {
+                var notice = new CenterNotice(canvas.transform, "Test Card", GameSceneController.CardSeconds);
+                notice.Title.text = "PARA GELDİ";
+                notice.Body.text = "Bir satır.";
+                Assert.IsFalse(notice.Money.gameObject.activeInHierarchy, "no sum, no line");
+                Assert.AreEqual(0, notice.MoneyShown);
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(notice.Rect);
+                float plain = notice.Rect.rect.height;
+
+                notice.SetMoney(100000);
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(notice.Rect);
+                Assert.IsTrue(notice.Money.gameObject.activeInHierarchy);
+                Assert.AreEqual("+100K", notice.Money.text);
+                Assert.AreEqual(CenterNotice.GainInk, notice.Money.color);
+                Assert.AreEqual(100000, notice.MoneyShown);
+                Assert.Greater(notice.Rect.rect.height, plain + CenterNotice.MoneySize * 0.8f, "the sum has a line of its own");
+                Assert.Greater(notice.Money.fontSize, notice.Title.fontSize, "the largest letters on the card");
+                Assert.Less(notice.Money.transform.parent.GetComponent<UnityEngine.UI.Image>().color.a, 0.3f, "on a pale plate of its ink");
+
+                notice.SetMoney(-50000);
+                Assert.AreEqual("-50K", notice.Money.text);
+                Assert.AreEqual(CenterNotice.LossInk, notice.Money.color);
+                notice.SetMoney(0);
+                Assert.IsFalse(notice.Money.gameObject.activeInHierarchy);
+                Assert.AreEqual(0, notice.MoneyShown);
+
+                // Only a card that asks ("Kullan" / "Sakla") shows its buttons and takes the mouse, and it stays up.
+                var group = notice.Rect.GetComponent<CanvasGroup>();
+                Assert.IsFalse(notice.Interactive);
+                Assert.IsFalse(group.blocksRaycasts);
+                Assert.IsFalse(notice.Actions.gameObject.activeSelf);
+                notice.Interactive = true;
+                Assert.IsTrue(group.blocksRaycasts);
+                Assert.IsTrue(group.interactable);
+                Assert.IsTrue(notice.Actions.gameObject.activeSelf);
+                notice.Hold(0.05f);
+                Assert.Less(group.alpha, 1f, "it swells in like any card");
+                notice.Hold(100f);
+                Assert.AreEqual(1f, group.alpha, 1e-4f, "a card that waits for an answer never fades");
+                Assert.IsTrue(notice.Shown);
+                notice.Hide();
+                Assert.IsFalse(notice.Shown);
+                Assert.IsFalse(notice.Interactive, "a hidden card takes no clicks");
+                Assert.IsFalse(group.blocksRaycasts);
+            }
+            finally
+            {
+                Object.DestroyImmediate(canvas);
+            }
+        }
+
+        [Test]
+        public void ACardJustDrawnSaysWhyItCannotBeUsedNow()
+        {
+            int lawyer = Card(CardKind.Lawyer);
+            int rentShield = Card(CardKind.RentShield);
+            int chauffeur = Card(CardKind.Chauffeur);
+            int shield = Card(CardKind.Shield);
+            int fund = Card(CardKind.Fund);
+            int demolish = Card(CardKind.Demolish);
+            int paris = Town("Paris");
+            GameState Drawn(int card, System.Action<GameStateSnapshot> more = null) => State(s =>
+            {
+                s.Players[0].Hand.Add(card);
+                s.Phase = GamePhase.AwaitingCardUse;
+                more?.Invoke(s);
+            });
+
+            Assert.AreEqual("Bu kart yalnızca hapisteyken kullanılır.", CardHand.UseBlock(Board, Drawn(lawyer), lawyer));
+            Assert.AreEqual("Bu kart yalnızca kira öderken kullanılır.", CardHand.UseBlock(Board, Drawn(rentShield), rentShield));
+            Assert.AreEqual("Bu kart yalnızca sıranın başında, zar atmadan önce kullanılır.", CardHand.UseBlock(Board, Drawn(chauffeur), chauffeur));
+            Assert.AreEqual("Bu kartı şimdi kullanabileceğin bir yer yok.", CardHand.UseBlock(Board, Drawn(shield), shield), "no town of their own to protect");
+            Assert.IsNull(CardHand.UseBlock(Board, Drawn(shield, s => s.Owners[paris] = 1), shield));
+            Assert.AreEqual("Bu kartı şimdi kullanabileceğin bir yer yok.", CardHand.UseBlock(Board, Drawn(demolish), demolish), "no rival town to hit");
+            Assert.IsNull(CardHand.UseBlock(Board, Drawn(demolish, s => s.Owners[paris] = 2), demolish));
+            Assert.IsNull(CardHand.UseBlock(Board, Drawn(fund), fund), "the fund's cash is always there");
+            Assert.AreEqual("Bu sırada bir kart oynadın; bu kart sonraki sıralar için saklanır.",
+                CardHand.UseBlock(Board, Drawn(fund, s => s.CardPlayedThisTurn = true), fund), "one card a turn");
+
+            Lang.Set(Language.English);
+            Assert.AreEqual("This card is used only while in jail.", CardHand.UseBlock(Board, Drawn(lawyer), lawyer));
+            Assert.AreEqual("Use", Lang.L("Kullan"));
+            Assert.AreEqual("Keep", Lang.L("Sakla"));
         }
 
         [Test]

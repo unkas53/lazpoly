@@ -73,6 +73,7 @@ namespace Lazpoly.App.Tests
             yield return new CommandMessage { Command = new DeclineCupCommand(2) };
             yield return new CommandMessage { Command = new PlayCardCommand(1, 30, 6, 1) };
             yield return new CommandMessage { Command = new DiscardCardCommand(2, 31) };
+            yield return new CommandMessage { Command = new KeepCardCommand(1) };
             yield return new CommandMessage { Command = new PayRentCommand(2) };
             yield return new CommandMessage { Command = new TakeOverCommand(1) };
             yield return new CommandMessage { Command = new DeclineTakeoverCommand(2) };
@@ -119,6 +120,7 @@ namespace Lazpoly.App.Tests
                 new RentDueClearedEvent(1),
                 new CupHostedEvent(2, 4, 150, moved: true),
                 new PhaseChangedEvent(GamePhase.AwaitingRentShield),
+                new PhaseChangedEvent(GamePhase.AwaitingCardUse),
                 new MoneyChangedEvent(2, -60000, MoneyReason.Audit),
             });
             yield return events;

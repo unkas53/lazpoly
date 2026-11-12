@@ -10,7 +10,7 @@ namespace Lazpoly.App.Session
     /// <summary>
     /// What the game does for a person whose decision time ran out: the dice are rolled for them, a
     /// town on sale is left to the bank, the turn ends without building, a jailed player rolls for a double for free, a ride or a trade is turned
-    /// down, and a debt is covered by the automatic sale (<see cref="DebtSettlement"/>). Local games
+    /// down, a card just drawn is kept, and a debt is covered by the automatic sale (<see cref="DebtSettlement"/>). Local games
     /// and the online host use the same moves.
     /// </summary>
     public static class TimeoutPolicy
@@ -42,6 +42,7 @@ namespace Lazpoly.App.Session
                 case GamePhase.AwaitingCupChoice: return new DeclineCupCommand(playerId);
                 case GamePhase.AwaitingRentShield: return new PayRentCommand(playerId);
                 case GamePhase.AwaitingTakeoverDecision: return new DeclineTakeoverCommand(playerId);
+                case GamePhase.AwaitingCardUse: return new KeepCardCommand(playerId);
                 case GamePhase.AwaitingCardDiscard:
                 {
                     // The card just drawn goes back: the hand the player had stays as it was.

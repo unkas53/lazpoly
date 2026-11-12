@@ -33,6 +33,9 @@ namespace Lazpoly.PlayTests
                     return new DeclineCupCommand(me);
                 case GamePhase.AwaitingTakeoverDecision:
                     return new DeclineTakeoverCommand(me);
+                case GamePhase.AwaitingCardUse:
+                    // A Şans card that may be kept: it goes into the hand.
+                    return new KeepCardCommand(me);
                 case GamePhase.AwaitingCardDiscard:
                     // A fifth Şans card in the hand: one has to go before the turn goes on.
                     return new DiscardCardCommand(me, state.CurrentPlayer.Hand[0]);

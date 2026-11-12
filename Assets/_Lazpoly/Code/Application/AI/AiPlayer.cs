@@ -73,6 +73,12 @@ namespace Lazpoly.App.AI
                     return PlayCard(view) ?? DecideJail(view);
                 case GamePhase.AwaitingCupChoice:
                     return DecideCup(view);
+                case GamePhase.AwaitingCardUse:
+                {
+                    // A player prone to mistakes sometimes forgets the card can be used on the spot, as with its hand.
+                    GameCommand use = AiCards.UseOrKeep(board, rules, state, me, view.Reserve);
+                    return use is PlayCardCommand && view.MakesMistake() ? new KeepCardCommand(PlayerId) : use;
+                }
                 case GamePhase.AwaitingCardDiscard:
                     return AiCards.Discard(board, me);
                 case GamePhase.AwaitingRentShield:

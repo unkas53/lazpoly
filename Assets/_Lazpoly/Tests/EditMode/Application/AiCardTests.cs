@@ -131,6 +131,38 @@ namespace Lazpoly.App.Tests
         }
 
         [Test]
+        public void UsesACardJustDrawnWhenItIsWorthItAndKeepsItOtherwise()
+        {
+            // An attack with the leader's town open: at once.
+            GameState state = NewState();
+            Own(state, B1, Other);
+            Give(state, Me, Shield, Demolish);
+            Apply(state, new PhaseChangedEvent(GamePhase.AwaitingCardUse));
+            var play = (PlayCardCommand)Decide(state);
+            Assert.AreEqual(Demolish, play.Card, "the card just drawn, not the older shield");
+            Assert.AreEqual(B1, play.Target);
+
+            // No town of its own to protect: the shield waits in the hand.
+            state = NewState();
+            Give(state, Me, Shield);
+            Apply(state, new PhaseChangedEvent(GamePhase.AwaitingCardUse));
+            Assert.IsInstanceOf<KeepCardCommand>(Decide(state));
+
+            // The rent shield answers rent, never the draw.
+            state = NewState();
+            Give(state, Me, RentShield);
+            Apply(state, new PhaseChangedEvent(GamePhase.AwaitingCardUse));
+            Assert.IsInstanceOf<KeepCardCommand>(Decide(state));
+
+            // A card was played this turn already: the new one is kept.
+            state = NewState();
+            Own(state, B1, Other);
+            Give(state, Me, Fund, Demolish);
+            Apply(state, new CardPlayedEvent(Me, Fund), new PhaseChangedEvent(GamePhase.AwaitingCardUse));
+            Assert.IsInstanceOf<KeepCardCommand>(Decide(state));
+        }
+
+        [Test]
         public void LetsTheLeastUsefulCardGo()
         {
             GameState state = NewState();
