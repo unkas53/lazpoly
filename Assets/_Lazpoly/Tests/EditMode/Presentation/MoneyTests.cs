@@ -309,6 +309,102 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheSumIsWrittenInFrontOfEachHatchItPasses()
+        {
+            // The owner's wish (2026-11-12): "-50K" where money goes down, "+100K" where it comes up, in the game's short form.
+            Assert.AreEqual("-50K", HatchAmount.Text(-50000));
+            Assert.AreEqual("+100K", HatchAmount.Text(100000));
+            Assert.AreEqual("+" + Texts.Lang.M(1500000), HatchAmount.Text(1500000));
+            Assert.AreEqual(Texts.Lang.M(-1250000), HatchAmount.Text(-1250000));
+            Assert.AreEqual(HatchAmount.Up, HatchAmount.Ink(1));
+            Assert.AreEqual(HatchAmount.Down, HatchAmount.Ink(-1));
+            Assert.Greater(HatchAmount.Up.g, HatchAmount.Up.r, "green for money that comes");
+            Assert.Greater(HatchAmount.Down.r, HatchAmount.Down.g, "red for money that goes");
+            foreach (Color ink in new[] { HatchAmount.Up, HatchAmount.Down })
+                Assert.Greater(ink.grayscale, LawnSkin.Light.grayscale + 0.2f, "light enough to read on the meadow");
+
+            // It appears as the lid starts to open, stays while the hatch is open and fades once it has shut.
+            const float from = 1f, shuts = 2f;
+            float until = HatchAmount.ShutAt(from, shuts);
+            Assert.AreEqual(shuts + MoneyHatch.SwingSeconds, until, 1e-5f);
+            Assert.AreEqual(from + 2f * MoneyHatch.SwingSeconds, HatchAmount.ShutAt(from, from + 0.01f), 1e-5f, "as the hatch itself: never shut before it is open");
+            Assert.AreEqual(0f, HatchAmount.AlphaAt(from - 0.01f, from, until), "nothing before the lid moves");
+            Assert.AreEqual(1f, HatchAmount.AlphaAt(from, from, until), 1e-5f);
+            for (float t = from; t <= until; t += 0.05f)
+                Assert.AreEqual(1f, HatchAmount.AlphaAt(t, from, until), 1e-5f, "whole while the hatch is open");
+
+            Assert.That(HatchAmount.AlphaAt(HatchAmount.GoneAt(until) - HatchAmount.FadeSeconds / 2f, from, until), Is.InRange(0.4f, 0.6f), "fading");
+            Assert.AreEqual(0f, HatchAmount.AlphaAt(HatchAmount.GoneAt(until), from, until), 1e-5f);
+            Assert.Greater(HatchAmount.Linger, HatchAmount.FadeSeconds, "read a moment after the lid has shut");
+            Assert.Less(HatchAmount.Linger, 1f, "gone before the next payment's hatch opens");
+            Assert.AreEqual(0.6f, HatchAmount.ScaleAt(from, from), 1e-5f);
+            Assert.AreEqual(1f, HatchAmount.ScaleAt(from + HatchAmount.PopSeconds, from), 1e-5f);
+            Assert.AreEqual(1f, HatchAmount.ScaleAt(until, from), 1e-5f);
+
+            // In front of the hatch: straight under it on the screen, clear of the collar's near edge, standing over the grass.
+            Quaternion view = Quaternion.Euler(BoardCameraRig.Pitch, BoardCameraRig.BaseYaw, 0f);
+            Vector3 up = view * Vector3.up, right = view * Vector3.right, forward = view * Vector3.forward;
+            var mouth = new Vector3(1.5f, 0.2f, -2f);
+            Vector3 offset = HatchAmount.Spot(mouth, up, forward) - mouth;
+            Assert.AreEqual(-HatchAmount.Below, Vector3.Dot(offset, up), 1e-4f, "under the hatch on the screen");
+            Assert.AreEqual(0f, Vector3.Dot(offset, right), 1e-4f, "neither left nor right of it");
+            Assert.AreEqual(HatchAmount.Height, offset.y, 1e-4f, "over the grass");
+            float letters = HatchAmount.CharacterSize * 96f * 0.1f * 0.75f; // a capital's height
+            Assert.Greater(HatchAmount.Below - letters / 2f, MoneyHatch.OuterRadius * Mathf.Sin(BoardCameraRig.Pitch * Mathf.Deg2Rad) + 0.05f, "the letters do not lie on the collar");
+            Assert.Greater(HatchAmount.Height, letters / 2f, "nor in the grass");
+            Assert.That(letters, Is.InRange(0.3f, 0.45f), "about 20 pixels at 1080p in the whole view: read at a glance, smaller than the hatch");
+            Assert.Less(Vector3.Distance(2f * HatchAmount.Spot(Vector3.zero, up, forward), HatchAmount.Spot(Vector3.zero, up, forward, 2f)), 1e-4f, "it follows the table's size");
+
+            var holder = new GameObject("Board Test");
+            try
+            {
+                BoardView board = BoardView.Create(holder.transform, BoardDataLoader.LoadFromResources());
+                board.CreateMoneyPiles(new[] { Color.red, Color.blue, Color.green });
+                Assert.IsNull(board.HatchOf(0).GetComponentInChildren<HatchAmount>(), "nothing written while no money moves");
+                Assert.IsNull(HatchAmount.Show(board.HatchOf(0), 0, 0f, 1f, 1f));
+                Assert.IsNull(HatchAmount.Show(null, 50000, 0f, 1f, 1f));
+
+                // A payment between players: the sum with a minus at the payer's hatch, with a plus at the receiver's.
+                MoneyFlight.Fly(holder.transform, 260000, board.MoneyPileOf(0), board.HatchOf(0), board.MoneyPileOf(1), board.HatchOf(1), 1f);
+                HatchAmount paid = board.HatchOf(0).GetComponentInChildren<HatchAmount>();
+                HatchAmount got = board.HatchOf(1).GetComponentInChildren<HatchAmount>();
+                Assert.IsNotNull(paid);
+                Assert.IsNotNull(got);
+                Assert.AreEqual(-260000, paid.Amount);
+                Assert.AreEqual("-260K", paid.Written);
+                Assert.AreEqual(260000, got.Amount);
+                Assert.AreEqual("+260K", got.Written);
+                Assert.AreEqual(0f, paid.Alpha, "not yet: the money is still on its way to the hatch");
+                Assert.AreEqual(0f, got.Alpha);
+                Assert.IsNull(board.HatchOf(2).GetComponentInChildren<HatchAmount>(), "nothing at a hatch the money does not pass");
+                foreach (TextMesh line in paid.GetComponentsInChildren<TextMesh>())
+                    Assert.AreEqual(TextAnchor.MiddleCenter, line.anchor);
+
+                // To the bank: only the payer's. A new sum at a hatch takes the place of the one still written there.
+                MoneyFlight.Fly(holder.transform, 100000, board.MoneyPileOf(2), board.HatchOf(2), null, null, 1f);
+                Assert.AreEqual("-100K", board.HatchOf(2).GetComponentInChildren<HatchAmount>().Written);
+                MoneyFlight.Fly(holder.transform, 50000, board.MoneyPileOf(0), board.HatchOf(0), null, null, 1f);
+                HatchAmount[] atFirst = board.HatchOf(0).GetComponentsInChildren<HatchAmount>();
+                Assert.AreEqual(1, atFirst.Length);
+                Assert.AreEqual("-50K", atFirst[0].Written);
+                Assert.AreEqual("+260K", board.HatchOf(1).GetComponentInChildren<HatchAmount>().Written, "the other hatch keeps its own");
+
+                // The starting money: written as the hatch opens for it, which is at once.
+                MoneyFlight.Deal(holder.transform, 1500000, board.MoneyPileOf(1), board.HatchOf(1), 1f);
+                HatchAmount dealt = board.HatchOf(1).GetComponentInChildren<HatchAmount>();
+                Assert.AreEqual(1, board.HatchOf(1).GetComponentsInChildren<HatchAmount>().Length);
+                Assert.AreEqual(1500000, dealt.Amount);
+                Assert.AreEqual(1f, dealt.Alpha, 1e-5f);
+                dealt.Remove();
+                Assert.IsNull(board.HatchOf(1).GetComponentInChildren<HatchAmount>());
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void EachSeatsHatchLiesOnTheLawnOnItsSide()
         {
             var holder = new GameObject("Board Test");

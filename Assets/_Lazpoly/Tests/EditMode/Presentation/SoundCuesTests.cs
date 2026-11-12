@@ -20,6 +20,39 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheJailsGateIsHeardOpeningAndStrikingShut()
+        {
+            Assert.AreEqual("jail_open", SoundCues.FileName(SoundCue.JailOpen));
+            Assert.AreEqual("jail_shut", SoundCues.FileName(SoundCue.JailShut));
+            Assert.AreEqual(SoundCue.JailOpen, SoundCues.ForJailGate(true));
+            Assert.AreEqual(SoundCue.JailShut, SoundCues.ForJailGate(false));
+            foreach (SoundCue cue in new[] { SoundCue.JailOpen, SoundCue.JailShut })
+            {
+                Assert.AreEqual(1, SoundCues.Variants(cue));
+                Assert.AreEqual(0f, SoundCues.PitchJitter(cue), "the same iron gate every time");
+                Assert.That(SoundCues.Volume(cue), Is.InRange(0.4f, 0.7f), "a detail of the table, under the big moments");
+            }
+
+            // The game waits for neither: short recordings, the bolt and hinges, then the strike and the lock.
+            AudioClip open = Resources.Load<AudioClip>(SoundCues.ResourcePath(SoundCue.JailOpen));
+            AudioClip shut = Resources.Load<AudioClip>(SoundCues.ResourcePath(SoundCue.JailShut));
+            Assert.IsNotNull(open, "run Tools/Audio/make_sfx_kenney.py jail_open");
+            Assert.IsNotNull(shut, "run Tools/Audio/make_sfx_kenney.py jail_shut");
+            Assert.That(open.length, Is.InRange(0.2f, 0.7f));
+            Assert.That(shut.length, Is.InRange(Pawns.PawnView.JailStrikeAt + 0.3f, 1.2f), "the strike, then the lock");
+
+            // The shutting sound starts so that its strike falls as the gate reaches its frame.
+            float gate = Pawns.PawnView.JailGateSeconds, hop = Pawns.PawnView.JailHopSeconds, strike = Pawns.PawnView.JailStrikeAt;
+            Assert.IsFalse(Pawns.PawnView.GateStrikeDue(0f, hop, 1f), "not while the piece is still coming out");
+            Assert.IsFalse(Pawns.PawnView.GateStrikeDue(1f - strike / hop - 0.02f, hop, 1f));
+            Assert.IsTrue(Pawns.PawnView.GateStrikeDue(1f - strike / hop + 0.02f, hop, 1f));
+            Assert.IsTrue(Pawns.PawnView.GateStrikeDue(1f, hop, 1f));
+            Assert.IsTrue(Pawns.PawnView.GateStrikeDue(1f - strike / gate + 0.02f, gate, 1f), "behind a prisoner too");
+            Assert.IsTrue(Pawns.PawnView.GateStrikeDue(0f, gate, 2f), "a move shorter than the lead sounds from its start");
+            Assert.Greater(1f - strike / hop, Pawns.PawnView.GateShutFrom, "on the way out the gate is already swinging when it is heard");
+        }
+
+        [Test]
         public void TheBusIsHeardStartingPullingAwaySoundingItsHornAndBraking()
         {
             // The owner's wish (2026-11-11): the engine starting, the horn, the brakes and the engine pulling away.

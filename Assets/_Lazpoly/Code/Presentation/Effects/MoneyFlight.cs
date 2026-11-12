@@ -166,8 +166,9 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>
         /// Starts a payment of <paramref name="amount"/> out of <paramref name="payer"/>'s safe down through
         /// <paramref name="payerHatch"/>; for a player, up through <paramref name="receiverHatch"/> into
-        /// <paramref name="receiver"/>'s safe (both null for the bank). Returns how long it takes at
-        /// <paramref name="speed"/>, for the game to wait on.
+        /// <paramref name="receiver"/>'s safe (both null for the bank). The sum is written in front of each hatch it passes
+        /// (<see cref="HatchAmount"/>): with a minus at the payer's, with a plus at the receiver's. Returns how long it takes
+        /// at <paramref name="speed"/>, for the game to wait on.
         /// </summary>
         public static float Fly(Transform parent, int amount, MoneyPile payer, MoneyHatch payerHatch,
             MoneyPile receiver, MoneyHatch receiverHatch, float speed)
@@ -178,10 +179,12 @@ namespace Lazpoly.Presentation.Effects
             speed = Mathf.Max(speed, 0.1f);
             int count = pieces.Length;
             payerHatch.Swing(PayerOpensAt, PayerShutsAt(count), speed);
+            HatchAmount.Show(payerHatch, -amount, PayerOpensAt, PayerShutsAt(count), speed);
             payer.Swing(PayerSafeOpensAt, PayerSafeShutsAt(count), speed);
             if (toPlayer)
             {
                 receiverHatch.Swing(ReceiverOpensAt(count), ReceiverShutsAt(count), speed);
+                HatchAmount.Show(receiverHatch, amount, ReceiverOpensAt(count), ReceiverShutsAt(count), speed);
                 receiver.Swing(ReceiverSafeOpensAt(count), ReceiverSafeShutsAt(count), speed);
             }
 
@@ -233,6 +236,7 @@ namespace Lazpoly.Presentation.Effects
             int count = pieces.Length;
             float start = DealStartsAt(count);
             hatch.Swing(ReceiverOpensAt(count) - start, ReceiverShutsAt(count) - start, speed);
+            HatchAmount.Show(hatch, amount, ReceiverOpensAt(count) - start, ReceiverShutsAt(count) - start, speed);
             receiver.Swing(ReceiverSafeOpensAt(count) - start, ReceiverSafeShutsAt(count) - start, speed);
             for (int i = 0; i < count; i++)
             {

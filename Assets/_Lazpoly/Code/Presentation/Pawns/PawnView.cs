@@ -73,6 +73,12 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>Raised each time the pawn lands on a square while walking; the scene plays a step sound.</summary>
         public event Action<int> Stepped;
 
+        /// <summary>
+        /// Raised as the jail's gate starts to swing open for this pawn (true) and, <see cref="JailStrikeAt"/> before it
+        /// is shut again, as it swings shut (false); the scene plays the gate's sounds.
+        /// </summary>
+        public event Action<bool> GateSwung;
+
         /// <summary>The square the pawn stands on (or is walking from).</summary>
         public int Square => _square;
 
@@ -100,6 +106,13 @@ namespace Lazpoly.Presentation.Pawns
         public const float JailGateSeconds = 0.25f;
         public const float GateOpenBy = 0.6f;
         public const float GateShutFrom = 0.4f;
+
+        /// <summary>
+        /// How long into the shutting gate's sound (SoundCue.JailShut) the gate strikes its frame (JAIL_STRIKE in
+        /// Tools/Audio/make_sfx_kenney.py): the cue starts this long before the gate is shut, so the eye and the ear
+        /// meet on the strike. The recording is not sped up with the game, so a faster game starts it earlier in the swing.
+        /// </summary>
+        public const float JailStrikeAt = 0.22f;
 
         /// <summary>How far that hop swings out round the building's corner, as a share of its length: the piece never passes through the stone.</summary>
         public const float JailSwing = 0.7f;
@@ -206,6 +219,7 @@ namespace Lazpoly.Presentation.Pawns
             float speed = Mathf.Max(Speed, 0.1f);
             float small = CellSize;
             Vector3 from = transform.position, door = _board.CellDoor, spot = _board.CellSpot(_slot);
+            GateSwung?.Invoke(true);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailHopSeconds)
             {
                 transform.position = JailHopPoint(from, door, _board.CellMiddle, t);
@@ -227,9 +241,16 @@ namespace Lazpoly.Presentation.Pawns
             transform.position = spot;
             SetStretch(1f);
             // The gate shuts behind it.
+            bool struck = false;
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailGateSeconds)
             {
                 _board.SetCellGate(1f - Ease.InOutCubic(t));
+                if (!struck && GateStrikeDue(t, JailGateSeconds, speed))
+                {
+                    struck = true;
+                    GateSwung?.Invoke(false);
+                }
+
                 yield return null;
             }
 
@@ -251,6 +272,7 @@ namespace Lazpoly.Presentation.Pawns
             float small = _size;
             Vector3 spot = transform.position, door = _board.CellDoor, to = Target(_square);
             // The gate opens before it.
+            GateSwung?.Invoke(true);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailGateSeconds)
             {
                 _board.SetCellGate(Ease.InOutCubic(t));
@@ -264,12 +286,19 @@ namespace Lazpoly.Presentation.Pawns
                 yield return null;
             }
 
+            bool struck = false;
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailHopSeconds)
             {
                 transform.position = JailHopPoint(to, door, _board.CellMiddle, 1f - t);
                 _size = JailingSize(1f - t, small);
                 SetStretch(1f);
                 _board.SetCellGate(GateOnTheWayOut(t));
+                if (!struck && GateStrikeDue(t, JailHopSeconds, speed))
+                {
+                    struck = true;
+                    GateSwung?.Invoke(false);
+                }
+
                 yield return null;
             }
 
@@ -304,6 +333,14 @@ namespace Lazpoly.Presentation.Pawns
 
         /// <summary>How far the gate stands open (0 shut, 1 open) a share <paramref name="t"/> of the hop towards the door: open by <see cref="GateOpenBy"/>.</summary>
         public static float GateOnTheWayIn(float t) => Ease.InOutCubic(Mathf.Clamp01(t / GateOpenBy));
+
+        /// <summary>
+        /// Whether the shutting gate's sound is due a share <paramref name="t"/> of the way through a move of
+        /// <paramref name="seconds"/> (at the game's <paramref name="speed"/>) that ends with the gate shut: from
+        /// <see cref="JailStrikeAt"/> before that end, or from the start when the move is shorter than that.
+        /// </summary>
+        public static bool GateStrikeDue(float t, float seconds, float speed) =>
+            (1f - t) * seconds / Mathf.Max(speed, 0.1f) <= JailStrikeAt;
 
         /// <summary>How far the gate stands open a share <paramref name="t"/> of the hop away from the door: open until <see cref="GateShutFrom"/>, shut at the end.</summary>
         public static float GateOnTheWayOut(float t) => 1f - Ease.InOutCubic(Mathf.Clamp01((t - GateShutFrom) / (1f - GateShutFrom)));

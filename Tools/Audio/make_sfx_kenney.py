@@ -39,6 +39,9 @@ def pizzi(n, at=0.0, db=0.0):
     return layer(JINGLE, f"jingles_PIZZI{n:02d}.ogg", at, db)
 
 
+# When the jail's gate strikes its frame in jail_shut, from the cue's start.
+JAIL_STRIKE = 0.22
+
 # cue (or cue_take) -> (layers, longest seconds or None, fade-out seconds)
 RECIPES = {
     # The dice animation lasts 0.8 s: the shake stops with it, the throw is the dice landing.
@@ -84,6 +87,12 @@ RECIPES = {
                   layer(IMPACT, "impactGlass_light_000.ogg", 0.10, -9), layer(IMPACT, "impactMetal_light_000.ogg", 0.16, -14),
                   layer(IMPACT, "impactGlass_light_002.ogg", 0.21, -11), layer(IMPACT, "impactGlass_light_003.ogg", 0.30, -13),
                   layer(IMPACT, "impactMetal_light_001.ogg", 0.38, -16), layer(IMPACT, "impactGlass_light_004.ogg", 0.47, -16)], 0.9, 0.25),
+    # The jail's iron gate (Faz 46). Opening: the bolt is drawn and the hinges creak. Shutting: a creak, the leaf
+    # strikes its frame JAIL_STRIKE seconds in (PawnView.JailStrikeAt plays the cue that long before the gate is
+    # shut) and the lock turns.
+    "jail_open": ([layer(RPG, "metalLatch.ogg"), layer(RPG, "creak3.ogg", 0.10, -5)], None, 0.05),
+    "jail_shut": ([layer(RPG, "creak3.ogg", 0.0, -8), layer(IMPACT, "impactMetal_heavy_001.ogg", JAIL_STRIKE),
+                   layer(IMPACT, "impactMetal_medium_003.ogg", JAIL_STRIKE + 0.005, -6), layer(RPG, "metalClick.ogg", 0.52, 4)], None, 0.08),
 }
 
 # Small, frequent sounds sit under the big moments already in the files, not only in the game's mix.

@@ -799,6 +799,7 @@ namespace Lazpoly.Presentation.Game
                 PawnView pawn = PawnView.Create(transform, _board, seat, color, _crowd, player.Id, CharacterOf(state, player).Id);
                 pawn.Speed = Settings.AnimationSpeed;
                 pawn.Stepped += _ => AudioPlayer.Play(SoundCue.PawnStep);
+                pawn.GateSwung += opening => AudioPlayer.Play(SoundCues.ForJailGate(opening));
                 _pawns[player.Id] = pawn;
             }
 
@@ -1019,7 +1020,8 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
-            // The money hatches from near (2026-11-12): the person's own shut, then standing open.
+            // The money hatches from near (2026-11-12): the person's own shut, then standing open, then with a sum going down
+            // and a sum coming up written in front of it; and two hatches' sums in the whole view.
             if (CameraRig != null && _board.HatchOf(0) != null)
             {
                 MoneyHatch hatch = _board.HatchOf(0);
@@ -1029,10 +1031,24 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Take("kapak-kapali");
                 hatch.Show(1f);
                 yield return ScreenTour.Take("kapak-acik");
-                hatch.Show(0f);
+                HatchAmount.Show(hatch, -50000, 0f, 60f, 1f);
+                yield return ScreenTour.Until(() => false, 0.5f);
+                yield return ScreenTour.Take("kapak-giden");
+                HatchAmount writtenSum = HatchAmount.Show(hatch, 100000, 0f, 60f, 1f);
+                yield return ScreenTour.Until(() => false, 0.5f);
+                yield return ScreenTour.Take("kapak-gelen");
                 CameraRig.Hold(null);
                 CameraRig.ResetView();
                 yield return ScreenTour.Until(() => false, 1f);
+                MoneyHatch otherHatch = _board.HatchOf(_board.MoneyHatches.Count - 1);
+                HatchAmount otherSum = HatchAmount.Show(otherHatch, -1250000, 0f, 60f, 1f);
+                otherHatch.Show(1f);
+                yield return ScreenTour.Until(() => false, 0.5f);
+                yield return ScreenTour.Take("kapak-yazilar");
+                if (writtenSum != null) writtenSum.Remove();
+                if (otherSum != null) otherSum.Remove();
+                otherHatch.Show(0f);
+                hatch.Show(0f);
             }
 
             // The jail and the tax square from near (2026-11-12): the staged prisoner behind the bars, a free piece part of

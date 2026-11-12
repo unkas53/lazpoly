@@ -299,17 +299,23 @@ namespace Lazpoly.Presentation.Tests
 
                 // Going in: it is a prisoner from its first step, which starts where it stood at its own size.
                 Vector3 stood = second.transform.position;
+                var swings = new System.Collections.Generic.List<bool>();
+                second.GateSwung += swings.Add;
+                pawn.GateSwung += swings.Add;
                 IEnumerator going = second.EnterJail();
                 Assert.IsTrue(going.MoveNext());
+                CollectionAssert.AreEqual(new[] { true }, swings, "the gate is heard opening as the hop starts");
                 Assert.IsTrue(second.Jailed);
                 AssertNear(stood, second.transform.position, "the hop starts where it stood");
                 AssertNear(Vector3.one, second.transform.localScale, "at its own size");
                 Assert.AreEqual(0f, board.CellGate, 1e-6f, "the gate starts to open with the hop");
                 Assert.IsFalse(second.EnterJail().MoveNext(), "it does not go in twice");
+                Assert.AreEqual(1, swings.Count, "nor is the gate heard twice");
 
                 // Coming out: still the cell's until it lands; a piece that is free has nowhere to come out of.
                 IEnumerator leaving = pawn.LeaveJail();
                 Assert.IsTrue(leaving.MoveNext());
+                CollectionAssert.AreEqual(new[] { true, true }, swings, "and opening again for the one that comes out");
                 Assert.IsTrue(pawn.Jailed, "small until it is out of the door");
                 AssertNear(board.CellSpot(0), pawn.transform.position, "it waits at its place while the gate opens");
                 pawn.PlaceOn(0);

@@ -33,6 +33,10 @@ namespace Lazpoly.Presentation.Audio
         BusRev,
         BusHorn,
         BusBrake,
+
+        // The jail's iron gate swinging open and shutting behind a piece (the owner's wish, 2026-11-12); Kenney recordings.
+        JailOpen,
+        JailShut,
     }
 
     /// <summary>Which sound goes with which game event, and where each clip lives. No engine calls, so it is tested directly.</summary>
@@ -45,7 +49,8 @@ namespace Lazpoly.Presentation.Audio
         /// sends several events sounds once: a purchase plays on its payment, not on the owner change,
         /// and rent plays on the payer's side only. Dice, steps and the turn banner are timed by
         /// their animations instead; the hotel and the quiet turn-pass note are played by the scene too,
-        /// and the bus's sounds by its ride (<see cref="Pawns.BusTrip"/>).
+        /// the bus's sounds by its ride (<see cref="Pawns.BusTrip"/>) and the jail's gate by the piece that goes
+        /// through it (<see cref="ForJailGate"/>).
         /// </summary>
         public static SoundCue For(GameEvent gameEvent)
         {
@@ -90,6 +95,9 @@ namespace Lazpoly.Presentation.Audio
                     return SoundCue.None;
             }
         }
+
+        /// <summary>The jail's gate as a piece goes through it: the bolt and the hinges as it opens, the strike and the lock as it shuts.</summary>
+        public static SoundCue ForJailGate(bool opening) => opening ? SoundCue.JailOpen : SoundCue.JailShut;
 
         /// <summary>The clip's path under a Resources folder, e.g. "Lazpoly/Sfx/dice_shake"; null for <see cref="SoundCue.None"/>.</summary>
         public static string ResourcePath(SoundCue cue) => cue == SoundCue.None ? null : Folder + FileName(cue);
@@ -182,6 +190,8 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.BusStart: return 0.6f;
                 case SoundCue.BusHorn: return 0.55f;
                 case SoundCue.BusBrake: return 0.5f;
+                case SoundCue.JailOpen: return 0.55f; // The bolt and the hinges: a detail under the piece's words.
+                case SoundCue.JailShut: return 0.65f;
                 default: return 0.75f;
             }
         }
