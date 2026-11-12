@@ -21,7 +21,7 @@ namespace Lazpoly.Presentation.Tests
         {
             _root = new GameObject("UI Test Root", typeof(RectTransform));
             _container = (RectTransform)_root.transform;
-            Lang.Set(Language.Turkish);
+            Lang.Set(Lazpoly.Infra.Settings.Language.Turkish);
         }
 
         [TearDown]
