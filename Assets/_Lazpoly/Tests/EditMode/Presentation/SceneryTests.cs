@@ -127,6 +127,81 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheTaxSquareIsAQuietSlateBlueWithABillAndCoins()
+        {
+            // The owner's wish (2026-11-12): the tax square in a design that suits the table, like Şans the day before.
+            BoardData data = BoardDataLoader.LoadFromResources();
+            int tax = -1;
+            for (int i = 0; i < data.Board.Count; i++)
+            {
+                if (data.Board[i].Type == SquareType.Tax) tax = i;
+            }
+
+            Assert.AreEqual(BoardView.TaxColor, BoardView.TileBody(data.Board[tax], data), "the tax is printed in its slate blue, not washed to the paper");
+            Color.RGBToHSV(BoardView.TaxColor, out float hue, out float saturation, out float value);
+            Assert.That(hue, Is.InRange(0.54f, 0.62f), "a slate blue");
+            Assert.That(saturation, Is.InRange(0.15f, 0.35f), "a quiet one");
+            Assert.That(value, Is.InRange(0.5f, 0.7f), "mid-light, so the light does not burn it out and the bill stands out on it");
+            Assert.GreaterOrEqual(BoardView.Contrast(BoardView.TaxColor, BoardView.InkColor), 4.5f, "VERGİ reads on it");
+            Assert.GreaterOrEqual(BoardView.Contrast(BoardView.TaxDeep, FloorPrint.PrintedPaper), 7f, "the \"%\" reads on the bill");
+            Assert.GreaterOrEqual(BoardView.Contrast(FloorPrint.PrintedPaper, BoardView.TaxColor), 2.5f, "the bill stands out on the ground");
+            Assert.GreaterOrEqual(BoardView.Contrast(BoardView.TaxDeep, BoardView.TaxColor), 3f, "the coins' edge shows on the ground");
+            foreach (Color other in new[] { data.GroupColor(1), data.GroupColor(8), BoardView.ChanceColor })
+            {
+                float distance = new Vector3(other.r - BoardView.TaxColor.r, other.g - BoardView.TaxColor.g, other.b - BoardView.TaxColor.b).magnitude;
+                Assert.Greater(distance, 0.1f, "the tax is told from the towns and from Şans");
+            }
+
+            // The bill: cream under the "%", an outline at its edge, two written lines below, torn in teeth along the bottom.
+            Assert.IsTrue(TaxPrint.IsPaper(0f, 0f));
+            Assert.IsFalse(TaxPrint.IsDeep(0f, 0f), "the \"%\" has clean paper under it");
+            Assert.IsTrue(TaxPrint.IsDeep(-TaxPrint.BillHalf + 0.01f, 0f), "the bill has its outline");
+            Assert.IsTrue(TaxPrint.IsDeep(0f, TaxPrint.FirstLine), "a written line");
+            Assert.IsTrue(TaxPrint.IsDeep(TaxPrint.LineFrom + 0.05f, TaxPrint.SecondLine), "and a second");
+            Assert.IsFalse(TaxPrint.IsDeep(TaxPrint.FirstLineTo - 0.03f, TaxPrint.SecondLine), "which stops short");
+            Assert.Less(TaxPrint.MarkRoom.x, 2f * (TaxPrint.BillHalf - TaxPrint.Outline));
+            Assert.Less(TaxPrint.MarkRoom.y / 2f, TaxPrint.BillTop - TaxPrint.Outline, "the \"%\" stays under the bill's top edge");
+            Assert.Greater(-TaxPrint.MarkRoom.y / 2f, TaxPrint.FirstLine + TaxPrint.LineThickness, "and over the writing");
+            float tooth = 2f * TaxPrint.BillHalf / TaxPrint.Teeth;
+            Assert.AreEqual(TaxPrint.BillBottom + TaxPrint.Tooth, TaxPrint.TornEdge(-TaxPrint.BillHalf + tooth), 1e-4f, "between two teeth the edge is high");
+            Assert.AreEqual(TaxPrint.BillBottom - TaxPrint.Tooth, TaxPrint.TornEdge(-TaxPrint.BillHalf + tooth / 2f), 1e-4f, "a tooth's point is low");
+            Assert.IsTrue(TaxPrint.IsPaper(-TaxPrint.BillHalf + tooth / 2f, TaxPrint.BillBottom - TaxPrint.Tooth / 2f), "paper inside a tooth");
+            Assert.IsFalse(TaxPrint.IsPaper(-TaxPrint.BillHalf + tooth, TaxPrint.BillBottom - TaxPrint.Tooth / 2f), "none between two teeth");
+
+            // The coins: gold, each with a deep edge, one on another beside the bill's foot.
+            Assert.AreEqual(3, TaxPrint.Coins.Length);
+            for (int c = 0; c < TaxPrint.Coins.Length; c++)
+            {
+                Vector2 coin = TaxPrint.Coins[c];
+                Assert.IsTrue(TaxPrint.IsGold(coin.x, coin.y), $"coin {c}");
+                Assert.IsFalse(TaxPrint.IsDeep(coin.x, coin.y), $"coin {c} is gold in the middle");
+                Assert.IsTrue(TaxPrint.IsDeep(coin.x, coin.y + TaxPrint.CoinSize.y / 2f + TaxPrint.CoinEdge / 2f) || TaxPrint.IsGold(coin.x, coin.y + TaxPrint.CoinSize.y / 2f + TaxPrint.CoinEdge / 2f), $"coin {c} has its edge or the next coin above");
+                if (c > 0) Assert.Greater(coin.y - TaxPrint.Coins[c - 1].y, TaxPrint.CoinSize.y, "they lie one on another");
+                Assert.Greater(coin.x + TaxPrint.CoinSize.x / 2f, TaxPrint.BillHalf, "they stand out past the bill's side");
+            }
+
+            Assert.IsFalse(TaxPrint.IsGold(0f, 0f));
+            Assert.IsTrue(TaxPrint.Area.Contains(Vector2.zero));
+
+            foreach (Texture2D picture in new[] { TaxPrint.PaperPicture(), TaxPrint.DeepPicture(), TaxPrint.GoldPicture() })
+            {
+                Assert.AreEqual(TaxPrint.PictureWidth, picture.width);
+                Assert.AreEqual(Mathf.RoundToInt(picture.width * TaxPrint.Area.height / TaxPrint.Area.width), picture.height);
+                Color32[] pixels = picture.GetPixels32();
+                int covered = 0;
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    int column = i % picture.width, row = i / picture.width;
+                    bool edge = column == 0 || row == 0 || column == picture.width - 1 || row == picture.height - 1;
+                    if (edge) Assert.AreEqual(0, (int)pixels[i].a, $"{picture.name}: the drawing stays inside its sheet");
+                    if (pixels[i].a > 0) covered++;
+                }
+
+                Assert.Greater(covered, pixels.Length / 100, $"{picture.name} draws something");
+            }
+        }
+
+        [Test]
         public void TheChanceCardsAreTwoFannedCardsWithGoldPipsAndSparkles()
         {
             // The front card's middle is cream (the "?" lies there), the card behind shows its deep back beside it.
@@ -165,8 +240,9 @@ namespace Lazpoly.Presentation.Tests
         public void TheOtherSquaresAreWarmCreamsAndTheFactoryCitiesADarkGrey()
         {
             // The squares that are no town: one family of light, warm, quiet tones on the paper, none burned out by the light.
-            // Şans has its own jade since 2026-11-11 (see TheChanceSquaresAreASoftJade...).
-            Color[] others = { BoardView.StartColor, BoardView.TaxColor, BoardView.CupColor, BoardView.TravelColor, BoardView.JailColor };
+            // Şans has its own jade since 2026-11-11 (see TheChanceSquaresAreASoftJade...), the tax its slate blue since
+            // 2026-11-12 (see TheTaxSquareIsAQuietSlateBlue...).
+            Color[] others = { BoardView.StartColor, BoardView.CupColor, BoardView.TravelColor, BoardView.JailColor };
             var tiles = new List<Color>();
             foreach (Color other in others)
             {
@@ -338,11 +414,31 @@ namespace Lazpoly.Presentation.Tests
                     {
                         Assert.AreEqual("VERGİ", board.NameLabel(i).text, "the tax in capitals, larger (the owner's wish, Faz 24)");
                         Assert.IsNull(BoardView.Subtitle(square), "no %10 printed on the tax");
-                        Assert.IsNotNull(board.Document(i), "a document is printed on the tax square");
+                        Transform bill = board.TaxBill(i);
+                        Assert.IsNotNull(bill, "a bill with coins is printed on the tax square (the owner's wish, 2026-11-12)");
+                        Assert.IsNotNull(board.TaxMark(i), "with a big \"%\" on the bill");
+                        Assert.AreEqual("%", board.TaxMark(i).text);
+                        Assert.Greater(board.TaxMark(i).characterSize, board.NameLabel(i).characterSize * 1.3f, "the \"%\" is the tile's big print");
+                        Vector3 lift = board.TaxMark(i).transform.localPosition - bill.localPosition;
+                        Assert.Less(new Vector2(lift.x, lift.z).magnitude, 0.001f, "the \"%\" lies on the picture's origin, on the bill");
+                        Assert.Greater(lift.y, 0f, "over the bill");
+                        Bounds vergi = board.NameLabel(i).GetComponent<MeshRenderer>().bounds;
+                        Bounds tile = board.transform.Find($"Square {i:00} {square.Name}").GetComponent<MeshRenderer>().bounds;
+                        foreach (MeshRenderer sheet in bill.GetComponentsInChildren<MeshRenderer>())
+                        {
+                            Assert.IsFalse(sheet.bounds.Intersects(vergi), "the bill runs into VERGİ");
+                            Assert.GreaterOrEqual(sheet.bounds.min.x, tile.min.x, "the picture stays on its tile");
+                            Assert.LessOrEqual(sheet.bounds.max.x, tile.max.x, "the picture stays on its tile");
+                            Assert.GreaterOrEqual(sheet.bounds.min.z, tile.min.z, "the picture stays on its tile");
+                            Assert.LessOrEqual(sheet.bounds.max.z, tile.max.z, "the picture stays on its tile");
+                        }
+
+                        Assert.IsFalse(board.TaxMark(i).GetComponent<MeshRenderer>().bounds.Intersects(vergi), "the \"%\" runs into VERGİ");
                     }
                     else
                     {
-                        Assert.IsNull(board.Document(i), $"square {i} has no document");
+                        Assert.IsNull(board.TaxBill(i), $"square {i} has no bill");
+                        Assert.IsNull(board.TaxMark(i), $"square {i} has no \"%\"");
                     }
 
                     if (chance)

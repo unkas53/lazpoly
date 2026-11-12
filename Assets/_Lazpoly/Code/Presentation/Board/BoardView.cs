@@ -113,7 +113,13 @@ namespace Lazpoly.Presentation.Tabletop
         // creams, a good deal darker than the light shows them: the table's light brightens a plain tile by about 1.5
         // (linear), and brighter ones burn out to lemon and white on the screen.
         public static readonly Color StartColor = new Color(0.45f, 0.56f, 0.38f);
-        public static readonly Color TaxColor = new Color(0.60f, 0.58f, 0.55f);
+        /// <summary>
+        /// The tax square's ground (the owner's wish, 2026-11-12: a design that suits the table): a quiet slate blue, the
+        /// sky's cool tone beside Şans's jade, printed as it is like the jade so the bill on it (<see cref="TaxPrint"/>)
+        /// stands out. The bill's outline, its lines and the "%" are a deep shade of it, the coins <see cref="ChanceGold"/>.
+        /// </summary>
+        public static readonly Color TaxColor = new Color(0.48f, 0.58f, 0.66f);
+        public static readonly Color TaxDeep = new Color(0.14f, 0.23f, 0.35f);
         private static readonly Color RestColor = new Color(0.93f, 0.91f, 0.85f);
         /// <summary>
         /// A Şans square's ground (the owner's wish, 2026-11-11: a colour that suits the table better): a soft jade, the
@@ -229,6 +235,14 @@ namespace Lazpoly.Presentation.Tabletop
         public const float JailNameFill = 0.6f;
         public const float JailPawnShift = 0.22f;
 
+        /// <summary>
+        /// The jail is larger than the other drawn scenes (in corner sides), since the locked-up pieces stand inside it
+        /// (the owner's wish, 2026-11-12); the pieces that are free on its square wait a little to the right of the top
+        /// tip on the screen, so the larger building does not stand before their feet.
+        /// </summary>
+        public const float JailSceneSize = 0.56f;
+        public const float JailPawnSide = 0.1f;
+
         /// <summary>From a tile's middle towards its left tip on the screen (the diamond's left corner), for the table's camera.</summary>
         public static Vector3 ScreenLeftTip => -DiagonalLine(BoardCameraRig.BaseYaw);
 
@@ -273,12 +287,14 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>
         /// A tax square's name, in capitals and larger too ("VERGİ", the owner's wish, Faz 24). A tax taken as a share prints
-        /// no figure: its name sits low like Şans, under a document printed flat on the tile (<see cref="FloorPrint.Document"/>);
-        /// a fixed tax keeps its amount on the price line.
+        /// no figure: its name sits low like Şans, under a bill printed flat on the tile with a big "%" on it
+        /// (<see cref="TaxPrint"/>; the picture's page fills <see cref="TaxMarkDepth"/> of the tile's depth, its middle
+        /// <see cref="TaxMarkOffset"/> tile depths towards the screen's bottom); a fixed tax keeps its amount on the price line.
         /// </summary>
         public const float TaxNameScale = 1.6f;
-        public const float DocumentDepth = 0.46f;
-        public const float DocumentOffset = -0.12f;
+        public const float TaxMarkDepth = 0.56f;
+        public const float TaxMarkOffset = -0.17f;
+        public const float TaxMarkSize = 0.3f;
 
         /// <summary>The start arrow's length across the corner (shorter when it runs towards the name) and how far from the middle it lies, away from the name, in corner sides.</summary>
         public const float StartArrowLength = 0.72f;
@@ -370,7 +386,9 @@ namespace Lazpoly.Presentation.Tabletop
         private TextMesh[] _names;
         private TextMesh[] _chanceMarks;
         private Transform[] _chanceCards;
-        private Transform[] _documents;
+        private Transform[] _taxBills;
+        private Transform _jailScene;
+        private TextMesh[] _taxMarks;
         private Transform _startArrow;
 
         // The small cup beside the buildings of the town that holds it (SetCup), its size, and that town; -1 while none does.
@@ -421,7 +439,8 @@ namespace Lazpoly.Presentation.Tabletop
             if (Layout.IsCorner(index) && _data.Board[index].Type == SquareType.Jail)
             {
                 // The jail's pawns wait towards the tile's top tip, clear of the cell on the left and the lettering lower right (Faz 28).
-                spot = center + DiagonalTops(BoardCameraRig.BaseYaw) * (Layout.SquareSize(index).y * JailPawnShift);
+                float side = Layout.SquareSize(index).y;
+                spot = center + DiagonalTops(BoardCameraRig.BaseYaw) * (side * JailPawnShift) + DiagonalLine(BoardCameraRig.BaseYaw) * (side * JailPawnSide);
             }
             else if (Layout.IsCorner(index))
             {
@@ -544,7 +563,7 @@ namespace Lazpoly.Presentation.Tabletop
                 if (_names[i] != null) _names[i].transform.localRotation = NameRotation(i, rotation, yaw);
                 if (_prices[i] != null) _prices[i].transform.localRotation = rotation;
                 if (_chanceMarks[i] != null) _chanceMarks[i].transform.localRotation = rotation;
-                if (_documents[i] != null) _documents[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
+                if (_taxBills[i] != null) LayTaxPrint(i);
                 if (_chanceCards[i] != null) _chanceCards[i].localRotation = PrintRotation(Outward(Layout.SquareCenter(i)), yaw);
             }
 
@@ -1014,7 +1033,8 @@ namespace Lazpoly.Presentation.Tabletop
             _names = new TextMesh[board.Count];
             _chanceMarks = new TextMesh[board.Count];
             _chanceCards = new Transform[board.Count];
-            _documents = new Transform[board.Count];
+            _taxBills = new Transform[board.Count];
+            _taxMarks = new TextMesh[board.Count];
             _prices = new TextMesh[board.Count];
             _rents = new int?[board.Count];
             _data = data;
@@ -1072,13 +1092,14 @@ namespace Lazpoly.Presentation.Tabletop
                 {
                     CreateScene(square.Type, i, center, outward, size.y);
                 }
-                else if (DocumentUnderName(i))
+                else if (BillUnderName(i))
                 {
-                    float fit = Mathf.Min(size.x * NameFill / FloorPrint.DocumentSize.x, _depth * DocumentDepth / FloorPrint.DocumentSize.y);
-                    GameObject document = FloorPrint.Document("Tax document", transform, fit, InkColor);
-                    document.transform.localPosition = center + down * (_depth * DocumentOffset) + Vector3.up * (TileHeight + 0.001f);
-                    document.transform.localRotation = PrintRotation(outward, _yaw);
-                    _documents[i] = document.transform;
+                    // A bill with coins at its foot printed flat, and the big "%" on the bill.
+                    float fit = TaxFit(i);
+                    _taxBills[i] = TaxPrint.Create("Tax bill", transform, fit, FloorPrint.PrintedPaper, TaxDeep, ChanceGold).transform;
+                    _taxMarks[i] = CreateLabel("Tax mark", "%", center + Vector3.up * top, outward,
+                        _width * TaxMarkSize, TaxPrint.MarkRoom * fit, TaxDeep);
+                    LayTaxPrint(i);
                 }
                 else if (IsChance(i))
                 {
@@ -1104,7 +1125,7 @@ namespace Lazpoly.Presentation.Tabletop
                     ? DiagonalName(i) ? center - DiagonalTops(BoardCameraRig.BaseYaw) * (_depth * CupNameShift)
                     : square.Type == SquareType.Jail ? center + ScreenLowerRight * (size.y * JailNameShift)
                     : center + outward * ((FacesAway(outward) ? -1f : 1f) * _depth * CornerNameOffset)
-                    : center + down * (_depth * (IsChance(i) || DocumentUnderName(i) ? ChanceNameOffset : NameOffset));
+                    : center + down * (_depth * (IsChance(i) || BillUnderName(i) ? ChanceNameOffset : NameOffset));
                 _names[i] = CreateLabel("Name", PrintedName(square, corner), namePlace + Vector3.up * top, outward,
                     NameCharacterSize(i), NameRoom(i, size), InkOf(square));
                 _names[i].transform.localRotation = NameRotation(i, _names[i].transform.localRotation, _yaw);
@@ -1339,6 +1360,23 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The scene on the cup's corner (the owner's stadium); null on a board without one.</summary>
         public Transform CupScene => _cupScene;
 
+        /// <summary>The jail on its corner (<see cref="CornerParts.Cell"/>); null on a board without one.</summary>
+        public Transform JailScene => _jailScene;
+
+        /// <summary>
+        /// Where the locked-up piece in place <paramref name="slot"/> of the jail's square stands inside the cell (world
+        /// space), its feet on the cell's floor (<see cref="CornerParts.PrisonerSpots"/>); the square's own spot on a board without the jail.
+        /// </summary>
+        public Vector3 CellSpot(int slot)
+        {
+            if (_jailScene == null) return PawnSpot(Mathf.Max(_data.Board.JailIndex, 0));
+            Vector3[] spots = CornerParts.PrisonerSpots;
+            return _jailScene.TransformPoint(spots[(slot % spots.Length + spots.Length) % spots.Length]);
+        }
+
+        /// <summary>Before the cell's door, on the tile (world space): a piece on its way in or out passes here (<see cref="CornerParts.CellDoor"/>).</summary>
+        public Vector3 CellDoor => _jailScene != null ? _jailScene.TransformPoint(CornerParts.CellDoor) : PawnSpot(Mathf.Max(_data.Board.JailIndex, 0));
+
         /// <summary>A corner's scene stands on one side of the corner with the pawns on the other, both on the part away from the name.</summary>
         private void CreateScene(SquareType type, int index, Vector3 center, Vector3 outward, float side)
         {
@@ -1348,11 +1386,12 @@ namespace Lazpoly.Presentation.Tabletop
             bool cup = type == SquareType.Cup;
             scene.transform.localPosition = center + SceneSide(index, far) * (side * SceneOffset)
                 + outward * (side * (cup ? CupSceneInset : SceneInset) * (far ? 1f : -1f)) + Vector3.up * TileHeight;
-            scene.transform.localScale = Vector3.one * (side * (cup ? CupSceneSize : SceneSize));
+            scene.transform.localScale = Vector3.one * (side * (cup ? CupSceneSize : type == SquareType.Jail ? JailSceneSize : SceneSize));
             if (type == SquareType.Jail)
             {
                 // The cell stands towards the tile's left tip (the owner's wish, Faz 28).
                 scene.transform.localPosition = center + ScreenLeftTip * (side * JailSceneShift) + Vector3.up * TileHeight;
+                _jailScene = scene.transform;
             }
 
             if (!CornerParts.ShowsFront(scene))
@@ -1543,11 +1582,38 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>A Şans square: a card square along an edge (a card corner has its kiosk instead).</summary>
         private bool IsChance(int index) => _data.Board[index].Type == SquareType.Card && !Layout.IsCorner(index);
 
-        /// <summary>A tax taken as a share of property value: it shows no figure but a document, its name low on the tile.</summary>
-        private bool DocumentUnderName(int index) => _data.Board[index].Type == SquareType.Tax && Subtitle(_data.Board[index]) == null;
+        /// <summary>A tax taken as a share of property value: it shows no figure but a bill with a "%", its name low on the tile.</summary>
+        private bool BillUnderName(int index) => _data.Board[index].Type == SquareType.Tax && Subtitle(_data.Board[index]) == null;
 
-        /// <summary>The document printed on a tax square, or null on any other square.</summary>
-        public Transform Document(int index) => _documents != null ? _documents[index] : null;
+        /// <summary>The bill and coins printed on a tax square (<see cref="TaxPrint"/>); null on any other square.</summary>
+        public Transform TaxBill(int index) => _taxBills != null ? _taxBills[index] : null;
+
+        /// <summary>The flat "%" printed on the tax square's bill, or null on any other square.</summary>
+        public TextMesh TaxMark(int index) => _taxMarks != null ? _taxMarks[index] : null;
+
+        /// <summary>How large the tax square's picture is printed: its page inside the tile's width and <see cref="TaxMarkDepth"/> of its depth.</summary>
+        private float TaxFit(int index)
+        {
+            Vector2 size = Layout.SquareSize(index) - Vector2.one * Gap;
+            return Mathf.Min(size.x * NameFill / TaxPrint.Area.width, _depth * TaxMarkDepth / TaxPrint.Area.height);
+        }
+
+        /// <summary>
+        /// Lays the tax square's picture and its "%" for the camera's turn: the page's middle over the tile's print place,
+        /// which puts the picture's origin, and the "%" on it, a little off that middle (the coins stand to one side).
+        /// </summary>
+        private void LayTaxPrint(int index)
+        {
+            Vector3 center = Layout.SquareCenter(index);
+            Vector3 outward = Outward(center);
+            Quaternion turn = PrintRotation(outward, _yaw);
+            Vector2 page = TaxPrint.Area.center * TaxFit(index);
+            Vector3 origin = center + ScreenDown(outward) * (_depth * TaxMarkOffset) - turn * new Vector3(page.x, 0f, page.y);
+            _taxBills[index].localPosition = origin + Vector3.up * (TileHeight + 0.001f);
+            _taxBills[index].localRotation = turn;
+            _taxMarks[index].transform.localPosition = origin + Vector3.up * (TileHeight + PrintHeight);
+            _taxMarks[index].transform.localRotation = LabelRotation(outward, _yaw);
+        }
 
         /// <summary>A flat print's turn: its +z (the picture's up) along the tops of the letters of a label at the same place.</summary>
         private static Quaternion PrintRotation(Vector3 outward, float yaw) => Quaternion.LookRotation(LabelRotation(outward, yaw) * Vector3.up, Vector3.up);
@@ -1864,9 +1930,11 @@ namespace Lazpoly.Presentation.Tabletop
             label.GetComponent<MeshRenderer>().sharedMaterial = PrintMaterial.For(mesh.font);
         }
 
-        /// <summary>A plain tile's colour on the paper: its own colour washed to a pastel, but a Şans square's jade as it is.</summary>
+        /// <summary>A plain tile's colour on the paper: its own colour washed to a pastel, but a Şans square's jade and the tax square's slate blue as they are.</summary>
         public static Color TileBody(SquareDefinition square, BoardData data) =>
-            square.Type == SquareType.Card ? ChanceColor : Color.Lerp(TileColor(square, data), PaperColor, Pastel);
+            square.Type == SquareType.Card ? ChanceColor
+            : square.Type == SquareType.Tax ? TaxColor
+            : Color.Lerp(TileColor(square, data), PaperColor, Pastel);
 
         private static Color TileColor(SquareDefinition square, BoardData data)
         {

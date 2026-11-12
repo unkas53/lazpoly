@@ -79,6 +79,27 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>True from the hop into the bus until the piece lands on its square again: its turn's ring stays away meanwhile.</summary>
         public bool Riding { get; private set; }
 
+        /// <summary>
+        /// How small a locked-up piece is, as a share of its size (the owner's wish, 2026-11-12: a player sent to jail
+        /// shrinks and goes into the jail): the character small enough to stand under the cell's lintel and show between
+        /// its bars; a shape, small as it is, shrinks less.
+        /// </summary>
+        public const float JailedSize = 0.24f;
+        public const float ShapeJailedSize = 0.6f;
+
+        /// <summary>How long the hop between the square and the cell's door takes, and the step through the door.</summary>
+        public const float JailHopSeconds = 0.5f;
+        public const float JailStepSeconds = 0.3f;
+
+        /// <summary>
+        /// True from the moment the piece sets off into the jail's cell until it stands free on the square again: it is
+        /// small, stands inside the cell, stays solid when its player waits and carries no turn ring.
+        /// </summary>
+        public bool Jailed { get; private set; }
+
+        // The piece's size as a share of its own: 1 on the board, smaller on the way into the cell and inside it.
+        private float _size = 1f;
+
         /// <param name="crowd">Shared by every pawn on the board, so two never take the same slot of a square.</param>
         /// <param name="playerId">The pawn's key in <paramref name="crowd"/>.</param>
         /// <param name="figure">The character the player plays as (a figure id); another figure stands in when its files are missing.</param>
@@ -141,7 +162,118 @@ namespace Lazpoly.Presentation.Pawns
             transform.position = Reserve(square);
             _square = square;
             Riding = false;
-            SetStretch(1f); // Its own size again, were it caught riding the bus.
+            Jailed = false;
+            _size = 1f;
+            SetStretch(1f); // Its own size again, were it caught riding the bus or in the cell.
+        }
+
+        /// <summary>Puts the piece on the jail's <paramref name="square"/> locked up: small, inside the cell (a table set straight from the state).</summary>
+        public void PlaceInJail(int square)
+        {
+            PlaceOn(square);
+            Jailed = true;
+            _size = CellSize;
+            transform.position = _board.CellSpot(_slot);
+            SetStretch(1f);
+            SetFaded(false);
+        }
+
+        /// <summary>How small this piece is in the cell: <see cref="JailedSize"/> for a character, <see cref="ShapeJailedSize"/> for a shape.</summary>
+        public float CellSize => IsCharacter ? JailedSize : ShapeJailedSize;
+
+        /// <summary>
+        /// Goes to jail on the square it stands on: one hop to the cell's door, shrinking on the way, and a step through
+        /// the door to its place inside, where it stays in sight behind the bars until <see cref="LeaveJail"/>.
+        /// </summary>
+        public IEnumerator EnterJail()
+        {
+            if (Jailed || !gameObject.activeSelf) yield break;
+            Jailed = true;
+            SetFaded(false);
+            float speed = Mathf.Max(Speed, 0.1f);
+            float small = CellSize;
+            Vector3 from = transform.position, door = _board.CellDoor, spot = _board.CellSpot(_slot);
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailHopSeconds)
+            {
+                transform.position = BoardingPoint(from, door, t);
+                _size = JailingSize(t, small);
+                SetStretch(1f);
+                yield return null;
+            }
+
+            _size = small;
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailStepSeconds)
+            {
+                transform.position = CellStep(door, spot, t, small);
+                SetStretch(1f);
+                yield return null;
+            }
+
+            transform.position = spot;
+            SetStretch(1f);
+        }
+
+        /// <summary>Comes out free: a step from its place in the cell out of the door, and one hop back onto the square, growing to its size.</summary>
+        public IEnumerator LeaveJail()
+        {
+            if (!Jailed) yield break;
+            if (!gameObject.activeSelf)
+            {
+                Jailed = false;
+                _size = 1f;
+                yield break;
+            }
+
+            float speed = Mathf.Max(Speed, 0.1f);
+            float small = _size;
+            Vector3 spot = transform.position, door = _board.CellDoor, to = Target(_square);
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailStepSeconds)
+            {
+                transform.position = CellStep(spot, door, t, small);
+                yield return null;
+            }
+
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailHopSeconds)
+            {
+                transform.position = BoardingPoint(to, door, 1f - t);
+                _size = JailingSize(1f - t, small);
+                SetStretch(1f);
+                yield return null;
+            }
+
+            Release();
+            for (float t = 0f; t < 1f; t += Time.deltaTime * speed / SquashSeconds)
+            {
+                SetStretch(1f - 0.16f * Ease.Bump(t));
+                yield return null;
+            }
+
+            SetStretch(1f);
+        }
+
+        /// <summary>How big the piece is a share <paramref name="t"/> of the way from the square to the cell's door: its own size at first, <paramref name="small"/> at the door; it shrinks late, so the hop reads.</summary>
+        public static float JailingSize(float t, float small)
+        {
+            t = Mathf.Clamp01(t);
+            return Mathf.Lerp(1f, small, t * t);
+        }
+
+        /// <summary>Where a piece of <paramref name="size"/> is a share <paramref name="t"/> of the way through the cell's door, from one side to the other: a little step, no higher than its own small hop.</summary>
+        public static Vector3 CellStep(Vector3 from, Vector3 to, float t, float size)
+        {
+            t = Mathf.Clamp01(t);
+            Vector3 point = Vector3.Lerp(from, to, Ease.InOutCubic(t));
+            point.y += Mathf.Sin(t * Mathf.PI) * HopHeight * size;
+            return point;
+        }
+
+        // Stands the piece free on its square at its own size, whatever it was doing about the cell.
+        private void Release()
+        {
+            Jailed = false;
+            _size = 1f;
+            transform.position = Target(_square);
+            SetStretch(1f);
         }
 
         /// <summary>Takes a slot on <paramref name="square"/> and says where the pawn stands there.</summary>
@@ -157,6 +289,7 @@ namespace Lazpoly.Presentation.Pawns
             int count = _board.Layout.SquareCount;
             int steps = backward ? (_square - destination + count) % count : (destination - _square + count) % count;
             float speed = Mathf.Max(Speed, 0.1f) * Mathf.Max(1f, steps * (StepSeconds + SquashSeconds) / MaxWalkSeconds);
+            if (Jailed) Release(); // A walk starts from the square, never from inside the cell.
             if (_motion != null) _motion.Walking = steps > 0;
             while (_square != destination)
             {
@@ -194,6 +327,7 @@ namespace Lazpoly.Presentation.Pawns
         {
             const float seconds = 0.8f;
             float speed = Mathf.Max(Speed, 0.1f);
+            if (Jailed) Release();
             Vector3 from = transform.position;
             Vector3 to = Reserve(destination);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / seconds)
@@ -222,6 +356,7 @@ namespace Lazpoly.Presentation.Pawns
         public IEnumerator HopInto(Vector3 seat)
         {
             float speed = Mathf.Max(Speed, 0.1f);
+            if (Jailed) Release();
             Vector3 from = transform.position;
             Riding = true;
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / BoardingSeconds)
@@ -289,10 +424,10 @@ namespace Lazpoly.Presentation.Pawns
         {
             if (!gameObject.activeSelf) yield break;
             float speed = Mathf.Max(Speed, 0.1f);
-            Vector3 rest = Target(_square);
+            Vector3 rest = Jailed ? _board.CellSpot(_slot) : Target(_square);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / 0.32f)
             {
-                transform.position = rest + Vector3.up * (Mathf.Sin(t * Mathf.PI) * HopHeight * 0.6f);
+                transform.position = rest + Vector3.up * (Mathf.Sin(t * Mathf.PI) * HopHeight * 0.6f * _size);
                 SetStretch(1f + 0.1f * Ease.Bump(t));
                 yield return null;
             }
@@ -304,9 +439,11 @@ namespace Lazpoly.Presentation.Pawns
         /// <summary>
         /// Makes the piece see-through (<paramref name="faded"/>, a player waiting for their turn) or solid again
         /// (the player on turn): each part swaps to a faded copy of its own material, kept for the next time.
+        /// A locked-up piece stays solid: small and behind bars, a see-through one would be lost.
         /// </summary>
         public void SetFaded(bool faded)
         {
+            if (Jailed) faded = false;
             if (Faded == faded) return;
             Faded = faded;
             if (_parts == null)
@@ -361,7 +498,7 @@ namespace Lazpoly.Presentation.Pawns
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / (ToppleSeconds * 0.6f))
             {
                 transform.position = start + Vector3.down * (0.25f * t);
-                transform.localScale = Vector3.one * (1f - t);
+                transform.localScale = Vector3.one * (_size * (1f - t));
                 yield return null;
             }
 
@@ -372,7 +509,7 @@ namespace Lazpoly.Presentation.Pawns
         private void SetStretch(float height)
         {
             float width = 1f / Mathf.Sqrt(height);
-            transform.localScale = new Vector3(width, height, width);
+            transform.localScale = new Vector3(width, height, width) * _size;
         }
 
         // Characters stand in a line across the screen (PawnSlots.Line, turned by the camera's yaw) so a tall figure never hides

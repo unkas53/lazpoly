@@ -25,7 +25,6 @@ namespace Lazpoly.Presentation.Models
         public static readonly Color Glass = new Color(0.72f, 0.84f, 0.92f);
         public static readonly Color Orange = new Color(0.93f, 0.55f, 0.18f);
         public static readonly Color Tea = new Color(0.72f, 0.30f, 0.16f);
-        public static readonly Color Stone = new Color(0.68f, 0.66f, 0.62f);
         public static readonly Color Iron = new Color(0.22f, 0.24f, 0.28f);
 
         /// <summary>The cup's gold: deeper and shinier than <see cref="Brass"/>, so it does not read as the yellow pawn.</summary>
@@ -103,33 +102,82 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
+        /// <summary>The jail's warm limestone, and the darker course of its plinth, pier feet and cornice.</summary>
+        public static readonly Color Limestone = new Color(0.80f, 0.75f, 0.64f);
+        public static readonly Color LimestoneShade = new Color(0.69f, 0.64f, 0.54f);
+
+        /// <summary>The jail lock's plain steel (no brass: a small prop keeps to the building's few colours).</summary>
+        public static readonly Color Steel = new Color(0.55f, 0.57f, 0.60f);
+
+        /// <summary>The cell's floor (the top of its plinth) and the height of its barred openings above it, in the scene's unit.</summary>
+        public const float CellFloor = 0.06f;
+        public const float CellWall = 0.64f;
+
+        /// <summary>Where the cell's corner piers stand: this far from its middle along x (its length) and z (its width).</summary>
+        public const float CellPierX = 0.39f;
+        public const float CellPierZ = 0.31f;
+
+        /// <summary>How tall a locked-up piece may be, in the scene's unit, and still show whole under the lintel from the table's camera.</summary>
+        public const float PrisonerRoom = 0.47f;
+
         /// <summary>
-        /// A small stone cell: a solid wall at -Z (towards the lawn) under a slate roof, and iron bars on its other
-        /// three sides with a brass lock on the front, so the bars face the camera from the near corner.
+        /// Where the locked-up pieces stand on the cell's floor, in the scene's frame: close behind the bars of the two
+        /// sides the table's camera sees (the front at -X and the long side at +Z), each looked at through an opening and
+        /// not through the pier at the near corner, so every one of them shows between the bars.
+        /// </summary>
+        public static readonly Vector3[] PrisonerSpots =
+        {
+            new Vector3(0.08f, CellFloor, 0.18f), new Vector3(-0.12f, CellFloor, 0.18f), new Vector3(-0.25f, CellFloor, 0.02f),
+            new Vector3(0.28f, CellFloor, 0.18f), new Vector3(-0.25f, CellFloor, -0.20f),
+        };
+
+        /// <summary>Before the cell's door, on the tile: where a piece on its way in has shrunk, and one on its way out starts to grow.</summary>
+        public static readonly Vector3 CellDoor = new Vector3(-CellPierX - 0.26f, 0f, 0f);
+
+        /// <summary>
+        /// The jail (the owner's wish, 2026-11-12: a model that suits the table and pleases the eye, plain): a little
+        /// limestone lock-up like a temple, four piers on a plinth under a lintel and a low slate roof whose pediment
+        /// looks out over the door at -X. The door and the long side at +Z are iron bars with one rail, a steel lock on
+        /// the door's; the other two sides are walls, so the locked-up pieces inside (<see cref="PrisonerSpots"/>) show
+        /// against stone. The board turns it so that the camera sees the door and the barred side.
         /// </summary>
         public static GameObject Cell(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
-            const float halfWidth = 0.36f, front = 0.27f, back = -0.27f, barHeight = 0.6f, floor = 0.06f;
-            Part(root, "Floor", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Stone, new Vector3(0f, floor / 2f, 0f), new Vector3(0.8f, floor, 0.66f));
-            Part(root, "Wall", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Stone, new Vector3(0f, 0.36f, back), new Vector3(0.8f, 0.6f, 0.1f));
-            Part(root, "Roof", MeshFactory.RoundedBox(Vector3.one, 0.02f, 2), Slate, new Vector3(0f, 0.7f, -0.01f), new Vector3(0.88f, 0.07f, 0.74f));
-            foreach (float x in new[] { -halfWidth, halfWidth })
+            const float top = CellFloor + CellWall, middle = CellFloor + CellWall / 2f, bar = 0.015f, rail = 0.32f;
+            Mesh block = MeshFactory.RoundedBox(Vector3.one, 0.01f, 2);
+            Part(root, "Plinth", block, LimestoneShade, new Vector3(0f, CellFloor / 2f, 0f), new Vector3(0.92f, CellFloor, 0.78f));
+            Part(root, "Step", block, LimestoneShade, new Vector3(-0.49f, 0.015f, 0f), new Vector3(0.07f, 0.03f, 0.34f));
+            foreach (float x in new[] { -CellPierX, CellPierX })
             {
-                Part(root, "Pillar", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Stone, new Vector3(x, 0.36f, front), new Vector3(0.08f, 0.6f, 0.08f));
-                foreach (float z in new[] { -0.12f, 0.01f, 0.14f })
+                foreach (float z in new[] { -CellPierZ, CellPierZ })
                 {
-                    Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(x, floor, z), new Vector3(0.018f, barHeight, 0.018f));
+                    Part(root, "Pier", block, Limestone, new Vector3(x, middle, z), new Vector3(0.11f, CellWall, 0.11f));
+                    Part(root, "Pier foot", block, LimestoneShade, new Vector3(x, CellFloor + 0.03f, z), new Vector3(0.14f, 0.06f, 0.14f));
                 }
             }
 
-            for (int i = -3; i <= 3; i++)
+            Part(root, "Back wall", block, Limestone, new Vector3(CellPierX + 0.005f, middle, 0f), new Vector3(0.08f, CellWall, 0.54f));
+            Part(root, "Side wall", block, Limestone, new Vector3(0f, middle, -CellPierZ - 0.005f), new Vector3(0.70f, CellWall, 0.08f));
+            Part(root, "Lintel", block, Limestone, new Vector3(0f, top + 0.03f, 0f), new Vector3(0.92f, 0.06f, 0.78f));
+            Part(root, "Cornice", block, LimestoneShade, new Vector3(0f, top + 0.075f, 0f), new Vector3(0.98f, 0.03f, 0.84f));
+            // The roof's ridge runs along x; the pediment is the same shape in stone, lower and longer, so it shows at both ends under the slates.
+            Part(root, "Pediment", MeshFactory.Prism(), Limestone, new Vector3(0f, top + 0.09f, 0f), new Vector3(0.94f, 0.135f, 0.77f));
+            Part(root, "Roof", MeshFactory.Prism(), Slate, new Vector3(0f, top + 0.09f, 0f), new Vector3(0.90f, 0.16f, 0.84f));
+
+            for (int i = -1; i <= 1; i++)
             {
-                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(i * 0.09f, floor, front), new Vector3(0.018f, barHeight, 0.018f));
+                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(-CellPierX, CellFloor, i * 0.125f), new Vector3(bar, CellWall, bar));
             }
 
-            Part(root, "Crossbar", MeshFactory.RoundedBox(Vector3.one, 0.005f, 2), Iron, new Vector3(0f, 0.38f, front), new Vector3(0.7f, 0.035f, 0.035f));
-            Part(root, "Lock", MeshFactory.RoundedBox(Vector3.one, 0.01f, 2), Brass, new Vector3(0.1f, 0.33f, front + 0.03f), new Vector3(0.08f, 0.09f, 0.04f));
+            for (int i = -2; i <= 2; i++)
+            {
+                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(i * 0.11f, CellFloor, CellPierZ), new Vector3(bar, CellWall, bar));
+            }
+
+            Part(root, "Rail", block, Iron, new Vector3(-CellPierX, rail, 0f), new Vector3(0.03f, 0.03f, 0.52f));
+            Part(root, "Rail", block, Iron, new Vector3(0f, rail, CellPierZ), new Vector3(0.68f, 0.03f, 0.03f));
+            Part(root, "Lock", block, Steel, new Vector3(-CellPierX - 0.025f, rail, 0.06f), new Vector3(0.04f, 0.10f, 0.075f));
             return root;
         }
 

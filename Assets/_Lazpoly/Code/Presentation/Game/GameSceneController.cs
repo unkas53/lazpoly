@@ -1035,6 +1035,41 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Until(() => false, 1f);
             }
 
+            // The jail and the tax square from near (2026-11-12): the staged prisoner behind the bars, a free piece part of
+            // the way on its hop to the cell's door, then the tax square's print.
+            if (CameraRig != null && _board.JailScene != null)
+            {
+                int jailSquare = _session.Board.JailIndex;
+                CameraRig.SetView(BoardCameraRig.BaseYaw, BoardCameraRig.MinZoom);
+                CameraRig.Hold(_board.SquarePosition(jailSquare));
+                yield return ScreenTour.Take("hapis");
+                PawnView visitor = null;
+                foreach (PawnView candidate in _pawns.Values)
+                {
+                    if (visitor == null && !candidate.Jailed && candidate.gameObject.activeSelf) visitor = candidate;
+                }
+
+                if (visitor != null)
+                {
+                    visitor.transform.position = PawnView.BoardingPoint(_board.PawnSpot(jailSquare), _board.CellDoor, 0.7f);
+                    visitor.transform.localScale = Vector3.one * PawnView.JailingSize(0.7f, visitor.CellSize);
+                    yield return ScreenTour.Take("hapis-giris");
+                    visitor.PlaceOn(visitor.Square);
+                }
+
+                for (int taxSquare = 0; taxSquare < _session.Board.Count; taxSquare++)
+                {
+                    if (_board.TaxBill(taxSquare) == null) continue;
+                    CameraRig.Hold(_board.SquarePosition(taxSquare));
+                    yield return ScreenTour.Take("vergi");
+                    break;
+                }
+
+                CameraRig.Hold(null);
+                CameraRig.ResetView();
+                yield return ScreenTour.Until(() => false, 1f);
+            }
+
             // The aeroplane that crosses the sky now and then (2026-11-12), held near each side of the whole view in turn;
             // the far islands show in the same pictures.
             SkyBackdrop sky = Camera.main != null ? Camera.main.GetComponentInChildren<SkyBackdrop>() : null;
@@ -1349,7 +1384,8 @@ namespace Lazpoly.Presentation.Game
             {
                 _shownMoney[player.Id] = player.Money;
                 PawnView pawn = _pawns[player.Id];
-                pawn.PlaceOn(player.Position);
+                if (player.InJail) pawn.PlaceInJail(player.Position);
+                else pawn.PlaceOn(player.Position);
                 if (player.IsBankrupt) pawn.SetEliminated();
             }
 
@@ -1588,6 +1624,12 @@ namespace Lazpoly.Presentation.Game
                     case JailChangedEvent jail:
                         Say(jail.PlayerId, L(jail.Turns == 0 ? "Özgürüm!" : jail.Turns >= _session.Rules.JailTurns ? "Hapse düştüm!" : "Bekliyorum..."));
                         Revision++;
+                        // The owner's wish (2026-11-12): whoever is sent to jail shrinks and goes into the jail, and comes out of it free.
+                        if (_pawns.TryGetValue(jail.PlayerId, out PawnView prisoner))
+                        {
+                            yield return jail.Turns > 0 ? prisoner.EnterJail() : prisoner.LeaveJail();
+                        }
+
                         break;
                     case CardPlayedEvent played:
                         // The card in the middle for everyone, what it is played on under its name (Faz 30); an attack that
