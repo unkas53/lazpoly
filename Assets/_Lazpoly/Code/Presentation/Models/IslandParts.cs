@@ -82,6 +82,13 @@ namespace Lazpoly.Presentation.Models
         public const string RockName = "Rock";
 
         /// <summary>
+        /// The tint on the great island's rock: a shade deeper and cooler than the little islands' (which wear the
+        /// picture untinted), as a thing further off in the sky, so the safes' islands stand out before it and it
+        /// weighs less on the eye.
+        /// </summary>
+        public static readonly Color TableRock = new Color(0.80f, 0.84f, 0.90f);
+
+        /// <summary>
         /// The great island under the table (the owner's wish, 2026-11-12), hung from the underside of the table's stone:
         /// its top is a square <paramref name="width"/> wide at y 0, flush with the table's own edge and never past it.
         /// Grass hangs from under the edge, long vines trail down, and the rock steps in to a leaning point with loose
@@ -93,7 +100,7 @@ namespace Lazpoly.Presentation.Models
             root.transform.SetParent(parent, false);
             Transform at = root.transform;
             Skinned(at, TurfName, IslandShape.TableTurf(width, seed), IslandSkin.Grass(), Color.white, 0.05f);
-            Skinned(at, RockName, IslandShape.TableRock(width, seed), IslandSkin.Rock(), Color.white, 0.12f);
+            Skinned(at, RockName, IslandShape.TableRock(width, seed), IslandSkin.Rock(), TableRock, 0.12f);
 
             var vines = new GameObject(VinesName);
             vines.transform.SetParent(at, false);
@@ -108,7 +115,7 @@ namespace Lazpoly.Presentation.Models
             Vector4[] drifters = IslandShape.TableDrifters(width, seed);
             for (int i = 0; i < drifters.Length; i++)
             {
-                GameObject stone = Skinned(stones.transform, $"Stone {i + 1}", IslandShape.Drifter(seed * 10 + i), IslandSkin.Rock(), Color.white, 0.12f);
+                GameObject stone = Skinned(stones.transform, $"Stone {i + 1}", IslandShape.Drifter(seed * 10 + i), IslandSkin.Rock(), TableRock, 0.12f);
                 stone.transform.localPosition = new Vector3(drifters[i].x, drifters[i].y, drifters[i].z);
                 stone.transform.localScale = Vector3.one * drifters[i].w;
             }

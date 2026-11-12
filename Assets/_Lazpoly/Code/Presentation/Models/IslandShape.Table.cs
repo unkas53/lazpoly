@@ -14,11 +14,18 @@ namespace Lazpoly.Presentation.Models
     public static partial class IslandShape
     {
         /// <summary>How deep the table's island hangs under the table.</summary>
-        public const float TableDepth = 8f;
+        public const float TableDepth = 6f;
+
+        /// <summary>
+        /// How far under the table's near corner the island may show in the game's slanted view, in world units up the
+        /// screen: the interface's bar lies just under that corner, and the island must end above it. So the body is
+        /// drawn round quickly under the table's corners, and what hangs (grass, vines, teeth) is short there.
+        /// </summary>
+        public const float TableShow = 0.45f;
 
         /// <summary>How deep its soil reaches, and where each ledge of rock begins below the top.</summary>
         public const float TableSoil = 0.75f;
-        public static readonly float[] TableLedges = { 0.78f, 2.72f, 4.72f, 6.42f };
+        public static readonly float[] TableLedges = { 0.78f, 2.20f, 3.70f, 5.10f };
 
         /// <summary>How much of the table's outline the island takes at its widest: a hair inside, so the stone's edge shows whole.</summary>
         public const float TableShare = 0.985f;
@@ -39,9 +46,9 @@ namespace Lazpoly.Presentation.Models
 
         // The body's rings from the top down, as for the little islands: how deep, what share of the table's outline,
         // how round (0 the table's square, 1 a circle), and how much each point strays.
-        private static readonly float[] TableRingDepth = { 0.03f, 0.40f, 0.75f, 0.78f, 1.90f, 2.60f, 2.72f, 3.90f, 4.60f, 4.72f, 5.70f, 6.30f, 6.42f, 7.30f };
-        private static readonly float[] TableRingShare = { 0.985f, 0.975f, 0.955f, 0.982f, 0.970f, 0.92f, 0.90f, 0.86f, 0.74f, 0.71f, 0.62f, 0.45f, 0.42f, 0.22f };
-        private static readonly float[] TableRingRound = { 0f, 0f, 0.02f, 0.02f, 0.06f, 0.12f, 0.14f, 0.25f, 0.36f, 0.40f, 0.55f, 0.70f, 0.72f, 0.90f };
+        private static readonly float[] TableRingDepth = { 0.03f, 0.40f, 0.75f, 0.78f, 1.60f, 2.10f, 2.20f, 3.10f, 3.60f, 3.70f, 4.50f, 5.00f, 5.10f, 5.60f };
+        private static readonly float[] TableRingShare = { 0.985f, 0.975f, 0.955f, 0.982f, 0.970f, 0.92f, 0.90f, 0.84f, 0.70f, 0.67f, 0.56f, 0.40f, 0.37f, 0.20f };
+        private static readonly float[] TableRingRound = { 0f, 0.03f, 0.12f, 0.15f, 0.60f, 0.72f, 0.75f, 0.85f, 0.90f, 0.92f, 0.96f, 1f, 1f, 1f };
         private static readonly float[] TableRingStray = { 0f, 0.004f, 0.008f, 0.010f, 0.015f, 0.025f, 0.020f, 0.030f, 0.040f, 0.035f, 0.050f, 0.070f, 0.060f, 0.090f };
 
         /// <summary>How much of the table's outline the island takes at a depth under the table (0 at the point).</summary>
@@ -112,6 +119,16 @@ namespace Lazpoly.Presentation.Models
             }
         }
 
+        /// <summary>
+        /// How far along its side a point of the table's edge is from the nearest corner: 0 at a corner, 1 at the middle
+        /// of a side. What hangs from the edge is shortest at the corners (<see cref="TableShow"/>).
+        /// </summary>
+        public static float TableFromCorner(float along)
+        {
+            float side = Mathf.Repeat(along, 1f) * 4f;
+            return 1f - Mathf.Abs((side - Mathf.Floor(side)) * 2f - 1f);
+        }
+
         /// <summary>The grass hanging from under the table's edge, all the way round: a short fringe with longer tongues here and there.</summary>
         public static Mesh TableTurf(float width, int seed)
         {
@@ -128,7 +145,8 @@ namespace Lazpoly.Presentation.Models
                 float angle = i * 2f * Mathf.PI / count;
                 float lobe = Mathf.Abs(Mathf.Sin(19f * angle + start + 0.8f * Mathf.Sin(5f * angle + second)));
                 float slow = 0.5f + 0.5f * Mathf.Sin(3f * angle + second);
-                hang[i] = Mathf.Lerp(TableSkirtShort, TableSkirtLong, Mathf.Clamp01(lobe * lobe * lobe * (0.35f + 0.65f * slow) + Range(-0.04f, 0.06f)));
+                float tongue = Mathf.Lerp(TableSkirtShort, TableSkirtLong, Mathf.Clamp01(lobe * lobe * lobe * (0.35f + 0.65f * slow) + Range(-0.04f, 0.06f)));
+                hang[i] = Mathf.Max(TableSkirtShort, tongue * Mathf.Lerp(0.5f, 1f, TableFromCorner((float)i / count)));
             }
 
             var build = new Builder();
@@ -220,10 +238,10 @@ namespace Lazpoly.Presentation.Models
                 float angle = (i * 360f / teeth + Range(-9f, 9f)) * Mathf.Deg2Rad;
                 float share = TableShareAt(depth) * Waist(angle, depth) * Range(0.9f, 0.97f);
                 Vector2 lean = TableLeanAt(width, seed, depth);
-                Vector2 at = TableOutline(half, angle, TableRingRound[3 + 3 * ledge]) * share + lean * (1f - share);
-                float length = Range(0.9f, 1.9f), radius = Range(0.32f, 0.6f);
+                Vector2 at = TableOutline(half, angle, 1f) * share + lean * (1f - share);
+                float length = Range(0.5f, 1.1f), radius = Range(0.3f, 0.5f);
                 var from = new Vector3(at.x, -depth, at.y);
-                var to = new Vector3(at.x * 0.97f + Range(-0.12f, 0.12f), Mathf.Max(-TableDepth, -depth - length), at.y * 0.97f + Range(-0.12f, 0.12f));
+                var to = new Vector3(at.x * 0.9f + Range(-0.1f, 0.1f), Mathf.Max(-TableDepth, -depth - length), at.y * 0.9f + Range(-0.1f, 0.1f));
                 TableTooth(build, from, to, radius, 7, Range(0f, 1f), random);
             }
 
@@ -233,7 +251,7 @@ namespace Lazpoly.Presentation.Models
                 float depth = i % 2 == 0 ? Range(0.42f, 0.66f) : Range(1.0f, 1.8f);
                 float angle = (i * 360f / 26f + Range(-5f, 5f)) * Mathf.Deg2Rad;
                 float size = Range(0.2f, 0.36f);
-                Vector2 face = TableOutline(half, angle, 0.02f) * TableShareAt(depth);
+                Vector2 face = TableOutline(half, angle, depth < TableLedges[0] ? 0.12f : 0.5f) * TableShareAt(depth);
                 float away = face.magnitude;
                 Vector2 at = away > 1e-4f ? face * ((away - size * 1.25f) / away) : face;
                 float Jitter(float a, float b) => a + (float)random.NextDouble() * (b - a);
@@ -266,12 +284,17 @@ namespace Lazpoly.Presentation.Models
             }
         }
 
+        /// <summary>How far round the table's edge (0-1) a vine is rooted.</summary>
+        public static float TableVineAlong(int seed, int vine)
+        {
+            var random = new System.Random(seed * 71 + 331 + vine * 1013);
+            return (vine + 0.15f + 0.7f * (float)random.NextDouble()) / TableVines;
+        }
+
         /// <summary>Where a vine is rooted, under the grass at the table's edge.</summary>
         public static Vector3 TableVineFoot(float width, int seed, int vine)
         {
-            var random = new System.Random(seed * 71 + 331 + vine * 1013);
-            float along = (vine + 0.15f + 0.7f * (float)random.NextDouble()) / TableVines;
-            return Flat(TableEdge(width / 2f, along) * 0.972f, -0.12f);
+            return Flat(TableEdge(width / 2f, TableVineAlong(seed, vine)) * 0.972f, -0.12f);
         }
 
         /// <summary>A long vine hanging from its foot (<see cref="TableVineFoot"/>, here the origin, so it can sway about it), with leaves down its length.</summary>
@@ -284,7 +307,8 @@ namespace Lazpoly.Presentation.Models
             Vector3 foot = TableVineFoot(width, seed, vine);
             var out2 = new Vector2(foot.x, foot.z);
             Vector2 inward = out2 * (-0.1f / Mathf.Max(0.01f, out2.magnitude));
-            float length = Range(1.1f, 2.6f), sway = Range(0f, 6.283f);
+            // Long by the middle of a side, short towards a corner.
+            float length = Range(1.1f, 2.6f) * Mathf.Lerp(0.12f, 1f, TableFromCorner(TableVineAlong(seed, vine))), sway = Range(0f, 6.283f);
             var build = new Builder();
             Vector3 previous = Vector3.zero;
             const int joints = 7;
@@ -311,11 +335,11 @@ namespace Lazpoly.Presentation.Models
             float turn = Range(0f, 6.283f), half = width / 2f;
             for (int i = 0; i < stones.Length; i++)
             {
-                float depth = Range(4.4f, 7.2f), size = Range(0.22f, 0.5f);
+                float depth = Range(3.3f, 5.3f), size = Range(0.18f, 0.4f);
                 float angle = turn + i * 2f * Mathf.PI / stones.Length + Range(-0.3f, 0.3f);
                 // Out from the rock at this depth, well inside the table's outline.
                 Vector2 lean = TableLeanAt(width, seed, depth);
-                float share = Mathf.Min(0.8f, TableShareAt(depth) + Range(0.1f, 0.2f));
+                float share = Mathf.Min(0.8f, TableShareAt(depth) + Range(0.06f, 0.14f));
                 Vector2 at = TableOutline(half, angle, 1f) * share + lean * (1f - share);
                 stones[i] = new Vector4(at.x, -depth, at.y, size);
             }

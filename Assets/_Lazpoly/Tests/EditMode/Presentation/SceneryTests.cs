@@ -984,6 +984,10 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Less(rock.max.y, under, "the body lies under the stone");
                 Assert.That(rock.min.y, Is.EqualTo(under - IslandShape.TableDepth).Within(1e-3f), "down to its point");
                 Assert.AreSame(IslandSkin.Rock(), rockPart.GetComponent<Renderer>().sharedMaterial.mainTexture, "the little islands' rock");
+                Color tint = rockPart.GetComponent<Renderer>().sharedMaterial.color;
+                Assert.That(tint.r, Is.EqualTo(IslandParts.TableRock.r).Within(0.01f));
+                Assert.Less(IslandParts.TableRock.maxColorComponent, 0.95f, "a shade deeper than theirs, so the safes' islands stand out before it");
+                Assert.Greater(IslandParts.TableRock.b, IslandParts.TableRock.r, "and cooler, as a thing further off in the sky");
                 Assert.AreSame(IslandSkin.Grass(), turfPart.GetComponent<Renderer>().sharedMaterial.mainTexture, "and their grass");
 
                 // The table's edge stays the widest thing (the owner's wish for the plate): nothing of the island shows past it or over it.
@@ -995,8 +999,43 @@ namespace Lazpoly.Presentation.Tests
                     Assert.LessOrEqual(b.max.y, under + 1e-3f, $"{part.name} rises into the table");
                 }
 
+                // In the game's slanted view the interface's bar lies just under the table's near corner: nothing of the
+                // island shows lower on the screen than a little under that corner, whichever corner faces the camera.
+                float pitch = BoardCameraRig.Pitch * Mathf.Deg2Rad;
+                float tip = half * Mathf.Sqrt(2f) * Mathf.Sin(pitch) + BoardView.PlateThickness * Mathf.Cos(pitch);
+                float lowest = float.MinValue;
+                string lowestPart = null;
+                var points = new List<Vector3>();
+                foreach (MeshFilter part in island.GetComponentsInChildren<MeshFilter>())
+                {
+                    part.sharedMesh.GetVertices(points);
+                    foreach (Vector3 local in points)
+                    {
+                        Vector3 at = board.transform.InverseTransformPoint(part.transform.TransformPoint(local));
+                        float towards = (Mathf.Abs(at.x) + Mathf.Abs(at.z)) / Mathf.Sqrt(2f); // towards the corner it lies under
+                        float low = towards * Mathf.Sin(pitch) - at.y * Mathf.Cos(pitch);
+                        if (low <= lowest) continue;
+                        lowest = low;
+                        lowestPart = part.name;
+                    }
+                }
+
+                Assert.LessOrEqual(lowest - tip, IslandShape.TableShow, $"{lowestPart} shows too far under the table's corner");
+                // Yet under the middle of a side the rock shows well below the edge: there the island is seen.
+                float shown = 0f;
+                rockPart.GetComponent<MeshFilter>().sharedMesh.GetVertices(points);
+                foreach (Vector3 local in points)
+                {
+                    if (Mathf.Abs(local.z) > 1.5f || local.x < 0f) continue;
+                    shown = Mathf.Max(shown, -local.y * Mathf.Cos(pitch) - (half - local.x) * Mathf.Sin(pitch) * Mathf.Cos(Mathf.PI / 4f));
+                }
+
+                Assert.That(shown, Is.InRange(1.5f, 2.5f), "about two units of rock under the middle of a side");
+
                 Transform vines = island.Find(IslandParts.VinesName), stones = island.Find(IslandParts.StonesName);
                 Assert.AreEqual(IslandShape.TableVines, vines.childCount, "vines hang from under the grass");
+                Assert.That(IslandShape.TableFromCorner(0.25f), Is.EqualTo(0f).Within(1e-4f), "what hangs is shortest at a corner");
+                Assert.That(IslandShape.TableFromCorner(0.125f), Is.EqualTo(1f).Within(1e-4f), "and longest by the middle of a side");
                 Assert.AreEqual(IslandShape.TableStones, stones.childCount, "loose stones drift beside the rock");
                 Assert.IsNotNull(stones.GetComponent<IslandDrift>(), "the stones drift and the vines sway");
                 Assert.IsNull(island.GetComponent<IslandFloat>(), "the island itself hangs still: the table never moves");
