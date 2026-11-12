@@ -1319,6 +1319,65 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void TheFarIslandsAreTheOwnersModelHeldByItsMiddleAndGoneIntoTheHaze()
+        {
+            // The owner's wish (2026-11-13): the islands in the background made with Higgsfield.
+            Assert.AreEqual(BoardCameraRig.Pitch, IslandShape.ViewPitch, "the far islands are sized for the board camera's own view");
+            float pitch = BoardCameraRig.Pitch * Mathf.Deg2Rad, cos = Mathf.Cos(pitch), sin = Mathf.Sin(pitch);
+            // A wide top over a point hanging under the middle: the top's rim lies back into the view, the point does not.
+            var shape = new[] { new Vector3(2f, 1f, 0f), new Vector3(0f, 1f, -2f), new Vector3(0f, -3f, 0f) };
+            Vector2 reach = IslandShape.SeenReach(shape, Vector2.zero);
+            Assert.AreEqual(1f * cos + 2f * sin, reach.y, 1e-5f, "its rim shows highest when it lies furthest back");
+            Assert.AreEqual(-3f * cos, reach.x, 1e-5f, "its point hangs straight under the upright");
+            Assert.AreEqual(Vector2.zero, IslandShape.SeenReach(new Vector3[0], Vector2.zero));
+
+            Assert.IsTrue(IslandParts.FarModelled, "run Tools/Art/make_corner_models.py skyisland=Tools/Art/Models/Figures/FloatingSkyIsland.glb");
+            var holder = new GameObject("Far Model Test");
+            try
+            {
+                GameObject island = IslandParts.FarModel(holder.transform, "Far");
+                Transform model = island.transform.Find(IslandParts.FarModelName);
+                Assert.IsNotNull(model, "the model hangs under the island's own point");
+                var body = model.Find(FigureModels.BodyPart).GetComponent<MeshRenderer>();
+                Bounds bounds = body.bounds;
+                Assert.AreEqual(island.transform.position.x, bounds.center.x, 1e-3f, "held by the upright through its middle, so it is placed and turned by that point");
+                Assert.AreEqual(island.transform.position.z, bounds.center.z, 1e-3f);
+                // As the slanted view shows it: as far above the point it is held by as below, and as high in all as the
+                // island cut in code, so the backdrop sizes either the same way.
+                var points = new List<Vector3>();
+                foreach (Vector3 vertex in body.GetComponent<MeshFilter>().sharedMesh.vertices) points.Add(body.transform.TransformPoint(vertex) - island.transform.position);
+                Vector2 seen = IslandShape.SeenReach(points, Vector2.zero);
+                Assert.AreEqual(IslandShape.FarSpan, seen.y - seen.x, 1e-2f);
+                Assert.AreEqual(-seen.x, seen.y, 1e-2f);
+                Assert.AreEqual(model.localScale.x, model.localScale.y, 1e-6f, "it keeps its shape");
+                Assert.AreEqual(model.localScale.x, model.localScale.z, 1e-6f);
+                Assert.AreEqual(UnityEngine.Rendering.ShadowCastingMode.Off, body.shadowCastingMode, "no shadows that far off");
+                Assert.IsFalse(body.receiveShadows);
+                Assert.Greater(bounds.size.y, 0.6f * Mathf.Max(bounds.size.x, bounds.size.z), "an island with rock hanging under it, not a flat plate");
+
+                // The haze: its own colours dimmed and the haze's blue added as a glow, over lit and shaded faces alike.
+                Material material = body.sharedMaterial;
+                Assert.AreEqual(FigureModels.PaintedShaderName, material.shader.name);
+                Assert.AreEqual(1f - SkySkin.FarModelHaze, material.color.linear.g, 1e-3f);
+                Color glow = material.GetColor("_EmissionColor").linear, haze = SkySkin.FarHaze.linear;
+                Assert.AreEqual(haze.r * SkySkin.FarModelHaze, glow.r, 1e-3f);
+                Assert.AreEqual(haze.b * SkySkin.FarModelHaze, glow.b, 1e-3f);
+                Assert.Greater(glow.b, glow.r, "towards the sky's blue");
+                Assert.That(SkySkin.FarModelHaze, Is.InRange(0.15f, SkySkin.FarIslandHaze), "gone into the haze, yet its colours still show");
+
+                // Another model's material is left as it was: nothing else glows.
+                GameObject other = FigureModels.Create(FigureModels.SkyIslandId, "Plain", holder.transform);
+                Material plain = other.GetComponentInChildren<Renderer>().sharedMaterial;
+                Assert.AreEqual(Color.white, plain.color);
+                Assert.AreEqual(0f, plain.GetColor("_EmissionColor").maxColorComponent, 1e-6f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder);
+            }
+        }
+
+        [Test]
         public void TheAeroplaneIsASmallPalePlainMachineWithATurningPropeller()
         {
             // The owner's wish (2026-11-12): a plane crossing the background now and then.

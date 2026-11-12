@@ -60,6 +60,13 @@ namespace Lazpoly.Presentation.Models
         public const string MoneyStackId = "moneystack";
         public const string GoldBarId = "goldbar";
 
+        /// <summary>
+        /// Not a character: the far islands in the sky (the owner's wish, 2026-11-13: made with Higgsfield; a concept
+        /// picture by Z Image turned into a model by Tripo H3.1), one unit wide, its lowest point at y = 0
+        /// (Tools/Art/make_corner_models.py; <see cref="IslandParts.FarModel"/>).
+        /// </summary>
+        public const string SkyIslandId = "skyisland";
+
         private const float Smoothness = 0.2f;
 
         /// <summary>

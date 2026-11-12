@@ -110,6 +110,8 @@ Shader "Lazpoly/PaintedFigure"
                 surface.smoothness = _Smoothness;
                 surface.occlusion = 1;
                 surface.specular = half3(0, 0, 0);
+                // Nothing glows by default; a far island's haze is added here (IslandParts.Haze), whatever light falls on it.
+                surface.emission = _EmissionColor.rgb;
 
                 InputData inputData = (InputData)0;
                 inputData.positionWS = input.positionWS;

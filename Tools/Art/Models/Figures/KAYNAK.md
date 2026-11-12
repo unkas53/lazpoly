@@ -52,3 +52,13 @@ Steam yapay zekâ beyanına girer (Steam/README.md).
 Araç onu otogar dioraması gibi bir birim genişliğe ölçekler (taban y = 0, tribün +Z'de), iki ayrıntı düzeyini (120.000 / 30.000 üçgen) ve 2048'lik dokuyu yazar (`figure_stadium.bytes`, `figure_stadium_skin.bytes`). Dosyalar yoksa oyun çizilmiş kupayı gösterir.
 
 Steam yapay zekâ beyanına girer (Steam/README.md).
+
+## Arka plandaki uçan ada
+
+Gökyüzündeki iki uzak ada (sahibin isteği, 2026-11-13: "higsfield yeteneklerini kullanarak arka plandaki adaların tasarımını muhteşem hale getir") proje sahibinin Higgsfield hesabında üretilmiş tek bir modeldir: önce Z Image ile bir taslak görsel (yeşil çayır, yuvarlak ağaçlar ve çamlar, taş çevrili küçük bir gölet, altında basamak basamak sivrilen krem rengi kaya ve sarmaşıklar; sahip üç taslaktan ikincisini seçti), sonra o görselden Tripo H3.1 ile 3B model: `hf_20261112_212638_80b70d39-49b2-488b-8ad0-e52b28055fb0.glb` (45 MB, 1.444.289 üçgen, 2048'lik doku). Bu klasöre `FloatingSkyIsland.glb` adıyla koyup çalıştır:
+
+    python3 Tools/Art/make_corner_models.py skyisland=Tools/Art/Models/Figures/FloatingSkyIsland.glb
+
+Araç onu bir birim genişliğe ölçekler (en alt ucu y = 0), iki ayrıntı düzeyini (120.000 / 24.000 üçgen) ve 2048'lik dokuyu yazar (`figure_skyisland.bytes`, `figure_skyisland_skin.jpg`). Oyun iki adayı da bu modelden kurar (`IslandParts.FarModel`): biri büyük ve önden, öteki küçük ve yandan görünür; pusa girmiş, gölgesiz, ön yüzü kameraya dönük hafifçe salınır. Dosyalar yoksa oyun kodla çizilmiş uzak adaları gösterir.
+
+Steam yapay zekâ beyanına girer (Steam/README.md).

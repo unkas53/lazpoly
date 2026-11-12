@@ -171,6 +171,73 @@ namespace Lazpoly.Presentation.Models
             return root;
         }
 
+        /// <summary>Whether the far islands are the owner's model (its files are in the build) rather than the ones cut in code.</summary>
+        public static bool FarModelled => FigureModels.IsAvailable(FigureModels.SkyIslandId);
+
+        /// <summary>
+        /// A far island from the owner's model (<see cref="FigureModels.SkyIslandId"/>; the owner's wish, 2026-11-13: the
+        /// islands in the background made with Higgsfield), or null when its files are missing and the island cut in
+        /// code (<see cref="Far"/>) stands in. Held like that one: about its own middle as the slanted view shows it, and sized so it stands
+        /// <see cref="IslandShape.FarSpan"/> high there, so the backdrop places, sizes and turns
+        /// either the same way. Its front is its +Z. Gone into the haze (<see cref="Haze"/>), and without shadows.
+        /// </summary>
+        public static GameObject FarModel(Transform parent, string name)
+        {
+            if (!FarModelled) return null;
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            GameObject model = FigureModels.Create(FigureModels.SkyIslandId, FarModelName, root.transform);
+            Transform body = model.transform.Find(FigureModels.BodyPart);
+            (float size, Vector3 middle) = FarFit(body.GetComponent<MeshFilter>().sharedMesh);
+            model.transform.localScale = Vector3.one * size;
+            model.transform.localPosition = -middle * size;
+            var part = body.GetComponent<MeshRenderer>();
+            Haze(part.sharedMaterial, SkySkin.FarModelHaze);
+            part.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            part.receiveShadows = false;
+            return root;
+        }
+
+        /// <summary>
+        /// How the model is fitted, reckoned once from its own shape: the size at which it stands
+        /// <see cref="IslandShape.FarSpan"/> high in the slanted view, and its middle there (the upright through the
+        /// middle of its footprint, at the height that shows half way between its lowest and its highest on the screen).
+        /// </summary>
+        private static (float size, Vector3 middle) FarFit(Mesh mesh)
+        {
+            if (_farFitted == mesh && mesh != null) return _farFit;
+            Bounds bounds = mesh.bounds;
+            var pivot = new Vector2(bounds.center.x, bounds.center.z);
+            Vector2 reach = IslandShape.SeenReach(mesh.vertices, pivot);
+            float span = Mathf.Max(1e-4f, reach.y - reach.x);
+            float height = (reach.x + reach.y) / 2f / Mathf.Cos(IslandShape.ViewPitch * Mathf.Deg2Rad);
+            _farFitted = mesh;
+            return _farFit = (IslandShape.FarSpan / span, new Vector3(pivot.x, height, pivot.y));
+        }
+
+        private static Mesh _farFitted;
+        private static (float size, Vector3 middle) _farFit;
+
+        /// <summary>
+        /// Sends a model's material into the haze, as a thing far off in the sky: its own colours dimmed by
+        /// <paramref name="haze"/> and that share of the haze's blue (<see cref="SkySkin.FarHaze"/>) added as its own
+        /// glow, so the haze lies over lit and shaded faces alike.
+        /// </summary>
+        public static void Haze(Material material, float haze)
+        {
+            if (material == null) return;
+            haze = Mathf.Clamp01(haze);
+            float clear = Mathf.LinearToGammaSpace(1f - haze);
+            material.color = new Color(clear, clear, clear, 1f);
+            if (!material.HasProperty(EmissionColor)) return;
+            material.EnableKeyword("_EMISSION");
+            Color glow = (SkySkin.FarHaze.linear * haze).gamma;
+            glow.a = 1f;
+            material.SetColor(EmissionColor, glow);
+        }
+
+        private static readonly int EmissionColor = Shader.PropertyToID("_EmissionColor");
+
         private static GameObject Skinned(Transform parent, string name, Mesh mesh, Texture texture, Color tint, float smoothness)
         {
             GameObject part = ModelParts.Create(name, parent, mesh, tint, smoothness);

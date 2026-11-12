@@ -105,7 +105,7 @@ namespace Lazpoly.Presentation.Tests
 
         private static string[] FigureIds => FigureModels.Ids;
 
-        private static string[] SceneIds => new[] { FigureModels.StationId, FigureModels.StadiumId, FigureModels.TrophyId, FigureModels.MoneyStackId, FigureModels.GoldBarId };
+        private static string[] SceneIds => new[] { FigureModels.StationId, FigureModels.StadiumId, FigureModels.TrophyId, FigureModels.MoneyStackId, FigureModels.GoldBarId, FigureModels.SkyIslandId };
 
         [TestCaseSource(nameof(SceneIds))]
         public void TheOtherMeshyModelsAlsoComeWithAnImportedColourMap(string id)
@@ -203,7 +203,7 @@ namespace Lazpoly.Presentation.Tests
             Object.DestroyImmediate(mesh);
         }
 
-        private static string[] PaintedIds => FigureModels.Ids.Concat(new[] { FigureModels.StationId, FigureModels.BusId, FigureModels.StadiumId, FigureModels.TrophyId, FigureModels.MoneyStackId, FigureModels.GoldBarId }).ToArray();
+        private static string[] PaintedIds => FigureModels.Ids.Concat(new[] { FigureModels.StationId, FigureModels.BusId, FigureModels.StadiumId, FigureModels.TrophyId, FigureModels.MoneyStackId, FigureModels.GoldBarId, FigureModels.SkyIslandId }).ToArray();
 
         [TestCaseSource(nameof(PaintedIds))]
         public void EveryMeshyModelIsPaintedAndDrawnWithThePaintedShader(string id)

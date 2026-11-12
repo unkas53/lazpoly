@@ -35,6 +35,31 @@ namespace Lazpoly.Presentation.Models
         /// </summary>
         public const float FarSpan = 3.6f;
 
+        /// <summary>The pitch of the game's slanted view, in degrees (the board camera's), by which a far island's height on the screen is reckoned.</summary>
+        public const float ViewPitch = 35f;
+
+        /// <summary>
+        /// How low (x) and how high (y) a shape shows on the screen in the game's slanted view, in its own units up the
+        /// screen from its origin's height, however it is turned about the upright through <paramref name="pivot"/>
+        /// (x, z): each point's height as the camera sees it, and its distance from that upright lying back into the
+        /// view (or forward out of it). So a shape that narrows downwards, like an island's rock, is not measured by
+        /// the box round it.
+        /// </summary>
+        public static Vector2 SeenReach(IReadOnlyList<Vector3> points, Vector2 pivot)
+        {
+            float pitch = ViewPitch * Mathf.Deg2Rad, cos = Mathf.Cos(pitch), sin = Mathf.Sin(pitch);
+            float low = float.MaxValue, high = float.MinValue;
+            for (int i = 0; i < points.Count; i++)
+            {
+                Vector3 point = points[i];
+                float out2 = new Vector2(point.x - pivot.x, point.z - pivot.y).magnitude;
+                low = Mathf.Min(low, point.y * cos - out2 * sin);
+                high = Mathf.Max(high, point.y * cos + out2 * sin);
+            }
+
+            return points.Count > 0 ? new Vector2(low, high) : Vector2.zero;
+        }
+
         /// <summary>A far island's tree: where it stands on the top (x, z), how tall it is (y) and its crown's radius (w). The trees stand apart, well in from the edge.</summary>
         public static Vector4 FarTree(int seed, int tree)
         {

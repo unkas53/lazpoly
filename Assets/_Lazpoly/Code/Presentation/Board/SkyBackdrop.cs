@@ -32,6 +32,14 @@ namespace Lazpoly.Presentation.Tabletop
         public const float IslandTurnSeconds = 240f;
 
         /// <summary>
+        /// The owner's far-island model has a front, so it does not turn round: it keeps its front towards the camera
+        /// (each island turned from that by its own <see cref="SkySkin.FarIsland.Turn"/>) and only sways about its
+        /// upright, this far either way, the first once in this many seconds, the others a little slower each.
+        /// </summary>
+        public const float IslandSway = 9f;
+        public const float IslandSwaySeconds = 46f;
+
+        /// <summary>
         /// How deep in the camera's view each thing lies, as a share of the way to its far end: the sky last, the far
         /// islands before it with room for their depth, the aeroplane before them, then the clouds; all far behind the table.
         /// </summary>
@@ -57,6 +65,7 @@ namespace Lazpoly.Presentation.Tabletop
         private Transform _near, _far;
         private Transform[] _islands;
         private Transform _plane;
+        private bool _modelled;
         private int _heldPass = -1;
         private float _heldProgress;
 
@@ -66,6 +75,9 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>The far islands, in <see cref="SkySkin.FarIslands"/>' order: each a model about its own middle.</summary>
         public System.Collections.Generic.IReadOnlyList<Transform> FarIslands => _islands;
+
+        /// <summary>Whether the far islands are the owner's model (<see cref="IslandParts.FarModel"/>), which sways with its front to the camera, rather than the ones cut in code, which turn round.</summary>
+        public bool Modelled => _modelled;
 
         /// <summary>The aeroplane; switched off while none is crossing.</summary>
         public Transform Plane => _plane;
@@ -90,7 +102,10 @@ namespace Lazpoly.Presentation.Tabletop
             for (int i = 0; i < count; i++)
             {
                 int seed = SkySkin.FarIslands[i].Seed;
-                Transform island = IslandParts.Far(models.transform, $"Far island {i + 1}", seed).transform;
+                // The owner's model where its files are in the build; else the island cut in code, its loose stones adrift.
+                GameObject modelled = IslandParts.FarModel(models.transform, $"Far island {i + 1}");
+                backdrop._modelled = modelled != null;
+                Transform island = (modelled ?? IslandParts.Far(models.transform, $"Far island {i + 1}", seed)).transform;
                 IslandDrift.Attach(island.Find(IslandParts.FarModelName).Find(IslandParts.StonesName), null, seed);
                 backdrop._islands[i] = island;
             }
@@ -164,6 +179,21 @@ namespace Lazpoly.Presentation.Tabletop
             return Mathf.Repeat(137f * island + 360f * (island % 2 == 0 ? turns : -turns), 360f);
         }
 
+        /// <summary>How long a far island's model takes to sway once there and back.</summary>
+        public static float IslandSwaySecondsOf(int island) => IslandSwaySeconds * (1f + 0.31f * island);
+
+        /// <summary>How far a far island's model has swayed from its rest at a time, in degrees about its upright; each island in its own time.</summary>
+        public static float IslandSwayAt(float seconds, int island) =>
+            IslandSway * Mathf.Sin(2f * Mathf.PI * (seconds / IslandSwaySecondsOf(island) + 0.23f * island));
+
+        /// <summary>
+        /// Which way a far island's model is turned at a time, in degrees about the world's upright, for a camera looking
+        /// along <paramref name="cameraYaw"/>: its front (+Z) towards the camera, turned from that by the island's own
+        /// <see cref="SkySkin.FarIsland.Turn"/> and by its sway.
+        /// </summary>
+        public static float IslandFacingAt(float seconds, int island, float cameraYaw) =>
+            Mathf.Repeat(cameraYaw + 180f + SkySkin.FarIslands[island].Turn + IslandSwayAt(seconds, island), 360f);
+
         /// <summary>How high the camera's view is at a depth (a share of the way to its far end): the same at every depth for the game's flat view.</summary>
         private float HeightAt(float depth) => _camera.orthographic
             ? 2f * _camera.orthographicSize
@@ -186,14 +216,16 @@ namespace Lazpoly.Presentation.Tabletop
             _material.mainTextureOffset = new Vector2(cover.z, cover.w);
 
             // The far islands: where they are on the screen, their size a share of the view's height, standing upright in
-            // the world (so the slanted camera sees their meadows) and turning slowly about that upright.
+            // the world (so the slanted camera sees their meadows) and turning slowly about that upright; the owner's
+            // model keeps its front to the camera and only sways.
             float tall = HeightAt(IslandDepth);
             for (int i = 0; i < _islands.Length; i++)
             {
                 SkySkin.FarIsland island = SkySkin.FarIslands[i];
                 _islands[i].localPosition = new Vector3((island.U - 0.5f) * tall * aspect, (island.V - 0.5f + IslandRiseAt(seconds, i)) * tall, far * IslandDepth);
                 _islands[i].localScale = Vector3.one * (island.Size * tall / IslandShape.FarSpan);
-                _islands[i].rotation = Quaternion.Euler(0f, IslandTurnAt(seconds, i), 0f);
+                float turn = _modelled ? IslandFacingAt(seconds, i, _camera.transform.eulerAngles.y) : IslandTurnAt(seconds, i);
+                _islands[i].rotation = Quaternion.Euler(0f, turn, 0f);
             }
 
             ShowPlane(seconds, far, aspect);

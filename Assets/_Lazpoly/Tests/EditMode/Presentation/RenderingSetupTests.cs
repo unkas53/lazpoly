@@ -136,8 +136,8 @@ namespace Lazpoly.Presentation.Tests
                     backdrop.Show(0f);
                     Assert.Less(island.position.z, backdrop.transform.position.z, "in front of the sky");
                     Assert.Greater(island.position.z, backdrop.FarClouds.position.z, "behind the clouds");
-                    Assert.IsNotNull(island.Find(IslandParts.FarModelName).Find(IslandParts.RockName), "a model, not a picture");
-                    Assert.IsNotNull(island.GetComponentInChildren<IslandDrift>(), "its loose stones drift");
+                    Assert.IsNotNull(island.Find(IslandParts.FarModelName).GetComponentInChildren<MeshRenderer>(), "a model, not a picture");
+                    if (!backdrop.Modelled) Assert.IsNotNull(island.GetComponentInChildren<IslandDrift>(), "its loose stones drift");
                     Vector3 size = island.lossyScale;
                     Assert.AreEqual(size.x, size.y, 1e-4f, "it keeps its shape");
                     Assert.AreEqual(size.x, size.z, 1e-4f);
@@ -153,12 +153,35 @@ namespace Lazpoly.Presentation.Tests
                     float turned = island.eulerAngles.y;
                     backdrop.Show(20f);
                     float turn = Mathf.Abs(Mathf.DeltaAngle(turned, island.eulerAngles.y));
-                    Assert.AreEqual(360f * 20f / (SkyBackdrop.IslandTurnSeconds * (1f + 0.31f * i)), turn, 0.05f, "it turns about its upright, so its depth shows");
+                    if (backdrop.Modelled)
+                    {
+                        // The owner's model has a front: it keeps it towards the camera and only sways.
+                        float swung = Mathf.Abs(SkyBackdrop.IslandSwayAt(20f, i) - SkyBackdrop.IslandSwayAt(0f, i));
+                        Assert.AreEqual(swung, turn, 0.05f, "it sways about its upright, so its depth shows");
+                        backdrop.Show(SkyBackdrop.IslandSwaySecondsOf(i) * (0.25f - 0.23f * i));
+                        Vector3 front = island.forward, toCamera = -camera.transform.forward;
+                        toCamera.y = 0f;
+                        float off = Vector3.SignedAngle(toCamera, front, Vector3.up);
+                        Assert.AreEqual(SkySkin.FarIslands[i].Turn + SkyBackdrop.IslandSway, off, 0.05f, "its front towards the camera, turned by its own share and its sway");
+                    }
+                    else
+                    {
+                        Assert.AreEqual(360f * 20f / (SkyBackdrop.IslandTurnSeconds * (1f + 0.31f * i)), turn, 0.05f, "it turns about its upright, so its depth shows");
+                    }
+
                     Assert.Less(turn / 20f, 2f, "slowly: under two degrees a second");
                     Assert.Less(Vector3.Angle(island.up, Vector3.up), 0.01f, "and stays upright");
                 }
 
                 Assert.Less(Mathf.DeltaAngle(0f, SkyBackdrop.IslandTurnAt(10f, 0)) * Mathf.DeltaAngle(137f, SkyBackdrop.IslandTurnAt(10f, 1)), 0f, "the two turn opposite ways");
+                // The model's sway: small, slow, each island in its own time, and never far enough to show its back.
+                Assert.That(SkyBackdrop.IslandSway, Is.InRange(4f, 15f));
+                Assert.Less(SkyBackdrop.IslandSway * 2f * Mathf.PI / SkyBackdrop.IslandSwaySeconds, 2f, "under two degrees a second at its quickest");
+                Assert.AreEqual(SkyBackdrop.IslandSway, SkyBackdrop.IslandSwayAt(SkyBackdrop.IslandSwaySecondsOf(0) / 4f, 0), 1e-3f);
+                Assert.AreNotEqual(SkyBackdrop.IslandSwayAt(7f, 0), SkyBackdrop.IslandSwayAt(7f, 1));
+                Assert.AreEqual(Mathf.Repeat(-45f + 180f + SkySkin.FarIslands[0].Turn, 360f), SkyBackdrop.IslandFacingAt(0f, 0, -45f), 1e-3f);
+                foreach (SkySkin.FarIsland spot in SkySkin.FarIslands) Assert.Less(Mathf.Abs(spot.Turn) + SkyBackdrop.IslandSway, 90f, "its front stays in sight");
+                Assert.AreNotEqual(SkySkin.FarIslands[0].Turn, SkySkin.FarIslands[1].Turn, "the one model shows a different side at each place");
 
                 // The aeroplane (the owner's wish, 2026-11-12): out of sight until its time, then level and nose first straight
                 // across the view, behind the clouds and before the far islands; the next one comes back the other way.

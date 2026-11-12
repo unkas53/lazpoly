@@ -48,6 +48,13 @@ namespace Lazpoly.Presentation.Models
         public static readonly Color FarHaze = new Color32(0xA9, 0xD3, 0xF0, 0xFF);
         public const float FarIslandHaze = 0.36f;
 
+        /// <summary>
+        /// How far the owner's far-island model has gone into the haze (<see cref="IslandParts.Haze"/>): less than the
+        /// islands cut in code, whose pictures are paled before the light falls on them; the model's haze is laid over
+        /// its lit colours, where the same share takes more.
+        /// </summary>
+        public const float FarModelHaze = 0.2f;
+
         /// <summary>The far islands' trees before the haze takes them: their leaves and their trunks.</summary>
         public static readonly Color FarLeaf = new Color32(0x5C, 0x86, 0x4A, 0xFF);
         public static readonly Color FarTrunk = new Color32(0x7C, 0x60, 0x48, 0xFF);
@@ -164,26 +171,31 @@ namespace Lazpoly.Presentation.Models
         /// <summary>How much of the sky the two cloud layers hide at a point (u along, wrapping; v up): 0 clear sky, 1 solid cloud.</summary>
         public static float CloudCover(float u, float v) => 1f - (1f - CloudAt(true, u, v).a) * (1f - CloudAt(false, u, v).a);
 
-        /// <summary>A far island: its middle on the screen (u across, v up), how high it stands there (in screen heights), its seed.</summary>
+        /// <summary>
+        /// A far island: its middle on the screen (u across, v up), how high it stands there (in screen heights), its
+        /// seed, and, for the owner's model, how far its front is turned from facing the camera (degrees about its
+        /// upright), so the same model shows a different side at each place.
+        /// </summary>
         public readonly struct FarIsland
         {
-            public readonly float U, V, Size;
+            public readonly float U, V, Size, Turn;
             public readonly int Seed;
 
-            public FarIsland(float u, float v, float size, int seed)
+            public FarIsland(float u, float v, float size, int seed, float turn)
             {
                 U = u;
                 V = v;
                 Size = size;
                 Seed = seed;
+                Turn = turn;
             }
         }
 
-        /// <summary>The far islands: one at each side of the screen, the second smaller and higher.</summary>
+        /// <summary>The far islands: one at each side of the screen, the second smaller and higher, and seen more from its side.</summary>
         public static readonly IReadOnlyList<FarIsland> FarIslands = new[]
         {
-            new FarIsland(0.085f, 0.60f, 0.15f, 51),
-            new FarIsland(0.915f, 0.68f, 0.11f, 52),
+            new FarIsland(0.085f, 0.60f, 0.19f, 51, 14f),
+            new FarIsland(0.915f, 0.68f, 0.14f, 52, 62f),
         };
 
         /// <summary>A colour as it shows far off: part of the way to the haze's blue.</summary>
