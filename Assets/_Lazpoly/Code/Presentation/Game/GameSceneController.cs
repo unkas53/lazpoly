@@ -1051,17 +1051,30 @@ namespace Lazpoly.Presentation.Game
 
                 if (visitor != null)
                 {
-                    visitor.transform.position = PawnView.BoardingPoint(_board.PawnSpot(jailSquare), _board.CellDoor, 0.7f);
+                    // Solid, as the piece on turn is when it is sent to jail.
+                    visitor.SetFaded(false);
+                    visitor.transform.position = PawnView.JailHopPoint(_board.PawnSpot(jailSquare), _board.CellDoor, _board.CellMiddle, 0.7f);
                     visitor.transform.localScale = Vector3.one * PawnView.JailingSize(0.7f, visitor.CellSize);
                     yield return ScreenTour.Take("hapis-giris");
                     visitor.PlaceOn(visitor.Square);
+                    MarkTurn(_session.State.CurrentPlayer.Id);
                 }
 
                 for (int taxSquare = 0; taxSquare < _session.Board.Count; taxSquare++)
                 {
                     if (_board.TaxBill(taxSquare) == null) continue;
+                    // The print alone: the pieces step out of the picture, since a tall one before the square would hide it.
+                    var hiddenPawns = new List<PawnView>();
+                    foreach (PawnView piece in _pawns.Values)
+                    {
+                        if (!piece.gameObject.activeSelf) continue;
+                        piece.gameObject.SetActive(false);
+                        hiddenPawns.Add(piece);
+                    }
+
                     CameraRig.Hold(_board.SquarePosition(taxSquare));
                     yield return ScreenTour.Take("vergi");
+                    foreach (PawnView piece in hiddenPawns) piece.gameObject.SetActive(true);
                     break;
                 }
 

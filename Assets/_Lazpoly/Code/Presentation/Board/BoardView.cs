@@ -1374,6 +1374,9 @@ namespace Lazpoly.Presentation.Tabletop
             return _jailScene.TransformPoint(spots[(slot % spots.Length + spots.Length) % spots.Length]);
         }
 
+        /// <summary>The jail's middle on its tile (world space): a piece hopping to the door swings round it.</summary>
+        public Vector3 CellMiddle => _jailScene != null ? _jailScene.position : CellDoor;
+
         /// <summary>Before the cell's door, on the tile (world space): a piece on its way in or out passes here (<see cref="CornerParts.CellDoor"/>).</summary>
         public Vector3 CellDoor => _jailScene != null ? _jailScene.TransformPoint(CornerParts.CellDoor) : PawnSpot(Mathf.Max(_data.Board.JailIndex, 0));
 

@@ -84,12 +84,15 @@ namespace Lazpoly.Presentation.Pawns
         /// shrinks and goes into the jail): the character small enough to stand under the cell's lintel and show between
         /// its bars; a shape, small as it is, shrinks less.
         /// </summary>
-        public const float JailedSize = 0.24f;
+        public const float JailedSize = 0.29f;
         public const float ShapeJailedSize = 0.6f;
 
         /// <summary>How long the hop between the square and the cell's door takes, and the step through the door.</summary>
-        public const float JailHopSeconds = 0.5f;
+        public const float JailHopSeconds = 0.55f;
         public const float JailStepSeconds = 0.3f;
+
+        /// <summary>How far that hop swings out round the building's corner, as a share of its length: the piece never passes through the stone.</summary>
+        public const float JailSwing = 0.7f;
 
         /// <summary>
         /// True from the moment the piece sets off into the jail's cell until it stands free on the square again: it is
@@ -195,7 +198,7 @@ namespace Lazpoly.Presentation.Pawns
             Vector3 from = transform.position, door = _board.CellDoor, spot = _board.CellSpot(_slot);
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailHopSeconds)
             {
-                transform.position = BoardingPoint(from, door, t);
+                transform.position = JailHopPoint(from, door, _board.CellMiddle, t);
                 _size = JailingSize(t, small);
                 SetStretch(1f);
                 yield return null;
@@ -235,7 +238,7 @@ namespace Lazpoly.Presentation.Pawns
 
             for (float t = 0f; t < 1f; t += Time.deltaTime * speed / JailHopSeconds)
             {
-                transform.position = BoardingPoint(to, door, 1f - t);
+                transform.position = JailHopPoint(to, door, _board.CellMiddle, 1f - t);
                 _size = JailingSize(1f - t, small);
                 SetStretch(1f);
                 yield return null;
@@ -249,6 +252,24 @@ namespace Lazpoly.Presentation.Pawns
             }
 
             SetStretch(1f);
+        }
+
+        /// <summary>
+        /// Where the piece is a share <paramref name="t"/> of the way from its square (<paramref name="ground"/>) to the
+        /// cell's <paramref name="door"/>: one arc over the ground, swung out away from the <paramref name="building"/>'s
+        /// middle (<see cref="JailSwing"/>), since the square's pieces wait behind the jail and its door is round the corner.
+        /// </summary>
+        public static Vector3 JailHopPoint(Vector3 ground, Vector3 door, Vector3 building, float t)
+        {
+            t = Mathf.Clamp01(t);
+            float along = Ease.InOutCubic(t);
+            Vector3 middle = (ground + door) / 2f;
+            Vector3 away = middle - building;
+            away.y = 0f;
+            Vector3 bend = middle + away.normalized * (JailSwing * Vector3.Distance(ground, door));
+            Vector3 point = (1f - along) * (1f - along) * ground + 2f * along * (1f - along) * bend + along * along * door;
+            point.y += Mathf.Sin(t * Mathf.PI) * HopHeight * 2f;
+            return point;
         }
 
         /// <summary>How big the piece is a share <paramref name="t"/> of the way from the square to the cell's door: its own size at first, <paramref name="small"/> at the door; it shrinks late, so the hop reads.</summary>

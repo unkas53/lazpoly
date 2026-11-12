@@ -111,14 +111,14 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>The cell's floor (the top of its plinth) and the height of its barred openings above it, in the scene's unit.</summary>
         public const float CellFloor = 0.06f;
-        public const float CellWall = 0.64f;
+        public const float CellWall = 0.74f;
 
         /// <summary>Where the cell's corner piers stand: this far from its middle along x (its length) and z (its width).</summary>
         public const float CellPierX = 0.39f;
         public const float CellPierZ = 0.31f;
 
         /// <summary>How tall a locked-up piece may be, in the scene's unit, and still show whole under the lintel from the table's camera.</summary>
-        public const float PrisonerRoom = 0.47f;
+        public const float PrisonerRoom = 0.57f;
 
         /// <summary>
         /// Where the locked-up pieces stand on the cell's floor, in the scene's frame: close behind the bars of the two
@@ -137,14 +137,14 @@ namespace Lazpoly.Presentation.Models
         /// <summary>
         /// The jail (the owner's wish, 2026-11-12: a model that suits the table and pleases the eye, plain): a little
         /// limestone lock-up like a temple, four piers on a plinth under a lintel and a low slate roof whose pediment
-        /// looks out over the door at -X. The door and the long side at +Z are iron bars with one rail, a steel lock on
-        /// the door's; the other two sides are walls, so the locked-up pieces inside (<see cref="PrisonerSpots"/>) show
-        /// against stone. The board turns it so that the camera sees the door and the barred side.
+        /// looks out over the door at -X. The door and the long side at +Z are a few thin iron bars with one rail, a steel
+        /// lock on the door's; the other two sides are walls, so the locked-up pieces inside (<see cref="PrisonerSpots"/>)
+        /// show against stone, and the bars hide little of them. The board turns it so that the camera sees the door and the barred side.
         /// </summary>
         public static GameObject Cell(string name, Transform parent)
         {
             GameObject root = Root(name, parent);
-            const float top = CellFloor + CellWall, middle = CellFloor + CellWall / 2f, bar = 0.015f, rail = 0.32f;
+            const float top = CellFloor + CellWall, middle = CellFloor + CellWall / 2f, bar = 0.012f, rail = 0.34f, railThick = 0.024f;
             Mesh block = MeshFactory.RoundedBox(Vector3.one, 0.01f, 2);
             Part(root, "Plinth", block, LimestoneShade, new Vector3(0f, CellFloor / 2f, 0f), new Vector3(0.92f, CellFloor, 0.78f));
             Part(root, "Step", block, LimestoneShade, new Vector3(-0.49f, 0.015f, 0f), new Vector3(0.07f, 0.03f, 0.34f));
@@ -165,19 +165,19 @@ namespace Lazpoly.Presentation.Models
             Part(root, "Pediment", MeshFactory.Prism(), Limestone, new Vector3(0f, top + 0.09f, 0f), new Vector3(0.94f, 0.135f, 0.77f));
             Part(root, "Roof", MeshFactory.Prism(), Slate, new Vector3(0f, top + 0.09f, 0f), new Vector3(0.90f, 0.16f, 0.84f));
 
-            for (int i = -1; i <= 1; i++)
+            foreach (float z in new[] { -0.085f, 0.085f })
             {
-                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(-CellPierX, CellFloor, i * 0.125f), new Vector3(bar, CellWall, bar));
+                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(-CellPierX, CellFloor, z), new Vector3(bar, CellWall, bar));
             }
 
-            for (int i = -2; i <= 2; i++)
+            for (int i = 0; i < 4; i++)
             {
-                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3(i * 0.11f, CellFloor, CellPierZ), new Vector3(bar, CellWall, bar));
+                Part(root, "Bar", MeshFactory.Cylinder(8), Iron, new Vector3((i - 1.5f) * 0.134f, CellFloor, CellPierZ), new Vector3(bar, CellWall, bar));
             }
 
-            Part(root, "Rail", block, Iron, new Vector3(-CellPierX, rail, 0f), new Vector3(0.03f, 0.03f, 0.52f));
-            Part(root, "Rail", block, Iron, new Vector3(0f, rail, CellPierZ), new Vector3(0.68f, 0.03f, 0.03f));
-            Part(root, "Lock", block, Steel, new Vector3(-CellPierX - 0.025f, rail, 0.06f), new Vector3(0.04f, 0.10f, 0.075f));
+            Part(root, "Rail", block, Iron, new Vector3(-CellPierX, rail, 0f), new Vector3(railThick, railThick, 0.52f));
+            Part(root, "Rail", block, Iron, new Vector3(0f, rail, CellPierZ), new Vector3(0.68f, railThick, railThick));
+            Part(root, "Lock", block, Steel, new Vector3(-CellPierX - 0.022f, rail, 0f), new Vector3(0.04f, 0.10f, 0.075f));
             return root;
         }
 

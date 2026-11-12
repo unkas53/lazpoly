@@ -37,7 +37,7 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 Assert.AreEqual(4, counts["Pier"], "a pier at each corner");
-                Assert.AreEqual(8, counts["Bar"], "bars on the door and on the long side");
+                Assert.AreEqual(6, counts["Bar"], "a few bars on the door and on the long side: the prisoners show between them");
                 Assert.AreEqual(2, counts["Rail"], "one rail across each");
                 foreach (string single in new[] { "Plinth", "Step", "Back wall", "Side wall", "Lintel", "Cornice", "Pediment", "Roof", "Lock" })
                     Assert.AreEqual(1, counts[single], single);
@@ -73,8 +73,9 @@ namespace Lazpoly.Presentation.Tests
                     if (Mathf.Abs(part.localPosition.z - CornerParts.CellPierZ) < 1e-4f) side++;
                 }
 
-                Assert.AreEqual(3, door);
-                Assert.AreEqual(5, side);
+                Assert.AreEqual(2, door);
+                Assert.AreEqual(4, side);
+                Assert.Less(jail.transform.Find("Bar").localScale.x, 0.013f, "thin bars");
 
                 // A low roof over a pediment that shows at both ends under the slates.
                 Transform slates = jail.transform.Find("Roof"), pediment = jail.transform.Find("Pediment");
@@ -83,7 +84,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Greater(pediment.localScale.x, slates.localScale.x, "the pediment shows past the slates' ends");
                 Assert.Less(pediment.localScale.y / pediment.localScale.z, slates.localScale.y / slates.localScale.z + 1e-4f, "and stays under them");
                 Assert.Less(pediment.localScale.y, slates.localScale.y);
-                Assert.That(slates.localPosition.y + slates.localScale.y, Is.InRange(0.85f, 1.05f), "about as tall as it is long");
+                Assert.That(slates.localPosition.y + slates.localScale.y, Is.InRange(0.9f, 1.15f), "about as tall as it is long");
             }
             finally
             {
@@ -174,6 +175,15 @@ namespace Lazpoly.Presentation.Tests
                 }
 
                 AssertNear(CornerParts.CellDoor, scene.InverseTransformPoint(board.CellDoor), "the door's spot");
+                AssertNear(scene.position, board.CellMiddle, "the building's middle");
+
+                // The hop from the square's waiting place to the door swings round the building's corner, never through the stone.
+                for (int step = 0; step <= 20; step++)
+                {
+                    Vector3 on = scene.InverseTransformPoint(PawnView.JailHopPoint(board.PawnSpot(jail), board.CellDoor, board.CellMiddle, step / 20f));
+                    Assert.IsTrue(Mathf.Abs(on.x) > 0.49f + 0.08f || Mathf.Abs(on.z) > 0.42f + 0.08f, $"step {step}: the hop passes through the building at {on}");
+                }
+
                 Assert.LessOrEqual(Mathf.Abs(board.CellDoor.x - center.x), side / 2f, "before the door, still on the tile");
                 Assert.LessOrEqual(Mathf.Abs(board.CellDoor.z - center.z), side / 2f, "before the door, still on the tile");
 
@@ -258,6 +268,16 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(PawnView.JailedSize, PawnView.JailingSize(2f, PawnView.JailedSize), 1e-6f);
             Assert.That(PawnView.JailedSize, Is.InRange(0.2f, 0.3f));
             Assert.Greater(PawnView.ShapeJailedSize, PawnView.JailedSize, "a shape is small already");
+
+            // The hop to the door: from the square to the door in one arc, swung out away from the building.
+            Vector3 ground = new Vector3(0f, 0.1f, 2f), entry = new Vector3(2f, 0.1f, 0f), building = new Vector3(0f, 0.1f, 0f);
+            AssertNear(ground, PawnView.JailHopPoint(ground, entry, building, 0f));
+            AssertNear(entry, PawnView.JailHopPoint(ground, entry, building, 1f));
+            Vector3 top = PawnView.JailHopPoint(ground, entry, building, 0.5f);
+            float length = Vector3.Distance(ground, entry);
+            Assert.Greater(top.y, 0.1f + 0.3f, "an arc over the ground");
+            Assert.Greater(new Vector2(top.x, top.z).magnitude, new Vector2(1f, 1f).magnitude + 0.4f * PawnView.JailSwing * length, "swung out past the straight way's middle");
+            Assert.That(PawnView.JailSwing, Is.InRange(0.4f, 1f));
 
             Vector3 door = new Vector3(1f, 0.1f, 0f), spot = new Vector3(2f, 0.2f, 1f);
             AssertNear(door, PawnView.CellStep(door, spot, 0f, PawnView.JailedSize));

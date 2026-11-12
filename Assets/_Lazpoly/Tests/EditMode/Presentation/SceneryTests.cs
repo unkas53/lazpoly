@@ -170,17 +170,26 @@ namespace Lazpoly.Presentation.Tests
             Assert.IsTrue(TaxPrint.IsPaper(-TaxPrint.BillHalf + tooth / 2f, TaxPrint.BillBottom - TaxPrint.Tooth / 2f), "paper inside a tooth");
             Assert.IsFalse(TaxPrint.IsPaper(-TaxPrint.BillHalf + tooth, TaxPrint.BillBottom - TaxPrint.Tooth / 2f), "none between two teeth");
 
-            // The coins: gold, each with a deep edge, one on another beside the bill's foot.
+            // The coins: round ones seen a little from above, gold with a deep line round each, one on another beside the bill's foot.
             Assert.AreEqual(3, TaxPrint.Coins.Length);
+            Assert.Greater(TaxPrint.CoinSize.x, 2f * TaxPrint.CoinSize.y, "a round face seen at a slant");
+            Assert.Greater(TaxPrint.CoinSize.y, 1.5f * TaxPrint.CoinThick, "more face than edge: a coin, not a bar");
             for (int c = 0; c < TaxPrint.Coins.Length; c++)
             {
                 Vector2 coin = TaxPrint.Coins[c];
-                Assert.IsTrue(TaxPrint.IsGold(coin.x, coin.y), $"coin {c}");
-                Assert.IsFalse(TaxPrint.IsDeep(coin.x, coin.y), $"coin {c} is gold in the middle");
-                Assert.IsTrue(TaxPrint.IsDeep(coin.x, coin.y + TaxPrint.CoinSize.y / 2f + TaxPrint.CoinEdge / 2f) || TaxPrint.IsGold(coin.x, coin.y + TaxPrint.CoinSize.y / 2f + TaxPrint.CoinEdge / 2f), $"coin {c} has its edge or the next coin above");
-                if (c > 0) Assert.Greater(coin.y - TaxPrint.Coins[c - 1].y, TaxPrint.CoinSize.y, "they lie one on another");
+                float front = coin.y - TaxPrint.CoinSize.y / 2f;
+                Assert.IsTrue(TaxPrint.IsGold(coin.x, front - (TaxPrint.CoinEdge + TaxPrint.CoinThick) / 2f), $"coin {c}'s edge shows gold under its face");
+                Assert.IsTrue(TaxPrint.IsDeep(coin.x, front - TaxPrint.CoinEdge / 2f), $"coin {c}: a line along the face's near rim");
+                Assert.IsTrue(TaxPrint.IsDeep(coin.x, front - TaxPrint.CoinThick - TaxPrint.CoinEdge / 2f), $"coin {c}: a line under it");
+                if (c > 0) Assert.AreEqual(TaxPrint.CoinThick, coin.y - TaxPrint.Coins[c - 1].y, 1e-4f, "they lie one on another");
                 Assert.Greater(coin.x + TaxPrint.CoinSize.x / 2f, TaxPrint.BillHalf, "they stand out past the bill's side");
             }
+
+            Vector2 highest = TaxPrint.Coins[TaxPrint.Coins.Length - 1];
+            Assert.IsTrue(TaxPrint.IsGold(highest.x, highest.y), "the top coin shows its whole face");
+            Assert.IsFalse(TaxPrint.IsDeep(highest.x, highest.y));
+            Assert.IsTrue(TaxPrint.IsDeep(highest.x, highest.y + TaxPrint.CoinSize.y / 2f + TaxPrint.CoinEdge / 2f), "with a line round it");
+            Assert.IsFalse(TaxPrint.IsGold(highest.x, highest.y + TaxPrint.CoinSize.y / 2f + 2f * TaxPrint.CoinEdge), "and nothing above it");
 
             Assert.IsFalse(TaxPrint.IsGold(0f, 0f));
             Assert.IsTrue(TaxPrint.Area.Contains(Vector2.zero));

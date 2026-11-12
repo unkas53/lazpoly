@@ -40,10 +40,15 @@ namespace Lazpoly.Presentation.Tabletop
         public const float FirstLineTo = 0.15f;
         public const float SecondLineTo = 0.03f;
 
-        /// <summary>The coins, seen from the side, one on another at the bill's lower right: each one's size, the deep edge round it, and where their middles are.</summary>
-        public static readonly Vector2 CoinSize = new Vector2(0.30f, 0.06f);
-        public const float CoinEdge = 0.022f;
-        public static readonly Vector2[] Coins = { new Vector2(0.37f, -0.50f), new Vector2(0.345f, -0.42f), new Vector2(0.375f, -0.34f) };
+        /// <summary>
+        /// The coins, one on another at the bill's lower right, seen a little from above: each a round face (an ellipse of
+        /// <see cref="CoinSize"/>) over an edge <see cref="CoinThick"/> deep, with a deep line <see cref="CoinEdge"/>
+        /// wide round it and along the face's near rim. <see cref="Coins"/>: the middles of their faces, the lowest first.
+        /// </summary>
+        public static readonly Vector2 CoinSize = new Vector2(0.30f, 0.11f);
+        public const float CoinThick = 0.055f;
+        public const float CoinEdge = 0.02f;
+        public static readonly Vector2[] Coins = { new Vector2(0.365f, -0.44f), new Vector2(0.35f, -0.385f), new Vector2(0.365f, -0.33f) };
 
         /// <summary>Like the Şans cards': no bigger on the screen, and the three pictures are made at once when the board is built.</summary>
         public const int PictureWidth = 192;
@@ -87,23 +92,23 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The bill's cream.</summary>
         public static Texture2D PaperPicture() => _paper != null ? _paper : _paper = FloorPrint.Picture("print-tax-paper", Area, PictureWidth, IsPaper, Samples);
 
-        /// <summary>The bill's outline, its two written lines, and the edge round each coin.</summary>
+        /// <summary>The bill's outline, its two written lines, and the lines round each coin and along its face's rim.</summary>
         public static Texture2D DeepPicture() => _deep != null ? _deep : _deep = FloorPrint.Picture("print-tax-deep", Area, PictureWidth, IsDeep, Samples);
 
-        /// <summary>The coins.</summary>
+        /// <summary>The coins' faces and edges.</summary>
         public static Texture2D GoldPicture() => _gold != null ? _gold : _gold = FloorPrint.Picture("print-tax-gold", Area, PictureWidth, IsGold, Samples);
 
         public static bool IsPaper(float x, float z) => OnBill(x, z, 0f);
 
         public static bool IsDeep(float x, float z)
         {
-            if (OnCoin(x, z, 0f)) return false;
-            if (OnCoin(x, z, CoinEdge)) return true;
+            int coin = CoinPart(x, z);
+            if (coin != Nothing) return coin == DeepLine;
             if (!OnBill(x, z, 0f)) return false;
             return !OnBill(x, z, Outline) || Line(x, z, FirstLineTo, FirstLine) || Line(x, z, SecondLineTo, SecondLine);
         }
 
-        public static bool IsGold(float x, float z) => OnCoin(x, z, 0f);
+        public static bool IsGold(float x, float z) => CoinPart(x, z) == Gold;
 
         /// <summary>The height of the bill's torn bottom at <paramref name="x"/>: a saw of <see cref="Teeth"/> teeth, its points down.</summary>
         public static float TornEdge(float x)
@@ -127,21 +132,39 @@ namespace Lazpoly.Presentation.Tabletop
             return qx <= 0f || qz <= 0f || qx * qx + qz * qz <= round * round;
         }
 
-        /// <summary>Whether the point lies on one of the coins, each grown by <paramref name="grow"/> all round.</summary>
-        public static bool OnCoin(float x, float z, float grow)
+        private const int Nothing = 0, Gold = 1, DeepLine = 2;
+
+        // What of the coins lies at a point. The highest coin is asked first, since it hides the ones under it.
+        private static int CoinPart(float x, float z)
         {
             // Most of the page is nowhere near them.
-            if (x < CoinsLeft - grow || z > CoinsTop + grow) return false;
-            foreach (Vector2 coin in Coins)
+            if (x < CoinsLeft || z > CoinsTop) return Nothing;
+            for (int i = Coins.Length - 1; i >= 0; i--)
             {
-                if (Bar(x, z, coin.x, (CoinSize.x - CoinSize.y) / 2f, coin.y, CoinSize.y / 2f + grow)) return true;
+                Vector2 coin = Coins[i];
+                if (!OnCoin(x, z, coin, CoinEdge)) continue;
+                if (!OnCoin(x, z, coin, 0f)) return DeepLine;
+                // The face's rim: the band just outside the face that still lies on the coin, which is its near side.
+                return !OnFace(x, z, coin, 0f) && OnFace(x, z, coin, CoinEdge) ? DeepLine : Gold;
             }
 
-            return false;
+            return Nothing;
         }
 
-        private static readonly float CoinsLeft = Mathf.Min(Coins[0].x, Mathf.Min(Coins[1].x, Coins[2].x)) - CoinSize.x / 2f;
-        private static readonly float CoinsTop = Mathf.Max(Coins[0].y, Mathf.Max(Coins[1].y, Coins[2].y)) + CoinSize.y / 2f;
+        // A coin's round face, seen from above at a slant: an ellipse, grown all round.
+        private static bool OnFace(float x, float z, Vector2 at, float grow)
+        {
+            float dx = (x - at.x) / (CoinSize.x / 2f + grow), dz = (z - at.y) / (CoinSize.y / 2f + grow);
+            return dx * dx + dz * dz <= 1f;
+        }
+
+        // The whole coin: its face, its underside CoinThick lower, and the edge between them.
+        private static bool OnCoin(float x, float z, Vector2 at, float grow) =>
+            OnFace(x, z, at, grow) || OnFace(x, z, new Vector2(at.x, at.y - CoinThick), grow)
+            || (Mathf.Abs(x - at.x) <= CoinSize.x / 2f + grow && z <= at.y && z >= at.y - CoinThick);
+
+        private static readonly float CoinsLeft = Mathf.Min(Coins[0].x, Mathf.Min(Coins[1].x, Coins[2].x)) - CoinSize.x / 2f - CoinEdge;
+        private static readonly float CoinsTop = Mathf.Max(Coins[0].y, Mathf.Max(Coins[1].y, Coins[2].y)) + CoinSize.y / 2f + CoinEdge;
 
         // A written line: from LineFrom to an end, its ends round.
         private static bool Line(float x, float z, float to, float height) =>
