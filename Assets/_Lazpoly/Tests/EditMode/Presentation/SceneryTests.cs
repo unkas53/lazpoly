@@ -1154,8 +1154,8 @@ namespace Lazpoly.Presentation.Tests
                         Assert.Less(Mathf.Abs(tree.z) + tree.w, IslandShape.FarTop.y / 2f);
                         for (int other = 0; other < i; other++)
                         {
-                            Vector4 near = IslandShape.FarTree(seed, other);
-                            Assert.Greater(new Vector2(tree.x - near.x, tree.z - near.z).magnitude, 0.3f, "trees stand apart");
+                            Vector4 neighbour = IslandShape.FarTree(seed, other);
+                            Assert.Greater(new Vector2(tree.x - neighbour.x, tree.z - neighbour.z).magnitude, 0.3f, "trees stand apart");
                         }
                     }
 
