@@ -194,7 +194,7 @@ namespace Lazpoly.Presentation.Models
         /// <summary>The far islands: one at each side of the screen, the second smaller and higher, and seen more from its side; both stay under the aeroplane's lowest path.</summary>
         public static readonly IReadOnlyList<FarIsland> FarIslands = new[]
         {
-            new FarIsland(0.085f, 0.60f, 0.19f, 51, 14f),
+            new FarIsland(0.074f, 0.60f, 0.19f, 51, 14f),
             new FarIsland(0.915f, 0.66f, 0.14f, 52, 62f),
         };
 
