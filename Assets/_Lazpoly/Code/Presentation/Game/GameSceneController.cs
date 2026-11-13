@@ -1208,7 +1208,7 @@ namespace Lazpoly.Presentation.Game
                 yield return ScreenTour.Take("ucak-soldan");
                 sky.HoldPlane(1, 0.5f);
                 yield return ScreenTour.Take("ucak-sagdan");
-                sky.HoldPlane(3, 0.36f);
+                sky.HoldPlane(3, 0.22f);
                 yield return ScreenTour.Take("ucak-inen");
                 sky.HoldPlane(-1, 0f);
             }
