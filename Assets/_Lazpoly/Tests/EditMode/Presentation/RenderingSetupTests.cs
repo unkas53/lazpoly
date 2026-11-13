@@ -209,7 +209,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Greater(trail.position.z, plane.position.z, "the trail behind the plane, so the plane hides its head");
                 Assert.Less(trail.position.z, backdrop.transform.position.z, "and before the sky");
                 Assert.AreEqual(SkyPlane.Size * 10f / PlaneParts.Length, plane.lossyScale.x, 1e-4f, "its length is a share of the view's height");
-                Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.01f, "level in the world");
+                Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.1f, "level in the world");
                 Assert.AreEqual(SkyPlane.TurnOf(0), Mathf.DeltaAngle(camera.transform.eulerAngles.y, plane.eulerAngles.y), 0.01f, "a half right angle off the camera's heading: along the board's edge");
                 Assert.AreEqual(SkyPlane.TrailLength * SkyPlane.Size * 10f, trail.localScale.x, 1e-3f, "the trail's length in plane lengths");
                 Assert.AreEqual(SkyPlane.TrailWidth * SkyPlane.Size * 10f, trail.localScale.y, 1e-3f, "unstretched whatever the window's shape");
@@ -490,18 +490,18 @@ namespace Lazpoly.Presentation.Tests
 
                     Transform plane = backdrop.Plane, trail = backdrop.Trail;
                     Assert.Less(Mathf.Abs(plane.forward.y), 1e-4f, "the plane flies level in the world");
-                    Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.01f, "wings level too");
+                    Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.1f, "wings level too");
 
                     // Seen by the slanted camera it moves along a slope, nose first, and the trail lies along that slope
                     // behind it: a flat picture facing the camera, behind every part of the plane and before the sky.
                     int pass = SkyPlane.PassAt(seconds);
                     Vector2 way = SkyPlane.WayOf(pass);
                     Vector3 nose = camera.transform.InverseTransformDirection(plane.forward);
-                    Assert.Less(Vector2.Angle(way, new Vector2(nose.x, nose.y)), 0.05f, "nose first along its path");
+                    Assert.Less(Vector2.Angle(way, new Vector2(nose.x, nose.y)), 0.1f, "nose first along its path");
                     Assert.IsTrue(trail.gameObject.activeSelf, "the trail with it");
-                    Assert.Less(Vector3.Angle(trail.forward, camera.transform.forward), 0.01f, "the trail's picture faces the camera");
+                    Assert.Less(Vector3.Angle(trail.forward, camera.transform.forward), 0.1f, "the trail's picture faces the camera");
                     Vector3 along = camera.transform.InverseTransformDirection(trail.right);
-                    Assert.Less(Vector2.Angle(way, new Vector2(along.x, along.y)), 0.05f, "and lies along the plane's path");
+                    Assert.Less(Vector2.Angle(way, new Vector2(along.x, along.y)), 0.1f, "and lies along the plane's path");
                     Assert.Greater(Deep(trail.position), planeFar, "behind every part of the plane");
                     Assert.Less(Deep(trail.position), sky, "before the sky");
                     Assert.Greater(nearest, clouds, "the far islands behind the clouds");
@@ -551,7 +551,7 @@ namespace Lazpoly.Presentation.Tests
                 Vector3 seen = Quaternion.Inverse(look) * heading;
                 Vector2 way = SkyPlane.WayOf(pass);
                 Assert.AreEqual(1f, way.magnitude, 1e-4f);
-                Assert.Less(Vector2.Angle(way, new Vector2(seen.x, seen.y)), 0.01f, "its path on the screen is what the camera sees of that flight");
+                Assert.Less(Vector2.Angle(way, new Vector2(seen.x, seen.y)), 0.1f, "its path on the screen is what the camera sees of that flight");
                 Assert.AreEqual(slope, Mathf.Abs(Mathf.Atan2(way.y, Mathf.Abs(way.x)) * Mathf.Rad2Deg), 0.01f, "a slope of about thirty degrees");
                 Assert.AreEqual(SkyPlane.Climbing(pass), way.y > 0f, "up the screen when it flies away from the camera");
                 Assert.AreEqual(SkyPlane.Climbing(pass), seen.z > 0f);
@@ -569,7 +569,8 @@ namespace Lazpoly.Presentation.Tests
                     Assert.AreEqual(SkyPlane.EdgeHeightOf(pass) - 0.5f, side.y, 1e-4f, "at its pass's height");
                     Assert.AreEqual(0.5f, top.y, 1e-4f, "the other on the view's top");
                     Assert.Less(Mathf.Abs(top.x), Mathf.Abs(side.x), "inside the view's width");
-                    Assert.Less(Vector2.Angle(way, to - from), 0.01f, "straight along its heading");
+                    // (Angles this small come out of Unity in steps of about 0.02 degrees, so they are not held tighter than 0.1.)
+                    Assert.Less(Vector2.Angle(way, to - from), 0.1f, "straight along its heading");
 
                     // It starts just outside the view and ends so far outside that its trail has gone too.
                     Vector2 start = SkyPlane.SpotAt(pass, 0f, aspect), finish = SkyPlane.SpotAt(pass, 1f, aspect), half = SkyPlane.SpotAt(pass, 0.5f, aspect);
