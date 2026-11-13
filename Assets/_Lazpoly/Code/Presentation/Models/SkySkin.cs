@@ -76,7 +76,7 @@ namespace Lazpoly.Presentation.Models
         private const int NearCells = 5;
         private const int FarCells = 8;
 
-        private static Texture2D _sky, _near, _far, _farRock, _farGrass;
+        private static Texture2D _sky, _near, _far, _farRock, _farGrass, _trail;
 
         /// <summary>The sky's colour at a point of the screen (u across, v up, both 0-1) before clouds and islands.</summary>
         public static Color ColourAt(float u, float v)
@@ -168,6 +168,50 @@ namespace Lazpoly.Presentation.Models
             return colour;
         }
 
+        /// <summary>
+        /// The picture of the trail an aeroplane leaves (the owner's wish, 2026-11-13): its size, its white, how solid
+        /// it is at its thickest, and how far each of its two streaks (one from each engine) lies from the picture's
+        /// middle line, as a share of the picture's height.
+        /// </summary>
+        public const int TrailWidth = 256;
+        public const int TrailHeight = 48;
+        public static readonly Color TrailColour = new Color32(0xFB, 0xFC, 0xFC, 0xFF);
+        public const float TrailSolid = 0.9f;
+        public const float TrailGap = 0.137f;
+
+        /// <summary>The trail's picture: the plane at its right end (u = 1), the trail fading away to the left.</summary>
+        public static Texture2D Trail()
+        {
+            if (_trail != null) return _trail;
+            var canvas = new Color[TrailWidth * TrailHeight];
+            for (int y = 0; y < TrailHeight; y++)
+            {
+                for (int x = 0; x < TrailWidth; x++) canvas[y * TrailWidth + x] = TrailAt((x + 0.5f) / TrailWidth, (y + 0.5f) / TrailHeight);
+            }
+
+            return _trail = Picture("sky-plane-trail", canvas, TrailWidth, TrailHeight, TextureWrapMode.Clamp, 0);
+        }
+
+        /// <summary>
+        /// The trail's colour at a point of its picture (u along, 1 at the plane; v across), its alpha how solid it is
+        /// there: two thin streaks that start a little behind the engines, widen and soften as they grow older until
+        /// they run into one band, and thin away to nothing at the far end. A slow unevenness along it keeps it from
+        /// looking ruled; its picture's edges are clear all round.
+        /// </summary>
+        public static Color TrailAt(float u, float v)
+        {
+            float age = 1f - Mathf.Clamp01(u);
+            float spread = 0.03f + 0.15f * Mathf.Pow(age, 0.75f);
+            float one = (v - 0.5f - TrailGap) / spread, other = (v - 0.5f + TrailGap) / spread;
+            float body = Mathf.Min(1f, (Mathf.Exp(-0.5f * one * one) + Mathf.Exp(-0.5f * other * other)) * Mathf.Pow(0.03f / spread, 0.35f));
+            float fade = Mathf.Clamp01(age / 0.03f) * Mathf.Pow(1f - age, 1.4f);
+            float wisp = 0.84f + 0.16f * Mathf.Sin(u * 47f + 1.3f) * Mathf.Sin(u * 19f + 0.4f);
+            float edge = Mathf.Clamp01((0.5f - Mathf.Abs(v - 0.5f)) / 0.1f);
+            Color colour = TrailColour;
+            colour.a = Mathf.Clamp01(TrailSolid * body * fade * wisp * edge);
+            return colour;
+        }
+
         /// <summary>How much of the sky the two cloud layers hide at a point (u along, wrapping; v up): 0 clear sky, 1 solid cloud.</summary>
         public static float CloudCover(float u, float v) => 1f - (1f - CloudAt(true, u, v).a) * (1f - CloudAt(false, u, v).a);
 
@@ -191,7 +235,7 @@ namespace Lazpoly.Presentation.Models
             }
         }
 
-        /// <summary>The far islands: one at each side of the screen, the second smaller and higher, and seen more from its side; both stay under the aeroplane's lowest path.</summary>
+        /// <summary>The far islands: one at each side of the screen, the second smaller and higher, and seen more from its side; the aeroplane's paths pass over both.</summary>
         public static readonly IReadOnlyList<FarIsland> FarIslands = new[]
         {
             new FarIsland(0.074f, 0.60f, 0.19f, 51, 14f),

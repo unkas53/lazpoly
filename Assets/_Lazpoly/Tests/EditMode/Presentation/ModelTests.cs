@@ -50,6 +50,32 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
+        public void APlateIsCutToItsOutlineAndFacesOutwardWhicheverWayRoundItIsDrawn()
+        {
+            // A swept wing, drawn one way round, and its mirror image, which goes the other way round.
+            var outline = new[] { new Vector2(0.1f, 0.4f), new Vector2(0.1f, -0.2f), new Vector2(1f, -0.6f), new Vector2(1f, -0.4f) };
+            var mirrored = new Vector2[outline.Length];
+            for (int i = 0; i < outline.Length; i++) mirrored[i] = new Vector2(-outline[i].x, outline[i].y);
+            Mesh right = MeshFactory.Plate("test-wing-right", outline, 0.05f), left = MeshFactory.Plate("test-wing-left", mirrored, 0.05f);
+            Assert.AreSame(right, MeshFactory.Plate("test-wing-right", outline, 0.05f), "built once");
+
+            Assert.That(Vector3.Distance(new Vector3(0.9f, 0.05f, 1f), right.bounds.size), Is.LessThan(1e-4f), "as wide and long as its outline, as thick as asked");
+            Assert.That(Vector3.Distance(new Vector3(0.55f, 0f, -0.1f), right.bounds.center), Is.LessThan(1e-4f), "about y = 0");
+            Assert.That(Vector3.Distance(new Vector3(-0.55f, 0f, -0.1f), left.bounds.center), Is.LessThan(1e-4f));
+            AssertFacesOutward(right, new Vector3(0.5f, 0f, -0.15f));
+            AssertFacesOutward(left, new Vector3(-0.5f, 0f, -0.15f));
+            Assert.AreEqual(right.triangles.Length, left.triangles.Length);
+            // Two faces of two triangles each, and four sides of two.
+            Assert.AreEqual(3 * (2 * 2 + 4 * 2), right.triangles.Length);
+            foreach (Vector3 normal in right.normals) Assert.That(normal.magnitude, Is.EqualTo(1f).Within(1e-3f));
+            foreach (Vector3 normal in right.normals)
+                Assert.That(Mathf.Abs(normal.y) > 0.999f || Mathf.Abs(normal.y) < 1e-3f, "flat faces and a square edge");
+
+            Assert.Throws<System.ArgumentException>(() => MeshFactory.Plate("test-too-few", new[] { Vector2.zero, Vector2.one }, 0.05f));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => MeshFactory.Plate("test-no-thickness", outline, 0f));
+        }
+
+        [Test]
         public void ThePaperSkinIsALightGrainWithAFrameLine()
         {
             Texture2D paper = TileSkin.Make(32);

@@ -174,6 +174,57 @@ namespace Lazpoly.Presentation.Models
             return Store(key, vertices, null, triangles);
         }
 
+        /// <summary>
+        /// A flat plate cut to an outline: a wing, a fin. <paramref name="outline"/> holds the (x, z) corners of a convex
+        /// shape, round it either way; the plate is <paramref name="thickness"/> thick about y = 0, its two faces flat and
+        /// its edge square.
+        /// </summary>
+        public static Mesh Plate(string name, IReadOnlyList<Vector2> outline, float thickness)
+        {
+            if (outline == null || outline.Count < 3) throw new ArgumentException("An outline needs at least three corners.", nameof(outline));
+            if (thickness <= 0f) throw new ArgumentOutOfRangeException(nameof(thickness));
+
+            string key = $"plate:{name}";
+            if (Cache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            // The faces are wound for corners going clockwise seen from above; an outline drawn the other way is read backwards.
+            int count = outline.Count;
+            float turn = 0f;
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 here = outline[i], next = outline[(i + 1) % count];
+                turn += here.x * next.y - next.x * here.y;
+            }
+
+            var corners = new List<Vector2>(outline);
+            if (turn > 0f) corners.Reverse();
+
+            float half = thickness / 2f;
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            foreach (Vector2 corner in corners) vertices.Add(new Vector3(corner.x, half, corner.y));
+            foreach (Vector2 corner in corners) vertices.Add(new Vector3(corner.x, -half, corner.y));
+            for (int i = 1; i < count - 1; i++)
+            {
+                triangles.AddRange(new[] { 0, i, i + 1 });                          // the upper face
+                triangles.AddRange(new[] { count, count + i + 1, count + i });      // the lower face
+            }
+
+            // The edge: its own corners, so each side is flat.
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 here = corners[i], next = corners[(i + 1) % count];
+                int start = vertices.Count;
+                vertices.Add(new Vector3(here.x, half, here.y));
+                vertices.Add(new Vector3(here.x, -half, here.y));
+                vertices.Add(new Vector3(next.x, -half, next.y));
+                vertices.Add(new Vector3(next.x, half, next.y));
+                triangles.AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
+            }
+
+            return Store(key, vertices, null, triangles);
+        }
+
         /// <summary>A house: a box with a pitched roof. Base at y = 0, size (1, 1, 1) overall, ridge along X.</summary>
         public static Mesh House()
         {

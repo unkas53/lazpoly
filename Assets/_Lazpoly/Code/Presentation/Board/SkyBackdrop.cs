@@ -9,9 +9,10 @@ namespace Lazpoly.Presentation.Tabletop
     /// the camera's view at the far end of it, so the board and everything on it stand in front: the sky with its glow
     /// behind the board; two small far islands rising and sinking a little in the haze, three-dimensional since
     /// 2026-11-12 (the owner's wish; <see cref="IslandParts.Far"/>) and turning very slowly, so they show their depth;
-    /// now and then a little aeroplane crossing behind the table (<see cref="SkyPlane"/>, the owner's wish too); and two
-    /// layers of soft cloud drifting sideways, the nearer one faster, so the sky has depth. All of it moves slowly and by
-    /// little. The islands and the aeroplane are models held in the camera's view, between the sky and the clouds. The
+    /// now and then a small jet aeroplane crossing a corner of the sky at the game's own slant, a trail behind it
+    /// (<see cref="SkyPlane"/>, the owner's wishes too); and two layers of soft cloud drifting sideways, the nearer one
+    /// faster, so the sky has depth. All of it moves slowly and by little. The islands and the aeroplane are models
+    /// held in the camera's view, between the sky and the clouds; the trail is a picture just behind the plane. The
     /// pictures follow the zoom and the window's shape without being stretched, and warm with the evening like the flat
     /// sky did (<see cref="SetEvening"/>). Without the picture shader the camera's flat sky colour shows, as before.
     /// </summary>
@@ -42,17 +43,20 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>
         /// How deep in the camera's view each thing lies, as a share of the way to its far end: the sky last, the far
         /// islands before it with room for their depth (the owner's model is as deep as it is wide, and stands larger
-        /// than the islands cut in code did), the aeroplane before them, then the clouds; all far behind the table.
+        /// than the islands cut in code did), the aeroplane before them with its trail just behind it (behind every
+        /// part of the plane, so the plane hides the trail's head), then the clouds; all far behind the table.
         /// </summary>
         public const float SkyDepth = 0.99f;
         public const float IslandDepth = 0.943f;
-        public const float PlaneDepth = 0.892f;
-        public const float CloudDepth = 0.88f;
+        public const float TrailDepth = 0.898f;
+        public const float PlaneDepth = 0.889f;
+        public const float CloudDepth = 0.876f;
 
         public const string ModelsName = "Sky Models";
         public const string PlaneName = "Sky Plane";
+        public const string TrailName = "Sky Plane Trail";
 
-        /// <summary>The pictures are drawn before everything else that is see-through: the sky first, then the far islands, the far clouds, the near clouds.</summary>
+        /// <summary>The pictures are drawn before everything else that is see-through: the sky first, then the aeroplane's trail, the far clouds, the near clouds.</summary>
         public const int SkyQueue = 2900;
 
         public const string NearCloudsName = "Sky Clouds Near";
@@ -62,10 +66,10 @@ namespace Lazpoly.Presentation.Tabletop
         private const float Spare = 1.05f;
 
         private Camera _camera;
-        private Material _material, _nearMaterial, _farMaterial;
+        private Material _material, _nearMaterial, _farMaterial, _trailMaterial;
         private Transform _near, _far;
         private Transform[] _islands;
-        private Transform _plane;
+        private Transform _plane, _trail;
         private bool _modelled;
         private int _heldPass = -1;
         private float _heldProgress;
@@ -82,6 +86,9 @@ namespace Lazpoly.Presentation.Tabletop
 
         /// <summary>The aeroplane; switched off while none is crossing.</summary>
         public Transform Plane => _plane;
+
+        /// <summary>The trail behind the aeroplane: a picture facing the camera, as long as the trail and as wide; switched off with the plane.</summary>
+        public Transform Trail => _trail;
 
         /// <summary>Puts the backdrop behind <paramref name="camera"/>'s view, once; null when the picture shader is missing.</summary>
         public static SkyBackdrop Attach(Camera camera)
@@ -112,6 +119,9 @@ namespace Lazpoly.Presentation.Tabletop
             }
 
             backdrop._plane = PlaneParts.Create(models.transform, PlaneName).transform;
+            GameObject trail = PicturePlate.Create(TrailName, models.transform, SkySkin.Trail(), Vector2.one);
+            backdrop._trail = trail.transform;
+            backdrop._trailMaterial = Layer(trail, 1);
 
             GameObject far = PicturePlate.Create(FarCloudsName, plate.transform, SkySkin.Clouds(false), Vector2.one);
             backdrop._far = far.transform;
@@ -137,6 +147,7 @@ namespace Lazpoly.Presentation.Tabletop
             if (_material != null) _material.color = tint;
             if (_nearMaterial != null) _nearMaterial.color = tint;
             if (_farMaterial != null) _farMaterial.color = tint;
+            if (_trailMaterial != null) _trailMaterial.color = tint;
         }
 
         /// <summary>
@@ -244,8 +255,10 @@ namespace Lazpoly.Presentation.Tabletop
         }
 
         /// <summary>
-        /// The aeroplane: out of sight between crossings; on one, flying level and straight across the view, banked a
-        /// little away from the camera (<see cref="SkyPlane.Bank"/>) so the slanted view shows its side, its propeller turning.
+        /// The aeroplane: out of sight between passes; on one, flying level in the world along one of the board's own
+        /// directions (<see cref="SkyPlane.TurnOf"/> from the camera's heading), so the slanted view shows it
+        /// three-quarters on, moving up or down a slope. Its trail lies behind it along that slope, its head where the
+        /// engines' jets leave the plane.
         /// </summary>
         private void ShowPlane(float seconds, float far, float aspect)
         {
@@ -254,19 +267,22 @@ namespace Lazpoly.Presentation.Tabletop
             float progress = _heldPass >= 0 ? _heldProgress : SkyPlane.ProgressAt(seconds);
             bool flying = pass >= 0 && progress >= 0f;
             if (_plane.gameObject.activeSelf != flying) _plane.gameObject.SetActive(flying);
+            if (_trail != null && _trail.gameObject.activeSelf != flying) _trail.gameObject.SetActive(flying);
             if (!flying) return;
             float tall = HeightAt(PlaneDepth);
-            Vector2 spot = SkyPlane.SpotAt(pass, progress);
+            Vector2 spot = SkyPlane.SpotAt(pass, progress, aspect);
             _plane.localPosition = new Vector3((spot.x - 0.5f) * tall * aspect, (spot.y - 0.5f) * tall, far * PlaneDepth);
             _plane.localScale = Vector3.one * (SkyPlane.Size * tall / PlaneParts.Length);
-            Vector3 way = _camera.transform.right * (SkyPlane.Rightward(pass) ? 1f : -1f);
-            way.y = 0f;
-            way = way.sqrMagnitude > 1e-6f ? way.normalized : Vector3.right;
-            // Its top leans away from the camera, about its own line of flight.
-            Vector3 away = Vector3.Cross(way, Vector3.up) * (SkyPlane.Rightward(pass) ? 1f : -1f);
-            Vector3 top = Quaternion.AngleAxis(SkyPlane.Bank, Vector3.Cross(Vector3.up, away)) * Vector3.up;
-            _plane.rotation = Quaternion.LookRotation(way, top);
-            PlaneParts.Spin(_plane, seconds);
+            _plane.rotation = Quaternion.Euler(0f, _camera.transform.eulerAngles.y + SkyPlane.TurnOf(pass), 0f);
+            if (_trail == null) return;
+
+            // The trail: a picture in the view's own plane, turned to the plane's slope, its right end at the engines.
+            Vector3 head = _camera.transform.InverseTransformPoint(_plane.TransformPoint(PlaneParts.Exhaust));
+            Vector2 way = SkyPlane.WayOf(pass, _camera.transform.eulerAngles.x);
+            float length = SkyPlane.TrailLength * SkyPlane.Size * tall, width = SkyPlane.TrailWidth * SkyPlane.Size * tall;
+            _trail.localPosition = new Vector3(head.x - way.x * length / 2f, head.y - way.y * length / 2f, far * TrailDepth);
+            _trail.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(way.y, way.x) * Mathf.Rad2Deg);
+            _trail.localScale = new Vector3(length, width, 1f);
         }
     }
 }

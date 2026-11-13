@@ -1389,20 +1389,19 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void TheAeroplaneIsASmallPalePlainMachineWithATurningPropeller()
+        public void TheAeroplaneIsASmallPaleJetWithAnEngineUnderEachWing()
         {
-            // The owner's wish (2026-11-12): a plane crossing the background now and then.
+            // The owner's wishes: a plane crossing the background now and then (2026-11-12), and that plane a jet (2026-11-13).
             var holder = new GameObject("Plane Test");
             try
             {
                 GameObject plane = PlaneParts.Create(holder.transform, "Plane");
                 Transform body = plane.transform.Find(PlaneParts.BodyName), trim = plane.transform.Find(PlaneParts.TrimName);
-                Transform glass = plane.transform.Find(PlaneParts.GlassName), propeller = plane.transform.Find(PlaneParts.PropellerName);
+                Transform glass = plane.transform.Find(PlaneParts.GlassName);
                 Assert.IsNotNull(body);
                 Assert.IsNotNull(trim);
                 Assert.IsNotNull(glass);
-                Assert.IsNotNull(propeller);
-                Assert.AreEqual(4, plane.GetComponentsInChildren<MeshRenderer>().Length, "plain: four parts and no more");
+                Assert.AreEqual(3, plane.GetComponentsInChildren<MeshRenderer>().Length, "plain: three parts and no more; a jet has no propeller");
 
                 var whole = new Bounds(plane.transform.position, Vector3.zero);
                 foreach (MeshRenderer part in plane.GetComponentsInChildren<MeshRenderer>())
@@ -1412,29 +1411,117 @@ namespace Lazpoly.Presentation.Tests
                     Assert.IsFalse(part.receiveShadows);
                 }
 
-                Assert.AreEqual(PlaneParts.Length, whole.size.z, 0.01f, "from tail to spinner along z");
+                Assert.AreEqual(PlaneParts.Length, whole.size.z, 0.01f, "from tail to nose along z");
                 Assert.AreEqual(PlaneParts.Span, whole.size.x, 0.01f, "wings across x");
-                Assert.Less(whole.size.y, 0.3f, "low: fin and all");
+                Assert.Less(whole.size.y, 0.35f, "low: fin, engines and all");
                 Assert.AreEqual(0f, whole.center.z, 0.01f, "about its own middle");
-                Assert.Greater(propeller.localPosition.z, PlaneParts.Length * 0.4f, "the propeller at the nose");
-                Assert.Less(trim.GetComponent<MeshFilter>().sharedMesh.bounds.min.z, -0.3f, "the fin at the tail");
+                Assert.AreEqual(0f, whole.center.x, 0.005f, "the same on both sides");
+
+                // Swept wings: their tips lie behind the plane's middle though they leave the body ahead of it, and stand a little higher.
+                float tipFront = float.MinValue, tipHeight = float.MinValue;
+                foreach (Vector3 corner in body.GetComponent<MeshFilter>().sharedMesh.vertices)
+                {
+                    if (Mathf.Abs(corner.x) < 0.45f) continue;
+                    tipFront = Mathf.Max(tipFront, corner.z);
+                    tipHeight = Mathf.Max(tipHeight, corner.y);
+                }
+
+                Assert.Less(tipFront, -0.1f, "the wings are swept back");
+                Assert.Greater(tipHeight, 0f, "and rise towards their tips");
+
+                // A jet engine under each wing: the cowls are the only red below the body's middle line.
+                var engines = new Bounds[2];
+                var found = new bool[2];
+                foreach (Vector3 corner in trim.GetComponent<MeshFilter>().sharedMesh.vertices)
+                {
+                    if (corner.y > -0.02f) continue;
+                    int which = corner.x < 0f ? 0 : 1;
+                    if (found[which]) engines[which].Encapsulate(corner);
+                    else engines[which] = new Bounds(corner, Vector3.zero);
+                    found[which] = true;
+                }
+
+                for (int i = 0; i < 2; i++)
+                {
+                    Assert.IsTrue(found[i], "an engine on each side");
+                    Assert.AreEqual((i == 0 ? -1f : 1f) * PlaneParts.EngineOut, engines[i].center.x, 0.005f, "out along the wing");
+                    Assert.AreEqual(2f * PlaneParts.EngineRadius, engines[i].size.x, 0.005f, "round");
+                    Assert.AreEqual(PlaneParts.EngineLength, engines[i].size.z, 0.005f, "a long cowl");
+                    Assert.AreEqual(PlaneParts.EngineAhead, engines[i].center.z, 0.01f);
+                    Assert.Less(engines[i].max.y, 0f, "hung under the wing");
+                    Assert.Greater(engines[i].max.z, 0.12f, "its mouth ahead of the wing");
+                }
+
+                // Its jets leave it at the engines' nozzles, midway between the two: the trail starts there.
+                float nozzle = float.MaxValue;
+                foreach (Vector3 corner in glass.GetComponent<MeshFilter>().sharedMesh.vertices)
+                {
+                    if (corner.y < -0.03f) nozzle = Mathf.Min(nozzle, corner.z);
+                }
+
+                Assert.AreEqual(nozzle, PlaneParts.Exhaust.z, 0.005f, "the trail starts at the nozzles");
+                Assert.AreEqual(0f, PlaneParts.Exhaust.x, 1e-6f, "midway between the engines");
+                Assert.AreEqual(-PlaneParts.EngineDrop, PlaneParts.Exhaust.y, 1e-6f);
+                Assert.Less(trim.GetComponent<MeshFilter>().sharedMesh.bounds.min.z, -0.45f, "the fin at the tail");
+                Assert.Greater(trim.GetComponent<MeshFilter>().sharedMesh.bounds.max.y, 0.15f, "standing tall");
 
                 Color paint = body.GetComponent<Renderer>().sharedMaterial.color, red = trim.GetComponent<Renderer>().sharedMaterial.color;
+                Color dark = glass.GetComponent<Renderer>().sharedMaterial.color;
                 Assert.Greater(paint.grayscale, 0.8f, "pale");
                 Assert.That(paint.b, Is.EqualTo(SkySkin.Hazed(PlaneParts.Paint).b).Within(0.01f), "gone into the haze like the far islands");
                 Assert.Greater(red.r, red.b + 0.05f, "a soft red trim");
                 Color.RGBToHSV(red, out _, out float saturation, out _);
                 Assert.Less(saturation, 0.5f, "soft: nothing loud in the background");
-
-                Assert.AreEqual(0f, PlaneParts.PropellerAt(0f), 1e-4f);
-                Assert.AreEqual(90f, PlaneParts.PropellerAt(0.25f / PlaneParts.PropellerTurns), 1e-2f, "a quarter turn");
-                PlaneParts.Spin(plane.transform, 0.25f / PlaneParts.PropellerTurns);
-                Assert.That(Quaternion.Angle(Quaternion.Euler(0f, 0f, 90f), propeller.localRotation), Is.LessThan(0.05f), "it turns about the plane's length");
+                Assert.Less(dark.grayscale, paint.grayscale - 0.2f, "dark glass and engine mouths");
             }
             finally
             {
                 Object.DestroyImmediate(holder);
             }
+        }
+
+        [Test]
+        public void TheAeroplanesTrailIsTwoThinStreaksThatWidenIntoOneBandAndFadeAway()
+        {
+            // The owner's wish (2026-11-13): the plane leaves a trail behind it.
+            Texture2D picture = SkySkin.Trail();
+            Assert.AreSame(picture, SkySkin.Trail(), "made once");
+            Assert.AreEqual(SkySkin.TrailWidth, picture.width);
+            Assert.AreEqual(SkySkin.TrailHeight, picture.height);
+            Assert.AreEqual(TextureWrapMode.Clamp, picture.wrapMode, "nothing repeats past its ends");
+
+            // Just behind the engines: two streaks, one each side of the middle, clear sky between them.
+            float streak = 0.5f + SkySkin.TrailGap;
+            Assert.Greater(SkySkin.TrailAt(0.93f, streak).a, 0.5f, "a streak behind each engine");
+            Assert.AreEqual(SkySkin.TrailAt(0.93f, streak).a, SkySkin.TrailAt(0.93f, 1f - streak).a, 1e-4f, "the same on both sides");
+            Assert.Less(SkySkin.TrailAt(0.93f, 0.5f).a, 0.1f, "apart at first");
+            // Older, they have widened into one soft band, and thinned.
+            Assert.Greater(SkySkin.TrailAt(0.45f, 0.5f).a, SkySkin.TrailAt(0.45f, streak).a * 0.9f, "then run into one band");
+            Assert.Less(SkySkin.TrailAt(0.45f, streak).a, SkySkin.TrailAt(0.93f, streak).a, "thinner as it ages");
+            Assert.Less(SkySkin.TrailAt(0.1f, 0.5f).a, 0.1f, "and all but gone at its far end");
+
+            // Clear at every edge of its picture, so no edge of it shows in the sky; and never quite solid.
+            float most = 0f;
+            for (int i = 0; i <= 40; i++)
+            {
+                float t = i / 40f;
+                Assert.AreEqual(0f, SkySkin.TrailAt(t, 0f).a, 1e-4f);
+                Assert.AreEqual(0f, SkySkin.TrailAt(t, 1f).a, 1e-4f);
+                Assert.AreEqual(0f, SkySkin.TrailAt(0f, t).a, 1e-4f);
+                Assert.AreEqual(0f, SkySkin.TrailAt(1f, t).a, 1e-4f, "it starts a little behind the engines");
+                for (int j = 0; j <= 20; j++) most = Mathf.Max(most, SkySkin.TrailAt(t, j / 20f).a);
+            }
+
+            Assert.LessOrEqual(most, SkySkin.TrailSolid);
+            Assert.Greater(most, 0.5f, "but plain to see where it is fresh");
+            Assert.Greater(SkySkin.TrailColour.grayscale, 0.95f, "white");
+
+            // The streaks are as far apart as the two engines look from the game's slanted view, on a path a half right
+            // angle off the camera's heading: the picture is TrailWidth plane lengths wide.
+            float pitch = BoardCameraRig.Pitch * Mathf.Deg2Rad;
+            float apart = PlaneParts.EngineOut * Mathf.Sin(pitch) / Mathf.Sqrt((1f + Mathf.Sin(pitch) * Mathf.Sin(pitch)) / 2f);
+            Assert.AreEqual(apart, SkySkin.TrailGap * SkyPlane.TrailWidth, 0.005f, "each streak behind its own engine");
+            Assert.That(SkyPlane.TrailLength, Is.InRange(4f, 10f), "long enough to read as a trail, short enough to stay modest");
         }
     }
 }
