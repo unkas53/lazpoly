@@ -171,12 +171,16 @@ namespace Lazpoly.Presentation.Models
         /// <summary>
         /// The picture of the trail an aeroplane leaves (the owner's wish, 2026-11-13): its size, its white, how solid
         /// it is at its thickest, and how far each of its two streaks (one from each engine) lies from the picture's
-        /// middle line, as a share of the picture's height.
+        /// middle line, as a share of the picture's height. Round the white lies a wider, thinner fringe of a soft
+        /// blue-grey, the colour of a cloud's shaded side a little deeper: the sky behind the board is nearly white
+        /// (<see cref="Glow"/>), and there the fringe is what shows the trail, as the white does on the blue.
         /// </summary>
         public const int TrailWidth = 256;
         public const int TrailHeight = 48;
         public static readonly Color TrailColour = new Color32(0xFB, 0xFC, 0xFC, 0xFF);
+        public static readonly Color TrailShade = new Color32(0xAC, 0xC6, 0xE0, 0xFF);
         public const float TrailSolid = 0.9f;
+        public const float TrailFringe = 0.62f;
         public const float TrailGap = 0.137f;
 
         /// <summary>The trail's picture: the plane at its right end (u = 1), the trail fading away to the left.</summary>
@@ -194,23 +198,42 @@ namespace Lazpoly.Presentation.Models
 
         /// <summary>
         /// The trail's colour at a point of its picture (u along, 1 at the plane; v across), its alpha how solid it is
-        /// there: two thin streaks that start a little behind the engines, widen and soften as they grow older until
-        /// they run into one band, and thin away to nothing at the far end. A slow unevenness along it keeps it from
-        /// looking ruled; its picture's edges are clear all round.
+        /// there: two thin white streaks that start a little behind the engines, widen and soften as they grow older
+        /// until they run into one band, and thin away to nothing at the far end, with their blue-grey fringe about
+        /// them. A slow unevenness along it keeps it from looking ruled; its picture's edges are clear all round.
         /// </summary>
         public static Color TrailAt(float u, float v)
         {
+            float white = TrailWhite(u, v);
             float age = 1f - Mathf.Clamp01(u);
-            float spread = 0.03f + 0.15f * Mathf.Pow(age, 0.75f);
-            float one = (v - 0.5f - TrailGap) / spread, other = (v - 0.5f + TrailGap) / spread;
-            float body = Mathf.Min(1f, (Mathf.Exp(-0.5f * one * one) + Mathf.Exp(-0.5f * other * other)) * Mathf.Pow(0.03f / spread, 0.35f));
-            float fade = Mathf.Clamp01(age / 0.03f) * Mathf.Pow(1f - age, 1.4f);
-            float wisp = 0.84f + 0.16f * Mathf.Sin(u * 47f + 1.3f) * Mathf.Sin(u * 19f + 0.4f);
-            float edge = Mathf.Clamp01((0.5f - Mathf.Abs(v - 0.5f)) / 0.1f);
-            Color colour = TrailColour;
-            colour.a = Mathf.Clamp01(TrailSolid * body * fade * wisp * edge);
+            float fade = Mathf.Clamp01(age / 0.03f) * Mathf.Pow(1f - age, 1.12f);
+            float fringe = Mathf.Clamp01(TrailFringe * TrailBody(age, v, 1.9f) * fade * TrailEdge(v));
+            float solid = white + (1f - white) * fringe;
+            Color colour = solid > 1e-5f ? Color.Lerp(TrailShade, TrailColour, white / solid) : TrailColour;
+            colour.a = solid;
             return colour;
         }
+
+        /// <summary>How solid the trail's white is at a point of its picture, without the fringe: 0 to <see cref="TrailSolid"/>.</summary>
+        public static float TrailWhite(float u, float v)
+        {
+            float age = 1f - Mathf.Clamp01(u);
+            float fade = Mathf.Clamp01(age / 0.03f) * Mathf.Pow(1f - age, 1.4f);
+            float wisp = 0.84f + 0.16f * Mathf.Sin(u * 47f + 1.3f) * Mathf.Sin(u * 19f + 0.4f);
+            return Mathf.Clamp01(TrailSolid * TrailBody(age, v, 1f) * fade * wisp * TrailEdge(v));
+        }
+
+        // The two streaks across the trail at an age (0 fresh, 1 at its far end), each a soft ridge that widens with age
+        // and thins as it widens; wider by a factor for the fringe.
+        private static float TrailBody(float age, float v, float wider)
+        {
+            float spread = 0.03f + 0.15f * Mathf.Pow(age, 0.75f);
+            float one = (v - 0.5f - TrailGap) / (spread * wider), other = (v - 0.5f + TrailGap) / (spread * wider);
+            return Mathf.Min(1f, (Mathf.Exp(-0.5f * one * one) + Mathf.Exp(-0.5f * other * other)) * Mathf.Pow(0.03f / spread, 0.35f));
+        }
+
+        // Clear at the picture's two long edges.
+        private static float TrailEdge(float v) => Mathf.Clamp01((0.5f - Mathf.Abs(v - 0.5f)) / 0.1f);
 
         /// <summary>How much of the sky the two cloud layers hide at a point (u along, wrapping; v up): 0 clear sky, 1 solid cloud.</summary>
         public static float CloudCover(float u, float v) => 1f - (1f - CloudAt(true, u, v).a) * (1f - CloudAt(false, u, v).a);

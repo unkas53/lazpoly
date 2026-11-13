@@ -1198,17 +1198,17 @@ namespace Lazpoly.Presentation.Game
                 }
             }
 
-            // The jet that crosses a corner of the sky now and then (2026-11-12; a jet on a slope with its trail,
-            // 2026-11-13), held part of the way up the left corner, up the right, and coming down the right in turn;
-            // the far islands show in the same pictures.
+            // The jet that crosses the sky beside the board now and then (2026-11-12; a jet on a slope with its trail,
+            // 2026-11-13), held in open sky on its way up the left side, up the right, and coming down the right in
+            // turn; the far islands show in the same pictures.
             SkyBackdrop sky = Camera.main != null ? Camera.main.GetComponentInChildren<SkyBackdrop>() : null;
             if (sky != null)
             {
-                sky.HoldPlane(0, 0.42f);
+                sky.HoldPlane(0, 0.5f);
                 yield return ScreenTour.Take("ucak-soldan");
-                sky.HoldPlane(1, 0.42f);
+                sky.HoldPlane(1, 0.5f);
                 yield return ScreenTour.Take("ucak-sagdan");
-                sky.HoldPlane(3, 0.3f);
+                sky.HoldPlane(3, 0.36f);
                 yield return ScreenTour.Take("ucak-inen");
                 sky.HoldPlane(-1, 0f);
             }

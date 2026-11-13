@@ -9,18 +9,20 @@ namespace Lazpoly.Presentation.Tabletop
     /// for <see cref="CrossSeconds"/>; in between the sky is empty. It flies level in the world along one of the
     /// board's own two directions, a half right angle off the camera's (<see cref="TurnOf"/>), so the slanted view
     /// shows it three-quarters on and its path is a slope on the screen, alongside the board's far edges
-    /// (<see cref="WayOf"/>): up one upper corner of the sky away from the camera, or down it towards the camera, the
-    /// left corner and the right by turns. Each pass meets the side of the view at its own height
-    /// (<see cref="EdgeHeightOf"/>), over the far islands. Behind it lies its trail (<see cref="TrailLength"/>), so a
-    /// pass lasts until the trail too has left the view. Slow and small, so it is noticed rather than watched: the
-    /// eye belongs on the board.
+    /// (<see cref="WayOf"/>): up the sky over one of those edges away from the camera, or down it towards the camera,
+    /// the left side and the right by turns. Each pass meets the side of the view at its own height
+    /// (<see cref="EdgeHeightOf"/>), about half way up: from there its path runs behind the far island at that side
+    /// (the plane is the farther of the two), under the players' cards in the view's upper corner and over the
+    /// buildings on the board's far edge, to the view's top beside the board's far corner; so the plane and the
+    /// trail behind it (<see cref="TrailLength"/>) cross open sky nearly all the way. A pass lasts until the trail
+    /// too has left the view. Slow and small, so it is noticed rather than watched: the eye belongs on the board.
     /// </summary>
     public static class SkyPlane
     {
         /// <summary>When the first plane sets out, how often one does after that, and how long one is on its way, in seconds.</summary>
         public const float FirstAt = 25f;
         public const float EverySeconds = 120f;
-        public const float CrossSeconds = 32f;
+        public const float CrossSeconds = 44f;
 
         /// <summary>The plane's length as a share of the view's height.</summary>
         public const float Size = 0.06f;
@@ -38,7 +40,7 @@ namespace Lazpoly.Presentation.Tabletop
         // Each pass in turn: which way the plane heads, in degrees from the camera's own heading (see TurnOf), and how
         // high up the view's side its path meets it (0 bottom, 1 top).
         private static readonly float[] Turns = { 45f, -45f, -135f, 135f };
-        private static readonly float[] EdgeHeights = { 0.74f, 0.72f, 0.76f, 0.73f };
+        private static readonly float[] EdgeHeights = { 0.51f, 0.50f, 0.51f, 0.50f };
 
         /// <summary>Which pass the clock is in or after: -1 before the first plane sets out.</summary>
         public static int PassAt(float seconds) => seconds < FirstAt ? -1 : Mathf.FloorToInt((seconds - FirstAt) / EverySeconds);
@@ -64,7 +66,7 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>Whether a pass flies away from the camera, up the screen, rather than towards it and down.</summary>
         public static bool Climbing(int pass) => Mathf.Abs(TurnOf(pass)) < 90f;
 
-        /// <summary>Whether a pass keeps to the left upper corner of the sky rather than the right.</summary>
+        /// <summary>Whether a pass keeps to the left side of the sky, over the board's far left edge, rather than the right.</summary>
         public static bool OnTheLeft(int pass) => Climbing(pass) == TurnOf(pass) > 0f;
 
         /// <summary>How high up the side of the view a pass's path meets it.</summary>

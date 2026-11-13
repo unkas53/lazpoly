@@ -1490,15 +1490,26 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual(SkySkin.TrailHeight, picture.height);
             Assert.AreEqual(TextureWrapMode.Clamp, picture.wrapMode, "nothing repeats past its ends");
 
-            // Just behind the engines: two streaks, one each side of the middle, clear sky between them.
+            // Just behind the engines: two white streaks, one each side of the middle, apart.
             float streak = 0.5f + SkySkin.TrailGap;
-            Assert.Greater(SkySkin.TrailAt(0.93f, streak).a, 0.5f, "a streak behind each engine");
-            Assert.AreEqual(SkySkin.TrailAt(0.93f, streak).a, SkySkin.TrailAt(0.93f, 1f - streak).a, 1e-4f, "the same on both sides");
-            Assert.Less(SkySkin.TrailAt(0.93f, 0.5f).a, 0.1f, "apart at first");
+            Assert.Greater(SkySkin.TrailWhite(0.93f, streak), 0.5f, "a streak behind each engine");
+            Assert.AreEqual(SkySkin.TrailWhite(0.93f, streak), SkySkin.TrailWhite(0.93f, 1f - streak), 1e-4f, "the same on both sides");
+            Assert.Less(SkySkin.TrailWhite(0.93f, 0.5f), 0.1f, "apart at first");
             // Older, they have widened into one soft band, and thinned.
-            Assert.Greater(SkySkin.TrailAt(0.45f, 0.5f).a, SkySkin.TrailAt(0.45f, streak).a * 0.9f, "then run into one band");
-            Assert.Less(SkySkin.TrailAt(0.45f, streak).a, SkySkin.TrailAt(0.93f, streak).a, "thinner as it ages");
-            Assert.Less(SkySkin.TrailAt(0.1f, 0.5f).a, 0.1f, "and all but gone at its far end");
+            Assert.Greater(SkySkin.TrailWhite(0.45f, 0.5f), SkySkin.TrailWhite(0.45f, streak) * 0.9f, "then run into one band");
+            Assert.Less(SkySkin.TrailWhite(0.45f, streak), SkySkin.TrailWhite(0.93f, streak), "thinner as it ages");
+            Assert.Less(SkySkin.TrailAt(0.1f, 0.5f).a, 0.12f, "and all but gone at its far end");
+
+            // Round the white lies a soft blue-grey fringe: the sky behind the board is nearly white, and there a white
+            // trail alone would not show (it did not, the first time it was tried on the owner's computer).
+            Color core = SkySkin.TrailAt(0.93f, streak), beside = SkySkin.TrailAt(0.8f, streak + 0.13f);
+            Assert.Greater(core.grayscale, 0.9f, "white where it is thickest");
+            Assert.GreaterOrEqual(core.a, SkySkin.TrailWhite(0.93f, streak));
+            Assert.Greater(beside.a, SkySkin.TrailWhite(0.8f, streak + 0.13f) + 0.05f, "the fringe reaches past the white");
+            Assert.Greater(beside.b, beside.r + 0.05f, "and is a blue-grey");
+            Assert.Less(SkySkin.TrailShade.grayscale, SkySkin.Glow.grayscale - 0.12f, "plainly darker than the pale sky behind the board");
+            Assert.Greater(SkySkin.TrailShade.grayscale, 0.7f, "but still light: a soft shade, not smoke");
+            Assert.That(SkySkin.TrailFringe, Is.InRange(0.4f, 0.75f));
 
             // Clear at every edge of its picture, so no edge of it shows in the sky; and never quite solid.
             float most = 0f;
@@ -1512,8 +1523,9 @@ namespace Lazpoly.Presentation.Tests
                 for (int j = 0; j <= 20; j++) most = Mathf.Max(most, SkySkin.TrailAt(t, j / 20f).a);
             }
 
-            Assert.LessOrEqual(most, SkySkin.TrailSolid);
+            Assert.Less(most, 0.97f);
             Assert.Greater(most, 0.5f, "but plain to see where it is fresh");
+            Assert.LessOrEqual(SkySkin.TrailWhite(0.95f, streak), SkySkin.TrailSolid);
             Assert.Greater(SkySkin.TrailColour.grayscale, 0.95f, "white");
 
             // The streaks are as far apart as the two engines look from the game's slanted view, on a path a half right

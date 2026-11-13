@@ -184,8 +184,8 @@ namespace Lazpoly.Presentation.Tests
                 Assert.AreNotEqual(SkySkin.FarIslands[0].Turn, SkySkin.FarIslands[1].Turn, "the one model shows a different side at each place");
 
                 // The aeroplane (the owner's wishes, 2026-11-12 and 2026-11-13): out of sight until its time, then level in
-                // the world along one of the board's own directions, behind the clouds and before the far islands, its
-                // trail a picture behind it; the next one flies up the other corner of the sky.
+                // the world along one of the board's own directions, behind the far islands and before the sky, its
+                // trail a picture behind it; the next one flies up the other side of the sky.
                 Transform plane = backdrop.Plane, trail = backdrop.Trail;
                 Assert.IsNotNull(plane);
                 Assert.IsNotNull(trail, "a trail behind it");
@@ -202,12 +202,12 @@ namespace Lazpoly.Presentation.Tests
                 Vector2 place = SkyPlane.SpotAt(0, 0.3f, camera.aspect);
                 Assert.AreEqual((place.x - 0.5f) * 10f * camera.aspect, plane.localPosition.x, 1e-3f, "where its pass has it across the view");
                 Assert.AreEqual((place.y - 0.5f) * 10f, plane.localPosition.y, 1e-3f, "and up it");
-                Assert.Less(plane.localPosition.x, 0f, "the first in the left corner of the sky");
-                Assert.Greater(plane.localPosition.y, 0f, "the upper one");
-                Assert.Greater(plane.position.z, backdrop.FarClouds.position.z, "behind the clouds");
-                Assert.Less(plane.position.z, backdrop.FarIslands[0].position.z, "before the far islands");
+                Assert.Less(plane.localPosition.x, 0f, "the first on the left side of the sky");
+                Assert.Greater(plane.localPosition.y, 0f, "in its upper half");
+                Assert.Greater(plane.position.z, backdrop.FarIslands[0].position.z, "behind the far islands, so it passes behind the one at its side");
+                Assert.Greater(backdrop.FarIslands[0].position.z, backdrop.FarClouds.position.z, "which are behind the clouds");
                 Assert.Greater(trail.position.z, plane.position.z, "the trail behind the plane, so the plane hides its head");
-                Assert.Less(trail.position.z, backdrop.FarIslands[0].position.z, "and before the far islands too");
+                Assert.Less(trail.position.z, backdrop.transform.position.z, "and before the sky");
                 Assert.AreEqual(SkyPlane.Size * 10f / PlaneParts.Length, plane.lossyScale.x, 1e-4f, "its length is a share of the view's height");
                 Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.01f, "level in the world");
                 Assert.AreEqual(SkyPlane.TurnOf(0), Mathf.DeltaAngle(camera.transform.eulerAngles.y, plane.eulerAngles.y), 0.01f, "a half right angle off the camera's heading: along the board's edge");
@@ -219,7 +219,7 @@ namespace Lazpoly.Presentation.Tests
                 backdrop.Show(SkyPlane.FirstAt + SkyPlane.EverySeconds + SkyPlane.CrossSeconds * 0.25f);
                 Assert.IsTrue(plane.gameObject.activeSelf);
                 Assert.AreEqual(SkyPlane.TurnOf(1), Mathf.DeltaAngle(camera.transform.eulerAngles.y, plane.eulerAngles.y), 0.01f, "the next along the board's other edge");
-                Assert.Greater(plane.localPosition.x, 0f, "in the right corner");
+                Assert.Greater(plane.localPosition.x, 0f, "on the right side");
                 backdrop.HoldPlane(0, 0.15f);
                 Assert.IsTrue(plane.gameObject.activeSelf, "held for a picture whatever the time");
                 Assert.AreEqual((SkyPlane.SpotAt(0, 0.15f, camera.aspect).x - 0.5f) * 10f * camera.aspect, plane.localPosition.x, 1e-3f);
@@ -461,7 +461,7 @@ namespace Lazpoly.Presentation.Tests
                 foreach (float seconds in new[] { 0f, 37f, SkyPlane.FirstAt + 3f, SkyPlane.FirstAt + SkyPlane.EverySeconds + 20f, SkyPlane.FirstAt + 2f * SkyPlane.EverySeconds + 9f, SkyPlane.FirstAt + 3f * SkyPlane.EverySeconds + 14f })
                 {
                     backdrop.Show(seconds);
-                    float nearest = float.MaxValue;
+                    float nearest = float.MaxValue, farthest = float.MinValue;
                     foreach (Transform island in backdrop.FarIslands)
                     {
                         Assert.Less(Vector3.Angle(island.up, Vector3.up), 0.01f, "upright in the world though the camera looks down: its meadow shows");
@@ -472,6 +472,7 @@ namespace Lazpoly.Presentation.Tests
                             Assert.Less(middle + reach, sky, $"{island.name} {part.name}: wholly before the sky");
                             Assert.Greater(middle - reach, clouds, $"{island.name} {part.name}: wholly behind the clouds");
                             nearest = Mathf.Min(nearest, middle - reach);
+                            farthest = Mathf.Max(farthest, middle + reach);
                         }
                     }
 
@@ -481,8 +482,8 @@ namespace Lazpoly.Presentation.Tests
                     {
                         Bounds bounds = part.bounds;
                         float reach = bounds.extents.magnitude, middle = Deep(bounds.center);
-                        Assert.Less(middle + reach, nearest, $"plane {part.name}: before the far islands");
-                        Assert.Greater(middle - reach, clouds, $"plane {part.name}: behind the clouds");
+                        Assert.Greater(middle - reach, farthest, $"plane {part.name}: behind the far islands");
+                        Assert.Less(middle + reach, sky, $"plane {part.name}: before the sky");
                         foreach (Vector3 corner in part.GetComponent<MeshFilter>().sharedMesh.vertices)
                             planeFar = Mathf.Max(planeFar, Deep(part.transform.TransformPoint(corner)));
                     }
@@ -492,7 +493,7 @@ namespace Lazpoly.Presentation.Tests
                     Assert.Less(Vector3.Angle(plane.up, Vector3.up), 0.01f, "wings level too");
 
                     // Seen by the slanted camera it moves along a slope, nose first, and the trail lies along that slope
-                    // behind it: a flat picture facing the camera, behind every part of the plane and before the islands.
+                    // behind it: a flat picture facing the camera, behind every part of the plane and before the sky.
                     int pass = SkyPlane.PassAt(seconds);
                     Vector2 way = SkyPlane.WayOf(pass);
                     Vector3 nose = camera.transform.InverseTransformDirection(plane.forward);
@@ -502,7 +503,8 @@ namespace Lazpoly.Presentation.Tests
                     Vector3 along = camera.transform.InverseTransformDirection(trail.right);
                     Assert.Less(Vector2.Angle(way, new Vector2(along.x, along.y)), 0.05f, "and lies along the plane's path");
                     Assert.Greater(Deep(trail.position), planeFar, "behind every part of the plane");
-                    Assert.Less(Deep(trail.position), nearest, "before the far islands");
+                    Assert.Less(Deep(trail.position), sky, "before the sky");
+                    Assert.Greater(nearest, clouds, "the far islands behind the clouds");
                     Vector3 head = camera.transform.InverseTransformPoint(trail.TransformPoint(new Vector3(0.5f, 0f, 0f)));
                     Vector3 jets = camera.transform.InverseTransformPoint(plane.TransformPoint(PlaneParts.Exhaust));
                     Assert.AreEqual(jets.x, head.x, 1e-3f, "its head where the engines' jets leave the plane");
@@ -518,7 +520,7 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void AnAeroplaneCrossesACornerOfTheSkyOnlyNowAndThenSlowAndSmall()
+        public void AnAeroplaneCrossesTheSkyBesideTheBoardOnlyNowAndThenSlowAndSmall()
         {
             // The owner's wish (2026-11-12): a plane passing in the background now and then. Calm, since the eye belongs on the board.
             Assert.AreEqual(-1, SkyPlane.PassAt(0f), "none at first");
@@ -581,20 +583,26 @@ namespace Lazpoly.Presentation.Tests
                     Assert.AreEqual((last - first).magnitude, SkyPlane.Distance(pass, aspect), 1e-4f);
                     Assert.Less(SkyPlane.Distance(pass, aspect) / SkyPlane.CrossSeconds, 0.04f, "slow: under a twenty-fifth of the view's height a second");
 
-                    // Over the far islands: where its path passes above each island on its own side, it clears the island's top.
-                    foreach (SkySkin.FarIsland island in SkySkin.FarIslands)
-                    {
-                        if ((island.U < 0.5f) != SkyPlane.OnTheLeft(pass)) continue;
-                        float across = (island.U - 0.5f) * aspect;
-                        float above = side.y + (across - side.x) * (top.y - side.y) / (top.x - side.x);
-                        Assert.Greater(above + 0.5f - SkyPlane.Size / 2f, island.V + island.Size / 2f, $"pass {pass} over the far island at {island.U} in a view {aspect} wide");
-                    }
+                    if (aspect < 1.7f) continue;
+
+                    // In the game's wide view its path keeps to its own side of the board's far corner, and passes under
+                    // the players' cards in the view's upper corner (two of them, one under the other, when eight play):
+                    // the first time it was tried, the plane and its trail were hidden behind those cards.
+                    Assert.IsTrue(SkyPlane.OnTheLeft(pass) ? top.x < 0f : top.x > 0f, $"pass {pass} stays on its side in a view {aspect} wide");
+                    if (aspect > 1.8f) continue;
+                    float tall = Lazpoly.Presentation.UI.UiTheme.ReferenceResolution.y;
+                    float card = Lazpoly.Presentation.UI.UiLayout.CornerWidth * Lazpoly.Presentation.Game.PlayerCardView.DesignHeight / Lazpoly.Presentation.Game.PlayerCardView.DesignWidth;
+                    float cardsIn = (Lazpoly.Presentation.UI.UiLayout.Margin + Lazpoly.Presentation.UI.UiLayout.CornerWidth) / tall;
+                    float cardsDown = (Lazpoly.Presentation.UI.UiLayout.Margin + 2f * card + Lazpoly.Presentation.UI.UiTheme.Spacing) / tall;
+                    float across = side.x + (SkyPlane.OnTheLeft(pass) ? cardsIn : -cardsIn);
+                    float there = side.y + (across - side.x) * (top.y - side.y) / (top.x - side.x);
+                    Assert.Less(there + 0.5f + SkyPlane.Size / 2f, 1f - cardsDown, $"pass {pass} under the players' cards");
                 }
 
-                Assert.That(SkyPlane.EdgeHeightOf(pass), Is.InRange(0.6f, 0.85f), "in the upper sky, with room to fly before the screen's top");
+                Assert.That(SkyPlane.EdgeHeightOf(pass), Is.InRange(0.4f, 0.6f), "about half way up the view's side, where the far island is; from there a long way to the view's top");
             }
 
-            Assert.IsTrue(left && right && climbing && coming, "both corners of the sky, flying away and coming back");
+            Assert.IsTrue(left && right && climbing && coming, "both sides of the sky, flying away and coming back");
         }
     }
 }

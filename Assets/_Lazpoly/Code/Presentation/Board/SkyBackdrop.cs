@@ -9,7 +9,7 @@ namespace Lazpoly.Presentation.Tabletop
     /// the camera's view at the far end of it, so the board and everything on it stand in front: the sky with its glow
     /// behind the board; two small far islands rising and sinking a little in the haze, three-dimensional since
     /// 2026-11-12 (the owner's wish; <see cref="IslandParts.Far"/>) and turning very slowly, so they show their depth;
-    /// now and then a small jet aeroplane crossing a corner of the sky at the game's own slant, a trail behind it
+    /// now and then a small jet aeroplane crossing the sky beside the board at the game's own slant, a trail behind it
     /// (<see cref="SkyPlane"/>, the owner's wishes too); and two layers of soft cloud drifting sideways, the nearer one
     /// faster, so the sky has depth. All of it moves slowly and by little. The islands and the aeroplane are models
     /// held in the camera's view, between the sky and the clouds; the trail is a picture just behind the plane. The
@@ -41,16 +41,16 @@ namespace Lazpoly.Presentation.Tabletop
         public const float IslandSwaySeconds = 46f;
 
         /// <summary>
-        /// How deep in the camera's view each thing lies, as a share of the way to its far end: the sky last, the far
-        /// islands before it with room for their depth (the owner's model is as deep as it is wide, and stands larger
-        /// than the islands cut in code did), the aeroplane before them with its trail just behind it (behind every
-        /// part of the plane, so the plane hides the trail's head), then the clouds; all far behind the table.
+        /// How deep in the camera's view each thing lies, as a share of the way to its far end: the sky last; before
+        /// it the aeroplane, with its trail just behind it (behind every part of the plane, so the plane hides the
+        /// trail's head); before those the far islands with room for their depth (the owner's model is as deep as it
+        /// is wide), so a plane passing an island passes behind it; then the clouds; all far behind the table.
         /// </summary>
-        public const float SkyDepth = 0.99f;
-        public const float IslandDepth = 0.943f;
-        public const float TrailDepth = 0.898f;
-        public const float PlaneDepth = 0.889f;
-        public const float CloudDepth = 0.876f;
+        public const float SkyDepth = 0.995f;
+        public const float TrailDepth = 0.975f;
+        public const float PlaneDepth = 0.966f;
+        public const float IslandDepth = 0.90f;
+        public const float CloudDepth = 0.85f;
 
         public const string ModelsName = "Sky Models";
         public const string PlaneName = "Sky Plane";
