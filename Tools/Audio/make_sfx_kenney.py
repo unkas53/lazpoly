@@ -9,7 +9,7 @@ loudness (a jingle and a handful of coins should not differ by 20 dB as their pe
 the game's own mix (SoundCues.Volume) decides what sits under what. The musical cues all come from the
 pizzicato set, so the table sounds like one instrument; only the win gets the bigger steel-drum phrase.
 The packs hold no rocket and no explosion, so the missile's engine, its whistle and the body of its boom are
-worked out here (shaped noise and tones: made()), under and over the recordings.
+worked out here (shaped noise: made()), under and over the recordings.
 
     python Tools/Audio/make_sfx_kenney.py        (needs numpy and ffmpeg on PATH)
     python Tools/Audio/make_sfx_kenney.py firework    (only the cues named)
@@ -65,38 +65,80 @@ def swell(seconds, points):
     return np.interp(t, [p[0] for p in points], [p[1] for p in points])
 
 
-def glide(seconds, from_hz, to_hz):
-    """A tone gliding from one pitch to another, with a little wobble, as a falling thing whistles."""
+def pink(seconds, low, high, seed):
+    """Noise between two frequencies that falls off towards the high ones (3 dB an octave), as wind, fire and
+    engines do; white noise hisses like a radio."""
+    n = int(seconds * RATE)
+    spectrum = np.fft.rfft(np.random.default_rng(seed).standard_normal(n))
+    freqs = np.maximum(np.fft.rfftfreq(n, 1 / RATE), 1e-9)
+    keep = np.clip(np.log2(freqs / low) + 1, 0, 1) * np.clip(np.log2(high / freqs) + 1, 0, 1) / np.sqrt(freqs)
+    out = np.fft.irfft(spectrum * keep, n)
+    return out / np.abs(out).max()
+
+
+def muffle(x, cutoff):
+    """A low-pass whose cutoff (Hz, one value a sample) moves as the sound goes on: two plain stages in a row."""
+    k = 1 - np.exp(-2 * np.pi * np.asarray(cutoff, dtype=np.float64) / RATE)
+    out = np.empty_like(x)
+    a = b = 0.0
+    for i in range(len(x)):
+        a += k[i] * (x[i] - a)
+        b += k[i] * (a - b)
+        out[i] = b
+    return out
+
+
+def crackle(seconds, rate, depth, seed):
+    """An uneven flutter between 1 - depth and 1, about rate times a second: a burning engine is never steady."""
+    slow = noise(seconds, rate * 0.3, rate, seed)
+    return 1 - depth * np.clip(np.abs(slow) / np.abs(slow).std() / 2.5, 0, 1)
+
+
+def echo(x, seconds, cutoff, seed):
+    """The sound as open air gives it back: itself smeared over seconds, duller and dying away."""
     n = int(seconds * RATE)
     t = np.arange(n) / RATE
-    hz = from_hz * (to_hz / from_hz) ** (t / seconds) * (1 + 0.012 * np.sin(2 * np.pi * 9 * t))
-    return np.sin(2 * np.pi * np.cumsum(hz) / RATE)
+    tail = muffle(np.random.default_rng(seed).standard_normal(n), np.full(n, cutoff)) * np.exp(-t * 5 / seconds)
+    tail[:int(0.02 * RATE)] *= np.linspace(0, 1, int(0.02 * RATE))
+    size = len(x) + n
+    wet = np.fft.irfft(np.fft.rfft(x, size) * np.fft.rfft(tail, size), size)
+    return wet / np.abs(wet).max()
 
 
 def rocket_roar():
-    """The missile's engine over its whole flight: it catches with a burst, burns low, and climbs to a hiss as it
-    gathers speed and comes down."""
-    low = noise(MISSILE_FLIGHT, 70, 500, 561) * swell(MISSILE_FLIGHT, [(0, 0), (0.02, 1), (0.12, 0.75), (0.5, 0.5), (1, 0.6)])
-    high = noise(MISSILE_FLIGHT, 500, 3200, 562) * swell(MISSILE_FLIGHT, [(0, 0), (0.03, 0.5), (0.15, 0.25), (0.6, 0.4), (1, 0.75)])
-    # The burn flutters a little, like a flame.
-    t = np.arange(len(low)) / RATE
-    return (low + 0.45 * high) * (1 + 0.18 * np.sin(2 * np.pi * 23 * t) + 0.1 * np.sin(2 * np.pi * 37 * t + 1))
-
-
-def rocket_whistle():
-    """It whistles as it comes down on the town: a falling tone that grows until the hit."""
-    seconds = MISSILE_FLIGHT * 0.5
-    return glide(seconds, 1500, 620) * swell(seconds, [(0, 0), (0.3, 0.35), (1, 1)])
+    """A solid-fuel rocket, heard from the table: it catches with a blast of gas, then roars and crackles; the roar
+    grows duller and fainter as it climbs away, and comes back as a rush of air when it bears down on the town. No
+    tone in it anywhere: a rocket is all noise."""
+    n = int(MISSILE_FLIGHT * RATE)
+    t = np.arange(n) / RATE
+    share = t / MISSILE_FLIGHT
+    burn = pink(MISSILE_FLIGHT, 50, 9000, 561) * crackle(MISSILE_FLIGHT, 55, 0.55, 566) * crackle(MISSILE_FLIGHT, 13, 0.25, 567)
+    # Near, it is bright and hard; climbing away it loses its top; coming down it is bright again.
+    burn = muffle(burn, np.interp(share, [0, 0.08, 0.5, 0.8, 1], [7000, 5200, 1500, 2200, 5200]))
+    burn *= np.interp(share, [0, 0.008, 0.07, 0.3, 0.72, 1], [0, 1, 0.8, 0.45, 0.34, 0.62])
+    # The gas that throws it out of its hatch: a short burst, dull and heavy.
+    kick = pink(0.35, 30, 1200, 568) * np.exp(-np.arange(int(0.35 * RATE)) / RATE * 16)
+    burn[:len(kick)] += 0.9 * kick
+    # The air it tears through on its way down: a rush that rises until the hit.
+    rush = muffle(pink(MISSILE_FLIGHT, 300, 8000, 569), np.interp(share, [0, 0.6, 1], [600, 900, 6500]))
+    burn += rush / np.abs(rush).max() * np.interp(share, [0, 0.62, 0.9, 1], [0, 0, 0.3, 0.75]) ** 1.5
+    return np.tanh(2.2 * burn / np.abs(burn).max())
 
 
 def blast_boom():
-    """The body of an explosion: a deep thump that drops in pitch, and a low rumble dying away under it."""
-    seconds = 1.2
-    t = np.arange(int(seconds * RATE)) / RATE
-    thump = np.sin(2 * np.pi * np.cumsum(38 + 60 * np.exp(-t * 14)) / RATE) * np.exp(-t * 5.5)
-    rumble = noise(seconds, 35, 260, 563) * np.exp(-t * 4.2)
-    crack = noise(seconds, 300, 4500, 564) * np.exp(-t * 26)
-    return thump + 0.8 * rumble / np.abs(rumble).max() + 0.5 * crack / np.abs(crack).max()
+    """The body of an explosion: the crack of the shock, a burst of noise that loses its top within a blink as a
+    real blast does, the heavy air under it, and all of it given back by the open air for a second or two. Driven
+    hard, so it is dense rather than hissy."""
+    seconds = 2.3
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    crack = np.random.default_rng(564).standard_normal(n) * np.exp(-t * 180)
+    burst = muffle(np.random.default_rng(563).standard_normal(n), 120 + 9000 * np.exp(-t * 9)) * np.exp(-t * 3.6)
+    burst = np.tanh(3 * burst / np.abs(burst).max())
+    heavy = pink(seconds, 22, 110, 570) * np.exp(-t * 2.6) * np.clip(t / 0.012, 0, 1)
+    dry = 0.7 * crack + burst + 0.9 * heavy
+    far = echo(burst * np.exp(-t * 6), 1.6, 900, 571)[:n]
+    return np.tanh(1.6 * (dry / np.abs(dry).max() + 0.45 * far))
 
 
 def shield_fizz():
@@ -204,16 +246,18 @@ RECIPES = {
                        hit(RPG, "bookPlace3.ogg", FALL_DOWN + 0.50, -10, 1.2), hit(IMPACT, "impactGeneric_light_003.ogg", FALL_DOWN + 0.62, -15),
                        hit(UI, "drop_002.ogg", FALL_DOWN + 0.74, -17), hit(IMPACT, "impactGeneric_light_004.ogg", FALL_DOWN + 0.88, -18, 1.1),
                        hit(UI, "drop_001.ogg", FALL_DOWN + 1.0, -20)], 2.0, 0.35),
-    # The missile card (Faz 56). Lift-off: a thump as it catches and the hatch's iron rattles, the engine's roar for
-    # the whole flight, and its whistle as it comes down; it stops where the blast begins.
+    # The missile card (Faz 56). Lift-off: a thump as it catches and the hatch's iron rattles, then the engine's roar
+    # and crackle for the whole flight, fainter as it climbs away and a rush of air as it comes down; it stops where
+    # the blast begins. (The first take had a falling whistle and a pure tone in its boom: the owner asked for
+    # sounds more like the real thing, 2026-11-21.)
     "missile_launch": ([hit(IMPACT, "impactPunch_heavy_000.ogg", 0.0, -4, 0.7), hit(IMPACT, "impactMetal_medium_003.ogg", 0.01, -12, 0.8),
                         hit(RPG, "cloth4.ogg", 0.03, -8, 0.7),
-                        made(rocket_roar, 0.0, -3), made(rocket_whistle, MISSILE_FLIGHT * 0.5, -13)], MISSILE_FLIGHT + 0.04, 0.06),
-    # The blast: a deep boom (heavy blows played slow, over a worked-out thump and rumble), walls breaking in it, then
-    # the rubble thrown far coming down piece after piece, quieter and quieter.
+                        made(rocket_roar, 0.0, -2)], MISSILE_FLIGHT + 0.04, 0.05),
+    # The blast: the crack and the deep boom rolling away in the open air (worked out), heavy blows played slow in it,
+    # walls breaking, then the rubble thrown far coming down piece after piece, quieter and quieter.
     "missile_blast": ([made(blast_boom, 0.0, 0),
-                       hit(IMPACT, "impactPunch_heavy_000.ogg", 0.0, -2, 0.5), hit(IMPACT, "impactMining_001.ogg", 0.0, -3, 0.5),
-                       hit(IMPACT, "impactPlate_heavy_004.ogg", 0.01, -5, 0.6), hit(RPG, "doorClose_4.ogg", 0.01, -4, 0.55),
+                       hit(IMPACT, "impactPunch_heavy_000.ogg", 0.0, -6, 0.5), hit(IMPACT, "impactMining_001.ogg", 0.0, -7, 0.5),
+                       hit(IMPACT, "impactPlate_heavy_004.ogg", 0.01, -9, 0.6), hit(RPG, "doorClose_4.ogg", 0.01, -8, 0.55),
                        hit(IMPACT, "impactPlank_medium_002.ogg", 0.03, -8, 0.9), hit(IMPACT, "impactMining_003.ogg", 0.06, -8, 0.7),
                        hit(IMPACT, "impactGlass_light_001.ogg", 0.08, -13), hit(IMPACT, "footstep_snow_002.ogg", 0.10, -8, 0.6),
                        hit(CASINO, "chips-handle-5.ogg", 0.16, -9, 0.5), hit(IMPACT, "impactGlass_light_003.ogg", 0.20, -15, 1.1),
@@ -222,7 +266,7 @@ RECIPES = {
                        hit(RPG, "bookPlace1.ogg", 0.85, -10), hit(IMPACT, "footstep_snow_000.ogg", 0.93, -13, 0.8),
                        hit(UI, "drop_004.ogg", 1.04, -15), hit(RPG, "bookPlace3.ogg", 1.15, -12, 1.2),
                        hit(IMPACT, "impactGeneric_light_003.ogg", 1.28, -15), hit(UI, "drop_002.ogg", 1.42, -17),
-                       hit(IMPACT, "impactGeneric_light_004.ogg", 1.58, -18, 1.1), hit(UI, "drop_001.ogg", 1.72, -20)], 2.2, 0.35),
+                       hit(IMPACT, "impactGeneric_light_004.ogg", 1.58, -18, 1.1), hit(UI, "drop_001.ogg", 1.72, -20)], 2.35, 0.6),
     # A missile spent on a protection card's shield: no boom. A dull knock, the shield ringing like glass and a
     # bell, and a bright hiss gone at once.
     "missile_block": ([hit(IMPACT, "impactSoft_heavy_000.ogg", 0.0, -5), hit(IMPACT, "impactBell_heavy_000.ogg", 0.0, -3, 1.6),

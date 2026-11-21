@@ -31,7 +31,8 @@ Yeni indirme yapılmadı: dosyalar `kenney-kaynak` dalından alındı. Kayıtlar
 Füze kartının üç sesi (`missile_launch`, `missile_blast`, `missile_block`, 2026-11-21) yarı kayıt, yarı hesaptır:
 Kenney paketlerinde roket ve patlama sesi yok. Kalkıştaki darbe, patlamanın gümlemesi (ağır darbeler yavaş
 çalınarak), kırılan duvar, cam ve yere düşen moloz ile kalkana çarpmanın çınlaması (`impactBell_heavy_000`,
-`impactGlass_light`) bu klasördeki kayıtlardandır. Motorun uğultusu, inerken çıkan ıslık, patlamanın derin gövdesi ve
-kalkandaki kısa tıslama ise `make_sfx_kenney.py` içinde hesaplanır (`made()`: biçim verilmiş gürültü ve tonlar).
+`impactGlass_light`) bu klasördeki kayıtlardandır. Motorun kükremesi ve çıtırtısı, inerken yardığı havanın hışırtısı, patlamanın şakırtısı, derin gövdesi ve açık
+havadaki yankısı ile kalkandaki kısa tıslama ise `make_sfx_kenney.py` içinde hesaplanır (`made()`: biçim verilmiş
+gürültü; içinde saf ton yok. İlk denemedeki ıslık ve ton, sahibin "daha gerçekçi olsun" isteğiyle kaldırıldı).
 Yeni indirme yapılmadı. Gerçek bir roket ya da patlama kaydıyla değiştirilecekse CC0 kayıt bu klasöre konur ve
 tarifteki `made(...)` katmanının yerine yazılır.
