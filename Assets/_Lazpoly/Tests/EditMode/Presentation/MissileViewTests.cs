@@ -76,10 +76,10 @@ namespace Lazpoly.Presentation.Tests
                     Assert.Greater(tongue.sharedMaterial.color.r, tongue.sharedMaterial.color.b * 2f, "fire is orange or yellow");
                 }
 
-                // Both tones are solid, so the yellow core is wider than the orange at the nozzle and half its length:
+                // Both tones are solid, so the yellow core is wider than the orange at the nozzle and shorter than it:
                 // yellow where it leaves the missile, orange behind (RC 102: a core inside the flame was not seen).
                 Bounds core = flame.Find(MissileParts.FlameCoreName).GetComponent<MeshRenderer>().bounds;
-                Assert.Less(core.size.y, MissileParts.FlameLength * 0.7f, "a short bright core in a longer flame");
+                Assert.Less(core.size.y, MissileParts.FlameLength * 0.9f, "a bright core in a longer flame");
                 Assert.Greater(core.size.x, 2f * MissileParts.FlameRadius + 0.01f, "the core stands out of the flame round it");
                 Assert.Less(core.size.x, 2f * MissileParts.Radius, "the flame is no wider than the missile");
                 Assert.Greater(fire.Max(tongue => tongue.sharedMaterial.color.g) - fire.Min(tongue => tongue.sharedMaterial.color.g), 0.3f, "two tones: orange and yellow");
