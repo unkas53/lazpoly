@@ -236,8 +236,10 @@ namespace Lazpoly.Presentation.Tests
         public void TheMenusProfileShowsTheSteamPictureInPlaceOfTheLetter()
         {
             var frame = new GameObject("Frame", typeof(RectTransform));
+            var sky = new GameObject("Sky Frame", typeof(RectTransform));
             _made.Add(frame);
-            var home = new MenuHome((RectTransform)frame.transform, new MenuHomeActions(), "");
+            _made.Add(sky);
+            var home = new MenuHome((RectTransform)frame.transform, (RectTransform)sky.transform, new MenuHomeActions(), "");
             home.SetProfile("Unkas", "Aras");
             Assert.IsFalse(home.ShowsPhoto, "the letter until Steam has the picture");
             Text initial = frame.GetComponentsInChildren<Text>(true).First(text => text.name == "Profile Initial");

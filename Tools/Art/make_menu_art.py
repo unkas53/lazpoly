@@ -4,9 +4,11 @@
 The kit's pictures are found by their kit names in the folder given (for example the unzipped
 Assets/LazpolyMainMenu/Art and Sprites folders copied into one place) and written as TextAssets under
     Assets/_Lazpoly/UI/Resources/Lazpoly/Art/Menu/<name>.bytes
-which the game decodes with KitArt (Texture2D.LoadImage), like the logo. The city background has no
-see-through parts, so it is stored as JPEG (a tenth of the PNG's size);
-the buttons, panels and icons stay PNG for their transparency. The kit's wide logo is no longer taken from the kit:
+which the game decodes with KitArt (Texture2D.LoadImage), like the logo. Since Faz 57 only the kit's icons and
+the player card's parts are taken: the kit's city background is no longer in the game (the menu shows the game's
+own table), and its buttons, window and card are drawn by make_ui_skins.py in the game's navy, gold and ivory.
+That script also turns the player card's petrol to navy, so RUN make_ui_skins.py AFTER THIS ONE.
+The kit's wide logo is not taken from the kit either:
 make_logo.py writes the Cash Father logo in its place (Lazpoly_Logo.bytes). The 9-slice borders of the
 buttons and panels are not in the pictures: KitArt.Borders holds them (from the kit's SpriteManifest.json).
 The kits' character portraits are no longer used: since Faz 21 the characters are the 3D figures, and
@@ -24,11 +26,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import brand_kit  # noqa: E402
 
 TARGET = os.path.join("Assets", "_Lazpoly", "UI", "Resources", "Lazpoly", "Art", "Menu")
-PHOTOS = ["Higgsfield_City_Background"]
+PHOTOS = []  # Pictures without see-through parts, stored as JPEG: none since the city background left the game.
 CUTOUTS = [
-    "Panel", "Chip", "Circle",
-    "Primary_Normal", "Primary_Hover", "Primary_Pressed", "Primary_Disabled",
-    "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
     "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
     "Icon_Join", "Icon_Mute", "Icon_People", "Icon_Plus", "Icon_Sound", "Icon_Home", "Icon_Check", "Icon_Hotel",
     # The player card kit (V2): the card in its three states and its parts.

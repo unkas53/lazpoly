@@ -51,7 +51,7 @@ namespace Lazpoly.Presentation.Tests
                 Assert.That(Contrast(paper.Muted, surface), Is.GreaterThan(3f), $"muted text on {surface}");
             }
 
-            Assert.That(Contrast(paper.PrimaryLabel, paper.PrimaryFill), Is.GreaterThan(3f), "label on the green button");
+            Assert.That(Contrast(paper.PrimaryLabel, paper.PrimaryFill), Is.GreaterThan(3f), "label on the navy button");
             Assert.That(Contrast(paper.StrongLabel, paper.SelectedFill), Is.GreaterThan(4.5f), "label on a selected choice");
             Assert.That(Contrast(paper.StrongLabel, paper.DangerFill), Is.GreaterThan(3f), "label on the coral button");
             Assert.That(Contrast(UiPalette.Ink.OnMasthead, UiPalette.Ink.Masthead), Is.GreaterThan(4.5f), "name on the masthead");
@@ -86,7 +86,7 @@ namespace Lazpoly.Presentation.Tests
             Assert.That(controller, Does.Not.Contain("UiTheme.Use(UiPalette.Dusk)"));
             string hud = File.ReadAllText(Path.Combine(Application.dataPath, "_Lazpoly", "Code", "Presentation", "Game", "GameHud.cs"));
             Assert.That(hud, Does.Not.Contain("new Color(0.08f, 0.09f, 0.12f"), "no dark slate panels left over from the dusk look");
-            // The current player's corner card stands out from the cream cards and keeps dark ink readable.
+            // The current player's corner card stands out from the ivory cards and keeps dark ink readable.
             Color current = GameHud.CurrentCardColor;
             Assert.That(Contrast(UiPalette.Paper.Text, current), Is.GreaterThan(4.5f));
             Assert.That(Mathf.Abs(ColorVision.Luminance(current) - ColorVision.Luminance(UiPalette.Paper.Card)), Is.GreaterThan(0.2f), "the card on turn is plainly darker, not a faint tint");
@@ -129,7 +129,7 @@ namespace Lazpoly.Presentation.Tests
         public void TheDesignFrameShowsWholeOnEveryScreenShape()
         {
             Assert.AreEqual(1f, MenuLayout.FrameScale(new Vector2(1920f, 1080f)), 1e-5f);
-            Assert.AreEqual(1f, MenuLayout.FrameScale(new Vector2(2560f, 1080f)), 1e-5f, "a wide screen keeps the height and shows more city");
+            Assert.AreEqual(1f, MenuLayout.FrameScale(new Vector2(2560f, 1080f)), 1e-5f, "a wide screen keeps the height and shows more sky");
             Assert.AreEqual(1600f / 1920f, MenuLayout.FrameScale(new Vector2(1600f, 1200f)), 1e-5f, "a squarer screen keeps the width");
         }
 
@@ -148,7 +148,7 @@ namespace Lazpoly.Presentation.Tests
             foreach (string name in MenuKit.Pictures)
             {
                 Sprite sprite = MenuKit.Get(name);
-                Assert.IsNotNull(sprite, $"{name}: run Tools/Art/make_menu_art.py");
+                Assert.IsNotNull(sprite, $"{name}: run Tools/Art/make_menu_art.py, then Tools/Art/make_ui_skins.py");
                 Assert.AreEqual(MenuKit.Borders(name), sprite.border, $"{name} stretches by its kit borders");
                 if (sprite.border != Vector4.zero)
                 {
@@ -158,9 +158,16 @@ namespace Lazpoly.Presentation.Tests
 
             Assert.AreEqual(new Vector4(32f, 32f, 32f, 32f), MenuKit.Borders("Primary_Normal"));
             Assert.AreEqual(Vector4.zero, MenuKit.Borders("Icon_Dice"));
-            Sprite background = MenuKit.Get(MenuKit.Background);
-            Assert.That(background.rect.width / background.rect.height, Is.EqualTo(16f / 9f).Within(0.05f), "the city picture is a wide screen's shape");
-            Assert.That(background.rect.width, Is.GreaterThanOrEqualTo(1920f), "sharp on a 1080p screen");
+            // The gold button (the owner's wish, 2026-11-21: buttons that suit the game) is a skin like the navy and the ivory ones.
+            foreach (string state in new[] { "Normal", "Hover", "Pressed", "Disabled" })
+            {
+                CollectionAssert.Contains(MenuKit.Pictures, "Hero_" + state);
+                Assert.AreEqual(MenuKit.Borders("Primary_" + state), MenuKit.Borders("Hero_" + state));
+                Assert.AreEqual(MenuKit.Get("Primary_" + state).rect.size, MenuKit.Get("Hero_" + state).rect.size, $"the gold {state} button is drawn at the navy one's size");
+            }
+
+            // The city picture left the game with the old menu: the menu shows the game's own table in its sky.
+            Assert.IsNull(MenuKit.Get("Higgsfield_City_Background"));
             Assert.IsNull(MenuKit.Get("Not_A_Picture"), "a missing picture leaves a plain shape");
         }
 
@@ -329,9 +336,9 @@ namespace Lazpoly.Presentation.Tests
             Assert.That(settings, Does.Contain("m_ShowUnitySplashLogo: 0"));
             Assert.That(settings, Does.Contain("\n  productName: Cash Father\n"), "the window title reads the game's name");
             Assert.That(settings, Does.Contain("\n  companyName: DefaultCompany\n"), "the saves and settings stay where they are until the release moves them");
-            // Before our first frame the player clears the window to the loading screen's paper, not to dark grey or white.
-            Assert.That(settings, Does.Contain("m_SplashScreenBackgroundColor: {r: 1, g: 0.9921569, b: 0.9607843, a: 1}"));
-            Assert.That(Vector4.Distance(UiPalette.Paper.Panel, new Color(1f, 0.9921569f, 0.9607843f, 1f)), Is.LessThan(0.002f), "the start colour is the loading screen's paper");
+            // Before our first frame the player clears the window to the loading screen's night, not to dark grey or white.
+            Assert.That(settings, Does.Contain("m_SplashScreenBackgroundColor: {r: 0.03137255, g: 0.0627451, b: 0.16470589, a: 1}"));
+            Assert.That(Vector4.Distance(LoadingScreen.Ground, new Color(0.03137255f, 0.0627451f, 0.16470589f, 1f)), Is.LessThan(0.002f), "the start colour is the loading screen's navy");
 
             string iconPath = Path.Combine(project, "Assets", "_Lazpoly", "Art", "Textures", "lazpoly-icon.png");
             Assert.IsTrue(File.Exists(iconPath), "run Tools/Art/make_logo.py");
@@ -356,6 +363,151 @@ namespace Lazpoly.Presentation.Tests
             finally
             {
                 if (icon != null) Object.DestroyImmediate(icon);
+            }
+        }
+
+        [Test]
+        public void TheHomeScreenWearsGoldNavyAndIvoryAndOnlyItsButtonsTakeThePointer()
+        {
+            // The owner's wish (2026-11-21): a main menu that suits the game, very professional, supported by animation.
+            var left = new GameObject("Left", typeof(RectTransform));
+            var right = new GameObject("Right", typeof(RectTransform));
+            try
+            {
+                var home = new MenuHome((RectTransform)left.transform, (RectTransform)right.transform, new MenuHomeActions(), "İstanbul · Londra");
+                Button play = left.GetComponentsInChildren<Button>(true).Single(button => button.name == "Play");
+                Button host = left.GetComponentsInChildren<Button>(true).Single(button => button.name == "Host");
+                Button settings = right.GetComponentsInChildren<Button>(true).Single(button => button.name == "Settings");
+                Assert.AreSame(MenuKit.Get("Hero_Normal"), ((Image)play.targetGraphic).sprite, "playing at once is the one gold button");
+                Assert.AreSame(MenuKit.Get("Primary_Normal"), ((Image)host.targetGraphic).sprite, "the other ways in are navy");
+                Assert.AreSame(MenuKit.Get("Secondary_Normal"), ((Image)settings.targetGraphic).sprite, "the windows' buttons are ivory");
+                Assert.AreEqual(5, left.GetComponentsInChildren<Button>(true).Length, "the five ways into a game stand on the rail");
+                Assert.AreEqual(4, right.GetComponentsInChildren<Button>(true).Length, "the three windows and the sound stand on the sky");
+
+                foreach (GameObject frame in new[] { left, right })
+                {
+                    foreach (Graphic graphic in frame.GetComponentsInChildren<Graphic>(true))
+                    {
+                        bool isButton = graphic.GetComponent<Button>() != null;
+                        Assert.AreEqual(isButton, graphic.raycastTarget, $"{graphic.name}: only a button's own skin takes the pointer");
+                    }
+
+                    foreach (Button button in frame.GetComponentsInChildren<Button>(true))
+                    {
+                        Assert.IsNotNull(button.GetComponent<UiHover>(), $"{button.name} answers the pointer");
+                        Assert.IsNotNull(button.GetComponent<UiEntrance>(), $"{button.name} comes in with the screen");
+                    }
+                }
+
+                Assert.IsNotNull(left.transform.Find("Rail").GetComponent<Mask>(), "the rail's lights are cut to its leaning shape");
+                Assert.IsNotNull(left.GetComponentInChildren<UiDust>(true), "dust rises through the rail");
+                Assert.IsNotNull(left.GetComponentInChildren<UiSpin>(true), "the rays behind the logo turn");
+                Assert.IsNotNull(left.GetComponentInChildren<UiFloat>(true), "the logo hovers");
+                Assert.IsNotNull(play.GetComponentInChildren<UiShine>(true), "a sheen crosses the gold button");
+                foreach (UiEntrance entrance in left.GetComponentsInChildren<UiEntrance>(true))
+                {
+                    Assert.IsTrue(entrance.Arrived, "outside play mode a part simply stands in its place");
+                }
+
+                Assert.IsFalse(home.ShowsOffer, "the bare rail until there is a game to go on with");
+                home.SetOffer(true);
+                Assert.IsTrue(home.ShowsOffer);
+            }
+            finally
+            {
+                Object.DestroyImmediate(left);
+                Object.DestroyImmediate(right);
+            }
+
+            // What is written on the rail reads on its darkest and its lightest navy, and on the glass panes.
+            foreach (Color navy in new[] { MenuRail.Top, MenuRail.Bottom, MenuRail.Halo, MenuHome.Glass })
+            {
+                Assert.That(Contrast(MenuKit.Cream, navy), Is.GreaterThan(7f), $"ivory on {navy}");
+                Assert.That(Contrast(MenuKit.OnNight, navy), Is.GreaterThan(4.5f), $"the quieter lines on {navy}");
+            }
+
+            Assert.That(Contrast(MenuKit.Ink, MenuKit.Brass), Is.GreaterThan(7f), "navy ink on the gold button");
+        }
+
+        [Test]
+        public void TheLoadingScreenIsANavyNightWithTheLogoAGoldBarAndATip()
+        {
+            // The owner's wish (2026-11-21): loading screens that suit the game.
+            Lang.Set(Language.Turkish);
+            var root = new GameObject("Loading", typeof(RectTransform));
+            try
+            {
+                LoadingScreen screen = LoadingScreen.Build((RectTransform)root.transform, 400f, "Masa kuruluyor...");
+                foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true))
+                {
+                    Assert.IsFalse(graphic.raycastTarget, $"{graphic.name} would take the pointer");
+                }
+
+                var fill = (RectTransform)root.transform.Find("Bar/Track/Fill");
+                Assert.IsNotNull(fill, "the bar's gold fill");
+                screen.SetProgress(0.5f);
+                Assert.AreEqual(LoadingScreen.BarWidth / 2f, fill.sizeDelta.x, 0.01f);
+                screen.SetProgress(3f);
+                Assert.AreEqual(LoadingScreen.BarWidth, fill.sizeDelta.x, 0.01f, "the bar never overruns its frame");
+                Assert.IsTrue(root.GetComponentsInChildren<Text>(true).Any(text => text.text == "Masa kuruluyor..."), "the line says where the player is going");
+                screen.SetCaption("Menüye dönülüyor...");
+                Assert.IsTrue(root.GetComponentsInChildren<Text>(true).Any(text => text.text == "Menüye dönülüyor..."));
+
+                string first = screen.Tip;
+                Assert.That(first, Does.StartWith("İpucu: "));
+                screen.NextTip();
+                Assert.AreNotEqual(first, screen.Tip, "each scene change shows another tip");
+                Assert.IsNotNull(root.GetComponentInChildren<UiSpin>(true), "the rays turn");
+                Assert.IsNotNull(root.GetComponentInChildren<UiDust>(true), "dust rises");
+                Assert.IsNotNull(root.GetComponentInChildren<UiShine>(true), "a sheen crosses the logo");
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+
+            Assert.That(Contrast(UiPalette.Ink.OnMasthead, LoadingScreen.Ground), Is.GreaterThan(7f), "the line under the bar");
+            Assert.That(Contrast(UiPalette.Ink.OnMastheadMuted, LoadingScreen.Ground), Is.GreaterThan(4.5f), "the tip at the foot");
+            Assert.That(Contrast(LoadingScreen.BarFill, LoadingScreen.BarTrack), Is.GreaterThan(4.5f), "the gold bar on its dark track");
+
+            // The turns go round the list, and every tip is said in English too.
+            Assert.AreEqual("İpucu: " + LoadingScreen.Tips[0], LoadingScreen.TipLine(0));
+            Assert.AreEqual(LoadingScreen.TipLine(0), LoadingScreen.TipLine(LoadingScreen.Tips.Length));
+            Assert.AreEqual(LoadingScreen.TipLine(LoadingScreen.Tips.Length - 1), LoadingScreen.TipLine(-1));
+            Assert.AreEqual(LoadingScreen.Tips.Length, LoadingScreen.Tips.Distinct().Count());
+            Lang.Set(Language.English);
+            foreach (string tip in LoadingScreen.Tips)
+            {
+                Assert.AreNotEqual(tip, Lang.L(tip), $"add \"{tip}\" to UI/Resources/Lazpoly/Lang/en.json");
+            }
+
+            Assert.That(LoadingScreen.TipLine(0), Does.StartWith("Tip: "));
+        }
+
+        [Test]
+        public void TheDrawnLightsAreMadeOnceAndTakeAnyColour()
+        {
+            Assert.AreSame(UiFx.Glow, UiFx.Glow);
+            Assert.AreSame(UiFx.Rays, UiFx.Rays);
+            Assert.AreEqual(new Vector2(UiFx.GlowSize, UiFx.GlowSize), UiFx.Glow.rect.size);
+            Assert.AreEqual(new Vector2(UiFx.RaysSize, UiFx.RaysSize), UiFx.Rays.rect.size);
+            foreach (Sprite light in new[] { UiFx.Glow, UiFx.Rays, UiFx.Band, UiFx.Dot, UiFx.Fade, UiFx.Edge })
+            {
+                Assert.IsNotNull(light);
+                Assert.AreEqual(TextureWrapMode.Clamp, light.texture.wrapMode, $"{light.name} never repeats at its edge");
+                Assert.AreEqual(Vector4.zero, light.border);
+            }
+
+            Sprite shaded = UiFx.Shaded("Test Shade", Color.black, Color.white, 0.25f, 0.75f);
+            try
+            {
+                Assert.AreEqual(1f, shaded.rect.width);
+                Assert.That(shaded.rect.height, Is.GreaterThanOrEqualTo(32f), "tall enough to shade smoothly");
+            }
+            finally
+            {
+                Object.DestroyImmediate(shaded.texture);
+                Object.DestroyImmediate(shaded);
             }
         }
 

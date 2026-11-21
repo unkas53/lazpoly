@@ -10,7 +10,7 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
-    /// The game's own opening screen (<see cref="LoadingScreen"/>: paper, the logo, the tagline and a bar) while
+    /// The game's own opening screen (<see cref="LoadingScreen"/>: the navy night, the logo and a gold bar) while
     /// the first scene gets ready, held for a moment so it does not flash past, then faded out. It is drawn before
     /// the first scene loads, in place of the Unity splash (turned off in the player settings), and it
     /// never takes the pointer, so nothing underneath waits for it.
@@ -20,16 +20,23 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>How long the screen stays at least, so a fast machine still shows it.</summary>
         public const float HoldSeconds = 1.6f;
         public const float FadeSeconds = 0.5f;
-        public const float LogoSize = 420f;
+
+        /// <summary>On the screen tour the opening screen stays until its picture has been taken.</summary>
+        public const float TourHoldSeconds = 1.2f;
+        public const float LogoSize = 460f;
 
         private static BootSplash _instance;
         private CanvasGroup _group;
         private LoadingScreen _screen;
         private float _started;
         private bool _sceneReady;
+        private bool _fading;
 
         /// <summary>Whether the opening screen is on screen (fading counts).</summary>
         public static bool IsShowing => _instance != null;
+
+        /// <summary>Whether the opening screen still hides the scene: on screen and not yet fading out. What a scene brings in with a flourish waits for this to end.</summary>
+        public static bool Covers => _instance != null && !_instance._fading;
 
         /// <summary>How full the bar is after <paramref name="elapsed"/> seconds: it reaches the end as the hold ends.</summary>
         public static float Progress(float elapsed) => Mathf.Clamp01(elapsed / HoldSeconds);
@@ -57,6 +64,7 @@ namespace Lazpoly.Presentation.Effects
             _instance._started = Time.realtimeSinceStartup;
             SceneManager.sceneLoaded += _instance.OnSceneLoaded;
             _instance.StartCoroutine(_instance.Run());
+            if (ScreenTour.Requested) _instance.StartCoroutine(ScreenTour.Take("acilis")); // The tour's first picture: the opening screen itself.
         }
 
         private void Build(RectTransform root) => _screen = LoadingScreen.Build(root, LogoSize, L("Masa kuruluyor..."));
@@ -72,8 +80,9 @@ namespace Lazpoly.Presentation.Effects
                 _screen.SetProgress(Progress(elapsed));
                 yield return null;
             }
-            while (elapsed < HoldSeconds || !_sceneReady);
+            while (elapsed < HoldSeconds || !_sceneReady || (ScreenTour.Requested && elapsed < TourHoldSeconds));
 
+            _fading = true;
             float fadeStarted = Time.realtimeSinceStartup;
             float t;
             do

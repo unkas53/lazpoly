@@ -31,6 +31,9 @@ namespace Lazpoly.Presentation.Menu
 
             Rect panel = MenuLayout.CharacterPanel;
             RectTransform window = MenuKit.Place(frame, "Characters Panel", panel.x, panel.y, panel.width, panel.height);
+            window.pivot = new Vector2(0.5f, 0.5f); // It grows into place about its middle when it opens.
+            window.anchoredPosition = new Vector2(panel.center.x, -panel.center.y);
+            Window = window;
             MenuKit.Picture(window, MenuKit.Panel, Color.white).raycastTarget = true;
 
             MenuKit.Words(MenuKit.Place(window, "Title", 42f, 31f, 900f, 55f), L("Karakterini seç"), 34, MenuKit.Ink, bold: true);
@@ -44,6 +47,7 @@ namespace Lazpoly.Presentation.Menu
                 RectTransform card = MenuKit.Place(window, $"Character {option.Name}", spot.x, spot.y, MenuLayout.CharacterCardWidth, MenuLayout.CharacterCardHeight);
                 Image skin = MenuKit.Picture(card, "Secondary_Normal", Color.white);
                 skin.raycastTarget = true;
+                card.gameObject.AddComponent<UiHover>();
                 var button = card.gameObject.AddComponent<Button>();
                 button.targetGraphic = skin;
                 button.onClick.AddListener(() => Pick(option));
@@ -57,6 +61,9 @@ namespace Lazpoly.Presentation.Menu
             _selected = MenuKit.Words(MenuKit.Place(window, "Selected", 42f, 712f, 850f, 35f), "", 19, MenuKit.Ink, bold: true);
             _layer.SetActive(false);
         }
+
+        /// <summary>The window itself, which the layer's opening brings in.</summary>
+        public RectTransform Window { get; }
 
         public bool IsOpen => _layer.activeSelf;
 

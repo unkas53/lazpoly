@@ -42,3 +42,10 @@ yeniden yükselir (`stretch()`: uzun kaydın bir parçası, ses düzeyi eğrisiy
 dağılan üçüncüsü (`explosionCrunch_002`), üstünde yıkımdaki kırılan duvar, cam ve yere düşen moloz kayıtları.
 Kalkana çarpma: boğuk darbe, çan ve cam çınlaması (`impactSoft_heavy_000`, `impactBell_heavy_000`,
 `impactGlass_light`) ile kalkanın uğultusu (`forceField_000`). Kayıtların kesilmesi, hızı ve düzeyi dışında işlem yok.
+
+Arayüzün yeni sesleri (`ui_hover`, `ui_hover_2`, `ui_hover_3`, `ui_close`, `ui_start`, `ui_leave`, 2026-11-21) de
+bu kayıtlardandır; sahip menüler için "buton sesleri de olsun" dedi. Fare bir butona gelince: UI Audio'dan
+`rollover4`, `rollover5`, `rollover2` (üç ayrı kayıt, art arda aynısı çalmaz). Pencere kapanınca: Casino Audio'dan
+`card-shove-3` (masada itilen kart; açılıştaki sesin kardeşi, ondan kısık). Oyuna geçerken: Interface Sounds'tan
+`maximize_006` ile üstünde `confirmation_002`. Menüye dönerken: `minimize_006`. Yeni indirme yapılmadı: dosyalar
+`kenney-kaynak` dalından alındı. Kayıtların kesilmesi ve düzeyi dışında bir işlem yok; hesaplanan ses yok.

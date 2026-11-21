@@ -82,11 +82,11 @@ namespace Lazpoly.Presentation.Game
         };
 
         /// <summary>A bankrupt player's parts: a cool grey instead of their colour.</summary>
-        public static readonly Color Muted = new Color32(141, 158, 163, 255);
+        public static readonly Color Muted = new Color32(142, 152, 172, 255);
 
-        private static readonly Color Ink = new Color32(23, 61, 80, 255);
-        private static readonly Color NameInk = new Color32(56, 85, 99, 255);
-        private static readonly Color BankruptInk = new Color32(114, 133, 140, 255);
+        private static readonly Color Ink = new Color32(20, 33, 63, 255);
+        private static readonly Color NameInk = new Color32(52, 68, 108, 255);
+        private static readonly Color BankruptInk = new Color32(116, 126, 148, 255);
         private static readonly Color PillInk = new Color32(241, 216, 153, 255);
         private static readonly Color Seal = new Color32(173, 166, 126, 255);
         private static readonly Color TrackColor = new Color32(229, 217, 190, 255);

@@ -19,6 +19,9 @@ namespace Lazpoly.Presentation.UI
         Secondary,
         Danger,
         Selected,
+
+        /// <summary>The one button a screen is about (starting a game): gold, with navy words.</summary>
+        Hero,
     }
 
     /// <summary>
@@ -124,6 +127,7 @@ namespace Lazpoly.Presentation.UI
                 case UiButtonStyle.Primary: return _palette.PrimaryFill;
                 case UiButtonStyle.Danger: return _palette.DangerFill;
                 case UiButtonStyle.Selected: return _palette.SelectedFill;
+                case UiButtonStyle.Hero: return UiPalette.Ink.HeroFill;
                 default: return _palette.SecondaryFill;
             }
         }
@@ -135,6 +139,7 @@ namespace Lazpoly.Presentation.UI
                 case UiButtonStyle.Primary: return _palette.PrimaryLabel;
                 case UiButtonStyle.Danger:
                 case UiButtonStyle.Selected: return _palette.StrongLabel;
+                case UiButtonStyle.Hero: return UiPalette.Ink.HeroLabel;
                 default: return _palette.SecondaryLabel;
             }
         }

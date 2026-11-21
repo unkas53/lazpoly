@@ -7,35 +7,38 @@ using UnityEngine.UI;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// The owner's main menu kit: its pictures (city background, wide logo, character portraits, button and panel
-    /// skins, icons), shipped as PNG/JPEG bytes under Resources/Lazpoly/Art/Menu (Tools/Art/make_menu_art.py) and
-    /// decoded once into sprites; and the few ways the menu puts them on screen, in the kit's 1920x1080 design
-    /// coordinates (x and y from the top left). A missing picture leaves a plain shape, never an error.
+    /// The menu's pictures (the logo, character portraits, button and panel skins, icons), shipped as PNG bytes under
+    /// Resources/Lazpoly/Art/Menu (the skins by Tools/Art/make_ui_skins.py) and decoded once into sprites; and the
+    /// few ways the menu puts them on screen, in its 1920x1080 design coordinates (x and y from the top left).
+    /// A missing picture leaves a plain shape, never an error.
     /// </summary>
     public static class MenuKit
     {
         public const string Folder = KitArt.Folder;
 
-        public const string Background = "Higgsfield_City_Background";
         public const string Logo = "Lazpoly_Logo";
         public const string Panel = KitArt.Panel;
         public const string Chip = KitArt.Chip;
         public const string Circle = KitArt.Circle;
 
-        /// <summary>The kit's colours: dark petrol ink, its muted grey-blue, cream labels on the dark button and its brass icons.</summary>
-        public static readonly Color Ink = Hex(0x163D50);
-        public static readonly Color Muted = Hex(0x607982);
-        public static readonly Color Cream = Hex(0xFFFDF5);
-        public static readonly Color Brass = Hex(0xE9CE8B);
-        public static readonly Color LightBrass = Hex(0xF5DEAA);
+        /// <summary>The menu's colours: deep navy ink, its muted grey-blue, ivory labels on the navy button and its gold icons.</summary>
+        public static readonly Color Ink = Hex(0x14213F);
+        public static readonly Color Muted = Hex(0x5A6684);
+        public static readonly Color Cream = Hex(0xFFFCF3);
+        public static readonly Color Brass = Hex(0xF2C75C);
+        public static readonly Color LightBrass = Hex(0xFFE7A0);
 
-        /// <summary>The dimmed layer under the kit's windows.</summary>
-        public static Color Dim => UiBlend.AsTunedLayer(new Color(0x14 / 255f, 0x37 / 255f, 0x47 / 255f, 0xB8 / 255f));
+        /// <summary>The quieter lines written on the navy rail.</summary>
+        public static readonly Color OnNight = Hex(0xC2CCE4);
+
+        /// <summary>The dimmed layer under the menu's windows.</summary>
+        public static Color Dim => UiBlend.AsTunedLayer(new Color(0x08 / 255f, 0x10 / 255f, 0x2A / 255f, 0xBE / 255f));
 
         /// <summary>Every picture the menu uses, so a test can check they are all in the build.</summary>
         public static readonly string[] Pictures =
         {
-            Background, Logo, Panel, Chip, Circle,
+            Logo, Panel, Chip, Circle,
+            "Hero_Normal", "Hero_Hover", "Hero_Pressed", "Hero_Disabled",
             "Primary_Normal", "Primary_Hover", "Primary_Pressed", "Primary_Disabled",
             "Secondary_Normal", "Secondary_Hover", "Secondary_Pressed", "Secondary_Disabled",
             "Icon_Arrow", "Icon_Book", "Icon_Case", "Icon_Close", "Icon_Dice", "Icon_Gear", "Icon_Globe",
@@ -45,8 +48,8 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>The 9-slice borders of the stretchable skins, in picture pixels (see <see cref="KitArt.Borders"/>).</summary>
         public static Vector4 Borders(string name) => KitArt.Borders(name);
 
-        /// <summary>The kit's button looks: the wide dark one (Hemen Oyna) and the cream ones.</summary>
-        public enum Skin { Primary, Secondary }
+        /// <summary>The button looks: the gold one (Hemen Oyna), the navy ones (the ways into a game) and the ivory ones.</summary>
+        public enum Skin { Primary, Secondary, Hero }
 
         /// <summary>A kit picture as a sprite (sliced when it has borders), or null when it is not in the build.</summary>
         public static Sprite Get(string name) => KitArt.Get(name);
@@ -93,21 +96,26 @@ namespace Lazpoly.Presentation.Menu
         }
 
         /// <summary>
-        /// One of the kit's buttons at a design position: its skin swaps on hover and press, an icon at the left
-        /// (and an optional one at the right) and a label after it. Clicks sound like every other button.
+        /// A button at a design position: its skin swaps on hover and press and it lifts and sinks under the pointer
+        /// (<see cref="UiHover"/>); an icon at the left (and an optional one at the right) and a label after it, all
+        /// standing on the key, above its lip. Clicks sound like every other button.
         /// </summary>
         public static Button ButtonAt(Transform parent, string name, Rect design, Skin skin, string icon, string label, int fontSize,
             Action onClick, string trailingIcon = null)
         {
-            string kind = skin == Skin.Primary ? "Primary_" : "Secondary_";
+            string kind = skin == Skin.Hero ? "Hero_" : skin == Skin.Primary ? "Primary_" : "Secondary_";
             Color ink = skin == Skin.Primary ? Cream : Ink;
             Color iconInk = skin == Skin.Primary ? Brass : Ink;
 
             RectTransform rect = Place(parent, name, design.x, design.y, design.width, design.height);
+            // Buttons grow about their middle under the pointer.
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(design.x + design.width / 2f, -design.y - design.height / 2f);
             Image skinImage = Picture(rect, kind + "Normal", Color.white);
             skinImage.raycastTarget = true;
-            if (skinImage.sprite == null) skinImage.color = skin == Skin.Primary ? Ink : Cream;
+            if (skinImage.sprite == null) skinImage.color = skin == Skin.Hero ? Brass : skin == Skin.Primary ? Ink : Cream;
 
+            rect.gameObject.AddComponent<UiHover>();
             var button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = skinImage;
             if (skinImage.sprite != null)
@@ -122,19 +130,22 @@ namespace Lazpoly.Presentation.Menu
                 };
             }
 
-            float iconSize = 32f;
-            float left = 22f;
+            // What is written stands in the middle of the key, not of the picture with its lip (see KitArt.ButtonFoot).
+            float key = design.height - (skinImage.sprite != null ? KitArt.ButtonFootPixels : 0f);
+            float iconSize = Mathf.Min(32f, key * 0.5f);
+            float left = Mathf.Max(18f, key * 0.3f);
             if (!string.IsNullOrEmpty(icon))
             {
-                Picture(Place(rect, "Icon", left, (design.height - iconSize) / 2f, iconSize, iconSize), icon, iconInk);
+                Picture(Place(rect, "Icon", left, (key - iconSize) / 2f, iconSize, iconSize), icon, iconInk);
                 left += iconSize + 12f;
             }
 
-            float right = string.IsNullOrEmpty(trailingIcon) ? 16f : 22f + iconSize + 12f;
-            Words(Place(rect, "Label", left, 0f, design.width - left - right, design.height), label, fontSize, ink, bold: true);
+            float right = string.IsNullOrEmpty(trailingIcon) ? 16f : 24f + iconSize + 10f;
+            Words(Place(rect, "Label", left, 0f, design.width - left - right, key), label, fontSize, ink, bold: true);
             if (!string.IsNullOrEmpty(trailingIcon))
             {
-                Picture(Place(rect, "Arrow", design.width - 22f - iconSize, (design.height - iconSize) / 2f, iconSize, iconSize), trailingIcon, LightBrass);
+                Picture(Place(rect, "Arrow", design.width - 24f - iconSize, (key - iconSize) / 2f, iconSize, iconSize), trailingIcon,
+                    skin == Skin.Primary ? LightBrass : Ink);
             }
 
             if (onClick != null)
@@ -149,12 +160,13 @@ namespace Lazpoly.Presentation.Menu
             return button;
         }
 
-        /// <summary>A square kit button holding only an icon (the sound and settings buttons, a window's close cross).</summary>
+        /// <summary>A square button holding only an icon (the sound button, a window's close cross).</summary>
         public static Button IconButtonAt(Transform parent, string name, Rect design, string icon, Action onClick)
         {
             Button button = ButtonAt(parent, name, design, Skin.Secondary, null, "", 12, onClick);
-            float size = Mathf.Min(design.width, design.height) * 0.5f;
-            Picture(Place(button.transform, "Icon", (design.width - size) / 2f, (design.height - size) / 2f, size, size), icon, Ink);
+            float key = design.height - (button.transition == Selectable.Transition.SpriteSwap ? KitArt.ButtonFootPixels : 0f);
+            float size = Mathf.Min(design.width, key) * 0.5f;
+            Picture(Place(button.transform, "Icon", (design.width - size) / 2f, (key - size) / 2f, size, size), icon, Ink);
             return button;
         }
 

@@ -1241,6 +1241,8 @@ namespace Lazpoly.Presentation.Game
         {
             GameHud hud = _hud;
             int person = ScreenTour.PersonId;
+            // The loading screen keeps its own picture and fades out first: the table's pictures come after it.
+            yield return ScreenTour.Until(() => !SceneFader.IsLoading, 20f);
             yield return ScreenTour.Until(() => hud.CityCardOpen, 20f);
             yield return ScreenTour.Take("sehir-karti");
 

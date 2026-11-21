@@ -88,6 +88,15 @@ RECIPES = {
     "ui_click_3": ([layer(CLICKS, "click4.ogg")], None, 0.01),
     # Cards and trade offers slide onto the table like paper.
     "ui_open": ([layer(CASINO, "card-slide-1.ogg")], None, 0.05),
+    # ...and are pushed away like paper when their window closes (Faz 57).
+    "ui_close": ([layer(CASINO, "card-shove-3.ogg")], 0.3, 0.08),
+    # The pointer coming onto a button: the pack's own roll-over ticks, three takes so a row of buttons does not repeat one.
+    "ui_hover": ([layer(CLICKS, "rollover4.ogg")], None, 0.01),
+    "ui_hover_2": ([layer(CLICKS, "rollover5.ogg")], None, 0.01),
+    "ui_hover_3": ([layer(CLICKS, "rollover2.ogg")], None, 0.01),
+    # Off to the table: a low swell with a bright confirming chime on it. Back to the menu: the swell falling.
+    "ui_start": ([hit(UI, "maximize_006.ogg", 0.0, -5), hit(UI, "confirmation_002.ogg", 0.06, 0)], None, 0.08),
+    "ui_leave": ([layer(UI, "minimize_006.ogg")], None, 0.06),
     "money_in": ([layer(RPG, "handleCoins.ogg")], None, 0.08),
     "money_in_2": ([layer(RPG, "handleCoins2.ogg"), layer(CASINO, "chips-collide-1.ogg", 0.05, -6)], None, 0.05),
     "money_out": ([layer(CASINO, "chips-stack-1.ogg")], None, 0.04),
@@ -185,7 +194,8 @@ RECIPES = {
 }
 
 # Small, frequent sounds sit under the big moments already in the files, not only in the game's mix.
-QUIET = {"firework": 0.7, "pawn_step": 0.5, "ui_click": 0.45, "ui_open": 0.5, "turn_pass": 0.5, "dice_shake": 0.7, "dice_land": 0.8}
+QUIET = {"firework": 0.7, "pawn_step": 0.5, "ui_click": 0.45, "ui_open": 0.5, "turn_pass": 0.5, "dice_shake": 0.7, "dice_land": 0.8,
+         "ui_close": 0.32, "ui_hover": 0.3, "ui_start": 0.8, "ui_leave": 0.6}
 
 FOLDERS = {JINGLE: ["8-Bit jingles", "Hit jingles", "Pizzicato jingles", "Sax jingles", "Steel jingles"]}
 

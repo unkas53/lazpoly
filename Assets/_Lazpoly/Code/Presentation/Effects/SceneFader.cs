@@ -9,7 +9,7 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Effects
 {
     /// <summary>
-    /// Changes scene behind the paper loading screen (<see cref="LoadingScreen"/>: the logo and a bar), so going
+    /// Changes scene behind the loading screen (<see cref="LoadingScreen"/>: the navy night, the logo and a gold bar), so going
     /// from the menu to the table and back looks like the game's own opening screen instead of a jump. The
     /// screen fades in, the scene loads in the background while the bar follows it, and the new scene fades in
     /// once it is ready and the screen has been up for <see cref="MinShowSeconds"/> (a fast machine does not
@@ -25,15 +25,24 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>The loading screen stays at least this long from the request, fade-in included.</summary>
         public const float MinShowSeconds = 0.9f;
 
-        public const float LogoSize = 300f;
+        public const float LogoSize = 400f;
 
         private static SceneFader _instance;
         private CanvasGroup _group;
         private LoadingScreen _screen;
+        private GameObject _content;
         private bool _loading;
+        private bool _covering;
+        private static bool _pictured;
 
         /// <summary>True while a scene change is under way; a second request in that time is ignored.</summary>
         public static bool IsLoading => _instance != null && _instance._loading;
+
+        /// <summary>Whether the loading screen hides the scene: from the request until the new scene starts to show through. What a scene brings in with a flourish waits for this to end.</summary>
+        public static bool Covers => _instance != null && _instance._covering;
+
+        /// <summary>Raised when a scene change is asked for, with the scene's name; the audio player plays the way out on it.</summary>
+        public static event System.Action<string> Started;
 
         /// <summary>Real time (seconds since start-up) the last scene change was asked for; -1 before the first. The game scene measures its load time from it.</summary>
         public static float LoadRequestedAt { get; private set; } = -1f;
@@ -44,8 +53,11 @@ namespace Lazpoly.Presentation.Effects
             if (IsLoading) return;
             LoadRequestedAt = Time.realtimeSinceStartup;
             SceneFader fader = Ensure();
+            fader._content.SetActive(true);
             fader._screen.SetCaption(CaptionFor(sceneName));
             fader._screen.SetProgress(0f);
+            fader._covering = true;
+            Started?.Invoke(sceneName);
             fader.StartCoroutine(fader.Run(sceneName));
         }
 
@@ -73,7 +85,12 @@ namespace Lazpoly.Presentation.Effects
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
             _instance = root.AddComponent<SceneFader>();
-            _instance._screen = LoadingScreen.Build((RectTransform)root.transform, LogoSize, CaptionFor("Game"));
+            // The screen itself is a child that is switched off between scene changes: its rays, dust and sheen
+            // move every frame, and none of that may cost the table anything while nothing is loading.
+            RectTransform content = UiRoot.Stretch((RectTransform)root.transform, "Screen");
+            _instance._content = content.gameObject;
+            _instance._screen = LoadingScreen.Build(content, LogoSize, CaptionFor("Game"));
+            _instance._content.SetActive(false);
             _instance._group = root.AddComponent<CanvasGroup>();
             _instance._group.alpha = 0f;
             _instance._group.blocksRaycasts = false;
@@ -103,9 +120,19 @@ namespace Lazpoly.Presentation.Effects
             }
 
             _screen.SetProgress(1f);
+            if (Perf.ScreenTour.Requested && !_pictured)
+            {
+                // The tour keeps a picture of the loading screen too, the first time it shows.
+                _pictured = true;
+                yield return Perf.ScreenTour.Take("yukleme");
+            }
+
+            _covering = false;
             yield return Fade(1f, 0f, InSeconds);
             _group.blocksRaycasts = false;
             _loading = false;
+            _screen.NextTip();
+            _content.SetActive(false);
         }
 
         private IEnumerator Fade(float from, float to, float seconds)
@@ -125,6 +152,7 @@ namespace Lazpoly.Presentation.Effects
         private static void ResetStatics()
         {
             _instance = null;
+            _pictured = false;
             LoadRequestedAt = -1f;
         }
     }

@@ -152,8 +152,8 @@ namespace Lazpoly.Presentation.Game
         private const float WindowListHeight = 420f;
 
         /// <summary>The debt card's sale list: about five properties before it scrolls.</summary>
-        /// <summary>The corner card of the player on turn: a wash of the masthead green, clearly greener than the cream cards and still light enough for dark ink.</summary>
-        public static readonly Color CurrentCardColor = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.56f);
+        /// <summary>The corner card of the player on turn: a wash of the masthead navy, clearly darker than the ivory cards and still light enough for dark ink.</summary>
+        public static readonly Color CurrentCardColor = UiPalette.Ink.Wash(UiPalette.Ink.Masthead, 0.62f);
 
         /// <summary>Screen pixels kept clear of the board at each side edge (see <see cref="UiLayout.ReservedSidePixels"/>).</summary>
         public float ReservedSidePixels => UiLayout.ReservedSidePixels(_canvas != null ? _canvas.scaleFactor : 1f);

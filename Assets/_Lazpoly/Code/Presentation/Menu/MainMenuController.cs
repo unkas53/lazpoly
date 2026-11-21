@@ -27,10 +27,11 @@ using static Lazpoly.Presentation.Texts.Lang;
 namespace Lazpoly.Presentation.Menu
 {
     /// <summary>
-    /// Main menu in the owner's kit: the city picture across the screen and, on a 1920x1080 design frame over it,
-    /// the home screen (<see cref="MenuHome"/>): play at once, host or join a room, set up a game against the
-    /// computer or on one computer, pick a character, read how to play, settings. A way in that needs setting up
-    /// opens on a paper sheet over the menu; an online room fills that sheet with the lobby's columns.
+    /// Main menu: the game's own table floating in its sky (<see cref="MenuBackdrop"/>) and, on 1920x1080 design
+    /// frames over it, the home screen (<see cref="MenuHome"/>): the navy rail on the left with play at once, host or
+    /// join a room, a game against the computer or on one computer; at the top right pick a character, read how to
+    /// play, settings. A way in that needs setting up opens on a paper sheet over the menu; an online room fills
+    /// that sheet with the lobby's columns.
     /// </summary>
     public sealed class MainMenuController : MonoBehaviour
     {
@@ -53,6 +54,7 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>The local seat whose character the strip under the seats changes.</summary>
         private int _figureSeat;
         private readonly List<RectTransform> _frames = new List<RectTransform>();
+        private MenuBackdrop _backdrop;
         private int _playerCount = 2;
         private Mode _mode = Mode.Home;
         private int _opponents = 3;
@@ -166,19 +168,14 @@ namespace Lazpoly.Presentation.Menu
                 SceneFader.Load("Game");
             }
 
-            QuietCamera();
+            // Behind the menu, the game's own table in its sky; a measured run only passes through here, and builds none.
+            if (PerfRun.Requested) QuietCamera();
+            else _backdrop = MenuBackdrop.Create(transform, _boardData);
             Canvas canvas = UiRoot.CreateCanvas(transform, "Main Menu UI", 0);
             _canvas = (RectTransform)canvas.transform;
 
-            // The city picture covers the screen, cropped rather than letterboxed; the design frame sits over it whole.
-            RectTransform picture = UiRoot.Rect(_canvas, "City Background", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
-            Image background = MenuKit.Picture(picture, MenuKit.Background, Color.white);
-            if (background.sprite == null) background.color = UiTheme.Backdrop;
-            var cover = picture.gameObject.AddComponent<AspectRatioFitter>();
-            cover.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
-            cover.aspectRatio = background.sprite != null ? background.sprite.rect.width / background.sprite.rect.height : 16f / 9f;
-
-            _home = new MenuHome(Frame(_canvas, "Home"), new MenuHomeActions
+            // The rail keeps to the screen's left edge and the small buttons to its right edge, whatever the screen's shape.
+            _home = new MenuHome(Frame(_canvas, "Home Left", -1), Frame(_canvas, "Home Right", 1), new MenuHomeActions
             {
                 Play = StartSingleGame,
                 Host = () =>
@@ -195,15 +192,20 @@ namespace Lazpoly.Presentation.Menu
                 ToggleSound = ToggleSound,
             }, TownsLine(_boardData.Board, TownsShown));
             UiBuilder.AddColumnLayout(_home.InfoArea.gameObject, 0, 4f);
-            _home.InfoArea.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            VerticalLayoutGroup info = _home.InfoArea.GetComponent<VerticalLayoutGroup>();
+            info.childAlignment = TextAnchor.MiddleLeft;
+            info.padding = new RectOffset(InfoPadding, InfoPadding, 0, 0);
             _infoView = new UiView(new UiBuilder(_home.InfoArea), RenderInfo);
 
             // A mode's setup: a paper sheet over the dimmed menu, the lobby's ready line at its foot.
             RectTransform sheetFrame = Frame(DimLayer(_canvas, "Sheet Layer", out _sheetLayer), "Sheet Frame");
             Rect area = MenuLayout.Sheet;
             RectTransform sheet = MenuKit.Place(sheetFrame, "Sheet", area.x, area.y, area.width, area.height);
+            sheet.pivot = new Vector2(0.5f, 0.5f); // It grows into place about its middle (see PlaceSheet).
+            sheet.anchoredPosition = new Vector2(area.center.x, -area.center.y);
             _sheet = sheet;
             UiRoot.Panel(sheet);
+            UiFadeIn.Attach(_sheetLayer, sheet, fit: false); // Its frame is already fitted to the screen.
             RectTransform inside = UiRoot.Stretch(sheet, "Inside");
             UiBuilder.AddColumnLayout(inside.gameObject, 36, 20f);
             RectTransform body = UiRoot.Stretch(inside, "Body");
@@ -220,6 +222,7 @@ namespace Lazpoly.Presentation.Menu
 
             RectTransform characterFrame = Frame(DimLayer(_canvas, "Characters Layer", out GameObject characterLayer), "Characters Frame");
             _characters = new CharacterWindow(characterFrame, characterLayer, option => PickOwnCharacter(option.Id));
+            UiFadeIn.Attach(characterLayer, _characters.Window, fit: false);
 
             _settingsView = new UiView(UiRoot.Modal(_canvas, "Settings", 520f, out _settingsLayer), RenderSettings);
             _settingsLayer.SetActive(false);
@@ -265,7 +268,7 @@ namespace Lazpoly.Presentation.Menu
             SceneFader.Load("Game");
         }
 
-        /// <summary>The scene's camera draws nothing now that the menu is a picture: no board, no sky, only the canvas.</summary>
+        /// <summary>Without the table behind it (a measured run), the scene's camera draws nothing: only the canvas over the sky's colour.</summary>
         private static void QuietCamera()
         {
             Camera camera = Camera.main;
@@ -275,10 +278,16 @@ namespace Lazpoly.Presentation.Menu
             camera.cullingMask = 0;
         }
 
-        /// <summary>A 1920x1080 design frame, centred on <paramref name="parent"/>; <see cref="ScaleFrames"/> fits it to the screen.</summary>
-        private RectTransform Frame(RectTransform parent, string name)
+        /// <summary>
+        /// A 1920x1080 design frame on <paramref name="parent"/>, which <see cref="ScaleFrames"/> fits to the screen:
+        /// centred, or kept at the screen's left (<paramref name="side"/> -1) or right (1) edge, which only tells on a
+        /// screen wider than the design.
+        /// </summary>
+        private RectTransform Frame(RectTransform parent, string name, int side = 0)
         {
-            RectTransform frame = UiRoot.Rect(parent, name, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            var hold = new Vector2(0.5f + 0.5f * Mathf.Clamp(side, -1, 1), 0.5f);
+            RectTransform frame = UiRoot.Rect(parent, name, hold, hold, Vector2.zero, Vector2.zero);
+            frame.pivot = hold;
             frame.sizeDelta = MenuLayout.Design;
             _frames.Add(frame);
             return frame;
@@ -323,6 +332,7 @@ namespace Lazpoly.Presentation.Menu
         {
             if (_home == null) return;
             ScaleFrames();
+            if (_backdrop != null) _backdrop.RailShare = MenuLayout.RailShare(_canvas.rect.size);
             bool sheet = _mode != Mode.Home;
             if (_sheetLayer.activeSelf != sheet) _sheetLayer.SetActive(sheet);
             if (sheet)
@@ -417,54 +427,67 @@ namespace Lazpoly.Presentation.Menu
             else AudioListener.volume = after;
         }
 
+        /// <summary>The room at the sides of the offer under the play buttons, inside its glass pane.</summary>
+        public const int InfoPadding = 16;
+
+        /// <summary>The colour of a warning written on the rail's navy: the paper's wine red would not read there.</summary>
+        public static readonly Color RailWarning = new Color(1f, 0.647f, 0.627f);
+
         /// <summary>
-        /// The line under the play buttons: the unreadable save to delete, the saved game to go on with, the room
-        /// still open to go back to; otherwise the kit's motto.
+        /// Under the play buttons: on a glass pane the unreadable save to delete, the saved game to go on with or the
+        /// room still open to go back to; otherwise, on the bare rail, the motto.
         /// </summary>
         private void RenderInfo(UiBuilder ui)
         {
-            UiBuilder row = ui.Row(16f, expand: false);
-            row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleLeft;
+            bool offer = _brokenSave || _savedGame != null || CanRejoin(out _);
+            _home.SetOffer(offer);
+            UiBuilder row = ui.Row(12f, expand: false);
+            row.Container.GetComponent<HorizontalLayoutGroup>().childAlignment = offer ? TextAnchor.MiddleLeft : TextAnchor.MiddleCenter;
             if (_brokenSave)
             {
-                // One line beside its button, like the saved game's: the space under the play buttons is short.
                 UiBuilder words = row.Column(0f);
-                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
-                words.Eyebrow(L("Kayıtlı oyun okunamadı"), UiTheme.Warning);
-                words.Label(L("Dosya bozuk ya da eski bir sürümden; silip yeni oyun kurabilirsin."), UiTextStyle.Small, MenuKit.Muted);
+                words.Eyebrow(L("Kayıtlı oyun okunamadı"), RailWarning);
+                RailWords(words, L("Dosya bozuk ya da eski bir sürümden; silip yeni oyun kurabilirsin."));
                 UiBuilder.Fix(row.Button(L("Kaydı Sil"), () =>
                 {
                     SaveGameStore.Delete();
                     _brokenSave = false;
-                }, height: UiTheme.ButtonHeight), width: 160f);
+                }, height: UiTheme.ButtonHeight), width: 130f);
             }
             else if (_savedGame != null)
             {
                 UiBuilder words = row.Column(0f);
-                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
-                words.Eyebrow(L("Kaldığın yerden"), UiTheme.Gain);
-                words.Label(SaveSummary(_savedGame, SaveGameStore.SavedAt), UiTextStyle.Small, MenuKit.Muted);
-                UiBuilder.Fix(row.Button(L("Kayıtlı Oyuna Devam  →"), ResumeSavedGame, style: UiButtonStyle.Primary, height: 56f), width: 300f);
+                words.Eyebrow(L("Kaldığın yerden"), MenuKit.Brass);
+                RailWords(words, SaveSummary(_savedGame, SaveGameStore.SavedAt));
+                UiBuilder.Fix(row.Button(L("Kayıtlı Oyuna Devam  →"), ResumeSavedGame, style: UiButtonStyle.Hero, height: 52f), width: 236f);
             }
             else if (CanRejoin(out ulong room))
             {
                 UiBuilder words = row.Column(0f);
-                UiBuilder.Fix(words.Container.gameObject, -1f).flexibleWidth = 1f;
-                words.Eyebrow(L("Odan hâlâ açık"), UiTheme.Gain);
-                words.Label(L("Son çevrim içi oyun kapanmadan koptu; odaya dönersen eski koltuğun seni bekler."), UiTextStyle.Small, MenuKit.Muted);
-                UiBuilder.Fix(row.Button(L("Unut"), LastRoomStore.Forget, height: UiTheme.ButtonHeight), width: 110f);
+                words.Eyebrow(L("Odan hâlâ açık"), MenuKit.Brass);
+                RailWords(words, L("Eski koltuğun seni bekliyor."));
+                UiBuilder.Fix(row.Button(L("Unut"), LastRoomStore.Forget, height: UiTheme.ButtonHeight), width: 76f);
                 UiBuilder.Fix(row.Button(L("Odaya Geri Dön  →"), () =>
                 {
                     _rejoining = true;
                     _lobby.Join(room);
-                }, style: UiButtonStyle.Primary, height: 56f), width: 260f);
+                }, style: UiButtonStyle.Hero, height: 52f), width: 190f);
             }
             else
             {
-                Text motto = row.Label(L("2–8 OYUNCU   ·   STRATEJİ, ŞANS VE REKABET"), UiTextStyle.Small, MenuKit.Muted);
+                Text motto = row.Label(L("2–8 OYUNCU   ·   STRATEJİ, ŞANS VE REKABET"), UiTextStyle.Small, MenuKit.OnNight, TextAnchor.MiddleCenter);
                 motto.font = UiTheme.BoldFont;
                 motto.horizontalOverflow = HorizontalWrapMode.Overflow;
             }
+        }
+
+        /// <summary>A small line on the rail's navy, shrinking a little rather than running under the button beside it.</summary>
+        private static void RailWords(UiBuilder ui, string text)
+        {
+            Text line = ui.Label(text, UiTextStyle.Small, MenuKit.OnNight);
+            line.resizeTextForBestFit = true;
+            line.resizeTextMaxSize = line.fontSize;
+            line.resizeTextMinSize = 11;
         }
 
         /// <summary>A mode's setup on the sheet: one player or one computer in a card in its middle; online, the lobby.</summary>
@@ -490,7 +513,7 @@ namespace Lazpoly.Presentation.Menu
         /// <summary>Sizes the sheet for what it holds: the setup in a window-sized sheet, the room's lobby across the wide one.</summary>
         private void PlaceSheet(Rect area)
         {
-            var position = new Vector2(area.x, -area.y);
+            var position = new Vector2(area.center.x, -area.center.y); // The sheet is held by its middle.
             if (_sheet.anchoredPosition == position && _sheet.sizeDelta == area.size) return;
             _sheet.anchoredPosition = position;
             _sheet.sizeDelta = area.size;
@@ -539,7 +562,7 @@ namespace Lazpoly.Presentation.Menu
 
             ui.Space(6f);
             RenderTableLine(ui);
-            ui.Button(L("Oyunu Başlat"), StartSingleGame, style: UiButtonStyle.Primary, height: 56f);
+            ui.Button(L("Oyunu Başlat"), StartSingleGame, style: UiButtonStyle.Hero, height: 56f);
         }
 
         /// <summary>The person's own character, picked on the one-player sheet: it is also their first pick from now on.</summary>
@@ -606,7 +629,7 @@ namespace Lazpoly.Presentation.Menu
             ui.Label(L("Bir koltuğun yüzüne basıp karakterini aşağıdan seçersin; başka koltuktaki karakter seçilemez."), UiTextStyle.Small, UiTheme.Muted);
             ui.Space(6f);
             RenderTableLine(ui);
-            ui.Button(L("Oyunu Başlat"), StartLocalGame, style: UiButtonStyle.Primary, height: 56f);
+            ui.Button(L("Oyunu Başlat"), StartLocalGame, style: UiButtonStyle.Hero, height: 56f);
         }
 
         private static int TableKey()

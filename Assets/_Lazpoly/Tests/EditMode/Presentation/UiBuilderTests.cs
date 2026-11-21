@@ -159,7 +159,7 @@ namespace Lazpoly.Presentation.Tests
             var ui = new UiBuilder(_container);
             Button play = ui.Button("Oyunu Başlat", () => { }, style: UiButtonStyle.Primary);
             var playSkin = (Image)play.targetGraphic;
-            Assert.AreSame(KitArt.Get("Primary_Normal"), playSkin.sprite, "the main action is the kit's dark petrol button");
+            Assert.AreSame(KitArt.Get("Primary_Normal"), playSkin.sprite, "the main action is the kit's navy button");
             Assert.AreEqual(Selectable.Transition.SpriteSwap, play.transition);
             Assert.AreSame(KitArt.Get("Primary_Hover"), play.spriteState.highlightedSprite);
             Assert.AreSame(KitArt.Get("Primary_Pressed"), play.spriteState.pressedSprite);
@@ -171,12 +171,19 @@ namespace Lazpoly.Presentation.Tests
                 "a thinner button keeps the kit's proportions");
 
             Button back = ui.Button("Geri", () => { });
-            Assert.AreSame(KitArt.Get("Secondary_Normal"), back.targetGraphic.GetComponent<Image>().sprite, "the rest are the cream ones");
+            Assert.AreSame(KitArt.Get("Secondary_Normal"), back.targetGraphic.GetComponent<Image>().sprite, "the rest are the ivory ones");
             Button chosen = ui.Button("Orta", () => { }, style: UiButtonStyle.Selected);
-            Assert.AreSame(KitArt.Get("Primary_Hover"), chosen.targetGraphic.GetComponent<Image>().sprite, "a choice made is the lighter petrol");
+            Assert.AreSame(KitArt.Get("Primary_Hover"), chosen.targetGraphic.GetComponent<Image>().sprite, "a choice made is the lighter navy");
             Button leave = ui.Button("Çık", () => { }, style: UiButtonStyle.Danger);
-            Assert.AreSame(KitArt.Get("Secondary_Normal"), leave.targetGraphic.GetComponent<Image>().sprite, "leaving is the kit's cream button, as its Oyundan Çık");
+            Assert.AreSame(KitArt.Get("Secondary_Normal"), leave.targetGraphic.GetComponent<Image>().sprite, "leaving is the kit's ivory button, as its Oyundan Çık");
             Assert.AreEqual(UiTheme.Warning, leave.GetComponentInChildren<Text>().color, "told apart by brick red words");
+            // The one action a screen is about is gold (the owner's wish, 2026-11-21: buttons that suit the game).
+            Button start = ui.Button("Başla", () => { }, style: UiButtonStyle.Hero);
+            Assert.AreSame(KitArt.Get("Hero_Normal"), start.targetGraphic.GetComponent<Image>().sprite, "the gold button");
+            Assert.AreSame(KitArt.Get("Hero_Hover"), start.spriteState.highlightedSprite);
+            Assert.AreSame(KitArt.Get("Hero_Pressed"), start.spriteState.pressedSprite);
+            Assert.AreEqual(UiTheme.Label(UiButtonStyle.Hero), start.GetComponentInChildren<Text>().color, "written in navy on the gold");
+            Assert.IsNotNull(start.GetComponent<UiHover>(), "it lifts under the pointer like every button");
             Button resting = ui.Button("Satın Al", () => { }, enabled: false, style: UiButtonStyle.Primary);
             Assert.Less(resting.GetComponentInChildren<Text>().color.a, 1f, "a button that cannot be pressed fades its label");
 

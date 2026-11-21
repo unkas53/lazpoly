@@ -6,22 +6,23 @@ using UnityEngine.UI;
 namespace Lazpoly.Presentation.UI
 {
     /// <summary>
-    /// The owner's interface kit (the main menu kit, made with Higgsfield): its button, panel and chip skins and
-    /// its line icons, shipped as PNG bytes under Resources/Lazpoly/Art/Menu (Tools/Art/make_menu_art.py) and
-    /// decoded once into sprites. Every window, card and button of the game wears these skins, so the table looks
-    /// like the menu. A missing picture leaves the plain rounded shape it replaced, never an error.
+    /// The interface's skins: the button, window and card pictures drawn for the game in its own navy, gold and ivory
+    /// (Tools/Art/make_ui_skins.py; the owner's wish, 2026-11-21) and the line icons of the owner's first menu kit,
+    /// shipped as PNG bytes under Resources/Lazpoly/Art/Menu and decoded once into sprites. Every window, card and
+    /// button of the game wears these skins, so the table looks like the menu. A missing picture leaves the plain
+    /// rounded shape it replaced, never an error.
     /// </summary>
     public static class KitArt
     {
         public const string Folder = "Lazpoly/Art/Menu/";
 
-        /// <summary>A window: cream paper with a folded top right corner.</summary>
+        /// <summary>A window: ivory paper in a gold frame, a hairline inside it.</summary>
         public const string Panel = "Panel";
 
-        /// <summary>A card inside a window, a field, a profile: cream, rounded, a thin grey edge.</summary>
+        /// <summary>A card inside a window, a field, a profile: near white, rounded, a thin pale gold edge.</summary>
         public const string Chip = "Chip";
 
-        /// <summary>A dark petrol disc with a brass rim.</summary>
+        /// <summary>A navy disc with a gold rim.</summary>
         public const string Circle = "Circle";
 
         /// <summary>The height, in design pixels, the kit draws its buttons at: thinner buttons scale their corners down to match.</summary>
@@ -30,16 +31,35 @@ namespace Lazpoly.Presentation.UI
         /// <summary>The height the kit draws its chip at (the profile card): cards, fields and boxes scale its corners from it.</summary>
         public const float ChipDesignHeight = 76f;
 
-        /// <summary>The kit's two button looks: the dark petrol one for the main action and the cream one for the rest.</summary>
-        public enum Skin { Primary, Secondary }
+        /// <summary>
+        /// The button looks: the navy one with a gold rim for the main action, the ivory one for the rest, and the gold
+        /// one for the single button a screen is about (the main menu's play button, starting a game).
+        /// </summary>
+        public enum Skin { Primary, Secondary, Hero }
+
+        /// <summary>The states a button has a picture for.</summary>
+        public static readonly string[] States = { "Normal", "Hover", "Pressed", "Disabled" };
 
         /// <summary>A button's four pictures, by state.</summary>
-        public static string Picture(Skin skin, string state) => (skin == Skin.Primary ? "Primary_" : "Secondary_") + state;
+        public static string Picture(Skin skin, string state) => Prefix(skin) + state;
+
+        private static string Prefix(Skin skin) => skin == Skin.Primary ? "Primary_" : skin == Skin.Hero ? "Hero_" : "Secondary_";
+
+        /// <summary>How tall, in the pictures' own pixels, the lip a button stands on and the shadow under it are.</summary>
+        public const float ButtonFootPixels = 13.5f;
+
+        /// <summary>
+        /// How much of a button <paramref name="height"/> pixels tall, from its bottom, is its lip and shadow: what is
+        /// written on a button is centred on the key above them, not on the whole picture. The foot shrinks with the
+        /// corners on a button thinner than the pictures were drawn for (<see cref="CornerScale"/>).
+        /// </summary>
+        public static float ButtonFoot(float height) => ButtonFootPixels / CornerScale(height > 0f ? height : ButtonDesignHeight);
 
         /// <summary>The 9-slice borders of the stretchable skins, in picture pixels (the kit's SpriteManifest.json).</summary>
         public static Vector4 Borders(string name)
         {
-            if (name.StartsWith("Primary_", StringComparison.Ordinal) || name.StartsWith("Secondary_", StringComparison.Ordinal)) return new Vector4(32f, 32f, 32f, 32f);
+            if (name.StartsWith("Primary_", StringComparison.Ordinal) || name.StartsWith("Secondary_", StringComparison.Ordinal)
+                || name.StartsWith("Hero_", StringComparison.Ordinal)) return new Vector4(32f, 32f, 32f, 32f);
             if (name == Panel) return new Vector4(36f, 36f, 36f, 36f);
             if (name == Chip) return new Vector4(30f, 30f, 30f, 30f);
             return Vector4.zero;
@@ -60,7 +80,7 @@ namespace Lazpoly.Presentation.UI
             if (texture == null)
             {
                 Missing.Add(name);
-                Debug.LogWarning($"[Lazpoly] Menu picture '{Folder}{name}' is missing; run Tools/Art/make_menu_art.py.");
+                Debug.LogWarning($"[Lazpoly] Menu picture '{Folder}{name}' is missing; run Tools/Art/make_ui_skins.py (the icons: make_menu_art.py).");
                 return null;
             }
 

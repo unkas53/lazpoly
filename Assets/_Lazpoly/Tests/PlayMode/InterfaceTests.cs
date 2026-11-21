@@ -54,7 +54,7 @@ namespace Lazpoly.PlayTests
             yield return null;
             yield return null;
 
-            // The kit's home screen: play at once, rooms, the set-up games and the bottom row, all within reach of the mouse.
+            // The home screen: play at once, rooms, the set-up games on the rail and the windows' buttons at the top right, all within reach of the mouse.
             foreach (string way in new[] { "HEMEN OYNA", "ODA KUR", "ODAYA KATIL", "TEK OYUNCULU", "AYNI BİLGİSAYARDA", "Karakterler", "Nasıl oynanır", "Ayarlar" })
             {
                 AssertMouseReaches(way);

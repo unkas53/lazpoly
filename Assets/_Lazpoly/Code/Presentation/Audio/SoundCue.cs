@@ -49,6 +49,13 @@ namespace Lazpoly.Presentation.Audio
         MissileLaunch,
         MissileBlast,
         MissileBlock,
+
+        // The interface (the owner's wish, 2026-11-21: button sounds and the like): the pointer coming onto a button, a
+        // window closing, and the way to the table and back to the menu. Kenney recordings.
+        UiHover,
+        UiClose,
+        UiStart,
+        UiLeave,
     }
 
     /// <summary>Which sound goes with which game event, and where each clip lives. No engine calls, so it is tested directly.</summary>
@@ -136,6 +143,9 @@ namespace Lazpoly.Presentation.Audio
             }
         }
 
+        /// <summary>A scene change, heard as it is asked for: the way to the table, or the way back to the menu.</summary>
+        public static SoundCue ForSceneChange(string sceneName) => sceneName == "Game" ? SoundCue.UiStart : SoundCue.UiLeave;
+
         /// <summary>A missile coming down: the blast and its rubble, or the knock and hiss of one that bursts on a shield.</summary>
         public static SoundCue ForMissileHit(bool blocked) => blocked ? SoundCue.MissileBlock : SoundCue.MissileBlast;
 
@@ -186,6 +196,7 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.PawnStep: return 4;
                 case SoundCue.DiceShake:
                 case SoundCue.DiceLand:
+                case SoundCue.UiHover:
                 case SoundCue.UiClick: return 3;
                 case SoundCue.MoneyIn:
                 case SoundCue.MoneyOut:
@@ -223,6 +234,7 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.DiceShake:
                 case SoundCue.DiceLand:
                 case SoundCue.UiClick:
+                case SoundCue.UiHover:
                     return 0.04f;
                 case SoundCue.MoneyIn:
                 case SoundCue.MoneyOut:
@@ -244,6 +256,10 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.PawnStep: return 0.4f;
                 case SoundCue.UiClick: return 0.4f;
                 case SoundCue.UiOpen: return 0.4f;
+                case SoundCue.UiClose: return 0.35f; // A window going is quieter than one coming.
+                case SoundCue.UiHover: return 0.3f; // Heard many times a minute: barely there.
+                case SoundCue.UiStart: return 0.6f;
+                case SoundCue.UiLeave: return 0.5f;
                 case SoundCue.TurnPass: return 0.45f;
                 case SoundCue.Firework: return 0.55f; // Several go off together over a group.
                 case SoundCue.BusRev: return 0.5f; // Long, and under whatever else happens on the table.

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Lazpoly.Infra;
 using Lazpoly.Infra.Settings;
+using Lazpoly.Presentation.Effects;
 using Lazpoly.Presentation.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -123,7 +124,10 @@ namespace Lazpoly.Presentation.Audio
             }
 
             UiBuilder.Pressed += OnUiPressed;
+            UiHover.Hovered += OnUiHovered;
             UiFadeIn.Shown += OnWindowShown;
+            UiFadeIn.Hidden += OnWindowHidden;
+            SceneFader.Started += OnSceneChange;
             SceneManager.sceneLoaded += OnSceneLoaded;
             Application.quitting += OnQuitting;
             EnsureListener();
@@ -142,7 +146,10 @@ namespace Lazpoly.Presentation.Audio
         {
             if (_settings != null) _settings.Changed -= OnSettingsChanged;
             UiBuilder.Pressed -= OnUiPressed;
+            UiHover.Hovered -= OnUiHovered;
             UiFadeIn.Shown -= OnWindowShown;
+            UiFadeIn.Hidden -= OnWindowHidden;
+            SceneFader.Started -= OnSceneChange;
             SceneManager.sceneLoaded -= OnSceneLoaded;
             Application.quitting -= OnQuitting;
             if (_instance == this) _instance = null;
@@ -153,6 +160,16 @@ namespace Lazpoly.Presentation.Audio
         private static void OnQuitting() => _quitting = true;
 
         private static void OnWindowShown() => Play(SoundCue.UiOpen);
+
+        private static void OnUiHovered() => Play(SoundCue.UiHover);
+
+        /// <summary>A window closing is heard, but not the windows a scene change sweeps away under the loading screen.</summary>
+        private static void OnWindowHidden()
+        {
+            if (!SceneFader.IsLoading) Play(SoundCue.UiClose);
+        }
+
+        private static void OnSceneChange(string sceneName) => Play(SoundCues.ForSceneChange(sceneName));
 
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {

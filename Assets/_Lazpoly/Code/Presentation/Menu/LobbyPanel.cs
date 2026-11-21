@@ -473,7 +473,7 @@ namespace Lazpoly.Presentation.Menu
             UiBuilder.Fix(row.Button(L("Odadan Çık"), _lobby.Leave, style: UiButtonStyle.Danger, height: UiTheme.ButtonHeight), width: 160f);
             if (_lobby.IsOwner)
             {
-                UiBuilder.Fix(row.Button(L("Oyunu Başlat  →"), StartAsHost, enough && everyone && OutdatedCount() == 0, UiButtonStyle.Primary, 56f), width: 300f);
+                UiBuilder.Fix(row.Button(L("Oyunu Başlat  →"), StartAsHost, enough && everyone && OutdatedCount() == 0, UiButtonStyle.Hero, 56f), width: 300f);
             }
             else if (!RoomIsOutdated)
             {

@@ -3,8 +3,8 @@ using UnityEngine;
 namespace Lazpoly.Presentation.UI
 {
     /// <summary>
-    /// One set of interface colours. Every screen uses <see cref="Paper"/>, the cream and petrol look of the
-    /// owner's interface kit; <see cref="Dusk"/>, the dark seaside-at-dusk look the HUD was first
+    /// One set of interface colours. Every screen uses <see cref="Paper"/>, the game's ivory, navy and gold;
+    /// <see cref="Dusk"/>, the dark seaside-at-dusk look the HUD was first
     /// drawn in, stays as a second palette. <see cref="UiTheme"/> reads whichever is in force.
     /// </summary>
     public sealed class UiPalette
@@ -86,51 +86,57 @@ namespace Lazpoly.Presentation.UI
         };
 
         /// <summary>
-        /// The owner's interface kit (the main menu's look, worn by every screen): cream paper windows and cards with
-        /// dark petrol ink, petrol for the main action and anything selected, brass for its trims, a deep brick red
-        /// for leaving, all over a petrol dimming.
+        /// The game's own look (the owner's wish, 2026-11-21: menus and buttons that suit Cash Father), in the logo's
+        /// colours: ivory paper windows and cards with deep navy ink, navy for the main action and anything selected,
+        /// gold for the trims and the one button a screen is about, a wine red for leaving, all over a navy dimming.
+        /// Tools/Art/make_ui_skins.py draws the skins in the same colours.
         /// </summary>
         public static readonly UiPalette Paper = new UiPalette
         {
             Name = "Paper",
-            Backdrop = new Color(0.851f, 0.906f, 0.918f, 1f),
-            Dim = new Color(0.078f, 0.216f, 0.278f, 0.72f),
-            Veil = new Color(0.851f, 0.906f, 0.918f, 0.35f),
-            Panel = new Color(1f, 0.9921569f, 0.9607843f, 1f),
-            Card = new Color(0.992f, 0.984f, 0.957f, 1f),
-            Field = new Color(0.949f, 0.945f, 0.918f, 1f),
-            Text = new Color(0.086f, 0.239f, 0.314f),
-            Muted = new Color(0.376f, 0.475f, 0.510f),
-            Accent = new Color(0.129f, 0.384f, 0.463f),
-            Warning = new Color(0.706f, 0.278f, 0.227f),
-            Gain = new Color(0.180f, 0.490f, 0.341f),
+            Backdrop = new Color(0.635f, 0.843f, 0.969f, 1f),
+            Dim = new Color(0.031f, 0.063f, 0.165f, 0.74f),
+            Veil = new Color(0.859f, 0.902f, 0.957f, 0.35f),
+            Panel = new Color(1f, 0.9882353f, 0.9529412f, 1f),
+            Card = new Color(1f, 0.992f, 0.969f, 1f),
+            Field = new Color(0.961f, 0.941f, 0.886f, 1f),
+            Text = new Color(0.078f, 0.129f, 0.247f),
+            Muted = new Color(0.353f, 0.400f, 0.518f),
+            Accent = new Color(0.122f, 0.239f, 0.510f),
+            Warning = new Color(0.659f, 0.188f, 0.235f),
+            Gain = new Color(0.137f, 0.467f, 0.310f),
             Money = new Color(0.500f, 0.340f, 0.070f),
-            ShadowColor = new Color(0.082f, 0.227f, 0.282f, 0.22f),
-            NoticeFill = new Color(0.984f, 0.918f, 0.906f),
-            ScrollTrack = new Color(0.086f, 0.239f, 0.314f, 0.08f),
-            PrimaryFill = new Color(0.090f, 0.286f, 0.349f),
-            SecondaryFill = new Color(1f, 0.9921569f, 0.9607843f),
-            DangerFill = new Color(0.706f, 0.278f, 0.227f),
-            SelectedFill = new Color(0.129f, 0.384f, 0.463f),
-            RestingFill = new Color(0.890f, 0.902f, 0.875f),
-            PrimaryLabel = new Color(1f, 0.9921569f, 0.9607843f),
-            SecondaryLabel = new Color(0.086f, 0.239f, 0.314f),
+            ShadowColor = new Color(0.039f, 0.075f, 0.188f, 0.24f),
+            NoticeFill = new Color(0.984f, 0.914f, 0.910f),
+            ScrollTrack = new Color(0.078f, 0.129f, 0.247f, 0.08f),
+            PrimaryFill = new Color(0.106f, 0.196f, 0.439f),
+            SecondaryFill = new Color(1f, 0.9882353f, 0.9529412f),
+            DangerFill = new Color(0.659f, 0.188f, 0.235f),
+            SelectedFill = new Color(0.153f, 0.267f, 0.549f),
+            RestingFill = new Color(0.902f, 0.890f, 0.851f),
+            PrimaryLabel = new Color(1f, 0.9882353f, 0.9529412f),
+            SecondaryLabel = new Color(0.078f, 0.129f, 0.247f),
             StrongLabel = Color.white,
         };
 
         /// <summary>The design's own named colours, for the parts of the menu that go beyond the theme.</summary>
         public static class Ink
         {
-            /// <summary>The masthead and banners: the kit's petrol, a lighter and a deeper shade.</summary>
-            public static readonly Color Masthead = new Color(0.129f, 0.384f, 0.463f);
-            public static readonly Color MastheadDeep = new Color(0.090f, 0.286f, 0.349f);
+            /// <summary>The masthead and banners: the game's navy, a lighter and a deeper shade.</summary>
+            public static readonly Color Masthead = new Color(0.153f, 0.267f, 0.549f);
+            public static readonly Color MastheadDeep = new Color(0.082f, 0.165f, 0.369f);
 
-            /// <summary>Text on the masthead: the kit's cream, and a grey-blue for the quieter lines.</summary>
-            public static readonly Color OnMasthead = new Color(1f, 0.9921569f, 0.9607843f);
-            public static readonly Color OnMastheadMuted = new Color(0.800f, 0.871f, 0.886f);
+            /// <summary>The deepest navy: the menu's rail and the loading screen's edges.</summary>
+            public static readonly Color Night = new Color(0.039f, 0.075f, 0.188f);
 
-            /// <summary>The kit's brass, on its dark buttons' icons and trims.</summary>
-            public static readonly Color Gold = new Color(0.914f, 0.808f, 0.545f);
+            /// <summary>Text on the masthead: ivory, and a grey-blue for the quieter lines.</summary>
+            public static readonly Color OnMasthead = new Color(1f, 0.9882353f, 0.9529412f);
+            public static readonly Color OnMastheadMuted = new Color(0.761f, 0.800f, 0.894f);
+
+            /// <summary>The game's gold, on its navy buttons' icons and trims; and the gold of the button a screen is about, with the navy written on it.</summary>
+            public static readonly Color Gold = new Color(0.949f, 0.780f, 0.361f);
+            public static readonly Color HeroFill = new Color(0.976f, 0.745f, 0.251f);
+            public static readonly Color HeroLabel = new Color(0.078f, 0.129f, 0.247f);
 
             /// <summary>The six menu cards' edge stripes: coral, sea blue, lilac, gold, leaf green, steel blue.</summary>
             public static readonly Color[] Stripes =

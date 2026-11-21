@@ -64,9 +64,17 @@ namespace Lazpoly.Presentation.UI
             text.color = LabelColor(style, enabled, Skinned(button));
             text.alignment = TextAnchor.MiddleCenter;
             text.font = UiTheme.BoldFont;
+            if (Skinned(button)) OnTheKey((RectTransform)text.transform, height);
             ShrinkToFit(text);
             return button;
         }
+
+        /// <summary>
+        /// Lifts what is written on a skinned button off the lip it stands on: the words sit in the middle of the key,
+        /// not of the whole picture (<see cref="KitArt.ButtonFoot"/>).
+        /// </summary>
+        public static void OnTheKey(RectTransform content, float height) =>
+            content.offsetMin = new Vector2(content.offsetMin.x, KitArt.ButtonFoot(height > 0f ? height : UiTheme.ButtonHeight));
 
         /// <summary>
         /// A label that shrinks a little instead of spilling out of its button: English runs longer than
@@ -87,7 +95,7 @@ namespace Lazpoly.Presentation.UI
             Button button = MakeButton(element, onClick, enabled, style, height);
             Fix(element, height: height);
             var row = element.AddComponent<HorizontalLayoutGroup>();
-            row.padding = new RectOffset(14, 14, 0, 0);
+            row.padding = new RectOffset(14, 14, 0, Skinned(button) ? Mathf.RoundToInt(KitArt.ButtonFoot(height)) : 0);
             row.spacing = 10f;
             row.childAlignment = TextAnchor.MiddleCenter;
             row.childControlWidth = true;
@@ -252,9 +260,9 @@ namespace Lazpoly.Presentation.UI
             UiIcons.Create(Container, icon, size, color ?? UiTheme.Accent);
 
         /// <summary>
-        /// A button's ground. Buttons wear the kit's skins (the dark petrol one for <see cref="UiButtonStyle.Primary"/>
-        /// and a selected choice, the cream one otherwise, tinted brick red for leaving), which change picture on
-        /// hover, press and when they cannot be pressed. A <paramref name="fill"/> keeps the plain rounded shape in
+        /// A button's ground. Buttons wear the game's skins (the navy one for <see cref="UiButtonStyle.Primary"/> and a
+        /// selected choice, the gold one for <see cref="UiButtonStyle.Hero"/>, the ivory one otherwise, written in
+        /// wine red for leaving), which change picture on hover, press and when they cannot be pressed. A <paramref name="fill"/> keeps the plain rounded shape in
         /// that colour, for the callers that colour their own; so does a build without the kit's pictures.
         /// </summary>
         private Button MakeButton(GameObject element, Action onClick, bool enabled, UiButtonStyle style, float height, Color? fill = null)
@@ -266,7 +274,7 @@ namespace Lazpoly.Presentation.UI
             button.colors = ButtonColors();
             button.interactable = enabled;
             if (fill.HasValue || !DressButton(button, image, style, height)) UiRoot.AddShadow(element, 2f);
-            if (style == UiButtonStyle.Primary) element.AddComponent<UiPrimaryMark>();
+            if (style == UiButtonStyle.Primary || style == UiButtonStyle.Hero) element.AddComponent<UiPrimaryMark>();
             if (onClick != null)
             {
                 button.onClick.AddListener(() =>
@@ -280,15 +288,16 @@ namespace Lazpoly.Presentation.UI
             return button;
         }
 
-        /// <summary>The kit skin a button style wears.</summary>
+        /// <summary>The skin a button style wears.</summary>
         public static KitArt.Skin SkinOf(UiButtonStyle style) =>
-            style == UiButtonStyle.Primary || style == UiButtonStyle.Selected ? KitArt.Skin.Primary : KitArt.Skin.Secondary;
+            style == UiButtonStyle.Hero ? KitArt.Skin.Hero
+            : style == UiButtonStyle.Primary || style == UiButtonStyle.Selected ? KitArt.Skin.Primary : KitArt.Skin.Secondary;
 
         /// <summary>Puts the kit's skin for <paramref name="style"/> on a button; false when the pictures are not in the build.</summary>
         private static bool DressButton(Button button, Image image, UiButtonStyle style, float height)
         {
             KitArt.Skin skin = SkinOf(style);
-            // A selected choice rests on the lighter petrol of the dark skin, a step apart from the main action.
+            // A selected choice rests on the lighter navy of the dark skin, a step apart from the main action.
             string resting = KitArt.Picture(skin, style == UiButtonStyle.Selected ? "Hover" : "Normal");
             if (!KitArt.Dress(image, resting, height > 0f ? height : UiTheme.ButtonHeight)) return false;
 
@@ -323,7 +332,7 @@ namespace Lazpoly.Presentation.UI
         /// <summary>An icon on a button: the kit's brass on its dark buttons, the label's ink on the others.</summary>
         private static Color IconColor(UiButtonStyle style, bool enabled, bool skinned = false)
         {
-            Color color = style == UiButtonStyle.Primary ? UiPalette.Ink.Gold : LabelColor(style, true, skinned);
+            Color color = style == UiButtonStyle.Primary || style == UiButtonStyle.Selected ? UiPalette.Ink.Gold : LabelColor(style, true, skinned);
             if (!enabled) color.a *= 0.55f;
             return color;
         }
@@ -388,7 +397,7 @@ namespace Lazpoly.Presentation.UI
             RectTransform handleArea = UiRoot.Rect(element.transform, "Handle Slide Area", Vector2.zero, Vector2.one, new Vector2(10f, 0f), new Vector2(-10f, 0f));
             RectTransform handle = UiRoot.Rect(handleArea, "Handle", Vector2.zero, new Vector2(0f, 1f), new Vector2(-10f, 0f), new Vector2(10f, 0f));
             Image handleImage = UiRoot.Background(handle, UiTheme.Text);
-            // The kit's knob: a petrol disc with a brass rim.
+            // The knob: a navy disc with a gold rim.
             Sprite knob = KitArt.Get(KitArt.Circle);
             if (knob != null)
             {

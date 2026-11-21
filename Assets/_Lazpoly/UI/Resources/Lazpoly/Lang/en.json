@@ -814,5 +814,14 @@
   "Ne kurmak istersin?": "What will you build?",
   "Kaç kat çıkalım?": "How high shall we build?",
   "Fabrika şehirlerin çoğaldıkça kira artar": "Rent grows with every factory city you hold",
-  "{0}. kademe": "Stage {0}"
+  "{0}. kademe": "Stage {0}",
+  "Eski koltuğun seni bekliyor.": "Your old seat is waiting for you.",
+  "İpucu: {0}": "Tip: {0}",
+  "Bir rengin bütün şehirlerini topla: kiraları iki katına çıkar.": "Collect every city of a colour: their rents double.",
+  "Üç evli şehrine bir daha gelince otel kurabilirsin.": "Land again on your city with three houses and you may build a hotel.",
+  "Koruma kartı, şehrini bir saldırıdan kurtarır.": "A Protection card saves your city from one attack.",
+  "Kupayı getirdiğin şehrin kirası her seçimde daha da artar.": "The rent of the city you bring the cup to grows with every pick.",
+  "Paran kiraya yetmezse şehir satarsın; o da yetmezse iflas edersin.": "If you cannot pay the rent you sell cities; if that is not enough, you go bankrupt.",
+  "Otelli şehirler devralınamaz, füzeyle de vurulamaz.": "Cities with a hotel cannot be taken over, nor hit by a missile.",
+  "Bir kareye tıkla: fiyatı, kirası ve sahibi kartında görünür.": "Click a square: its card shows the price, the rent and the owner."
 }
