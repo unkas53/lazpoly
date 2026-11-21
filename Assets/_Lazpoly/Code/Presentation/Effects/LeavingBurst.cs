@@ -25,6 +25,11 @@ namespace Lazpoly.Presentation.Effects
         public const int Wisps = 3;
         public const int Rubble = 16;
 
+        /// <summary>A building blown up (the owner's missile card): the dust round its foot, the last wisps, and more rubble, thrown higher and further.</summary>
+        public const int BlastClouds = 8;
+        public const int BlastWisps = 4;
+        public const int BlastRubble = 22;
+
         /// <summary>
         /// The quads of each leaving (a cloud and a dollar sign are two each: its body and its lit side or rim). Sold: two
         /// rings, the flash, the puff, the dollar signs. Torn down: the jolt's puffs, a ring, the clouds, the plumes, the
@@ -32,6 +37,9 @@ namespace Lazpoly.Presentation.Effects
         /// </summary>
         public const int SoldParticles = 2 + 1 + 2 * Poofs + 2 * Dollars;
         public const int DemolishedParticles = 2 * Kicks + 1 + 2 * Clouds + 2 * Plumes + 2 * Caps + Grit + 2 * Wisps;
+
+        /// <summary>Blown up: a ring of dust, the clouds round the foot and the wisps (the fire is the missile's own, <see cref="MissileStrike"/>).</summary>
+        public const int BlastedParticles = 1 + 2 * BlastClouds + 2 * BlastWisps;
 
         /// <summary>How the rubble falls, bounces and lies, in widths of the square (per second where it is a speed).</summary>
         public const float Gravity = 7.5f;
@@ -92,7 +100,7 @@ namespace Lazpoly.Presentation.Effects
         /// </summary>
         public static LeavingBurst Play(Transform parent, Leaving how, Vector3 foot, float width, float height, float tile, float lift, Color wall, int seed, float bound = 0f, Color? roof = null)
         {
-            var root = new GameObject(how == Leaving.Demolished ? "Demolition dust" : "Sale puff");
+            var root = new GameObject(how == Leaving.Demolished ? "Demolition dust" : how == Leaving.Blasted ? "Blast rubble" : "Sale puff");
             root.transform.SetParent(parent, false);
             var burst = root.AddComponent<LeavingBurst>();
             burst._how = how;
@@ -100,6 +108,7 @@ namespace Lazpoly.Presentation.Effects
             burst._bound = bound;
             burst.Begin(seed);
             if (how == Leaving.Demolished) burst.LayDemolition(foot, width, height, tile, wall, roof);
+            else if (how == Leaving.Blasted) burst.LayBlast(foot, width, height, tile, wall, roof);
             else burst.LaySale(foot, width, height, tile, lift);
             foreach (Chunk chunk in burst._chunks) burst.Outlast(chunk.Born + RubbleSeconds + RubbleGone);
             burst.Ready("Leaving burst");
@@ -273,6 +282,64 @@ namespace Lazpoly.Presentation.Effects
                     Axis = new Vector3(Roll(-1f, 1f), Roll(-0.4f, 0.4f), Roll(-1f, 1f)).normalized,
                     Whirl = Roll(360f, 900f) * (i % 2 == 0 ? 1f : -1f),
                     Born = drop + Roll(0f, 0.3f),
+                    Size = size,
+                    Shape = new Vector3(1f, Roll(0.4f, 0.8f), Roll(0.55f, 1f)),
+                    Floor = foot.y + size * 0.3f,
+                };
+                chunk.Piece.gameObject.SetActive(false);
+                _chunks.Add(chunk);
+            }
+        }
+
+        /// <summary>
+        /// A building blown up: dust runs out over the ground and bursts from its foot at once, its rubble is thrown high
+        /// and far (and kept on the table), and a few wisps lift off where it stood.
+        /// </summary>
+        private void LayBlast(Vector3 foot, float width, float height, float tile, Color wall, Color? roof)
+        {
+            Near = Fore(width, height);
+            Add(new SoftParticle
+            {
+                Sprite = SoftSprite.Ring, Flat = true, Born = 0.02f, Life = 0.55f,
+                From = foot + Vector3.up * (tile * 0.012f), SizeFrom = width, SizeTo = tile * 1.5f,
+                Color = DustTones[1], Alpha = 0.7f, FadeIn = 0.1f, FadeFrom = 0.3f,
+            });
+
+            for (int i = 0; i < BlastClouds; i++)
+            {
+                Vector3 way = Round(i, BlastClouds, 0.7f);
+                Dust(new SoftParticle
+                {
+                    Born = 0.04f + Roll(0f, 0.08f), Life = Roll(0.7f, 1f),
+                    From = foot + way * (width * 0.4f), Drift = way * (Roll(0.3f, 0.5f) * tile), Rise = Roll(0.04f, 0.14f) * tile,
+                    SizeFrom = 0.16f * tile, SizeTo = Roll(0.28f, 0.38f) * tile, Sit = 0.3f, Pop = 0.2f, ShrinkFrom = 0.45f,
+                }, i);
+            }
+
+            for (int i = 0; i < BlastWisps; i++)
+            {
+                Dust(new SoftParticle
+                {
+                    Born = 0.55f + 0.14f * i, Life = 0.8f,
+                    From = foot + new Vector3(Roll(-0.25f, 0.25f) * width, 0f, Roll(-0.25f, 0.25f) * width), Rise = 0.26f * tile,
+                    SizeFrom = 0.12f * tile, SizeTo = 0.24f * tile, Sit = 0.3f, Pop = 0.25f, ShrinkFrom = 0.45f,
+                }, i + 1);
+            }
+
+            Color[] tones = RubbleTones(wall, roof);
+            Mesh block = MeshFactory.RoundedBox(Vector3.one, 0.07f, 1);
+            for (int i = 0; i < BlastRubble; i++)
+            {
+                Vector3 way = Round(i, BlastRubble, 0.5f);
+                float size = Roll(0.045f, 0.1f) * tile;
+                var chunk = new Chunk
+                {
+                    Piece = Block(block, tones, i % tones.Length),
+                    Place = foot + new Vector3(Roll(-0.3f, 0.3f) * width, Roll(0.2f, 0.85f) * height, Roll(-0.3f, 0.3f) * width),
+                    Speed = (way * Roll(0.7f, 1.9f) + Vector3.up * Roll(2.2f, 3.8f)) * tile,
+                    Axis = new Vector3(Roll(-1f, 1f), Roll(-0.4f, 0.4f), Roll(-1f, 1f)).normalized,
+                    Whirl = Roll(500f, 1200f) * (i % 2 == 0 ? 1f : -1f),
+                    Born = Roll(0.02f, 0.12f),
                     Size = size,
                     Shape = new Vector3(1f, Roll(0.4f, 0.8f), Roll(0.55f, 1f)),
                     Floor = foot.y + size * 0.3f,

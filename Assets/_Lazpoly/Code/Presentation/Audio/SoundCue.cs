@@ -43,6 +43,12 @@ namespace Lazpoly.Presentation.Audio
         // till and its coins; torn down, the collapse and its rubble. Kenney recordings, timed to the animation.
         BuildingSold,
         BuildingFall,
+
+        // The missile card (the owner's wish, 2026-11-21: sounds to go with its animation): the hatch and the rocket taking
+        // off, the blast and its rubble where it comes down, and the knock of one that bursts on a shield.
+        MissileLaunch,
+        MissileBlast,
+        MissileBlock,
     }
 
     /// <summary>Which sound goes with which game event, and where each clip lives. No engine calls, so it is tested directly.</summary>
@@ -119,7 +125,19 @@ namespace Lazpoly.Presentation.Audio
         /// <see cref="LeavingMotion"/>): sold, the till rings as it pops and coins fall as the dollar signs rise; torn
         /// down, it cracks at the jolt, crumbles, crashes down and its rubble settles.
         /// </summary>
-        public static SoundCue ForLeaving(Leaving how) => how == Leaving.Demolished ? SoundCue.BuildingFall : SoundCue.BuildingSold;
+        public static SoundCue ForLeaving(Leaving how)
+        {
+            switch (how)
+            {
+                case Leaving.Demolished: return SoundCue.BuildingFall;
+                // What a missile blows up is heard in the missile's own blast (ForMissileHit), rubble and all.
+                case Leaving.Blasted: return SoundCue.None;
+                default: return SoundCue.BuildingSold;
+            }
+        }
+
+        /// <summary>A missile coming down: the blast and its rubble, or the knock and hiss of one that bursts on a shield.</summary>
+        public static SoundCue ForMissileHit(bool blocked) => blocked ? SoundCue.MissileBlock : SoundCue.MissileBlast;
 
         /// <summary>Buildings that start to leave the same way within this time of each other are heard once: a street sold in one go rings one till.</summary>
         public const float LeavingGapSeconds = 0.5f;
@@ -236,6 +254,9 @@ namespace Lazpoly.Presentation.Audio
                 case SoundCue.JailShut: return 0.65f;
                 case SoundCue.BuildingSold: return 0.7f; // The till's bell is bright: just under the table's big moments.
                 case SoundCue.BuildingFall: return 0.8f; // A collapse is the loudest thing on the table while it lasts.
+                case SoundCue.MissileLaunch: return 0.7f;
+                case SoundCue.MissileBlast: return 0.9f; // The one explosion of the game: nothing is louder.
+                case SoundCue.MissileBlock: return 0.7f;
                 default: return 0.75f;
             }
         }

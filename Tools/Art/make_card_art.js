@@ -64,6 +64,7 @@ const PICTURES = {
   demolish: ['attack', 'bulldozer', 'home-x', 'alert-triangle'],
   illegalFloor: ['attack', 'stairs-down', 'building', 'hammer'],
   forceSale: ['attack', 'home-dollar', 'tag', 'coins'],
+  missile: ['attack', 'rocket', 'target', 'flame'],
   // The table's own cards.
   tradeAccepted: ['trade', 'heart-handshake', 'arrows-exchange', 'check'],
   tradeRejected: ['grey', 'arrows-exchange', 'hand-stop', 'x'],

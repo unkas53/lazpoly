@@ -1164,6 +1164,57 @@ namespace Lazpoly.Presentation.Tabletop
         /// <summary>The buildings going up now: tests and the screen tour look at them.</summary>
         public int RisingCount => _rising.Count;
 
+        /// <summary>Raised as a missile leaves its hatch, and as it comes down (with whether a shield stopped it): the scene plays its sounds then.</summary>
+        public event System.Action MissileLaunched;
+        public event System.Action<bool> MissileStruck;
+
+        /// <summary>The missile fired last, while anything of it is still in the air; null otherwise. Tests and the screen tour look at it.</summary>
+        public MissileStrike Missile { get; private set; }
+
+        /// <summary>
+        /// Fires a missile from the hatch of <paramref name="seat"/> at what stands on a square (the owner's card,
+        /// 2026-11-21): the lid swings open, the missile takes off, flies over the table and comes down on the town
+        /// (<see cref="MissileStrike"/>). It ends at the hit, so what the missile does to the town is shown from that
+        /// moment; with <paramref name="blocked"/> it bursts on the town's shield and harms nothing.
+        /// </summary>
+        public IEnumerator FireMissile(int seat, int squareIndex, Color color, bool blocked)
+        {
+            MoneyHatch hatch = HatchOf(seat);
+            Vector3 mouth = hatch != null ? transform.InverseTransformPoint(hatch.Mouth) : new Vector3(0f, SurfaceY, 0f);
+            MissileTarget(squareIndex, out Vector3 foot, out float across, out float high);
+            if (hatch != null) hatch.Swing(0f, MissileFlight.OpenSeconds + MissileFlight.Seconds * 0.55f, 1f);
+            MissileStrike strike = MissileStrike.Play(transform, mouth, foot, across, high, _width, color, blocked, squareIndex * 131 + seat * 17);
+            Missile = strike;
+            bool launched = false;
+            while (strike != null && !strike.Struck)
+            {
+                if (!launched && strike.Launched)
+                {
+                    launched = true;
+                    MissileLaunched?.Invoke();
+                }
+
+                yield return null;
+            }
+
+            MissileStruck?.Invoke(blocked);
+        }
+
+        /// <summary>What a missile fired at a square comes down on: the building that stands there (the middle of its foot, its width and its height), or the middle of a bare tile.</summary>
+        public void MissileTarget(int squareIndex, out Vector3 foot, out float across, out float high)
+        {
+            GameObject[] pieces = _buildings[squareIndex];
+            for (int i = 0; pieces != null && i < pieces.Length; i++)
+            {
+                if (!pieces[i].activeSelf) continue;
+                Measure(pieces[i].transform, _buildingRest[squareIndex][i], out foot, out across, out high);
+                return;
+            }
+
+            foot = Layout.SquareCenter(squareIndex) + Vector3.up * SurfaceY;
+            across = high = _width * 0.5f;
+        }
+
         /// <summary>
         /// A building that has just been put on its square goes up from the tile (<see cref="RisingMotion"/>) in its
         /// dust (<see cref="RisingBurst"/>, sized to the building itself; <paramref name="grand"/> for a hotel).

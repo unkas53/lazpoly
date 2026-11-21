@@ -538,13 +538,16 @@ namespace Lazpoly.Core.Tests
         [Test]
         public void TheMissileBlowsUpEverythingBuiltOnARivalTownAndLeavesTheLand()
         {
-            // The owner's card (2026-11-21): a missile at a rival town; its buildings go, a hotel as well as houses.
+            // The owner's card (2026-11-21): a missile at a rival town; all its houses go. A town with a hotel is spared
+            // (the owner's choice the same day).
             GameEngine engine = Game(s =>
             {
                 Seat(s, Alice).Hand.Add(Missile);
                 s.Owners[A1] = Bob;
-                s.BuildingLevels[A1] = SquareDefinition.MaxBuildingLevel;
+                s.BuildingLevels[A1] = SquareDefinition.MaxBuildingLevel - 1;
                 s.Owners[A2] = Bob;
+                s.Owners[B2] = Bob;
+                s.BuildingLevels[B2] = SquareDefinition.MaxBuildingLevel;
                 s.Owners[B1] = Alice;
                 s.BuildingLevels[B1] = 2;
             });
@@ -555,11 +558,12 @@ namespace Lazpoly.Core.Tests
             CollectionAssert.AreEqual(new[] { A1 }, GameRules.CardTargets(engine.Board, engine.State, Player(engine, Alice), Missile), "only rival towns with something built on them");
             Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, Missile, A2)), "nothing to blow up on bare land");
             Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, Missile, B1)), "not one's own town");
+            Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, Missile, B2)), "a hotel is out of its reach");
             Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, Missile, ResortSquare)));
 
             int alice = Player(engine, Alice).Money, bob = Player(engine, Bob).Money;
             CommandResult hit = Accept(engine, new PlayCardCommand(Alice, Missile, A1));
-            Assert.AreEqual(0, engine.State.GetBuildingLevel(A1), "the hotel is gone");
+            Assert.AreEqual(0, engine.State.GetBuildingLevel(A1), "all three houses are gone");
             Assert.AreEqual(Bob, engine.State.GetOwner(A1), "the land stays its owner's");
             Assert.AreEqual(0, hit.Events.OfType<BuildingLevelChangedEvent>().Single().Level);
             Assert.AreEqual(alice, Player(engine, Alice).Money, "the card costs nothing");

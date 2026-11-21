@@ -121,10 +121,13 @@ namespace Lazpoly.Presentation.Tests
         {
             Assert.AreEqual(LeavingMotion.SoldSeconds, LeavingMotion.Seconds(Leaving.Sold));
             Assert.AreEqual(LeavingMotion.DemolishedSeconds, LeavingMotion.Seconds(Leaving.Demolished));
+            Assert.AreEqual(LeavingMotion.BlastedSeconds, LeavingMotion.Seconds(Leaving.Blasted));
             foreach (Leaving how in Enum.GetValues(typeof(Leaving)))
             {
-                Assert.That(LeavingMotion.Seconds(how), Is.InRange(0.5f, 1.6f), $"{how}: short enough not to hold the game up, long enough to be seen");
-                AssertSame(LeavingMotion.At(how, 0.5f).Scale, (how == Leaving.Sold ? LeavingMotion.Sold(0.5f) : LeavingMotion.Demolished(0.5f)).Scale, $"{how}");
+                // A building blown up is gone in the blink the fire hides it for; the others are watched going.
+                Assert.That(LeavingMotion.Seconds(how), Is.InRange(how == Leaving.Blasted ? 0.3f : 0.5f, 1.6f), $"{how}: short enough not to hold the game up, long enough to be seen");
+                LeavingPose own = how == Leaving.Sold ? LeavingMotion.Sold(0.5f) : how == Leaving.Demolished ? LeavingMotion.Demolished(0.5f) : LeavingMotion.Blasted(0.5f);
+                AssertSame(LeavingMotion.At(how, 0.5f).Scale, own.Scale, $"{how}");
             }
 
             Assert.That(LeavingMotion.PopAt, Is.InRange(LeavingMotion.Duck, 1f), "it pops after its duck");
@@ -132,12 +135,13 @@ namespace Lazpoly.Presentation.Tests
         }
 
         [Test]
-        public void OnlyTheDemolitionCardsTearDown()
+        public void OnlyTheDemolitionCardsAndTheMissileTearDown()
         {
             foreach (CardKind kind in Enum.GetValues(typeof(CardKind)))
             {
-                bool tears = kind == CardKind.Demolish || kind == CardKind.IllegalFloor;
+                bool tears = kind == CardKind.Demolish || kind == CardKind.IllegalFloor || kind == CardKind.Missile;
                 Assert.AreEqual(tears, CardPlay.TearsDown(kind), $"{kind}");
+                Assert.AreEqual(kind == CardKind.Missile, CardPlay.Fires(kind), $"{kind}: only the missile is fired from a hatch");
             }
         }
 

@@ -86,6 +86,7 @@ namespace Lazpoly.Presentation.Game
                 case CardKind.Demolish: return "Card_demolish";
                 case CardKind.IllegalFloor: return "Card_illegalFloor";
                 case CardKind.ForceSale: return "Card_forceSale";
+                case CardKind.Missile: return "Card_missile";
                 default: return "Card_collect";
             }
         }
@@ -98,7 +99,8 @@ namespace Lazpoly.Presentation.Game
                 case CardKind.Audit:
                 case CardKind.Demolish:
                 case CardKind.IllegalFloor:
-                case CardKind.ForceSale: return CardTone.Attack;
+                case CardKind.ForceSale:
+                case CardKind.Missile: return CardTone.Attack;
                 case CardKind.Lawyer:
                 case CardKind.RentShield:
                 case CardKind.Shield: return CardTone.Defence;

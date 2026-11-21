@@ -27,3 +27,11 @@ anlarına göre kesilir (betikteki `SOLD_POP`, `FALL_DROP`, `FALL_DOWN`). Satı�
 `chips-handle-5`, `doorClose_1/3`), cam (`impactGlass_light`), gümleme (`impactMining`, `impactPlate_heavy_004`,
 `impactPunch_heavy_000`, `doorClose_4`) ve yere düşen moloz (`bookPlace1-3`, `impactGeneric_light`, `drop_001/002/004`).
 Yeni indirme yapılmadı: dosyalar `kenney-kaynak` dalından alındı. Kayıtların hızı ve düzeyi dışında bir işlem yok.
+
+Füze kartının üç sesi (`missile_launch`, `missile_blast`, `missile_block`, 2026-11-21) yarı kayıt, yarı hesaptır:
+Kenney paketlerinde roket ve patlama sesi yok. Kalkıştaki darbe, patlamanın gümlemesi (ağır darbeler yavaş
+çalınarak), kırılan duvar, cam ve yere düşen moloz ile kalkana çarpmanın çınlaması (`impactBell_heavy_000`,
+`impactGlass_light`) bu klasördeki kayıtlardandır. Motorun uğultusu, inerken çıkan ıslık, patlamanın derin gövdesi ve
+kalkandaki kısa tıslama ise `make_sfx_kenney.py` içinde hesaplanır (`made()`: biçim verilmiş gürültü ve tonlar).
+Yeni indirme yapılmadı. Gerçek bir roket ya da patlama kaydıyla değiştirilecekse CC0 kayıt bu klasöre konur ve
+tarifteki `made(...)` katmanının yerine yazılır.

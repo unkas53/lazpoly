@@ -135,7 +135,7 @@ namespace Lazpoly.App.AI
                         me, card);
 
                 case CardKind.Missile:
-                    // The town with the most put into its buildings, the leader's first: a hotel before any houses.
+                    // The town with the most put into its houses, the leader's first.
                     return Best(RivalTowns(state, targets, leader), square => board[square].BuildingsCost(state.GetBuildingLevel(square)), me, card);
 
                 case CardKind.IllegalFloor:

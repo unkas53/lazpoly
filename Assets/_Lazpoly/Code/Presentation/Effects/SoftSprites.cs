@@ -23,6 +23,9 @@ namespace Lazpoly.Presentation.Effects
 
         /// <summary>The dark rim under a <see cref="Dollar"/>: the same sign a stroke thicker.</summary>
         DollarEdge,
+
+        /// <summary>A cartoon burst: a star of many sharp points with a clean edge, the heart of an explosion (the owner's missile card, 2026-11-21).</summary>
+        Star,
     }
 
     /// <summary>
@@ -51,6 +54,11 @@ namespace Lazpoly.Presentation.Effects
         public const float Bar = 0.055f;
         public const float BarReach = 0.7f;
         public const float Rim = 0.075f;
+
+        /// <summary>The burst star: how many points it has, how far they reach and how deep the notches between them go.</summary>
+        public const int StarPoints = 10;
+        public const float StarReach = 0.9f;
+        public const float StarNotch = 0.52f;
 
         private static Texture2D _sheet;
 
@@ -85,6 +93,9 @@ namespace Lazpoly.Presentation.Effects
                 case SoftSprite.DollarEdge:
                     alpha = Solid(Rim - DollarDistance(x, y));
                     break;
+                case SoftSprite.Star:
+                    alpha = Solid((StarRadius(Mathf.Atan2(y, x)) - r) * 0.7f);
+                    break;
                 default:
                     alpha = Mathf.Exp(-r * r / 0.16f) * Mathf.Clamp01((1f - r) / 0.25f);
                     break;
@@ -95,6 +106,16 @@ namespace Lazpoly.Presentation.Effects
 
         /// <summary>A clean edge: solid <paramref name="inside"/> the shape, clear outside, with a feather a pixel wide between.</summary>
         private static float Solid(float inside) => Mathf.Clamp01(inside / (2f * Feather) + 0.5f);
+
+        /// <summary>How far the burst star reaches at <paramref name="angle"/> (radians): out to a point, in to a notch, <see cref="StarPoints"/> times round, every other point a little shorter.</summary>
+        public static float StarRadius(float angle)
+        {
+            float turn = angle / (2f * Mathf.PI) * StarPoints;
+            int point = Mathf.RoundToInt(turn);
+            float off = Mathf.Abs(turn - point) * 2f; // 0 on a point, 1 in a notch
+            float reach = (point % 2 + 2) % 2 == 0 ? StarReach : StarReach * 0.84f;
+            return Mathf.Lerp(reach, StarNotch, off);
+        }
 
         /// <summary>How far a point is outside the cloud (below 0 inside it): a heart and six lobes round it, each a ball, so its outline is lumpy.</summary>
         public static float CloudDistance(float x, float y)

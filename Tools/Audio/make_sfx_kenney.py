@@ -8,6 +8,8 @@ for a purchase), cut to length, faded out, turned to mono 44.1 kHz 16-bit and br
 loudness (a jingle and a handful of coins should not differ by 20 dB as their peaks would leave them), so
 the game's own mix (SoundCues.Volume) decides what sits under what. The musical cues all come from the
 pizzicato set, so the table sounds like one instrument; only the win gets the bigger steel-drum phrase.
+The packs hold no rocket and no explosion, so the missile's engine, its whistle and the body of its boom are
+worked out here (shaped noise and tones: made()), under and over the recordings.
 
     python Tools/Audio/make_sfx_kenney.py        (needs numpy and ffmpeg on PATH)
     python Tools/Audio/make_sfx_kenney.py firework    (only the cues named)
@@ -41,6 +43,69 @@ def hit(pack, name, at=0.0, db=0.0, rate=1.0):
     return pack, name, at, db, rate
 
 
+def made(sound, at=0.0, db=0.0):
+    """A layer that is not a recording but worked out here (a rocket's roar is shaped noise): sound() gives its
+    samples, brought to one peak like a hit()."""
+    return None, sound, at, db, 1.0
+
+
+def noise(seconds, low, high, seed):
+    """Noise between two frequencies, the same every time it is built."""
+    n = int(seconds * RATE)
+    spectrum = np.fft.rfft(np.random.default_rng(seed).standard_normal(n))
+    freqs = np.fft.rfftfreq(n, 1 / RATE)
+    # Soft edges an octave wide, so the band does not ring.
+    keep = np.clip(np.log2(np.maximum(freqs, 1e-9) / low) + 1, 0, 1) * np.clip(np.log2(high / np.maximum(freqs, 1e-9)) + 1, 0, 1)
+    return np.fft.irfft(spectrum * keep, n)
+
+
+def swell(seconds, points):
+    """A loudness curve through (share of the time, level) points."""
+    t = np.linspace(0, 1, int(seconds * RATE))
+    return np.interp(t, [p[0] for p in points], [p[1] for p in points])
+
+
+def glide(seconds, from_hz, to_hz):
+    """A tone gliding from one pitch to another, with a little wobble, as a falling thing whistles."""
+    n = int(seconds * RATE)
+    t = np.arange(n) / RATE
+    hz = from_hz * (to_hz / from_hz) ** (t / seconds) * (1 + 0.012 * np.sin(2 * np.pi * 9 * t))
+    return np.sin(2 * np.pi * np.cumsum(hz) / RATE)
+
+
+def rocket_roar():
+    """The missile's engine over its whole flight: it catches with a burst, burns low, and climbs to a hiss as it
+    gathers speed and comes down."""
+    low = noise(MISSILE_FLIGHT, 70, 500, 561) * swell(MISSILE_FLIGHT, [(0, 0), (0.02, 1), (0.12, 0.75), (0.5, 0.5), (1, 0.6)])
+    high = noise(MISSILE_FLIGHT, 500, 3200, 562) * swell(MISSILE_FLIGHT, [(0, 0), (0.03, 0.5), (0.15, 0.25), (0.6, 0.4), (1, 0.75)])
+    # The burn flutters a little, like a flame.
+    t = np.arange(len(low)) / RATE
+    return (low + 0.45 * high) * (1 + 0.18 * np.sin(2 * np.pi * 23 * t) + 0.1 * np.sin(2 * np.pi * 37 * t + 1))
+
+
+def rocket_whistle():
+    """It whistles as it comes down on the town: a falling tone that grows until the hit."""
+    seconds = MISSILE_FLIGHT * 0.5
+    return glide(seconds, 1500, 620) * swell(seconds, [(0, 0), (0.3, 0.35), (1, 1)])
+
+
+def blast_boom():
+    """The body of an explosion: a deep thump that drops in pitch, and a low rumble dying away under it."""
+    seconds = 1.2
+    t = np.arange(int(seconds * RATE)) / RATE
+    thump = np.sin(2 * np.pi * np.cumsum(38 + 60 * np.exp(-t * 14)) / RATE) * np.exp(-t * 5.5)
+    rumble = noise(seconds, 35, 260, 563) * np.exp(-t * 4.2)
+    crack = noise(seconds, 300, 4500, 564) * np.exp(-t * 26)
+    return thump + 0.8 * rumble / np.abs(rumble).max() + 0.5 * crack / np.abs(crack).max()
+
+
+def shield_fizz():
+    """A missile spent on a shield: a short bright hiss, gone at once."""
+    seconds = 0.45
+    t = np.arange(int(seconds * RATE)) / RATE
+    return noise(seconds, 1200, 7000, 565) * np.exp(-t * 11)
+
+
 def pizzi(n, at=0.0, db=0.0):
     return layer(JINGLE, f"jingles_PIZZI{n:02d}.ogg", at, db)
 
@@ -54,6 +119,10 @@ JAIL_STRIKE = 0.22
 SOLD_POP = 0.45
 FALL_DROP = 0.2
 FALL_DOWN = 0.9
+
+# The missile card (Faz 56). missile_launch starts as the missile leaves its hatch and lasts its flight
+# (MissileFlight.Seconds); missile_blast and missile_block start at the hit.
+MISSILE_FLIGHT = 1.7
 
 # cue (or cue_take) -> (layers, longest seconds or None, fade-out seconds)
 RECIPES = {
@@ -135,6 +204,31 @@ RECIPES = {
                        hit(RPG, "bookPlace3.ogg", FALL_DOWN + 0.50, -10, 1.2), hit(IMPACT, "impactGeneric_light_003.ogg", FALL_DOWN + 0.62, -15),
                        hit(UI, "drop_002.ogg", FALL_DOWN + 0.74, -17), hit(IMPACT, "impactGeneric_light_004.ogg", FALL_DOWN + 0.88, -18, 1.1),
                        hit(UI, "drop_001.ogg", FALL_DOWN + 1.0, -20)], 2.0, 0.35),
+    # The missile card (Faz 56). Lift-off: a thump as it catches and the hatch's iron rattles, the engine's roar for
+    # the whole flight, and its whistle as it comes down; it stops where the blast begins.
+    "missile_launch": ([hit(IMPACT, "impactPunch_heavy_000.ogg", 0.0, -4, 0.7), hit(IMPACT, "impactMetal_medium_003.ogg", 0.01, -12, 0.8),
+                        hit(RPG, "cloth4.ogg", 0.03, -8, 0.7),
+                        made(rocket_roar, 0.0, -3), made(rocket_whistle, MISSILE_FLIGHT * 0.5, -13)], MISSILE_FLIGHT + 0.04, 0.06),
+    # The blast: a deep boom (heavy blows played slow, over a worked-out thump and rumble), walls breaking in it, then
+    # the rubble thrown far coming down piece after piece, quieter and quieter.
+    "missile_blast": ([made(blast_boom, 0.0, 0),
+                       hit(IMPACT, "impactPunch_heavy_000.ogg", 0.0, -2, 0.5), hit(IMPACT, "impactMining_001.ogg", 0.0, -3, 0.5),
+                       hit(IMPACT, "impactPlate_heavy_004.ogg", 0.01, -5, 0.6), hit(RPG, "doorClose_4.ogg", 0.01, -4, 0.55),
+                       hit(IMPACT, "impactPlank_medium_002.ogg", 0.03, -8, 0.9), hit(IMPACT, "impactMining_003.ogg", 0.06, -8, 0.7),
+                       hit(IMPACT, "impactGlass_light_001.ogg", 0.08, -13), hit(IMPACT, "footstep_snow_002.ogg", 0.10, -8, 0.6),
+                       hit(CASINO, "chips-handle-5.ogg", 0.16, -9, 0.5), hit(IMPACT, "impactGlass_light_003.ogg", 0.20, -15, 1.1),
+                       hit(IMPACT, "footstep_snow_004.ogg", 0.28, -9, 0.65),
+                       hit(RPG, "bookPlace2.ogg", 0.62, -9, 0.8), hit(IMPACT, "impactGeneric_light_002.ogg", 0.74, -12),
+                       hit(RPG, "bookPlace1.ogg", 0.85, -10), hit(IMPACT, "footstep_snow_000.ogg", 0.93, -13, 0.8),
+                       hit(UI, "drop_004.ogg", 1.04, -15), hit(RPG, "bookPlace3.ogg", 1.15, -12, 1.2),
+                       hit(IMPACT, "impactGeneric_light_003.ogg", 1.28, -15), hit(UI, "drop_002.ogg", 1.42, -17),
+                       hit(IMPACT, "impactGeneric_light_004.ogg", 1.58, -18, 1.1), hit(UI, "drop_001.ogg", 1.72, -20)], 2.2, 0.35),
+    # A missile spent on a protection card's shield: no boom. A dull knock, the shield ringing like glass and a
+    # bell, and a bright hiss gone at once.
+    "missile_block": ([hit(IMPACT, "impactSoft_heavy_000.ogg", 0.0, -5), hit(IMPACT, "impactBell_heavy_000.ogg", 0.0, -3, 1.6),
+                       hit(IMPACT, "impactGlass_light_000.ogg", 0.01, -6), hit(IMPACT, "impactMetal_light_003.ogg", 0.02, -10),
+                       made(shield_fizz, 0.0, -8), hit(RPG, "cloth2.ogg", 0.05, -9),
+                       hit(IMPACT, "impactGlass_light_002.ogg", 0.16, -14), hit(IMPACT, "impactGlass_light_004.ogg", 0.27, -17)], 1.1, 0.3),
 }
 
 # Small, frequent sounds sit under the big moments already in the files, not only in the game's mix.
@@ -172,8 +266,8 @@ def respeed(x, rate):
 def build(layers, longest, fade):
     parts = []
     for pack, name, at, db, *more in layers:
-        sig = trim_silence(decode(source(pack, name)))
-        if more:  # A hit(): brought to one peak, and played faster or slower.
+        sig = name() if pack is None else trim_silence(decode(source(pack, name)))
+        if more:  # A hit() or a made(): brought to one peak, and played faster or slower.
             sig = respeed(sig / max(np.abs(sig).max(), 1e-9), more[0])
         parts.append((int(at * RATE), sig * 10 ** (db / 20)))
     out = np.zeros(max(start + len(sig) for start, sig in parts))

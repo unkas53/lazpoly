@@ -7,12 +7,14 @@ namespace Lazpoly.Presentation.Effects
     /// when it is torn down, professional, and in keeping with the game). Sold, it ducks, springs up and is gone in a
     /// puff of cloud out of which dollar signs rise. Torn down, it is jolted, gives way and drops into its own cloud of
     /// dust (going down into the ground as much as it is crushed, so it never flattens like a box) while its rubble is
-    /// thrown out, bounces and lies.
+    /// thrown out, bounces and lies. Blown up by a missile (the owner's card, 2026-11-21), it swells at the hit and is
+    /// thrown up and gone inside the fireball while its rubble flies far over the table.
     /// </summary>
     public enum Leaving
     {
         Sold,
         Demolished,
+        Blasted,
     }
 
     /// <summary>Where a leaving building is at one moment: on top of the place, turn and size it rests at.</summary>
@@ -37,12 +39,23 @@ namespace Lazpoly.Presentation.Effects
         public Vector3 Scale;
     }
 
-    /// <summary>The two leavings as pure curves over 0..1 of their time, so they can be tested without a table.</summary>
+    /// <summary>The leavings as pure curves over 0..1 of their time, so they can be tested without a table.</summary>
     public static class LeavingMotion
     {
         /// <summary>How long a sold building takes to go, and a torn-down one. Their effects (<see cref="LeavingBurst"/>) outlast them.</summary>
         public const float SoldSeconds = 0.6f;
         public const float DemolishedSeconds = 1f;
+
+        /// <summary>
+        /// How long a building blown up takes to go: it swells by <see cref="Swell"/> over the first <see cref="Hit"/> of
+        /// that, shaking, and is then thrown up, turning and leaning, as it dwindles to nothing inside the fireball.
+        /// </summary>
+        public const float BlastedSeconds = 0.45f;
+        public const float Hit = 0.3f;
+        public const float Swell = 0.16f;
+        public const float HitBeats = 2f;
+        public const float BlastTurn = 28f;
+        public const float BlastLean = 12f;
 
         /// <summary>
         /// A sold building ducks by <see cref="DuckBy"/> for the first <see cref="Duck"/> of its time, springs up tall
@@ -74,9 +87,53 @@ namespace Lazpoly.Presentation.Effects
         /// <summary>The share of its time at which what stays behind (a lower house, the plot) shows again: inside the puff, or inside the dust.</summary>
         public const float UncoverAt = 0.88f;
 
-        public static float Seconds(Leaving how) => how == Leaving.Demolished ? DemolishedSeconds : SoldSeconds;
+        public static float Seconds(Leaving how)
+        {
+            switch (how)
+            {
+                case Leaving.Demolished: return DemolishedSeconds;
+                case Leaving.Blasted: return BlastedSeconds;
+                default: return SoldSeconds;
+            }
+        }
 
-        public static LeavingPose At(Leaving how, float t) => how == Leaving.Demolished ? Demolished(t) : Sold(t);
+        public static LeavingPose At(Leaving how, float t)
+        {
+            switch (how)
+            {
+                case Leaving.Demolished: return Demolished(t);
+                case Leaving.Blasted: return Blasted(t);
+                default: return Sold(t);
+            }
+        }
+
+        /// <summary>Blown up: it swells and shakes at the hit, then is thrown up off its tile, turning and leaning, and dwindles into its own middle.</summary>
+        public static LeavingPose Blasted(float t)
+        {
+            t = Mathf.Clamp01(t);
+            if (t < Hit)
+            {
+                float hit = t / Hit;
+                float swell = Swell * Ease.OutCubic(hit);
+                return new LeavingPose
+                {
+                    Shake = Mathf.Sin(hit * HitBeats * 2f * Mathf.PI) * (1f - hit),
+                    Scale = new Vector3(1f + swell, 1f + swell * 0.6f, 1f + swell),
+                };
+            }
+
+            float gone = (t - Hit) / (1f - Hit);
+            float size = Mathf.Max(Least, 1f - Ease.OutCubic(gone));
+            return new LeavingPose
+            {
+                Lift = Ease.OutCubic(gone),
+                // Into its own middle, where the fire is, not down to its foot.
+                Sink = -(1f - size) * (1f + Swell * 0.6f) * 0.5f,
+                Turn = BlastTurn * gone,
+                Tilt = BlastLean * gone,
+                Scale = new Vector3(1f + Swell, 1f + Swell * 0.6f, 1f + Swell) * size,
+            };
+        }
 
         /// <summary>Sold: down into a duck, wider as it is lower; up out of it tall and narrow, off the tile; then gone in a blink.</summary>
         public static LeavingPose Sold(float t)

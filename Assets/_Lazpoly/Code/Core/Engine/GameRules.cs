@@ -337,10 +337,9 @@ namespace Lazpoly.Core.Engine
                         case CardKind.Demolish:
                             return level >= SquareDefinition.MaxBuildingLevel ? RejectionReason.InvalidTarget : RejectionReason.None;
                         case CardKind.IllegalFloor:
-                            return level < 1 || level >= SquareDefinition.MaxBuildingLevel ? RejectionReason.InvalidTarget : RejectionReason.None;
                         case CardKind.Missile:
-                            // A missile needs something to blow up; unlike the other two it reaches a hotel.
-                            return level < 1 ? RejectionReason.InvalidTarget : RejectionReason.None;
+                            // Both need houses to take; a hotel is out of a missile's reach too (the owner's choice, 2026-11-21).
+                            return level < 1 || level >= SquareDefinition.MaxBuildingLevel ? RejectionReason.InvalidTarget : RejectionReason.None;
                         default:
                             return RejectionReason.None;
                     }

@@ -322,7 +322,10 @@ namespace Lazpoly.Presentation.Game
         /// <summary>The square the card just played is tearing down (a demolition, an illegal floor); -1 otherwise. Its buildings fall in rather than leave as sold ones do.</summary>
         private int _tornDown = -1;
 
-        private Leaving LeavingOf(int square) => square == _tornDown ? Leaving.Demolished : Leaving.Sold;
+        /// <summary>How the buildings of <see cref="_tornDown"/> go: fallen in (a demolition, an illegal floor) or blown up (a missile).</summary>
+        private Leaving _tearing = Leaving.Demolished;
+
+        private Leaving LeavingOf(int square) => square == _tornDown ? _tearing : Leaving.Sold;
 
         /// <summary>The leaving heard last and when (unscaled time): several buildings going together sound once, and a sale's money is not heard on top of its till.</summary>
         private Leaving _leavingHeard;
@@ -331,6 +334,8 @@ namespace Lazpoly.Presentation.Game
         /// <summary>A building starts to leave the board: its sound starts with it (the owner's wish, 2026-11-18).</summary>
         private void OnLeavingStarted(Leaving how)
         {
+            // What a missile blows up is heard in the missile's own blast.
+            if (SoundCues.ForLeaving(how) == SoundCue.None) return;
             float now = Time.unscaledTime;
             if (!SoundCues.LeavingIsHeard(how == _leavingHeard, now - _leavingHeardAt)) return;
             _leavingHeard = how;
@@ -343,6 +348,22 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>A building starts to go up: the hammer is heard with it, blow for blow (the owner's wish, 2026-11-18).</summary>
         private static void OnRisingStarted(bool grand) => AudioPlayer.Play(SoundCues.ForRising(grand));
+
+        /// <summary>A missile leaves its hatch, and comes down: each is heard as it happens (the owner's wish, 2026-11-21).</summary>
+        private static void OnMissileLaunched() => AudioPlayer.Play(SoundCue.MissileLaunch);
+
+        private static void OnMissileStruck(bool blocked) => AudioPlayer.Play(SoundCues.ForMissileHit(blocked));
+
+        /// <summary>
+        /// The missile of a card just played flies from its player's hatch to the town (the owner's card, 2026-11-21);
+        /// the table waits for the hit, and the town's buildings are then blown up by the events that follow.
+        /// </summary>
+        private IEnumerator FireMissile(CardPlayedEvent played, bool blocked)
+        {
+            int seat = _session.State.IndexOfPlayer(played.PlayerId);
+            if (_board == null || seat < 0 || played.Target < 0 || played.Target >= _session.Board.Count) yield break;
+            yield return _board.FireMissile(seat, played.Target, ColorOf(played.PlayerId), blocked);
+        }
 
         /// <summary>The time between two towns of the wave now running (<see cref="LeavingWave"/>); 0 when none is.</summary>
         private float _waveStep;
@@ -864,6 +885,8 @@ namespace Lazpoly.Presentation.Game
             _board = BoardView.Create(transform, _data);
             _board.LeavingStarted += OnLeavingStarted;
             _board.RisingStarted += OnRisingStarted;
+            _board.MissileLaunched += OnMissileLaunched;
+            _board.MissileStruck += OnMissileStruck;
             // The dust's shapes are drawn now, not in the frame the first building of the game goes up.
             SoftSprites.Material();
             StartCoroutine(Lazpoly.Presentation.Models.MoneyBundle.Preload()); // Read over the first frames, ready before the first payment.
@@ -1125,6 +1148,33 @@ namespace Lazpoly.Presentation.Game
             yield return TourHold("otel-insa", RisingBurst.GrandBeat + 0.12f);
             yield return ScreenTour.Until(stands, 6f);
             _board.SetBuildingLevel(town, 0);
+            _board.ClearOwner(town, animate: false);
+        }
+
+        /// <summary>
+        /// Shows a missile fired from the person's hatch at a three-storey house on a town nobody owns (the owner's
+        /// card, 2026-11-21): leaving its hatch in its smoke ("fuze-kalkis"), on its way over the table with its trail
+        /// behind it ("fuze-ucus"), the blast as the house goes ("fuze-patlama") and the dark smoke over the rubble
+        /// ("fuze-patlama-2").
+        /// </summary>
+        private IEnumerator TourMissile()
+        {
+            List<int> towns = TourTowns(1);
+            IReadOnlyList<PlayerState> players = _session.State.Players;
+            int seat = _session.State.IndexOfPlayer(ScreenTour.PersonId);
+            if (towns.Count == 0 || seat < 0) yield break;
+            int town = towns[0];
+            _board.SetOwner(town, ColorOf(players[(seat + 1) % players.Count].Id));
+            _board.SetBuildingLevel(town, 3);
+            yield return null;
+            StartCoroutine(_board.FireMissile(seat, town, ColorOf(ScreenTour.PersonId), false));
+            yield return TourHold("fuze-kalkis", MissileFlight.OpenSeconds + 0.42f);
+            yield return TourHold("fuze-ucus", 0.75f);
+            yield return ScreenTour.Until(() => _board.Missile == null || _board.Missile.Struck, 6f);
+            _board.SetBuildingLevel(town, 0, animate: true, leaving: Leaving.Blasted);
+            yield return TourHold("fuze-patlama", 0.12f);
+            yield return TourHold("fuze-patlama-2", 0.55f);
+            yield return ScreenTour.Until(() => _board.LeavingCount == 0 && _board.GetComponentInChildren<LeavingBurst>() == null && _board.GetComponentInChildren<MissileStrike>() == null, 8f);
             _board.ClearOwner(town, animate: false);
         }
 
@@ -1478,6 +1528,7 @@ namespace Lazpoly.Presentation.Game
             // A building leaving (the owner's wish, 2026-11-17), caught on its way: sold, and torn down.
             yield return TourLeaving(Leaving.Sold, "bina-satis", 0.52f, 0.95f);
             yield return TourLeaving(Leaving.Demolished, "bina-yikim", 0.6f, 1f);
+            yield return TourMissile();
 
             // A building going up, and a bankrupt player's towns leaving in a wave (the owner's wishes, 2026-11-18).
             yield return TourRising();
@@ -1993,7 +2044,9 @@ namespace Lazpoly.Presentation.Game
                         ShownPlay = played;
                         ShownPlayBlocked = CardPlay.Blocked(_pendingEvents.Count > 0 ? _pendingEvents.Peek() : null);
                         // What an attack tears down falls in on itself; what is sold springs away (the owner's wish, 2026-11-17).
-                        _tornDown = !ShownPlayBlocked && CardPlay.TearsDown(_session.Board.Cards[played.CardIndex].Kind) ? played.Target : -1;
+                        CardKind playedKind = _session.Board.Cards[played.CardIndex].Kind;
+                        _tornDown = !ShownPlayBlocked && CardPlay.TearsDown(playedKind) ? played.Target : -1;
+                        _tearing = CardPlay.Fires(playedKind) ? Leaving.Blasted : Leaving.Demolished;
                         ShownPlayMoney = ShownPlayBlocked ? 0 : CardMoney(played.PlayerId, _pendingEvents, cardOnly: false);
                         ShownPlayTime = Time.time;
                         // A card used as it was drawn takes the drawn card's place in the middle.
@@ -2001,6 +2054,8 @@ namespace Lazpoly.Presentation.Game
                         Say(played.PlayerId, CardPlay.Name(_session.Board, played.CardIndex) + "!");
                         Revision++;
                         yield return new WaitForSeconds(CardPlay.Seconds);
+                        // The card has been read: now the missile flies, and the table waits for it to come down.
+                        if (CardPlay.Fires(playedKind)) yield return FireMissile(played, ShownPlayBlocked);
                         break;
                     case ShieldChangedEvent shield:
                         _board.SetShield(shield.SquareIndex, shield.Raised, animate: true);

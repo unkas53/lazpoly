@@ -56,7 +56,7 @@ namespace Lazpoly.Presentation.Tests
                 names.Add(name);
             }
 
-            Assert.AreEqual(14, names.Count, "the old spyglass and the fifteen new cards: fourteen kinds");
+            Assert.AreEqual(15, names.Count, "the old spyglass, the fifteen cards of Faz 30 (thirteen kinds) and the missile");
             Assert.AreEqual("İmarsız Yapı", CardPlay.Name(CardKind.Demolish));
             Assert.AreEqual("KAÇAK KAT", CardPlay.Title(Board, Card(CardKind.IllegalFloor)));
             Lang.Set(Language.English);
