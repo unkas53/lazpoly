@@ -536,10 +536,11 @@ namespace Lazpoly.Core.Tests
         // ---- Attacks and the shield ----
 
         [Test]
-        public void TheMissileBlowsUpEverythingBuiltOnARivalTownAndLeavesTheLand()
+        public void TheMissileBlowsUpARivalTownWithHousesAndLeavesNothing()
         {
-            // The owner's card (2026-11-21): a missile at a rival town; all its houses go. A town with a hotel is spared
-            // (the owner's choice the same day).
+            // The owner's card (2026-11-21): a missile at a rival town; all its houses go, and the plot with them
+            // ("arsa kalıyor, o da kalmasın"): the town is nobody's again. A town with a hotel is spared (the owner's
+            // choice the same day).
             GameEngine engine = Game(s =>
             {
                 Seat(s, Alice).Hand.Add(Missile);
@@ -564,8 +565,12 @@ namespace Lazpoly.Core.Tests
             int alice = Player(engine, Alice).Money, bob = Player(engine, Bob).Money;
             CommandResult hit = Accept(engine, new PlayCardCommand(Alice, Missile, A1));
             Assert.AreEqual(0, engine.State.GetBuildingLevel(A1), "all three houses are gone");
-            Assert.AreEqual(Bob, engine.State.GetOwner(A1), "the land stays its owner's");
+            Assert.AreEqual(GameState.NoOwner, engine.State.GetOwner(A1), "and the plot with them: the town is nobody's again");
             Assert.AreEqual(0, hit.Events.OfType<BuildingLevelChangedEvent>().Single().Level);
+            PropertyOwnerChangedEvent lost = hit.Events.OfType<PropertyOwnerChangedEvent>().Single();
+            Assert.AreEqual(A1, lost.SquareIndex);
+            Assert.AreEqual(GameState.NoOwner, lost.NewOwnerId);
+            Assert.Less(hit.Events.ToList().FindIndex(e => e is BuildingLevelChangedEvent), hit.Events.ToList().FindIndex(e => e is PropertyOwnerChangedEvent), "the houses go first, then the plot");
             Assert.AreEqual(alice, Player(engine, Alice).Money, "the card costs nothing");
             Assert.AreEqual(bob, Player(engine, Bob).Money, "and nothing is paid back");
             CollectionAssert.DoesNotContain(Player(engine, Alice).Hand, Missile);
@@ -586,6 +591,7 @@ namespace Lazpoly.Core.Tests
             CommandResult stopped = Accept(engine, new PlayCardCommand(Alice, Missile, A1));
             Assert.IsTrue(stopped.Events.OfType<ShieldChangedEvent>().Single().Blocked);
             Assert.AreEqual(3, engine.State.GetBuildingLevel(A1), "the houses stand");
+            Assert.AreEqual(Bob, engine.State.GetOwner(A1), "and the town stays its owner's");
             Assert.IsFalse(engine.State.HasShield(A1), "the shield is spent");
             CollectionAssert.DoesNotContain(Player(engine, Alice).Hand, Missile, "and so is the missile");
         }

@@ -135,8 +135,9 @@ namespace Lazpoly.App.AI
                         me, card);
 
                 case CardKind.Missile:
-                    // The town with the most put into its houses, the leader's first.
-                    return Best(RivalTowns(state, targets, leader), square => board[square].BuildingsCost(state.GetBuildingLevel(square)), me, card);
+                    // As a demolition: the town worth most with its houses, the leader's first, a whole group's before all.
+                    return Best(RivalTowns(state, targets, leader), square =>
+                        Worth(board, state, square) + (BreaksGroup(board, state, square) ? board[square].Price * 4 : 0), me, card);
 
                 case CardKind.IllegalFloor:
                     return Best(RivalTowns(state, targets, leader), square => state.GetBuildingLevel(square) * 1000000 + board[square].BuildingCost, me, card);

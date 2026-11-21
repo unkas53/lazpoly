@@ -339,6 +339,7 @@ namespace Lazpoly.Core.Engine
                         case CardKind.IllegalFloor:
                         case CardKind.Missile:
                             // Both need houses to take; a hotel is out of a missile's reach too (the owner's choice, 2026-11-21).
+                            // What sets a missile apart from a demolition: it cannot be fired at bare land.
                             return level < 1 || level >= SquareDefinition.MaxBuildingLevel ? RejectionReason.InvalidTarget : RejectionReason.None;
                         default:
                             return RejectionReason.None;

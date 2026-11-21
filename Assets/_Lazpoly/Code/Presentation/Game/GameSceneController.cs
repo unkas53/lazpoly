@@ -356,7 +356,7 @@ namespace Lazpoly.Presentation.Game
 
         /// <summary>
         /// The missile of a card just played flies from its player's hatch to the town (the owner's card, 2026-11-21);
-        /// the table waits for the hit, and the town's buildings are then blown up by the events that follow.
+        /// the table waits for the hit, and the town's houses and its plot are then blown up by the events that follow.
         /// </summary>
         private IEnumerator FireMissile(CardPlayedEvent played, bool blocked)
         {
@@ -1155,7 +1155,7 @@ namespace Lazpoly.Presentation.Game
         /// Shows a missile fired from the person's hatch at a three-storey house on a town nobody owns (the owner's
         /// card, 2026-11-21): leaving its hatch in its smoke ("fuze-kalkis"), on its way over the table with its trail
         /// behind it ("fuze-ucus"), the blast as the house goes ("fuze-patlama") and the dark smoke over the rubble
-        /// ("fuze-patlama-2").
+        /// on a town left bare, its plot gone as well ("fuze-patlama-2").
         /// </summary>
         private IEnumerator TourMissile()
         {
@@ -1171,7 +1171,9 @@ namespace Lazpoly.Presentation.Game
             yield return TourHold("fuze-kalkis", MissileFlight.OpenSeconds + 0.42f);
             yield return TourHold("fuze-ucus", 0.75f);
             yield return ScreenTour.Until(() => _board.Missile == null || _board.Missile.Struck, 6f);
+            // As the game does it: the houses go and the plot with them, so nothing is left on the town.
             _board.SetBuildingLevel(town, 0, animate: true, leaving: Leaving.Blasted);
+            _board.ClearOwner(town, animate: true, leaving: Leaving.Blasted);
             yield return TourHold("fuze-patlama", 0.12f);
             yield return TourHold("fuze-patlama-2", 0.55f);
             yield return ScreenTour.Until(() => _board.LeavingCount == 0 && _board.GetComponentInChildren<LeavingBurst>() == null && _board.GetComponentInChildren<MissileStrike>() == null, 8f);

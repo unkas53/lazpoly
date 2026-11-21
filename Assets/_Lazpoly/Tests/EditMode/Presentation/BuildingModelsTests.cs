@@ -169,7 +169,7 @@ namespace Lazpoly.Presentation.Tests
 
                 // The owner's one wish (2026-11-21): the roof in the player's colour. The rest suits the table: light
                 // warm walls, frames lighter still (black frames were turned down), glass dark enough that a window
-                // reads, a pale warm slab under the house (concrete grey was turned down), and the thin belts between
+                // reads, a dark grey slab under the house (the owner's choice the same day), and the thin belts between
                 // the floors in the roof's colour.
                 Color walls = BuildingModels.SlotColors[BuildingModels.WallSlot];
                 Color glass = BuildingModels.SlotColors[BuildingModels.GlassSlot];
@@ -184,12 +184,12 @@ namespace Lazpoly.Presentation.Tests
                 Assert.Less(glass.grayscale, walls.grayscale - 0.4f, "the glass is dark enough against the walls for a window to read");
                 Assert.Greater(glass.grayscale, 0.3f, "the glass is black");
                 Assert.Greater(glass.b, glass.r + 0.2f, "the glass is blue");
-                // The slab's top faces the light and shows about 1.15 times its colour: at 0.87 it was near white and
-                // glared (the owner, 2026-11-21: "bina zeminindeki arsa çok parlıyor").
-                Assert.LessOrEqual(ground.maxColorComponent, 0.78f, "the slab's lit top glares in the table's light (it did at 0.87)");
-                Assert.Greater(Mathf.Min(ground.r, ground.g, ground.b), 0.55f, "the slab is dark: it is stone in the sun, not a shadow");
-                Assert.Less(ground.grayscale, walls.grayscale - 0.12f, "the house stands lighter than the slab under it");
-                Assert.Greater(ground.r - ground.b, 0.1f, "the slab is warm stone, not concrete grey");
+                // The slab (the owner, 2026-11-21: first "bina zeminindeki arsa çok parlıyor", then "arsa rengi koyu gri
+                // olsun"): dark grey, neither black as the hatches nor light enough to glare, and no colour of its own.
+                Assert.That(ground.maxColorComponent, Is.InRange(0.3f, 0.45f), "the slab is dark grey");
+                Assert.Greater(Mathf.Min(ground.r, ground.g, ground.b), 0.28f, "the slab is black: it would read as a hole");
+                Assert.Less(ground.maxColorComponent - Mathf.Min(ground.r, ground.g, ground.b), 0.05f, "the slab is grey, without a colour of its own");
+                Assert.Less(ground.grayscale, walls.grayscale - 0.4f, "the house stands out light on the slab under it");
                 Assert.AreEqual("Glass", BuildingModels.Slots[BuildingModels.GlassSlot]);
                 Assert.AreEqual("Roof", BuildingModels.Slots[BuildingModels.RoofSlot]);
                 Assert.AreEqual("Base", BuildingModels.Slots[BuildingModels.BaseSlot]);

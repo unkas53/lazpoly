@@ -75,8 +75,9 @@ namespace Lazpoly.Core.Board
 
         /// <summary>
         /// An attack (the owner's card, 2026-11-21: "bir şehre füze at"): a missile is fired at a rival town that has
-        /// houses; a town with a hotel is spared (the owner's choice the same day). Every house on it is destroyed,
-        /// nothing paid back; the land stays its owner's.
+        /// houses; a town with a hotel is spared (the owner's choice the same day). Every house on it is destroyed
+        /// and the plot with them (the owner, the same day: "arsa kalıyor, o da kalmasın"): the town is nobody's
+        /// again, nothing paid back.
         /// </summary>
         Missile = 20,
     }

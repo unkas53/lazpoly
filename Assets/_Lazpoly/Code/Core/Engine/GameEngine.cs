@@ -574,9 +574,14 @@ namespace Lazpoly.Core.Engine
                     break;
 
                 case CardKind.Missile:
-                    // Everything built on the town is gone; the land stays its owner's.
+                {
+                    // Nothing is left where it comes down: the houses go and the plot with them, so the town is nobody's
+                    // again (the owner, 2026-11-21: "binalar patlıyor ama arsa kalıyor, o da kalmasın").
+                    int owner = State.GetOwner(target);
                     Emit(new BuildingLevelChangedEvent(target, 0));
+                    Emit(new PropertyOwnerChangedEvent(target, owner, GameState.NoOwner));
                     break;
+                }
 
                 case CardKind.ForceSale:
                 {

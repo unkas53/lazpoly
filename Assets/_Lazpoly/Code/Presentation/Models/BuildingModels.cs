@@ -16,7 +16,8 @@ namespace Lazpoly.Presentation.Models
     /// owner's colour (<see cref="PaintOwner"/>): the owner's one wish for the buildings' colours, 2026-11-21. The
     /// rest was left to be made to suit the table, after white walls with black frames, a concrete slab and houses
     /// with no slab under them were each tried and turned down: ivory walls with white frames and rails, deep blue
-    /// glass so a window reads from the game's height, a warm sand slab darker than the walls it carries, and the
+    /// glass so a window reads from the game's height, a dark grey slab under them (the owner's choice, 2026-11-21:
+    /// "arsa rengi koyu gri olsun"; a pale one glared and a sand one did not please), and the
     /// thin belts between the floors in the roof's colour. The plot has no roof: its paving and its sign's face
     /// wear the owner's colour.
     /// When the pack is missing the callers fall back to the drawn pieces of <see cref="BuildingParts"/>.
@@ -61,7 +62,7 @@ namespace Lazpoly.Presentation.Models
             new Color(0.26f, 0.40f, 0.56f), // Glass (the whole of a window's recess): deep blue.
             new Color(0.36f, 0.23f, 0.16f), // Doors and the sign's posts: dark wood.
             new Color(0.71f, 0.32f, 0.23f), // Roofs, chimneys, canopies, the slabs of flat roofs: terracotta until owned.
-            new Color(0.75f, 0.70f, 0.61f), // The slab a building stands on, its kerbs and steps, balcony slabs: warm sand stone. Its top faces the light: at 0.87 it showed near white and glared (the owner, 2026-11-21: "çok parlıyor").
+            new Color(0.36f, 0.37f, 0.39f), // The slab a building stands on, its kerbs and steps, balcony slabs: dark grey, as asphalt (the owner, 2026-11-21: "arsa rengi koyu gri olsun"; pale cream glared, warm sand was tried between).
             new Color(0.83f, 0.65f, 0.23f), // Handles and the hotel's letters: brass.
             new Color(0.97f, 0.95f, 0.91f), // The frames of windows and doors, and the bars across the panes: white.
             new Color(0.97f, 0.95f, 0.91f), // The belts between the floors: white until owned.

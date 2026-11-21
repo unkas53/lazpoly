@@ -81,7 +81,7 @@ namespace Lazpoly.Presentation.Game
                 case CardKind.Demolish: return L("Şehirdeki her şey yıkıldı; şehir bankaya döndü.");
                 case CardKind.IllegalFloor: return L("Şehrin binası bir kat düştü.");
                 case CardKind.ForceSale: return L("Şehir bankaya satıldı; bedeli sahibine ödendi.");
-                case CardKind.Missile: return L("Şehre füze atılıyor; üzerindeki bütün evler yıkılacak.");
+                case CardKind.Missile: return L("Şehre füze atılıyor; evler de arsa da yok olacak, şehir bankaya dönecek.");
                 default: return "";
             }
         }
@@ -126,7 +126,7 @@ namespace Lazpoly.Presentation.Game
         /// <summary>Whether a card tears buildings down where it is played (the whole town, or a floor): they then fall in on themselves instead of leaving as sold ones do.</summary>
         public static bool TearsDown(CardKind kind) => kind == CardKind.Demolish || kind == CardKind.IllegalFloor || kind == CardKind.Missile;
 
-        /// <summary>Whether a card is a missile fired from its player's hatch at the town it is played on (the owner's card, 2026-11-21): the town's buildings are blown up, not pulled down.</summary>
+        /// <summary>Whether a card is a missile fired from its player's hatch at the town it is played on (the owner's card, 2026-11-21): the town's houses and its plot are blown up, not pulled down.</summary>
         public static bool Fires(CardKind kind) => kind == CardKind.Missile;
     }
 }

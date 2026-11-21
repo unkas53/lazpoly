@@ -91,6 +91,6 @@
         { "kind": "illegalFloor", "text": "Bir şehirde kaçak kat tespit edildi: rakip bir şehir seç, kaçak kat yıkılsın." },
         { "kind": "forceSale", "text": "Satmaya Zorla: rakip bir şehri bankaya sattır, parası sahibine ödensin." },
         { "kind": "goToJail", "text": "Kaçak inşaat soruşturması: doğrudan hapse gir, Başlangıç'tan geçme." },
-        { "kind": "missile", "text": "Füze: evi olan rakip bir şehre füze at, üzerindeki bütün evler patlasın. Otelli şehre atılamaz." }
+        { "kind": "missile", "text": "Füze: evi olan rakip bir şehre füze at; evler de arsa da yok olsun, şehir bankaya dönsün. Otelli şehre atılamaz." }
     ]
 }

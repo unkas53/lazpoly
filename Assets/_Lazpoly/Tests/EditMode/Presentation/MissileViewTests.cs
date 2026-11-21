@@ -111,7 +111,8 @@ namespace Lazpoly.Presentation.Tests
             Assert.AreEqual("Füze", CardPlay.Name(CardKind.Missile));
             StringAssert.StartsWith("Evi olan rakip bir şehre füze at", CardPlay.Body(data.Board, card), "the name is the title already");
             StringAssert.Contains("Otelli şehre atılamaz", CardPlay.Body(data.Board, card), "the owner's choice (2026-11-21): a hotel is spared");
-            Assert.AreEqual("Şehre füze atılıyor; üzerindeki bütün evler yıkılacak.", CardPlay.Effect(data.Board, new CardPlayedEvent(1, card, 1)));
+            StringAssert.Contains("arsa da yok olsun", CardPlay.Body(data.Board, card), "the owner (2026-11-21): the plot does not stay either");
+            Assert.AreEqual("Şehre füze atılıyor; evler de arsa da yok olacak, şehir bankaya dönecek.", CardPlay.Effect(data.Board, new CardPlayedEvent(1, card, 1)));
             Assert.IsTrue(CardPlay.Fires(CardKind.Missile));
             Assert.IsTrue(CardPlay.TearsDown(CardKind.Missile));
 
