@@ -153,6 +153,7 @@ namespace Lazpoly.Core.Board
                 case CardKind.Demolish:
                 case CardKind.IllegalFloor:
                 case CardKind.ForceSale:
+                case CardKind.Missile:
                     break;
                 case CardKind.LandDeal:
                 case CardKind.Renewal:

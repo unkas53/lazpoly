@@ -19,7 +19,7 @@ namespace Lazpoly.App.AI
         private static readonly CardKind[] Priority =
         {
             CardKind.Lawyer, CardKind.CupTransfer,
-            CardKind.Demolish, CardKind.ForceSale, CardKind.IllegalFloor, CardKind.Strike, CardKind.Audit,
+            CardKind.Missile, CardKind.Demolish, CardKind.ForceSale, CardKind.IllegalFloor, CardKind.Strike, CardKind.Audit,
             CardKind.Shield, CardKind.LandDeal, CardKind.Renewal, CardKind.Fund, CardKind.Chauffeur, CardKind.Lookout,
         };
 
@@ -90,6 +90,7 @@ namespace Lazpoly.App.AI
         {
             switch (kind)
             {
+                case CardKind.Missile:
                 case CardKind.Demolish:
                 case CardKind.ForceSale: return 10;
                 case CardKind.Shield:
@@ -132,6 +133,10 @@ namespace Lazpoly.App.AI
                     return Best(RivalTowns(state, targets, leader), square =>
                         GameRules.CalculateRent(board, rules, state, square) + (BreaksGroup(board, state, square) || square == state.CupSquare ? int.MaxValue / 4 : 0),
                         me, card);
+
+                case CardKind.Missile:
+                    // The town with the most put into its buildings, the leader's first: a hotel before any houses.
+                    return Best(RivalTowns(state, targets, leader), square => board[square].BuildingsCost(state.GetBuildingLevel(square)), me, card);
 
                 case CardKind.IllegalFloor:
                     return Best(RivalTowns(state, targets, leader), square => state.GetBuildingLevel(square) * 1000000 + board[square].BuildingCost, me, card);

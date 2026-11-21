@@ -72,19 +72,21 @@ namespace Lazpoly.Presentation.Tests
         public void TheShippedDeckHoldsTheOldCardsAndTheFifteenStrategicOnes()
         {
             // The owner's plan (Faz 30): the 24 cards stay, 15 strategic cards join them; the old spyglass is kept in hand now.
+            // The missile (the owner's card, 2026-11-21) is the fortieth, and the last: the cards before it keep their numbers.
             BoardData data = BoardDataLoader.LoadFromResources();
-            Assert.AreEqual(39, data.Board.Cards.Count);
+            Assert.AreEqual(40, data.Board.Cards.Count);
+            Assert.AreEqual(CardKind.Missile, data.Board.Cards[data.Board.Cards.Count - 1].Kind);
             Assert.AreEqual(2, data.Board.Cards.Count(card => card.Kind == CardKind.Lookout));
             foreach (CardKind kind in new[]
                      {
                          CardKind.Lawyer, CardKind.RentShield, CardKind.Chauffeur, CardKind.CupTransfer, CardKind.LandDeal, CardKind.Renewal,
-                         CardKind.Fund, CardKind.Shield, CardKind.Strike, CardKind.Audit, CardKind.Demolish, CardKind.IllegalFloor, CardKind.ForceSale,
+                         CardKind.Fund, CardKind.Shield, CardKind.Strike, CardKind.Audit, CardKind.Demolish, CardKind.IllegalFloor, CardKind.ForceSale, CardKind.Missile,
                      })
             {
                 Assert.AreEqual(1, data.Board.Cards.Count(card => card.Kind == kind), kind.ToString());
             }
 
-            Assert.AreEqual(15, data.Board.Cards.Count(card => card.IsKept), "the 14 strategic cards kept in hand and the old spyglass");
+            Assert.AreEqual(16, data.Board.Cards.Count(card => card.IsKept), "the 15 strategic cards kept in hand and the old spyglass");
             Assert.AreEqual(3, data.Board.Cards.Single(card => card.Kind == CardKind.Strike).Amount, "three of the player's turns");
             Assert.AreEqual(5, data.Board.Cards.Single(card => card.Kind == CardKind.Audit).Amount, "5% of the worth");
             CardDefinition fund = data.Board.Cards.Single(card => card.Kind == CardKind.Fund);

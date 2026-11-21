@@ -72,6 +72,13 @@ namespace Lazpoly.Core.Board
 
         /// <summary>An attack: a rival town is sold to the bank; its owner gets its whole value.</summary>
         ForceSale = 19,
+
+        /// <summary>
+        /// An attack (the owner's card, 2026-11-21: "bir şehre füze at"): a missile is fired at a rival town that has
+        /// buildings, a hotel as well as houses. Everything built on it is destroyed, nothing paid back; the land stays
+        /// its owner's.
+        /// </summary>
+        Missile = 20,
     }
 
     /// <summary>What a card played from the hand is aimed at, so screens and computer players know what to pick.</summary>
@@ -134,7 +141,7 @@ namespace Lazpoly.Core.Board
         public static bool IsKeptKind(CardKind kind) => kind == CardKind.Lookout || kind >= CardKind.Lawyer;
 
         /// <summary>Whether the card hurts another player, so a shield on the town stops it.</summary>
-        public bool IsAttack => Kind == CardKind.Strike || Kind == CardKind.Demolish || Kind == CardKind.IllegalFloor || Kind == CardKind.ForceSale;
+        public bool IsAttack => Kind == CardKind.Strike || Kind == CardKind.Demolish || Kind == CardKind.IllegalFloor || Kind == CardKind.ForceSale || Kind == CardKind.Missile;
 
         /// <summary>What playing the card aims at.</summary>
         public CardTarget Aim
@@ -151,7 +158,8 @@ namespace Lazpoly.Core.Board
                     case CardKind.Strike:
                     case CardKind.Demolish:
                     case CardKind.IllegalFloor:
-                    case CardKind.ForceSale: return CardTarget.RivalTown;
+                    case CardKind.ForceSale:
+                    case CardKind.Missile: return CardTarget.RivalTown;
                     case CardKind.Audit: return CardTarget.Rival;
                     default: return CardTarget.None;
                 }

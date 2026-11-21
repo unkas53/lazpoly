@@ -16,7 +16,7 @@ namespace Lazpoly.Presentation.Models
     /// owner's colour (<see cref="PaintOwner"/>): the owner's one wish for the buildings' colours, 2026-11-21. The
     /// rest was left to be made to suit the table, after white walls with black frames, a concrete slab and houses
     /// with no slab under them were each tried and turned down: ivory walls with white frames and rails, deep blue
-    /// glass so a window reads from the game's height, a pale cream slab that stands off the warm tiles, and the
+    /// glass so a window reads from the game's height, a warm sand slab darker than the walls it carries, and the
     /// thin belts between the floors in the roof's colour. The plot has no roof: its paving and its sign's face
     /// wear the owner's colour.
     /// When the pack is missing the callers fall back to the drawn pieces of <see cref="BuildingParts"/>.

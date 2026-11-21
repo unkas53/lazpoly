@@ -573,6 +573,11 @@ namespace Lazpoly.Core.Engine
                     Emit(new BuildingLevelChangedEvent(target, State.GetBuildingLevel(target) - 1));
                     break;
 
+                case CardKind.Missile:
+                    // Everything built on the town is gone; the land stays its owner's.
+                    Emit(new BuildingLevelChangedEvent(target, 0));
+                    break;
+
                 case CardKind.ForceSale:
                 {
                     int owner = State.GetOwner(target);

@@ -46,6 +46,7 @@ namespace Lazpoly.Core.Tests
         private const int Demolish = 12;
         private const int IllegalFloor = 13;
         private const int ForceSale = 14;
+        private const int Missile = 15;
 
         private static BoardDefinition Board()
         {
@@ -82,6 +83,7 @@ namespace Lazpoly.Core.Tests
                 CardDefinition.Strategic("Demolish", CardKind.Demolish),
                 CardDefinition.Strategic("Illegal floor", CardKind.IllegalFloor),
                 CardDefinition.Strategic("Force sale", CardKind.ForceSale),
+                CardDefinition.Strategic("Missile", CardKind.Missile),
             };
             return new BoardDefinition(squares, cards);
         }
@@ -532,6 +534,57 @@ namespace Lazpoly.Core.Tests
         }
 
         // ---- Attacks and the shield ----
+
+        [Test]
+        public void TheMissileBlowsUpEverythingBuiltOnARivalTownAndLeavesTheLand()
+        {
+            // The owner's card (2026-11-21): a missile at a rival town; its buildings go, a hotel as well as houses.
+            GameEngine engine = Game(s =>
+            {
+                Seat(s, Alice).Hand.Add(Missile);
+                s.Owners[A1] = Bob;
+                s.BuildingLevels[A1] = SquareDefinition.MaxBuildingLevel;
+                s.Owners[A2] = Bob;
+                s.Owners[B1] = Alice;
+                s.BuildingLevels[B1] = 2;
+            });
+
+            Assert.IsTrue(engine.Board.Cards[Missile].IsAttack);
+            Assert.IsTrue(engine.Board.Cards[Missile].IsKept);
+            Assert.AreEqual(CardTarget.RivalTown, engine.Board.Cards[Missile].Aim);
+            CollectionAssert.AreEqual(new[] { A1 }, GameRules.CardTargets(engine.Board, engine.State, Player(engine, Alice), Missile), "only rival towns with something built on them");
+            Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, Missile, A2)), "nothing to blow up on bare land");
+            Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, Missile, B1)), "not one's own town");
+            Assert.AreEqual(RejectionReason.InvalidTarget, Reason(engine, new PlayCardCommand(Alice, Missile, ResortSquare)));
+
+            int alice = Player(engine, Alice).Money, bob = Player(engine, Bob).Money;
+            CommandResult hit = Accept(engine, new PlayCardCommand(Alice, Missile, A1));
+            Assert.AreEqual(0, engine.State.GetBuildingLevel(A1), "the hotel is gone");
+            Assert.AreEqual(Bob, engine.State.GetOwner(A1), "the land stays its owner's");
+            Assert.AreEqual(0, hit.Events.OfType<BuildingLevelChangedEvent>().Single().Level);
+            Assert.AreEqual(alice, Player(engine, Alice).Money, "the card costs nothing");
+            Assert.AreEqual(bob, Player(engine, Bob).Money, "and nothing is paid back");
+            CollectionAssert.DoesNotContain(Player(engine, Alice).Hand, Missile);
+            Assert.AreEqual(GamePhase.WaitingForRoll, engine.State.Phase, "the player still rolls");
+        }
+
+        [Test]
+        public void AShieldStopsTheMissile()
+        {
+            GameEngine engine = Game(s =>
+            {
+                Seat(s, Alice).Hand.Add(Missile);
+                s.Owners[A1] = Bob;
+                s.BuildingLevels[A1] = 3;
+                s.Shields[A1] = true;
+            });
+
+            CommandResult stopped = Accept(engine, new PlayCardCommand(Alice, Missile, A1));
+            Assert.IsTrue(stopped.Events.OfType<ShieldChangedEvent>().Single().Blocked);
+            Assert.AreEqual(3, engine.State.GetBuildingLevel(A1), "the houses stand");
+            Assert.IsFalse(engine.State.HasShield(A1), "the shield is spent");
+            CollectionAssert.DoesNotContain(Player(engine, Alice).Hand, Missile, "and so is the missile");
+        }
 
         [Test]
         public void TheShieldStopsTheFirstAttackAndComesDown()

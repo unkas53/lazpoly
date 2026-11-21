@@ -90,6 +90,7 @@ namespace Lazpoly.Presentation.Data
                 case "demolish": return CardDefinition.Strategic(entry.text, CardKind.Demolish);
                 case "illegalFloor": return CardDefinition.Strategic(entry.text, CardKind.IllegalFloor);
                 case "forceSale": return CardDefinition.Strategic(entry.text, CardKind.ForceSale);
+                case "missile": return CardDefinition.Strategic(entry.text, CardKind.Missile);
                 case "moveTo":
                     int target = squares.FindIndex(square => square.Name == entry.to);
                     if (target < 0) throw new FormatException($"Card {index} '{entry.text}' goes to unknown square '{entry.to}'.");
