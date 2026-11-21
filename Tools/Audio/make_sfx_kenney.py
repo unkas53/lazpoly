@@ -1,6 +1,6 @@
 """
 Builds the game's sound effects from Kenney's CC0 recordings (kenney.nl: Casino Audio, Impact Sounds,
-Interface Sounds, RPG Audio, Music Jingles, UI Audio). Only the recordings the game uses are kept, under
+Interface Sounds, RPG Audio, Music Jingles, UI Audio, Sci-fi Sounds). Only the recordings the game uses are kept, under
 Tools/Audio/Kenney/<pack>/ next to each pack's License.txt.
 
 Each cue is one recording or a few laid over each other (a deed card, coins and a short pizzicato phrase
@@ -8,8 +8,8 @@ for a purchase), cut to length, faded out, turned to mono 44.1 kHz 16-bit and br
 loudness (a jingle and a handful of coins should not differ by 20 dB as their peaks would leave them), so
 the game's own mix (SoundCues.Volume) decides what sits under what. The musical cues all come from the
 pizzicato set, so the table sounds like one instrument; only the win gets the bigger steel-drum phrase.
-The packs hold no rocket and no explosion, so the missile's engine, its whistle and the body of its boom are
-worked out here (shaped noise: made()), under and over the recordings.
+The missile's engine and its blast come from the Sci-fi Sounds pack (thrusters, explosions), with the wall
+and rubble recordings of the demolition over the blast. Nothing is worked out here: every cue is recordings.
 
     python Tools/Audio/make_sfx_kenney.py        (needs numpy and ffmpeg on PATH)
     python Tools/Audio/make_sfx_kenney.py firework    (only the cues named)
@@ -31,6 +31,7 @@ LOUDNESS = 0.11
 DRIVE = 2.0
 
 CASINO, IMPACT, UI, RPG, JINGLE, CLICKS = "casino-audio", "impact-sounds", "interface-sounds", "rpg-audio", "music-jingles", "ui-audio"
+SCIFI = "sci-fi-sounds"
 
 
 def layer(pack, name, at=0.0, db=0.0):
@@ -43,109 +44,11 @@ def hit(pack, name, at=0.0, db=0.0, rate=1.0):
     return pack, name, at, db, rate
 
 
-def made(sound, at=0.0, db=0.0):
-    """A layer that is not a recording but worked out here (a rocket's roar is shaped noise): sound() gives its
-    samples, brought to one peak like a hit()."""
-    return None, sound, at, db, 1.0
-
-
-def noise(seconds, low, high, seed):
-    """Noise between two frequencies, the same every time it is built."""
-    n = int(seconds * RATE)
-    spectrum = np.fft.rfft(np.random.default_rng(seed).standard_normal(n))
-    freqs = np.fft.rfftfreq(n, 1 / RATE)
-    # Soft edges an octave wide, so the band does not ring.
-    keep = np.clip(np.log2(np.maximum(freqs, 1e-9) / low) + 1, 0, 1) * np.clip(np.log2(high / np.maximum(freqs, 1e-9)) + 1, 0, 1)
-    return np.fft.irfft(spectrum * keep, n)
-
-
-def swell(seconds, points):
-    """A loudness curve through (share of the time, level) points."""
-    t = np.linspace(0, 1, int(seconds * RATE))
-    return np.interp(t, [p[0] for p in points], [p[1] for p in points])
-
-
-def pink(seconds, low, high, seed):
-    """Noise between two frequencies that falls off towards the high ones (3 dB an octave), as wind, fire and
-    engines do; white noise hisses like a radio."""
-    n = int(seconds * RATE)
-    spectrum = np.fft.rfft(np.random.default_rng(seed).standard_normal(n))
-    freqs = np.maximum(np.fft.rfftfreq(n, 1 / RATE), 1e-9)
-    keep = np.clip(np.log2(freqs / low) + 1, 0, 1) * np.clip(np.log2(high / freqs) + 1, 0, 1) / np.sqrt(freqs)
-    out = np.fft.irfft(spectrum * keep, n)
-    return out / np.abs(out).max()
-
-
-def muffle(x, cutoff):
-    """A low-pass whose cutoff (Hz, one value a sample) moves as the sound goes on: two plain stages in a row."""
-    k = 1 - np.exp(-2 * np.pi * np.asarray(cutoff, dtype=np.float64) / RATE)
-    out = np.empty_like(x)
-    a = b = 0.0
-    for i in range(len(x)):
-        a += k[i] * (x[i] - a)
-        b += k[i] * (a - b)
-        out[i] = b
-    return out
-
-
-def crackle(seconds, rate, depth, seed):
-    """An uneven flutter between 1 - depth and 1, about rate times a second: a burning engine is never steady."""
-    slow = noise(seconds, rate * 0.3, rate, seed)
-    return 1 - depth * np.clip(np.abs(slow) / np.abs(slow).std() / 2.5, 0, 1)
-
-
-def echo(x, seconds, cutoff, seed):
-    """The sound as open air gives it back: itself smeared over seconds, duller and dying away."""
-    n = int(seconds * RATE)
-    t = np.arange(n) / RATE
-    tail = muffle(np.random.default_rng(seed).standard_normal(n), np.full(n, cutoff)) * np.exp(-t * 5 / seconds)
-    tail[:int(0.02 * RATE)] *= np.linspace(0, 1, int(0.02 * RATE))
-    size = len(x) + n
-    wet = np.fft.irfft(np.fft.rfft(x, size) * np.fft.rfft(tail, size), size)
-    return wet / np.abs(wet).max()
-
-
-def rocket_roar():
-    """A solid-fuel rocket, heard from the table: it catches with a blast of gas, then roars and crackles; the roar
-    grows duller and fainter as it climbs away, and comes back as a rush of air when it bears down on the town. No
-    tone in it anywhere: a rocket is all noise."""
-    n = int(MISSILE_FLIGHT * RATE)
-    t = np.arange(n) / RATE
-    share = t / MISSILE_FLIGHT
-    burn = pink(MISSILE_FLIGHT, 50, 9000, 561) * crackle(MISSILE_FLIGHT, 55, 0.55, 566) * crackle(MISSILE_FLIGHT, 13, 0.25, 567)
-    # Near, it is bright and hard; climbing away it loses its top; coming down it is bright again.
-    burn = muffle(burn, np.interp(share, [0, 0.08, 0.5, 0.8, 1], [7000, 5200, 1500, 2200, 5200]))
-    burn *= np.interp(share, [0, 0.008, 0.07, 0.3, 0.72, 1], [0, 1, 0.8, 0.45, 0.34, 0.62])
-    # The gas that throws it out of its hatch: a short burst, dull and heavy.
-    kick = pink(0.35, 30, 1200, 568) * np.exp(-np.arange(int(0.35 * RATE)) / RATE * 16)
-    burn[:len(kick)] += 0.9 * kick
-    # The air it tears through on its way down: a rush that rises until the hit.
-    rush = muffle(pink(MISSILE_FLIGHT, 300, 8000, 569), np.interp(share, [0, 0.6, 1], [600, 900, 6500]))
-    burn += rush / np.abs(rush).max() * np.interp(share, [0, 0.62, 0.9, 1], [0, 0, 0.3, 0.75]) ** 1.5
-    return np.tanh(2.2 * burn / np.abs(burn).max())
-
-
-def blast_boom():
-    """The body of an explosion: the crack of the shock, a burst of noise that loses its top within a blink as a
-    real blast does, the heavy air under it, and all of it given back by the open air for a second or two. Driven
-    hard, so it is dense rather than hissy."""
-    seconds = 2.3
-    n = int(seconds * RATE)
-    t = np.arange(n) / RATE
-    crack = np.random.default_rng(564).standard_normal(n) * np.exp(-t * 180)
-    burst = muffle(np.random.default_rng(563).standard_normal(n), 120 + 9000 * np.exp(-t * 9)) * np.exp(-t * 3.6)
-    burst = np.tanh(3 * burst / np.abs(burst).max())
-    heavy = pink(seconds, 22, 110, 570) * np.exp(-t * 2.6) * np.clip(t / 0.012, 0, 1)
-    dry = 0.7 * crack + burst + 0.9 * heavy
-    far = echo(burst * np.exp(-t * 6), 1.6, 900, 571)[:n]
-    return np.tanh(1.6 * (dry / np.abs(dry).max() + 0.45 * far))
-
-
-def shield_fizz():
-    """A missile spent on a shield: a short bright hiss, gone at once."""
-    seconds = 0.45
-    t = np.arange(int(seconds * RATE)) / RATE
-    return noise(seconds, 1200, 7000, 565) * np.exp(-t * 11)
+def stretch(pack, name, start, seconds, at=0.0, db=0.0, rate=1.0, curve=None):
+    """A stretch of a long recording (an engine running): seconds of it from start, brought to one peak and played
+    at rate like a hit(), its loudness led through (share of its time, level) points: an engine that catches, roars
+    and falls back as it flies away."""
+    return pack, name, at, db, rate, start, seconds, curve
 
 
 def pizzi(n, at=0.0, db=0.0):
@@ -246,32 +149,38 @@ RECIPES = {
                        hit(RPG, "bookPlace3.ogg", FALL_DOWN + 0.50, -10, 1.2), hit(IMPACT, "impactGeneric_light_003.ogg", FALL_DOWN + 0.62, -15),
                        hit(UI, "drop_002.ogg", FALL_DOWN + 0.74, -17), hit(IMPACT, "impactGeneric_light_004.ogg", FALL_DOWN + 0.88, -18, 1.1),
                        hit(UI, "drop_001.ogg", FALL_DOWN + 1.0, -20)], 2.0, 0.35),
-    # The missile card (Faz 56). Lift-off: a thump as it catches and the hatch's iron rattles, then the engine's roar
-    # and crackle for the whole flight, fainter as it climbs away and a rush of air as it comes down; it stops where
-    # the blast begins. (The first take had a falling whistle and a pure tone in its boom: the owner asked for
-    # sounds more like the real thing, 2026-11-21.)
-    "missile_launch": ([hit(IMPACT, "impactPunch_heavy_000.ogg", 0.0, -4, 0.7), hit(IMPACT, "impactMetal_medium_003.ogg", 0.01, -12, 0.8),
-                        hit(RPG, "cloth4.ogg", 0.03, -8, 0.7),
-                        made(rocket_roar, 0.0, -2)], MISSILE_FLIGHT + 0.04, 0.05),
-    # The blast: the crack and the deep boom rolling away in the open air (worked out), heavy blows played slow in it,
-    # walls breaking, then the rubble thrown far coming down piece after piece, quieter and quieter.
-    "missile_blast": ([made(blast_boom, 0.0, 0),
-                       hit(IMPACT, "impactPunch_heavy_000.ogg", 0.0, -6, 0.5), hit(IMPACT, "impactMining_001.ogg", 0.0, -7, 0.5),
-                       hit(IMPACT, "impactPlate_heavy_004.ogg", 0.01, -9, 0.6), hit(RPG, "doorClose_4.ogg", 0.01, -8, 0.55),
-                       hit(IMPACT, "impactPlank_medium_002.ogg", 0.03, -8, 0.9), hit(IMPACT, "impactMining_003.ogg", 0.06, -8, 0.7),
-                       hit(IMPACT, "impactGlass_light_001.ogg", 0.08, -13), hit(IMPACT, "footstep_snow_002.ogg", 0.10, -8, 0.6),
-                       hit(CASINO, "chips-handle-5.ogg", 0.16, -9, 0.5), hit(IMPACT, "impactGlass_light_003.ogg", 0.20, -15, 1.1),
-                       hit(IMPACT, "footstep_snow_004.ogg", 0.28, -9, 0.65),
-                       hit(RPG, "bookPlace2.ogg", 0.62, -9, 0.8), hit(IMPACT, "impactGeneric_light_002.ogg", 0.74, -12),
-                       hit(RPG, "bookPlace1.ogg", 0.85, -10), hit(IMPACT, "footstep_snow_000.ogg", 0.93, -13, 0.8),
-                       hit(UI, "drop_004.ogg", 1.04, -15), hit(RPG, "bookPlace3.ogg", 1.15, -12, 1.2),
-                       hit(IMPACT, "impactGeneric_light_003.ogg", 1.28, -15), hit(UI, "drop_002.ogg", 1.42, -17),
-                       hit(IMPACT, "impactGeneric_light_004.ogg", 1.58, -18, 1.1), hit(UI, "drop_001.ogg", 1.72, -20)], 2.35, 0.6),
+    # The missile card (Faz 56), from the Sci-fi Sounds pack's thruster and explosion recordings (the owner found the
+    # worked-out takes not real enough, 2026-11-21). Lift-off: the engine catches with a deep thump and a burst of
+    # gas, the hatch's iron rattles, and three thrusters burn for the whole flight: the hiss of the flame, loud only
+    # while it is near; the roar; the rumble under it. All fall back as it climbs away and swell as it bears down;
+    # it stops where the blast begins.
+    "missile_launch": ([hit(SCIFI, "lowFrequency_explosion_001.ogg", 0.0, -7), hit(SCIFI, "explosionCrunch_000.ogg", 0.0, -9, 1.25),
+                        hit(IMPACT, "impactMetal_medium_003.ogg", 0.01, -13, 0.8),
+                        stretch(SCIFI, "thrusterFire_004.ogg", 0.6, MISSILE_FLIGHT + 0.1, 0.0, -1, 1.0,
+                                [(0, 0), (0.02, 1), (0.12, 0.85), (0.45, 0.42), (0.75, 0.36), (1, 0.7)]),
+                        stretch(SCIFI, "thrusterFire_001.ogg", 1.2, MISSILE_FLIGHT + 0.1, 0.0, -1, 1.0,
+                                [(0, 0), (0.03, 1), (0.25, 0.9), (0.6, 0.62), (0.8, 0.62), (1, 0.85)]),
+                        stretch(SCIFI, "thrusterFire_003.ogg", 2.0, MISSILE_FLIGHT + 0.1, 0.0, -6, 1.0,
+                                [(0, 0), (0.04, 1), (0.3, 0.9), (0.7, 0.7), (1, 0.8)])], MISSILE_FLIGHT + 0.04, 0.05),
+    # The blast: two explosions at once (the crack and crunch of one, the deep body of the other) over a low boom
+    # that swells a blink later, a third breaking up in it; then, as in the demolition, walls breaking and the rubble
+    # thrown far coming down piece after piece, quieter and quieter.
+    "missile_blast": ([hit(SCIFI, "explosionCrunch_001.ogg", 0.0, 0), hit(SCIFI, "explosionCrunch_004.ogg", 0.0, -2),
+                       hit(SCIFI, "lowFrequency_explosion_000.ogg", 0.0, -3), hit(SCIFI, "explosionCrunch_002.ogg", 0.04, -8),
+                       hit(IMPACT, "impactPlank_medium_002.ogg", 0.03, -11, 0.9), hit(IMPACT, "impactMining_003.ogg", 0.06, -11, 0.7),
+                       hit(IMPACT, "impactGlass_light_001.ogg", 0.08, -15), hit(IMPACT, "footstep_snow_002.ogg", 0.10, -11, 0.6),
+                       hit(CASINO, "chips-handle-5.ogg", 0.16, -12, 0.5), hit(IMPACT, "impactGlass_light_003.ogg", 0.20, -17, 1.1),
+                       hit(IMPACT, "footstep_snow_004.ogg", 0.28, -12, 0.65),
+                       hit(RPG, "bookPlace2.ogg", 0.62, -11, 0.8), hit(IMPACT, "impactGeneric_light_002.ogg", 0.74, -14),
+                       hit(RPG, "bookPlace1.ogg", 0.85, -12), hit(IMPACT, "footstep_snow_000.ogg", 0.93, -15, 0.8),
+                       hit(UI, "drop_004.ogg", 1.04, -17), hit(RPG, "bookPlace3.ogg", 1.15, -14, 1.2),
+                       hit(IMPACT, "impactGeneric_light_003.ogg", 1.28, -17), hit(UI, "drop_002.ogg", 1.42, -19),
+                       hit(IMPACT, "impactGeneric_light_004.ogg", 1.58, -20, 1.1), hit(UI, "drop_001.ogg", 1.72, -22)], 2.35, 0.6),
     # A missile spent on a protection card's shield: no boom. A dull knock, the shield ringing like glass and a
-    # bell, and a bright hiss gone at once.
+    # bell, and the hum of the shield taking the blow.
     "missile_block": ([hit(IMPACT, "impactSoft_heavy_000.ogg", 0.0, -5), hit(IMPACT, "impactBell_heavy_000.ogg", 0.0, -3, 1.6),
                        hit(IMPACT, "impactGlass_light_000.ogg", 0.01, -6), hit(IMPACT, "impactMetal_light_003.ogg", 0.02, -10),
-                       made(shield_fizz, 0.0, -8), hit(RPG, "cloth2.ogg", 0.05, -9),
+                       hit(SCIFI, "forceField_000.ogg", 0.0, -9), hit(RPG, "cloth2.ogg", 0.05, -9),
                        hit(IMPACT, "impactGlass_light_002.ogg", 0.16, -14), hit(IMPACT, "impactGlass_light_004.ogg", 0.27, -17)], 1.1, 0.3),
 }
 
@@ -310,9 +219,14 @@ def respeed(x, rate):
 def build(layers, longest, fade):
     parts = []
     for pack, name, at, db, *more in layers:
-        sig = name() if pack is None else trim_silence(decode(source(pack, name)))
-        if more:  # A hit() or a made(): brought to one peak, and played faster or slower.
+        sig = trim_silence(decode(source(pack, name)))
+        if more:  # A hit() or a stretch(): brought to one peak, and played faster or slower.
             sig = respeed(sig / max(np.abs(sig).max(), 1e-9), more[0])
+        if len(more) > 1:  # A stretch(): a part of it, its loudness led along a curve.
+            start, seconds, curve = more[1:]
+            sig = sig[int(start * RATE):int((start + seconds) * RATE)]
+            if curve:
+                sig = sig * np.interp(np.linspace(0, 1, len(sig)), [p[0] for p in curve], [p[1] for p in curve])
         parts.append((int(at * RATE), sig * 10 ** (db / 20)))
     out = np.zeros(max(start + len(sig) for start, sig in parts))
     for start, sig in parts:
