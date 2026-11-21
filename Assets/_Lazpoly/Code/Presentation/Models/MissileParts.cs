@@ -21,6 +21,14 @@ namespace Lazpoly.Presentation.Models
         public const float FlameLength = 0.55f;
         public const float FlameRadius = 0.11f;
 
+        /// <summary>
+        /// The flame's yellow core, in the flame's own measures: half as long and a little wider, so it stands out of
+        /// the orange at the nozzle and the orange runs on behind it (both are solid: a core inside the flame would
+        /// not be seen, as RC 102 showed).
+        /// </summary>
+        public const float CoreWide = 1.12f;
+        public const float CoreLong = 0.5f;
+
         public const string BodyName = "Body";
         public const string TrimName = "Trim";
         public const string NozzleName = "Nozzle";
@@ -67,7 +75,7 @@ namespace Lazpoly.Presentation.Models
             flame.transform.SetParent(root.transform, false);
             flame.transform.localPosition = new Vector3(0f, -0.5f, 0f);
             Fire("Flame outer", flame.transform, FlameMesh("missile-flame", FlameRadius, FlameLength), FlameOuter);
-            Fire(FlameCoreName, flame.transform, FlameMesh("missile-flame-core", FlameRadius * 0.55f, FlameLength * 0.6f), FlameInner);
+            Fire(FlameCoreName, flame.transform, FlameMesh("missile-flame-core", FlameRadius * CoreWide, FlameLength * CoreLong), FlameInner);
             return root;
         }
 
