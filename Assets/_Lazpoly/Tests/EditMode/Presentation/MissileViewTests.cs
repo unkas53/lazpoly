@@ -58,6 +58,9 @@ namespace Lazpoly.Presentation.Tests
 
                 // The flame hangs from the nozzle, shines by itself and takes no part in the shadows.
                 Assert.AreEqual(-MissileParts.Length * 0.5f, flame.localPosition.y, 1e-4f, "the flame starts at the tail");
+                Material unlit = Resources.Load<Material>(MissileParts.FlameMaterialResource);
+                Assert.IsNotNull(unlit, "the unlit material of the fireworks' sparks");
+                Assert.AreNotEqual(unlit.shader, body.GetComponent<MeshRenderer>().sharedMaterial.shader, "the missile itself is lit like every model");
                 MeshRenderer[] fire = flame.GetComponentsInChildren<MeshRenderer>();
                 Assert.AreEqual(2, fire.Length);
                 foreach (MeshRenderer tongue in fire)
@@ -66,7 +69,11 @@ namespace Lazpoly.Presentation.Tests
                     Assert.IsFalse(tongue.receiveShadows);
                     Assert.Less(tongue.bounds.max.y, -MissileParts.Length * 0.5f + 0.01f, "the flame is behind the missile");
                     Assert.Greater(tongue.bounds.min.y, -MissileParts.Length * 0.5f - MissileParts.FlameLength - 0.01f);
-                    Assert.IsTrue(tongue.sharedMaterial.IsKeywordEnabled("_EMISSION"), "the flame shines by itself");
+                    // Unlit, as the fireworks' sparks: a glow switched on in code is left out of a build (RC 101: a dark flame).
+                    Assert.AreEqual(unlit.shader, tongue.sharedMaterial.shader, "the flame is drawn unlit, so it shines the same in sun and shade");
+                    Assert.AreNotSame(unlit, tongue.sharedMaterial, "each missile's flame has its own material to throw away");
+                    Assert.GreaterOrEqual(tongue.sharedMaterial.color.r, 1f, "the flame is at least as bright as its colour");
+                    Assert.Greater(tongue.sharedMaterial.color.r, tongue.sharedMaterial.color.b * 2f, "fire is orange or yellow");
                 }
 
                 Assert.Less(flame.Find(MissileParts.FlameCoreName).GetComponent<MeshRenderer>().bounds.size.y, MissileParts.FlameLength * 0.7f, "a short bright core in a longer flame");

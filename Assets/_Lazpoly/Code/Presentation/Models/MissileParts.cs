@@ -6,7 +6,7 @@ namespace Lazpoly.Presentation.Models
     /// <summary>
     /// The missile of the owner's card (2026-11-21: "bir şehre füze at"): a toy rocket in the game's own manner, a few
     /// plain round shapes: an ivory body, a rounded nose, a band and four swept fins in its player's colour, a dark
-    /// nozzle, and a short flame of two tones behind it that shines by itself. It is <see cref="Length"/> long from
+    /// nozzle, and a short flame of two tones behind it, drawn unlit so it shines by itself. It is <see cref="Length"/> long from
     /// its nozzle's end to its nose's tip along its +y, small enough to come up through a money hatch
     /// (<see cref="Span"/> across its fins), and casts a shadow as it flies. It is flown by <c>MissileStrike</c>.
     /// </summary>
@@ -39,7 +39,16 @@ namespace Lazpoly.Presentation.Models
         private const float BandFrom = -0.14f;
         private const float BandTo = -0.04f;
 
-        private static readonly int EmissionColor = Shader.PropertyToID("_EmissionColor");
+        /// <summary>
+        /// The flame's material: the unlit one the fireworks' sparks are drawn with, so fire looks the same in the sun
+        /// and in the shade and needs no variant of the models' shader (a glow switched on in code is left out of a
+        /// build: RC 101 showed a dark flame). Drawn <see cref="FlameGlow"/> times its colour, it blooms where the
+        /// picture has bloom.
+        /// </summary>
+        public const string FlameMaterialResource = "Lazpoly/Materials/Spark";
+        public const float FlameGlow = 1.4f;
+
+        private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         /// <summary>
         /// Builds the missile under <paramref name="parent"/>, its middle at the origin and its nose up, its trim in
@@ -57,22 +66,40 @@ namespace Lazpoly.Presentation.Models
             var flame = new GameObject(FlameName);
             flame.transform.SetParent(root.transform, false);
             flame.transform.localPosition = new Vector3(0f, -0.5f, 0f);
-            Glow(ModelParts.Create("Flame outer", flame.transform, FlameMesh("missile-flame", FlameRadius, FlameLength), FlameOuter), FlameOuter);
-            Glow(ModelParts.Create(FlameCoreName, flame.transform, FlameMesh("missile-flame-core", FlameRadius * 0.55f, FlameLength * 0.6f), FlameInner), FlameInner);
+            Fire("Flame outer", flame.transform, FlameMesh("missile-flame", FlameRadius, FlameLength), FlameOuter);
+            Fire(FlameCoreName, flame.transform, FlameMesh("missile-flame-core", FlameRadius * 0.55f, FlameLength * 0.6f), FlameInner);
             return root;
         }
 
-        /// <summary>A part that shines by itself and neither casts nor takes a shadow: fire looks the same in the sun and in the shade.</summary>
-        private static void Glow(GameObject part, Color color)
+        /// <summary>
+        /// A part of the flame: unlit in its own material (the missile's to throw away with the rest), neither casting
+        /// nor taking a shadow. Without the unlit material it is a painted part like the others.
+        /// </summary>
+        private static GameObject Fire(string name, Transform parent, Mesh mesh, Color color)
         {
+            Material unlit = Resources.Load<Material>(FlameMaterialResource);
+            GameObject part;
+            if (unlit == null)
+            {
+                part = ModelParts.Create(name, parent, mesh, color);
+            }
+            else
+            {
+                part = new GameObject(name);
+                part.transform.SetParent(parent, false);
+                part.AddComponent<MeshFilter>().sharedMesh = mesh;
+                Color bright = color * FlameGlow;
+                bright.a = 1f;
+                var material = new Material(unlit) { name = "Missile flame" };
+                if (material.HasProperty(BaseColor)) material.SetColor(BaseColor, bright);
+                material.color = bright;
+                part.AddComponent<MeshRenderer>().sharedMaterial = material;
+            }
+
             var drawn = part.GetComponent<MeshRenderer>();
             drawn.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             drawn.receiveShadows = false;
-            Material material = drawn.sharedMaterial;
-            if (material == null || !material.HasProperty(EmissionColor)) return;
-            material.color = Color.black;
-            material.EnableKeyword("_EMISSION");
-            material.SetColor(EmissionColor, color);
+            return part;
         }
 
         /// <summary>The ivory body: a tube from above the nozzle to its shoulder, closed at both ends.</summary>
